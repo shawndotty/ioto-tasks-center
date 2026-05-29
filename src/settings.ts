@@ -1,18 +1,18 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
-import MyPlugin from './main';
+import IOTOTasksCenter from './main';
 
-export interface MyPluginSettings {
+export interface IOTOTasksCenterSettings {
 	mySetting: string;
 }
 
-export const DEFAULT_SETTINGS: MyPluginSettings = {
+export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	mySetting: 'default',
 };
 
 export class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+	plugin: IOTOTasksCenter;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: IOTOTasksCenter) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
