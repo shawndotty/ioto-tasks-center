@@ -74,6 +74,55 @@ export function getTemplaterCommandId(templatePath: string): string {
 	return `templater-obsidian:${templatePath}`;
 }
 
+export function buildProjectPropertyFrontmatter(projectName: string): string {
+	return buildListPropertyFrontmatter('Project', projectName);
+}
+
+export function buildListPropertyFrontmatter(
+	propertyName: string,
+	value: string,
+): string {
+	return `${propertyName}:\n  - ${JSON.stringify(value)}`;
+}
+
+export function upsertProjectProperty(
+	content: string,
+	projectName: string,
+): string {
+	return upsertListProperty(content, 'Project', projectName);
+}
+
+export function upsertListProperty(
+	content: string,
+	propertyName: string,
+	value: string,
+): string {
+	const propertyBlock = buildListPropertyFrontmatter(propertyName, value);
+	const frontmatterMatch = content.match(
+		/^---\r?\n([\s\S]*?)\r?\n---((?:\r?\n)?[\s\S]*)$/,
+	);
+
+	if (!frontmatterMatch) {
+		if (content.length === 0) {
+			return `---\n${propertyBlock}\n---\n`;
+		}
+
+		return `---\n${propertyBlock}\n---\n\n${content}`;
+	}
+
+	const existingFrontmatterBody = frontmatterMatch[1] ?? '';
+	const remainingContent = frontmatterMatch[2] ?? '';
+	const cleanedFrontmatterBody = removeListPropertyFromFrontmatter(
+		existingFrontmatterBody,
+		propertyName,
+	);
+	const nextFrontmatterBody = cleanedFrontmatterBody
+		? `${cleanedFrontmatterBody}\n${propertyBlock}`
+		: propertyBlock;
+
+	return `---\n${nextFrontmatterBody}\n---${remainingContent}`;
+}
+
 export async function createTaskFile(
 	options: CreateTaskFileOptions,
 ): Promise<CreateTaskFileResult> {
@@ -86,11 +135,14 @@ export async function createTaskFile(
 		targetLeaf,
 		sourceLeaf,
 	} = options;
+	const normalizedCustomName = customName
+		? normalizeCustomTaskName(customName)
+		: null;
 	const fileName = buildTaskFileName(
 		projectName,
 		type,
 		new Date(),
-		customName,
+		normalizedCustomName ?? undefined,
 	);
 	const targetPath = resolveTaskTargetPath(projectName, fileName);
 	const projectFolder = app.vault.getAbstractFileByPath(
@@ -118,6 +170,11 @@ export async function createTaskFile(
 	const templateFile = getTemplateFile(app, templatePath);
 
 	if (!templateFile) {
+		await applyTaskPropertiesToFile(app, file, {
+			projectName,
+			type,
+			customName: normalizedCustomName,
+		});
 		return {
 			file,
 			created: true,
@@ -132,6 +189,11 @@ export async function createTaskFile(
 		targetLeaf,
 		sourceLeaf,
 	);
+	await applyTaskPropertiesToFile(app, file, {
+		projectName,
+		type,
+		customName: normalizedCustomName,
+	});
 	return {
 		file,
 		created: true,
@@ -252,6 +314,34 @@ function getTemplaterPlugin(app: App): TemplaterPlugin | null {
 	return plugin ?? null;
 }
 
+async function applyTaskPropertiesToFile(
+	app: App,
+	file: TFile,
+	options: {
+		projectName: string;
+		type: TaskCreationType;
+		customName: string | null;
+	},
+): Promise<void> {
+	const { projectName, type, customName } = options;
+	let nextContent = await app.vault.cachedRead(file);
+
+	nextContent = upsertListProperty(nextContent, 'Project', projectName);
+
+	if (type === 'topic' && customName) {
+		nextContent = upsertListProperty(nextContent, 'Subject', customName);
+	}
+
+	if (type === 'plan' && customName) {
+		nextContent = upsertListProperty(nextContent, 'Plan', customName);
+	}
+
+	const currentContent = await app.vault.cachedRead(file);
+	if (nextContent !== currentContent) {
+		await app.vault.modify(file, nextContent);
+	}
+}
+
 function formatDate(date: Date): string {
 	const year = date.getFullYear();
 	const month = `${date.getMonth() + 1}`.padStart(2, '0');
@@ -265,4 +355,37 @@ function normalizeVaultPath(path: string): string {
 		.replace(/\/{2,}/g, '/')
 		.replace(/^\.\//, '')
 		.replace(/\/+$/g, '');
+}
+
+function removeListPropertyFromFrontmatter(
+	frontmatterBody: string,
+	propertyName: string,
+): string {
+	const lines = frontmatterBody.split(/\r?\n/);
+	const nextLines: string[] = [];
+	let skippingProjectProperty = false;
+	const propertyPattern = new RegExp(`^${escapeRegExp(propertyName)}\\s*:`);
+
+	for (const line of lines) {
+		if (!skippingProjectProperty && propertyPattern.test(line)) {
+			skippingProjectProperty = true;
+			continue;
+		}
+
+		if (skippingProjectProperty) {
+			if (/^[ \t]+/.test(line) || line.trim() === '') {
+				continue;
+			}
+
+			skippingProjectProperty = false;
+		}
+
+		nextLines.push(line);
+	}
+
+	return nextLines.join('\n').trim();
+}
+
+function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
