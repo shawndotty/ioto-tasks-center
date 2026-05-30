@@ -1,4 +1,4 @@
-import { ItemView, TFile, WorkspaceLeaf } from 'obsidian';
+import { FileView, ItemView, TFile, WorkspaceLeaf } from 'obsidian';
 
 import { listProjectFolders, listProjectTaskFiles } from '../tasks-center/data';
 import {
@@ -10,11 +10,20 @@ import {
 } from '../tasks-center/types';
 
 export const IOTO_TASKS_CENTER_VIEW_TYPE = 'IOTOTasksCenter';
+type TaskFilterTab = 'incomplete' | 'completed' | 'all';
+interface IOTOTasksCenterViewState {
+	selectedProject?: string;
+	activeTaskFilterTab?: TaskFilterTab;
+	openedTaskPath?: string;
+	previewLeafId?: string;
+}
 
 export class IOTOTasksCenterView extends ItemView {
 	private projects: ProjectFolderEntry[] = [];
+	private projectIncompleteCounts = new Map<string, number>();
 	private selectedProject: string | null = null;
 	private tasks: TaskFileEntry[] = [];
+	private activeTaskFilterTab: TaskFilterTab = 'incomplete';
 	private openedTaskPath: string | null = null;
 	private openingTaskPath: string | null = null;
 	private previewLeaf: WorkspaceLeaf | null = null;
@@ -55,6 +64,28 @@ export class IOTOTasksCenterView extends ItemView {
 		this.contentEl.empty();
 	}
 
+	getState(): Record<string, unknown> {
+		return {
+			selectedProject: this.selectedProject ?? undefined,
+			activeTaskFilterTab: this.activeTaskFilterTab,
+			openedTaskPath: this.openedTaskPath ?? undefined,
+			previewLeafId: getWorkspaceLeafId(this.previewLeaf) ?? undefined,
+		};
+	}
+
+	async setState(state: unknown): Promise<void> {
+		const viewState = parseViewState(state);
+		this.selectedProject = viewState.selectedProject ?? null;
+		this.openedTaskPath = viewState.openedTaskPath ?? null;
+		this.activeTaskFilterTab =
+			viewState.activeTaskFilterTab ?? 'incomplete';
+		this.previewLeaf =
+			(viewState.previewLeafId
+				? this.findLeafById(viewState.previewLeafId)
+				: null) ?? null;
+		await this.refreshFromVaultChange();
+	}
+
 	async refreshFromVaultChange(): Promise<void> {
 		const previousSelection = this.selectedProject;
 		await this.loadProjects(previousSelection);
@@ -74,6 +105,9 @@ export class IOTOTasksCenterView extends ItemView {
 
 		this.projectResult = result;
 		this.projects = result.projects;
+		this.projectIncompleteCounts = this.buildProjectIncompleteCounts(
+			result.projects,
+		);
 		this.isProjectsLoading = false;
 
 		if (result.status !== 'success' || result.projects.length === 0) {
@@ -203,9 +237,16 @@ export class IOTOTasksCenterView extends ItemView {
 		for (const project of this.projects) {
 			const itemEl = listEl.createEl('button', {
 				cls: 'ioto-tasks-center__project-item',
-				text: project.name,
 			});
 			itemEl.type = 'button';
+			itemEl.createSpan({
+				cls: 'ioto-tasks-center__project-name',
+				text: project.name,
+			});
+			itemEl.createSpan({
+				cls: 'ioto-tasks-center__project-count',
+				text: `${this.projectIncompleteCounts.get(project.name) ?? 0}`,
+			});
 
 			if (project.name === this.selectedProject) {
 				itemEl.addClass('is-selected');
@@ -237,6 +278,8 @@ export class IOTOTasksCenterView extends ItemView {
 			cls: 'ioto-tasks-center__section-desc',
 			text: currentProjectText,
 		});
+
+		this.renderTaskTabs(container);
 
 		const listEl = container.createDiv({
 			cls: 'ioto-tasks-center__task-list',
@@ -302,7 +345,13 @@ export class IOTOTasksCenterView extends ItemView {
 			return;
 		}
 
-		for (const task of this.tasks) {
+		const visibleTasks = this.getVisibleTasks();
+		if (visibleTasks.length === 0) {
+			this.renderTaskFilterEmptyState(listEl);
+			return;
+		}
+
+		for (const task of visibleTasks) {
 			const rowEl = listEl.createEl('button', {
 				cls: 'ioto-tasks-center__task-row',
 			});
@@ -330,6 +379,102 @@ export class IOTOTasksCenterView extends ItemView {
 				void this.openTaskFile(task);
 			});
 		}
+	}
+
+	private renderTaskTabs(container: HTMLElement): void {
+		const tabListEl = container.createDiv({
+			cls: 'ioto-tasks-center__tabs',
+		});
+		const counts = this.getTaskFilterCounts();
+
+		for (const tab of TASK_FILTER_TABS) {
+			const tabButtonEl = tabListEl.createEl('button', {
+				cls: 'ioto-tasks-center__tab',
+			});
+			tabButtonEl.type = 'button';
+			tabButtonEl.createSpan({
+				cls: 'ioto-tasks-center__tab-label',
+				text: tab.label,
+			});
+			tabButtonEl.createSpan({
+				cls: 'ioto-tasks-center__tab-count',
+				text: `${counts[tab.key]}`,
+			});
+
+			if (tab.key === this.activeTaskFilterTab) {
+				tabButtonEl.addClass('is-active');
+			}
+
+			tabButtonEl.addEventListener('click', () => {
+				if (tab.key === this.activeTaskFilterTab) {
+					return;
+				}
+
+				this.activeTaskFilterTab = tab.key;
+				this.render();
+			});
+		}
+	}
+
+	private getVisibleTasks(): TaskFileEntry[] {
+		return this.tasks.filter((task) =>
+			this.matchesTaskFilterTab(task, this.activeTaskFilterTab),
+		);
+	}
+
+	private getTaskFilterCounts(): Record<TaskFilterTab, number> {
+		return {
+			incomplete: this.tasks.filter((task) =>
+				this.matchesTaskFilterTab(task, 'incomplete'),
+			).length,
+			completed: this.tasks.filter((task) =>
+				this.matchesTaskFilterTab(task, 'completed'),
+			).length,
+			all: this.tasks.length,
+		};
+	}
+
+	private matchesTaskFilterTab(
+		task: TaskFileEntry,
+		tab: TaskFilterTab,
+	): boolean {
+		if (tab === 'all') {
+			return true;
+		}
+
+		if (tab === 'completed') {
+			return task.status.key === 'completed';
+		}
+
+		return task.status.key !== 'completed';
+	}
+
+	private renderTaskFilterEmptyState(container: HTMLElement): void {
+		const tabLabel =
+			TASK_FILTER_TABS.find((tab) => tab.key === this.activeTaskFilterTab)
+				?.label ?? '当前筛选';
+		this.renderState(
+			container,
+			'当前筛选下暂无任务',
+			`${tabLabel} 标签下没有可显示的任务文件。`,
+			'is-empty',
+		);
+	}
+
+	private buildProjectIncompleteCounts(
+		projects: ProjectFolderEntry[],
+	): Map<string, number> {
+		const counts = new Map<string, number>();
+
+		for (const project of projects) {
+			const result = listProjectTaskFiles(this.app, project.name);
+			const incompleteCount = result.tasks.filter(
+				(task) => task.status.key !== 'completed',
+			).length;
+			counts.set(project.name, incompleteCount);
+		}
+
+		return counts;
 	}
 
 	private renderState(
@@ -403,6 +548,12 @@ export class IOTOTasksCenterView extends ItemView {
 			return this.previewLeaf;
 		}
 
+		const recoveredLeaf = this.findReusablePreviewLeaf();
+		if (recoveredLeaf) {
+			this.previewLeaf = recoveredLeaf;
+			return recoveredLeaf;
+		}
+
 		const previewLeaf = this.app.workspace.createLeafBySplit(
 			this.leaf,
 			'vertical',
@@ -420,4 +571,92 @@ export class IOTOTasksCenterView extends ItemView {
 		});
 		return exists;
 	}
+
+	private findReusablePreviewLeaf(): WorkspaceLeaf | null {
+		if (this.openedTaskPath) {
+			const openedFileLeaf = this.findLeafByFilePath(this.openedTaskPath);
+			if (openedFileLeaf && openedFileLeaf !== this.leaf) {
+				return openedFileLeaf;
+			}
+		}
+
+		return null;
+	}
+
+	private findLeafByFilePath(filePath: string): WorkspaceLeaf | null {
+		let matchedLeaf: WorkspaceLeaf | null = null;
+
+		this.app.workspace.iterateAllLeaves((leaf) => {
+			if (matchedLeaf || leaf === this.leaf) {
+				return;
+			}
+
+			const view = leaf.view;
+			if (view instanceof FileView && view.file?.path === filePath) {
+				matchedLeaf = leaf;
+			}
+		});
+
+		return matchedLeaf;
+	}
+
+	private findLeafById(leafId: string): WorkspaceLeaf | null {
+		let matchedLeaf: WorkspaceLeaf | null = null;
+
+		this.app.workspace.iterateAllLeaves((leaf) => {
+			if (matchedLeaf) {
+				return;
+			}
+
+			if (getWorkspaceLeafId(leaf) === leafId) {
+				matchedLeaf = leaf;
+			}
+		});
+
+		return matchedLeaf;
+	}
+}
+
+const TASK_FILTER_TABS: Array<{ key: TaskFilterTab; label: string }> = [
+	{ key: 'incomplete', label: '未完成' },
+	{ key: 'completed', label: '已完成' },
+	{ key: 'all', label: '全部' },
+];
+
+function getWorkspaceLeafId(leaf: WorkspaceLeaf | null): string | null {
+	if (!leaf) {
+		return null;
+	}
+
+	const candidate = leaf as WorkspaceLeaf & { id?: unknown };
+	return typeof candidate.id === 'string' ? candidate.id : null;
+}
+
+function parseViewState(state: unknown): IOTOTasksCenterViewState {
+	if (!state || typeof state !== 'object') {
+		return {};
+	}
+
+	const candidate = state as Record<string, unknown>;
+	return {
+		selectedProject:
+			typeof candidate.selectedProject === 'string'
+				? candidate.selectedProject
+				: undefined,
+		openedTaskPath:
+			typeof candidate.openedTaskPath === 'string'
+				? candidate.openedTaskPath
+				: undefined,
+		previewLeafId:
+			typeof candidate.previewLeafId === 'string'
+				? candidate.previewLeafId
+				: undefined,
+		activeTaskFilterTab: isTaskFilterTab(candidate.activeTaskFilterTab)
+			? candidate.activeTaskFilterTab
+			: undefined,
+	};
+}
+
+function isTaskFilterTab(value: unknown): value is TaskFilterTab {
+	return value === 'incomplete' || value === 'completed' || value === 'all';
 }

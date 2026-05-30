@@ -35,6 +35,66 @@
 	margin-bottom: 6px;
 }
 
+.ioto-tasks-center__tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+
+.ioto-tasks-center__tab {
+	appearance: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 6px 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 999px;
+	background: var(--background-secondary);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	font-weight: 600;
+	cursor: pointer;
+	transition:
+		background-color 120ms ease,
+		border-color 120ms ease,
+		color 120ms ease;
+}
+
+.ioto-tasks-center__tab:hover {
+	background: var(--background-modifier-hover);
+	border-color: var(--interactive-accent);
+	color: var(--text-normal);
+}
+
+.ioto-tasks-center__tab-label {
+	white-space: nowrap;
+}
+
+.ioto-tasks-center__tab-count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 18px;
+	padding: 0 4px;
+	border-radius: 999px;
+	background: var(--background-primary-alt);
+	color: inherit;
+	font-size: var(--font-ui-smaller);
+	line-height: 1.4;
+}
+
+.ioto-tasks-center__tab.is-active {
+	background: color-mix(
+		in srgb,
+		var(--interactive-accent) 16%,
+		var(--background-secondary)
+	);
+	border-color: var(--interactive-accent);
+	color: var(--text-normal);
+}
+
 .ioto-tasks-center__section-desc {
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
@@ -60,6 +120,10 @@
 }
 
 .ioto-tasks-center__project-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
 	width: 100%;
 	padding: 12px 14px;
 	border: 1px solid var(--background-modifier-border);
@@ -72,6 +136,29 @@
 		background-color 120ms ease,
 		border-color 120ms ease,
 		transform 120ms ease;
+}
+
+.ioto-tasks-center__project-name {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ioto-tasks-center__project-count {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 22px;
+	padding: 0 6px;
+	border-radius: 999px;
+	background: var(--background-primary-alt);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-weight: 600;
+	line-height: 1.5;
 }
 
 .ioto-tasks-center__project-item:hover {
@@ -88,6 +175,16 @@
 	);
 	color: var(--text-normal);
 	font-weight: 600;
+}
+
+.ioto-tasks-center__project-item.is-selected
+	.ioto-tasks-center__project-count {
+	background: color-mix(
+		in srgb,
+		var(--interactive-accent) 22%,
+		var(--background-primary-alt)
+	);
+	color: var(--text-normal);
 }
 
 .ioto-tasks-center__task-row {
