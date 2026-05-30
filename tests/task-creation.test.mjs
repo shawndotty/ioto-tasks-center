@@ -9,6 +9,7 @@ const {
 	buildProjectPropertyFrontmatter,
 	getTemplaterCommandId,
 	normalizeCustomTaskName,
+	removeListProperty,
 	resolveTaskTargetPath,
 	upsertListProperty,
 	upsertProjectProperty,
@@ -44,6 +45,17 @@ test('主题任务命名符合 项目名-主题-名称.md 规则', () => {
 	assert.equal(fileName, '项目A-主题-发布复盘.md');
 });
 
+test('普通任务命名符合 用户输入名称.md 规则', () => {
+	const fileName = buildTaskFileName(
+		'项目A',
+		'normal',
+		FIXED_LOCAL_DATE,
+		'发布复盘',
+	);
+
+	assert.equal(fileName, '发布复盘.md');
+});
+
 test('计划和主题任务名称为空时会抛出错误', () => {
 	assert.throws(
 		() => buildTaskFileName('项目A', 'plan', FIXED_LOCAL_DATE, '   '),
@@ -52,6 +64,11 @@ test('计划和主题任务名称为空时会抛出错误', () => {
 
 	assert.throws(
 		() => buildTaskFileName('项目A', 'topic', FIXED_LOCAL_DATE, ''),
+		/任务名称不能为空/,
+	);
+
+	assert.throws(
+		() => buildTaskFileName('项目A', 'normal', FIXED_LOCAL_DATE, '   '),
 		/任务名称不能为空/,
 	);
 });
@@ -206,4 +223,31 @@ test('在已有 Project 和正文内容时新增 Subject 后正文仍会保留',
 		content,
 		'---\nProject:\n  - "项目A"\nSubject:\n  - "发布复盘"\n---\n\n# 标题\n\n正文内容',
 	);
+});
+
+test('普通任务会保留 Project 属性且不需要项目名前缀文件名', () => {
+	const content = upsertProjectProperty('# 标题\n\n正文内容', '项目A');
+
+	assert.equal(
+		content,
+		'---\nProject:\n  - "项目A"\n---\n\n# 标题\n\n正文内容',
+	);
+});
+
+test('普通任务会移除模板里残留的 Subject 属性', () => {
+	const content = removeListProperty(
+		'---\nProject:\n  - "项目A"\nSubject:\n  - "旧主题"\n---\n\n正文内容',
+		'Subject',
+	);
+
+	assert.equal(content, '---\nProject:\n  - "项目A"\n---\n\n正文内容');
+});
+
+test('普通任务会移除模板里残留的 Plan 属性', () => {
+	const content = removeListProperty(
+		'---\nProject:\n  - "项目A"\nPlan:\n  - "旧计划"\n---\n\n正文内容',
+		'Plan',
+	);
+
+	assert.equal(content, '---\nProject:\n  - "项目A"\n---\n\n正文内容');
 });

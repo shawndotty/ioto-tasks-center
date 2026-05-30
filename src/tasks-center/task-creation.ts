@@ -1,6 +1,6 @@
 import { App, Notice, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
 
-export type TaskCreationType = 'date' | 'plan' | 'topic';
+export type TaskCreationType = 'date' | 'plan' | 'topic' | 'normal';
 
 export interface CreateTaskFileOptions {
 	app: App;
@@ -45,6 +45,10 @@ export function buildTaskFileName(
 	const normalizedName = normalizeCustomTaskName(customName ?? '');
 	if (!normalizedName) {
 		throw new Error('任务名称不能为空。');
+	}
+
+	if (type === 'normal') {
+		return `${normalizedName}.md`;
 	}
 
 	const typeLabel = type === 'plan' ? '计划' : '主题';
@@ -121,6 +125,40 @@ export function upsertListProperty(
 		: propertyBlock;
 
 	return `---\n${nextFrontmatterBody}\n---${remainingContent}`;
+}
+
+export function removeListProperty(
+	content: string,
+	propertyName: string,
+): string {
+	const frontmatterMatch = content.match(
+		/^---\r?\n([\s\S]*?)\r?\n---((?:\r?\n)?[\s\S]*)$/,
+	);
+
+	if (!frontmatterMatch) {
+		return content;
+	}
+
+	const existingFrontmatterBody = frontmatterMatch[1] ?? '';
+	const remainingContent = frontmatterMatch[2] ?? '';
+	const cleanedFrontmatterBody = removeListPropertyFromFrontmatter(
+		existingFrontmatterBody,
+		propertyName,
+	);
+
+	if (!cleanedFrontmatterBody) {
+		if (!remainingContent) {
+			return '';
+		}
+
+		const contentWithoutLeadingBreak = remainingContent.replace(
+			/^\r?\n/,
+			'',
+		);
+		return contentWithoutLeadingBreak;
+	}
+
+	return `---\n${cleanedFrontmatterBody}\n---${remainingContent}`;
 }
 
 export async function createTaskFile(
@@ -333,6 +371,10 @@ async function applyTaskPropertiesToFile(
 
 	nextContent = upsertListProperty(nextContent, 'Project', projectName);
 
+	for (const propertyName of getPropertiesToRemove(type)) {
+		nextContent = removeListProperty(nextContent, propertyName);
+	}
+
 	if (type === 'topic' && customName) {
 		nextContent = upsertListProperty(nextContent, 'Subject', customName);
 	}
@@ -393,4 +435,16 @@ function removeListPropertyFromFrontmatter(
 
 function escapeRegExp(value: string): string {
 	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function getPropertiesToRemove(type: TaskCreationType): string[] {
+	switch (type) {
+		case 'topic':
+			return ['Plan'];
+		case 'plan':
+			return ['Subject'];
+		case 'date':
+		case 'normal':
+			return ['Subject', 'Plan'];
+	}
 }

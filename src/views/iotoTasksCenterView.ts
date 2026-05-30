@@ -598,10 +598,25 @@ export class IOTOTasksCenterView extends ItemView {
 
 		let customName: string | undefined;
 		if (type !== 'date') {
+			const taskTypeTexts =
+				type === 'plan'
+					? {
+							title: '新建计划任务',
+							label: '输入计划名称',
+						}
+					: type === 'topic'
+						? {
+								title: '新建主题任务',
+								label: '输入主题名称',
+							}
+						: {
+								title: '新建普通任务',
+								label: '输入任务名称',
+							};
 			const customNameResult = await new TaskNameModal(
 				this.app,
-				type === 'plan' ? '新建计划任务' : '新建主题任务',
-				type === 'plan' ? '输入计划名称' : '输入主题名称',
+				taskTypeTexts.title,
+				taskTypeTexts.label,
 				{
 					descriptionText: '请输入新任务文件的名称。',
 					confirmButtonText: '创建',
@@ -929,6 +944,7 @@ const TASK_FILTER_TABS: Array<{ key: TaskFilterTab; label: string }> = [
 
 const TASK_CREATION_OPTIONS: Array<{ key: TaskCreationType; label: string }> = [
 	{ key: 'date', label: '日期任务' },
+	{ key: 'normal', label: '普通任务' },
 	{ key: 'plan', label: '计划任务' },
 	{ key: 'topic', label: '主题任务' },
 ];
