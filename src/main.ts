@@ -1,6 +1,13 @@
 import { Plugin, TAbstractFile, WorkspaceLeaf } from 'obsidian';
 import { normalizeDateTaskDateFormat } from './tasks-center/date-task-format';
 import {
+	areTaskTemplateConfigsEqual,
+	mergeTaskTemplateConfig,
+	normalizeTaskTemplateConfigMap,
+	type TaskCreationType,
+	type TaskTemplateConfig,
+} from './tasks-center/task-template-config';
+import {
 	DEFAULT_SETTINGS,
 	IOTOTasksCenterSettingTab,
 	IOTOTasksCenterSettings,
@@ -25,7 +32,7 @@ export default class IOTOTasksCenter extends Plugin {
 					() => this.settings.tasksRootPath,
 					() => this.settings.projectListSortMode,
 					() => this.settings.hiddenProjectNames,
-					() => this.settings.taskTemplatePath,
+					(type) => this.settings.taskTemplateConfigs[type],
 					() => this.settings.dateTaskDateFormat,
 				),
 		);
@@ -41,13 +48,16 @@ export default class IOTOTasksCenter extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			(await this.loadData()) as Partial<IOTOTasksCenterSettings>,
-		);
+		const loadedData = (await this.loadData()) as
+			| (Partial<IOTOTasksCenterSettings> & { taskTemplatePath?: string })
+			| null;
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData ?? {});
 		this.settings.tasksRootPath = normalizeConfiguredTasksRootPath(
 			this.settings.tasksRootPath,
+		);
+		this.settings.taskTemplateConfigs = normalizeTaskTemplateConfigMap(
+			loadedData?.taskTemplateConfigs,
+			loadedData?.taskTemplatePath,
 		);
 		this.settings.dateTaskDateFormat = normalizeDateTaskDateFormat(
 			this.settings.dateTaskDateFormat,
@@ -110,13 +120,20 @@ export default class IOTOTasksCenter extends Plugin {
 		this.applySettingsToOpenViews();
 	}
 
-	async updateTaskTemplatePath(path: string): Promise<void> {
-		const nextPath = path.trim();
-		if (this.settings.taskTemplatePath === nextPath) {
+	async updateTaskTemplateConfig(
+		type: TaskCreationType,
+		config: Partial<TaskTemplateConfig>,
+	): Promise<void> {
+		const currentConfig = this.settings.taskTemplateConfigs[type];
+		const nextConfig = mergeTaskTemplateConfig(currentConfig, config);
+		if (areTaskTemplateConfigsEqual(currentConfig, nextConfig)) {
 			return;
 		}
 
-		this.settings.taskTemplatePath = nextPath;
+		this.settings.taskTemplateConfigs = {
+			...this.settings.taskTemplateConfigs,
+			[type]: nextConfig,
+		};
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}

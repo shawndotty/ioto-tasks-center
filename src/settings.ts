@@ -3,6 +3,12 @@ import IOTOTasksCenter from './main';
 import { listProjectFolders, listProjectTaskFiles } from './tasks-center/data';
 import { DEFAULT_DATE_TASK_DATE_FORMAT } from './tasks-center/date-task-format';
 import { sortProjectEntries } from './tasks-center/project-sort';
+import {
+	createDefaultTaskTemplateConfigMap,
+	type TaskCreationType,
+	type TaskTemplateConfigMap,
+	type TaskTemplateSourceMode,
+} from './tasks-center/task-template-config';
 import type { ProjectFolderEntry } from './tasks-center/types';
 import {
 	DEFAULT_TASKS_ROOT_PATH,
@@ -15,7 +21,7 @@ export interface IOTOTasksCenterSettings {
 	tasksRootPath: string;
 	projectListSortMode: ProjectListSortMode;
 	hiddenProjectNames: string[];
-	taskTemplatePath: string;
+	taskTemplateConfigs: TaskTemplateConfigMap;
 	dateTaskDateFormat: string;
 }
 
@@ -23,7 +29,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	tasksRootPath: DEFAULT_TASKS_ROOT_PATH,
 	projectListSortMode: 'incomplete-count',
 	hiddenProjectNames: [],
-	taskTemplatePath: '',
+	taskTemplateConfigs: createDefaultTaskTemplateConfigMap(),
 	dateTaskDateFormat: DEFAULT_DATE_TASK_DATE_FORMAT,
 };
 
@@ -40,6 +46,21 @@ export function isProjectListSortMode(
 ): value is ProjectListSortMode {
 	return value === 'incomplete-count' || value === 'name';
 }
+
+export const TASK_TEMPLATE_SOURCE_MODE_OPTIONS: Record<
+	TaskTemplateSourceMode,
+	string
+> = {
+	file: '使用模板文件',
+	inline: '直接输入模板内容',
+};
+
+const TASK_TYPE_TEMPLATE_LABELS: Record<TaskCreationType, string> = {
+	date: '日期任务',
+	plan: '计划任务',
+	topic: '主题任务',
+	normal: '普通任务',
+};
 
 export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 	plugin: IOTOTasksCenter;
@@ -97,23 +118,19 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 		new Setting(containerEl).setName('任务创建').setHeading();
 
 		const templaterTemplatesFolder = getTemplaterTemplatesFolder(this.app);
-		const templateSettingDesc = templaterTemplatesFolder
-			? `填写一个 vault 相对路径的 Markdown 模板文件。支持 Templater 语法；若可用将优先自动执行，失败时回退为写入模板原文。当前 Templater 模板目录：${templaterTemplatesFolder}`
-			: '填写一个 vault 相对路径的 Markdown 模板文件。支持 Templater 语法；若可用将优先自动执行，失败时回退为写入模板原文。';
-
 		new Setting(containerEl)
-			.setName('任务模板文件')
-			.setDesc(templateSettingDesc)
-			.addText((text) =>
-				text
-					.setPlaceholder(
-						'0-辅助/IOTO/Templates/Templater/OBIOTO/IOTO-加载器-创建任务.md',
-					)
-					.setValue(this.plugin.settings.taskTemplatePath)
-					.onChange(async (value) => {
-						await this.plugin.updateTaskTemplatePath(value);
-					}),
+			.setName('任务模板')
+			.setDesc(
+				'可以为四种任务类型分别设置模板，并分别选择使用模板文件或直接输入模板内容。',
 			);
+
+		for (const taskType of TASK_TEMPLATE_TYPES) {
+			this.renderTaskTemplateSettings(
+				containerEl,
+				taskType,
+				templaterTemplatesFolder,
+			);
+		}
 
 		new Setting(containerEl)
 			.setName('日期任务日期格式')
@@ -166,6 +183,75 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 
 		const hiddenProjectsContainer = containerEl.createDiv();
 		void this.displayHiddenProjectSettings(hiddenProjectsContainer);
+	}
+
+	private renderTaskTemplateSettings(
+		containerEl: HTMLElement,
+		taskType: TaskCreationType,
+		templaterTemplatesFolder: string | null,
+	): void {
+		const config = this.plugin.settings.taskTemplateConfigs[taskType];
+		const taskTypeLabel = TASK_TYPE_TEMPLATE_LABELS[taskType];
+
+		new Setting(containerEl).setName(`${taskTypeLabel}模板`).setHeading();
+
+		new Setting(containerEl)
+			.setName('模板来源')
+			.setDesc(`为${taskTypeLabel}选择模板来源。`)
+			.addDropdown((dropdown) => {
+				for (const [value, label] of Object.entries(
+					TASK_TEMPLATE_SOURCE_MODE_OPTIONS,
+				)) {
+					dropdown.addOption(value, label);
+				}
+
+				dropdown.setValue(config.sourceMode).onChange(async (value) => {
+					const sourceMode = isTaskTemplateSourceMode(value)
+						? value
+						: 'file';
+					await this.plugin.updateTaskTemplateConfig(taskType, {
+						sourceMode,
+					});
+					this.display();
+				});
+			});
+
+		const fileModeDesc = templaterTemplatesFolder
+			? `填写一个 vault 相对路径的 Markdown 模板文件。该模式支持 Templater；若可用将优先自动执行，失败时回退为写入模板原文。当前 Templater 模板目录：${templaterTemplatesFolder}`
+			: '填写一个 vault 相对路径的 Markdown 模板文件。该模式支持 Templater；若可用将优先自动执行，失败时回退为写入模板原文。';
+		new Setting(containerEl)
+			.setName('模板文件路径')
+			.setDesc(
+				`${fileModeDesc}${config.sourceMode === 'file' ? '' : ' 当前未启用此来源。'}`,
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder(
+						'0-辅助/IOTO/Templates/Templater/OBIOTO/IOTO-加载器-创建任务.md',
+					)
+					.setValue(config.templatePath)
+					.onChange(async (value) => {
+						await this.plugin.updateTaskTemplateConfig(taskType, {
+							templatePath: value.trim(),
+						});
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName('模板内容')
+			.setDesc(
+				`直接把这里输入的内容写入新文件，不执行 Templater。${config.sourceMode === 'inline' ? '' : ' 当前未启用此来源。'}`,
+			)
+			.addTextArea((text) =>
+				text
+					.setPlaceholder(`# ${taskTypeLabel}\n\n在这里输入模板内容`)
+					.setValue(config.inlineContent)
+					.onChange(async (value) => {
+						await this.plugin.updateTaskTemplateConfig(taskType, {
+							inlineContent: value,
+						});
+					}),
+			);
 	}
 
 	private async displayHiddenProjectSettings(
@@ -276,3 +362,16 @@ function getTemplaterTemplatesFolder(app: App): string | null {
 export function normalizeConfiguredTasksRootPath(path: string): string {
 	return normalizeTasksRootPath(path);
 }
+
+export function isTaskTemplateSourceMode(
+	value: string,
+): value is TaskTemplateSourceMode {
+	return value === 'file' || value === 'inline';
+}
+
+const TASK_TEMPLATE_TYPES: TaskCreationType[] = [
+	'date',
+	'plan',
+	'topic',
+	'normal',
+];

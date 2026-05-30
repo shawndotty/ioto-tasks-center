@@ -13,10 +13,11 @@ import {
 	filterHiddenProjectEntries,
 	sortProjectEntries,
 } from '../tasks-center/project-sort';
-import {
-	createTaskFile,
-	type TaskCreationType,
-} from '../tasks-center/task-creation';
+import { createTaskFile } from '../tasks-center/task-creation';
+import type {
+	TaskCreationType,
+	TaskTemplateConfig,
+} from '../tasks-center/task-template-config';
 import type { ProjectListSortMode } from '../settings';
 import {
 	ProjectFolderEntry,
@@ -63,7 +64,9 @@ export class IOTOTasksCenterView extends ItemView {
 	private readonly getTasksRootPath: () => string;
 	private readonly getProjectListSortMode: () => ProjectListSortMode;
 	private readonly getHiddenProjectNames: () => string[];
-	private readonly getTaskTemplatePath: () => string;
+	private readonly getTaskTemplateConfig: (
+		type: TaskCreationType,
+	) => TaskTemplateConfig;
 	private readonly getDateTaskDateFormat: () => string;
 
 	constructor(
@@ -71,7 +74,7 @@ export class IOTOTasksCenterView extends ItemView {
 		getTasksRootPath: () => string,
 		getProjectListSortMode: () => ProjectListSortMode,
 		getHiddenProjectNames: () => string[],
-		getTaskTemplatePath: () => string,
+		getTaskTemplateConfig: (type: TaskCreationType) => TaskTemplateConfig,
 		getDateTaskDateFormat: () => string,
 	) {
 		super(leaf);
@@ -79,7 +82,7 @@ export class IOTOTasksCenterView extends ItemView {
 		this.getTasksRootPath = getTasksRootPath;
 		this.getProjectListSortMode = getProjectListSortMode;
 		this.getHiddenProjectNames = getHiddenProjectNames;
-		this.getTaskTemplatePath = getTaskTemplatePath;
+		this.getTaskTemplateConfig = getTaskTemplateConfig;
 		this.getDateTaskDateFormat = getDateTaskDateFormat;
 	}
 
@@ -652,7 +655,7 @@ export class IOTOTasksCenterView extends ItemView {
 				projectName,
 				type,
 				customName,
-				templatePath: this.getTaskTemplatePath(),
+				templateConfig: this.getTaskTemplateConfig(type),
 				dateTaskDateFormat: this.getDateTaskDateFormat(),
 				targetLeaf: previewLeaf,
 				sourceLeaf: this.leaf,

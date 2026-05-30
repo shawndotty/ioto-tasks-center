@@ -4,8 +4,11 @@ import {
 	formatDateByPattern,
 	normalizeDateTaskDateFormat,
 } from './date-task-format';
-
-export type TaskCreationType = 'date' | 'plan' | 'topic' | 'normal';
+import {
+	resolveTaskTemplateSource,
+	type TaskCreationType,
+	type TaskTemplateConfig,
+} from './task-template-config';
 
 export interface CreateTaskFileOptions {
 	app: App;
@@ -13,7 +16,7 @@ export interface CreateTaskFileOptions {
 	projectName: string;
 	type: TaskCreationType;
 	customName?: string;
-	templatePath: string;
+	templateConfig: TaskTemplateConfig;
 	dateTaskDateFormat: string;
 	targetLeaf?: WorkspaceLeaf | null;
 	sourceLeaf?: WorkspaceLeaf | null;
@@ -177,7 +180,7 @@ export async function createTaskFile(
 		projectName,
 		type,
 		customName,
-		templatePath,
+		templateConfig,
 		dateTaskDateFormat,
 		targetLeaf,
 		sourceLeaf,
@@ -219,9 +222,8 @@ export async function createTaskFile(
 	}
 
 	const file = await app.vault.create(targetPath, '');
-	const templateFile = getTemplateFile(app, templatePath);
-
-	if (!templateFile) {
+	const resolvedTemplateSource = resolveTaskTemplateSource(templateConfig);
+	if (resolvedTemplateSource.kind === 'none') {
 		await applyTaskPropertiesToFile(app, file, {
 			projectName,
 			type,
@@ -234,13 +236,20 @@ export async function createTaskFile(
 		};
 	}
 
-	const templaterApplied = await applyTemplateToFile(
-		app,
-		file,
-		templateFile,
-		targetLeaf,
-		sourceLeaf,
-	);
+	const templaterApplied =
+		resolvedTemplateSource.kind === 'inline'
+			? await applyInlineTemplateToFile(
+					app,
+					file,
+					resolvedTemplateSource.inlineContent,
+				)
+			: await applyTemplateFileToFile(
+					app,
+					file,
+					resolvedTemplateSource.templatePath,
+					targetLeaf,
+					sourceLeaf,
+				);
 	await applyTaskPropertiesToFile(app, file, {
 		projectName,
 		type,
@@ -253,13 +262,27 @@ export async function createTaskFile(
 	};
 }
 
-async function applyTemplateToFile(
+async function applyInlineTemplateToFile(
 	app: App,
 	file: TFile,
-	templateFile: TFile,
+	inlineContent: string,
+): Promise<boolean> {
+	await app.vault.modify(file, inlineContent);
+	return false;
+}
+
+async function applyTemplateFileToFile(
+	app: App,
+	file: TFile,
+	templatePath: string,
 	targetLeaf?: WorkspaceLeaf | null,
 	sourceLeaf?: WorkspaceLeaf | null,
 ): Promise<boolean> {
+	const templateFile = getTemplateFile(app, templatePath);
+	if (!templateFile) {
+		return false;
+	}
+
 	if (targetLeaf) {
 		const commandId = await ensureTemplateCommandEnabled(
 			app,

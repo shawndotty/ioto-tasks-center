@@ -15,6 +15,11 @@ const {
 	upsertListProperty,
 	upsertProjectProperty,
 } = await jiti.import('../src/tasks-center/task-creation.ts');
+const {
+	mergeTaskTemplateConfig,
+	normalizeTaskTemplateConfigMap,
+	resolveTaskTemplateSource,
+} = await jiti.import('../src/tasks-center/task-template-config.ts');
 
 const FIXED_LOCAL_DATE = new Date(2026, 4, 30, 12, 0, 0);
 
@@ -150,6 +155,110 @@ test('Templater 命令 ID 生成规则正确', () => {
 		commandId,
 		'templater-obsidian:0-辅助/IOTO/Templates/任务模板.md',
 	);
+});
+
+test('inline 模式会解析为直接写入的模板内容', () => {
+	const resolved = resolveTaskTemplateSource({
+		sourceMode: 'inline',
+		templatePath: '0-辅助/不会使用.md',
+		inlineContent: '# 新任务\n\n这里是模板正文',
+	});
+
+	assert.deepEqual(resolved, {
+		kind: 'inline',
+		inlineContent: '# 新任务\n\n这里是模板正文',
+	});
+});
+
+test('inline 模式内容为空白时会回退为空模板', () => {
+	const resolved = resolveTaskTemplateSource({
+		sourceMode: 'inline',
+		templatePath: '',
+		inlineContent: '   \n',
+	});
+
+	assert.deepEqual(resolved, { kind: 'none' });
+});
+
+test('file 模式路径为空时会回退为空模板', () => {
+	const resolved = resolveTaskTemplateSource({
+		sourceMode: 'file',
+		templatePath: '   ',
+		inlineContent: '# 不会使用',
+	});
+
+	assert.deepEqual(resolved, { kind: 'none' });
+});
+
+test('旧 taskTemplatePath 会迁移到四种任务类型的 file 模式', () => {
+	const configMap = normalizeTaskTemplateConfigMap(
+		undefined,
+		'0-辅助/IOTO/Templates/任务模板.md',
+	);
+
+	assert.deepEqual(configMap.date, {
+		sourceMode: 'file',
+		templatePath: '0-辅助/IOTO/Templates/任务模板.md',
+		inlineContent: '',
+	});
+	assert.deepEqual(configMap.plan, {
+		sourceMode: 'file',
+		templatePath: '0-辅助/IOTO/Templates/任务模板.md',
+		inlineContent: '',
+	});
+	assert.deepEqual(configMap.topic, {
+		sourceMode: 'file',
+		templatePath: '0-辅助/IOTO/Templates/任务模板.md',
+		inlineContent: '',
+	});
+	assert.deepEqual(configMap.normal, {
+		sourceMode: 'file',
+		templatePath: '0-辅助/IOTO/Templates/任务模板.md',
+		inlineContent: '',
+	});
+});
+
+test('新结构已存在配置时，不再被旧 taskTemplatePath 覆盖', () => {
+	const configMap = normalizeTaskTemplateConfigMap(
+		{
+			date: {
+				sourceMode: 'inline',
+				templatePath: '',
+				inlineContent: '# 日期模板',
+			},
+		},
+		'0-辅助/IOTO/Templates/任务模板.md',
+	);
+
+	assert.deepEqual(configMap.date, {
+		sourceMode: 'inline',
+		templatePath: '',
+		inlineContent: '# 日期模板',
+	});
+	assert.deepEqual(configMap.plan, {
+		sourceMode: 'file',
+		templatePath: '',
+		inlineContent: '',
+	});
+});
+
+test('合并模板配置时会保留未修改字段，避免输入内容被后续切换覆盖', () => {
+	const merged = mergeTaskTemplateConfig(
+		{
+			sourceMode: 'file',
+			templatePath: '',
+			inlineContent: '# 普通任务模板',
+		},
+		{
+			sourceMode: 'inline',
+		},
+	);
+
+	assert.deepEqual(merged, {
+		sourceMode: 'inline',
+		templatePath: '',
+		inlineContent: '# 普通任务模板',
+	});
 });
 
 test('Project 属性 frontmatter 会使用单项 List 格式', () => {
