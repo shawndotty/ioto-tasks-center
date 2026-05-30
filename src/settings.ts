@@ -1,10 +1,7 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import IOTOTasksCenter from './main';
 import { listProjectFolders, listProjectTaskFiles } from './tasks-center/data';
-import {
-	filterHiddenProjectEntries,
-	sortProjectEntries,
-} from './tasks-center/project-sort';
+import { sortProjectEntries } from './tasks-center/project-sort';
 import type { ProjectFolderEntry } from './tasks-center/types';
 import { TASKS_ROOT_PATH } from './tasks-center/types';
 
@@ -145,22 +142,11 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 			this.app,
 			projectsResult.projects,
 		);
-		const visibleProjects = sortProjectEntries(
-			filterHiddenProjectEntries(
-				projectsResult.projects,
-				this.plugin.settings.hiddenProjectNames,
-			),
+		const allProjects = sortProjectEntries(
+			projectsResult.projects,
 			incompleteCounts,
 			this.plugin.settings.projectListSortMode,
 		);
-		const hiddenProjects = sortProjectEntries(
-			projectsResult.projects.filter((project) =>
-				this.plugin.settings.hiddenProjectNames.includes(project.name),
-			),
-			incompleteCounts,
-			this.plugin.settings.projectListSortMode,
-		);
-		const allProjects = [...visibleProjects, ...hiddenProjects];
 
 		containerEl.empty();
 
