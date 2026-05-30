@@ -10,11 +10,13 @@ export type ProjectListSortMode = 'incomplete-count' | 'name';
 export interface IOTOTasksCenterSettings {
 	projectListSortMode: ProjectListSortMode;
 	hiddenProjectNames: string[];
+	taskTemplatePath: string;
 }
 
 export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	projectListSortMode: 'incomplete-count',
 	hiddenProjectNames: [],
+	taskTemplatePath: '',
 };
 
 export const PROJECT_LIST_SORT_MODE_OPTIONS: Record<
@@ -73,6 +75,27 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 			.setName('自动刷新')
 			.setDesc(
 				'当 3-任务 目录下发生创建、删除、重命名或内容修改时，已打开的任务中心视图会自动刷新。',
+			);
+
+		new Setting(containerEl).setName('任务创建').setHeading();
+
+		const templaterTemplatesFolder = getTemplaterTemplatesFolder(this.app);
+		const templateSettingDesc = templaterTemplatesFolder
+			? `填写一个 vault 相对路径的 Markdown 模板文件。支持 Templater 语法；若可用将优先自动执行，失败时回退为写入模板原文。当前 Templater 模板目录：${templaterTemplatesFolder}`
+			: '填写一个 vault 相对路径的 Markdown 模板文件。支持 Templater 语法；若可用将优先自动执行，失败时回退为写入模板原文。';
+
+		new Setting(containerEl)
+			.setName('任务模板文件')
+			.setDesc(templateSettingDesc)
+			.addText((text) =>
+				text
+					.setPlaceholder(
+						'0-辅助/IOTO/Templates/Templater/OBIOTO/IOTO-加载器-创建任务.md',
+					)
+					.setValue(this.plugin.settings.taskTemplatePath)
+					.onChange(async (value) => {
+						await this.plugin.updateTaskTemplatePath(value);
+					}),
 			);
 
 		new Setting(containerEl).setName('项目列表排序').setHeading();
@@ -192,4 +215,21 @@ async function buildProjectIncompleteCounts(
 
 function isIncompleteTaskStatus(statusKey: string): boolean {
 	return statusKey === 'todo' || statusKey === 'in-progress';
+}
+
+function getTemplaterTemplatesFolder(app: App): string | null {
+	const templater = (
+		app as App & {
+			plugins?: {
+				plugins?: Record<
+					string,
+					{ settings?: { templates_folder?: unknown } }
+				>;
+			};
+		}
+	).plugins?.plugins?.['templater-obsidian'];
+	const templatesFolder = templater?.settings?.templates_folder;
+	return typeof templatesFolder === 'string' && templatesFolder.length > 0
+		? templatesFolder
+		: null;
 }

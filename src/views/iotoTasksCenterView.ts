@@ -1,10 +1,22 @@
-import { FileView, ItemView, TFile, WorkspaceLeaf } from 'obsidian';
+import {
+	FileView,
+	ItemView,
+	Menu,
+	Notice,
+	TFile,
+	WorkspaceLeaf,
+} from 'obsidian';
 
 import { listProjectFolders, listProjectTaskFiles } from '../tasks-center/data';
+import { createProjectFolder } from '../tasks-center/project-creation';
 import {
 	filterHiddenProjectEntries,
 	sortProjectEntries,
 } from '../tasks-center/project-sort';
+import {
+	createTaskFile,
+	type TaskCreationType,
+} from '../tasks-center/task-creation';
 import type { ProjectListSortMode } from '../settings';
 import {
 	ProjectFolderEntry,
@@ -13,6 +25,7 @@ import {
 	TaskFileEntry,
 	TaskFileListResult,
 } from '../tasks-center/types';
+import { TaskNameModal } from '../ui/taskNameModal';
 
 export const IOTO_TASKS_CENTER_VIEW_TYPE = 'IOTOTasksCenter';
 type TaskFilterTab = 'incomplete' | 'completed' | 'all';
@@ -40,19 +53,24 @@ export class IOTOTasksCenterView extends ItemView {
 	private taskResult: TaskFileListResult | null = null;
 	private isProjectsLoading = false;
 	private isTasksLoading = false;
+	private isCreatingProject = false;
+	private isCreatingTask = false;
 	private refreshToken = 0;
 	private readonly getProjectListSortMode: () => ProjectListSortMode;
 	private readonly getHiddenProjectNames: () => string[];
+	private readonly getTaskTemplatePath: () => string;
 
 	constructor(
 		leaf: WorkspaceLeaf,
 		getProjectListSortMode: () => ProjectListSortMode,
 		getHiddenProjectNames: () => string[],
+		getTaskTemplatePath: () => string,
 	) {
 		super(leaf);
 		this.navigation = true;
 		this.getProjectListSortMode = getProjectListSortMode;
 		this.getHiddenProjectNames = getHiddenProjectNames;
+		this.getTaskTemplatePath = getTaskTemplatePath;
 	}
 
 	getViewType(): string {
@@ -208,9 +226,26 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private renderProjectsPane(container: HTMLElement): void {
-		container.createDiv({
+		const headerEl = container.createDiv({
+			cls: 'ioto-tasks-center__section-header',
+		});
+		headerEl.createDiv({
 			cls: 'ioto-tasks-center__section-title',
 			text: '项目列表',
+		});
+		const actionsEl = headerEl.createDiv({
+			cls: 'ioto-tasks-center__section-actions',
+		});
+		const addProjectButtonEl = actionsEl.createEl('button', {
+			cls: 'ioto-tasks-center__icon-button',
+			text: '+',
+		});
+		addProjectButtonEl.type = 'button';
+		addProjectButtonEl.disabled = !this.canCreateProject();
+		addProjectButtonEl.ariaLabel = this.getAddProjectButtonLabel();
+		addProjectButtonEl.title = this.getAddProjectButtonLabel();
+		addProjectButtonEl.addEventListener('click', () => {
+			void this.handleCreateProject();
 		});
 
 		const helperText = this.isProjectsLoading
@@ -295,9 +330,26 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private renderTasksPane(container: HTMLElement): void {
-		container.createDiv({
+		const headerEl = container.createDiv({
+			cls: 'ioto-tasks-center__section-header',
+		});
+		headerEl.createDiv({
 			cls: 'ioto-tasks-center__section-title',
 			text: '任务列表',
+		});
+		const actionsEl = headerEl.createDiv({
+			cls: 'ioto-tasks-center__section-actions',
+		});
+		const addTaskButtonEl = actionsEl.createEl('button', {
+			cls: 'ioto-tasks-center__add-task-button',
+			text: this.isCreatingTask ? '创建中...' : '添加任务',
+		});
+		addTaskButtonEl.type = 'button';
+		addTaskButtonEl.disabled = !this.canCreateTask();
+		addTaskButtonEl.ariaLabel = this.getAddTaskButtonLabel();
+		addTaskButtonEl.title = this.getAddTaskButtonLabel();
+		addTaskButtonEl.addEventListener('click', (event) => {
+			void this.showTaskCreationMenu(event);
 		});
 
 		const currentProjectText = this.selectedProject
@@ -407,6 +459,169 @@ export class IOTOTasksCenterView extends ItemView {
 			rowEl.addEventListener('click', () => {
 				void this.openTaskFile(task);
 			});
+		}
+	}
+
+	private canCreateTask(): boolean {
+		return Boolean(
+			this.selectedProject &&
+			!this.isProjectsLoading &&
+			!this.isTasksLoading &&
+			!this.isCreatingTask &&
+			this.projects.some(
+				(project) => project.name === this.selectedProject,
+			),
+		);
+	}
+
+	private getAddTaskButtonLabel(): string {
+		if (this.isCreatingTask) {
+			return '正在创建任务文件';
+		}
+
+		if (!this.selectedProject) {
+			return '请先选择一个项目';
+		}
+
+		if (this.isProjectsLoading || this.isTasksLoading) {
+			return '任务列表加载完成后才能创建';
+		}
+
+		return `在 ${this.selectedProject} 项目下添加任务`;
+	}
+
+	private canCreateProject(): boolean {
+		return (
+			!this.isProjectsLoading &&
+			!this.isCreatingProject &&
+			this.projectResult.status !== 'root-missing'
+		);
+	}
+
+	private getAddProjectButtonLabel(): string {
+		if (this.isCreatingProject) {
+			return '正在创建项目';
+		}
+
+		if (this.isProjectsLoading) {
+			return '项目列表加载完成后才能创建';
+		}
+
+		if (this.projectResult.status === 'root-missing') {
+			return `请先创建 ${TASKS_ROOT_PATH} 目录`;
+		}
+
+		return `在 ${TASKS_ROOT_PATH} 下添加项目`;
+	}
+
+	private async handleCreateProject(): Promise<void> {
+		if (!this.canCreateProject()) {
+			return;
+		}
+
+		const projectNameResult = await new TaskNameModal(
+			this.app,
+			'新建项目',
+			'输入项目名称',
+			{
+				descriptionText: '请输入新项目的名称。',
+				confirmButtonText: '创建',
+			},
+		).openAndGetValue();
+		if (!projectNameResult) {
+			return;
+		}
+
+		this.isCreatingProject = true;
+		this.render();
+
+		try {
+			const result = await createProjectFolder(
+				this.app,
+				projectNameResult,
+			);
+			if (!result.created) {
+				new Notice('该项目已存在，已为你选中现有项目。');
+			}
+			await this.loadProjects(result.name);
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : '创建项目失败。';
+			new Notice(message);
+		} finally {
+			this.isCreatingProject = false;
+			this.render();
+		}
+	}
+
+	private async showTaskCreationMenu(event: MouseEvent): Promise<void> {
+		if (!this.canCreateTask()) {
+			return;
+		}
+
+		const menu = new Menu();
+		for (const option of TASK_CREATION_OPTIONS) {
+			menu.addItem((item) =>
+				item.setTitle(option.label).onClick(() => {
+					void this.handleCreateTask(option.key);
+				}),
+			);
+		}
+		menu.showAtMouseEvent(event);
+	}
+
+	private async handleCreateTask(type: TaskCreationType): Promise<void> {
+		const projectName = this.selectedProject;
+		if (
+			!projectName ||
+			!this.projects.some((project) => project.name === projectName)
+		) {
+			new Notice('当前项目不可用，请重新选择后再试。');
+			return;
+		}
+
+		let customName: string | undefined;
+		if (type !== 'date') {
+			const customNameResult = await new TaskNameModal(
+				this.app,
+				type === 'plan' ? '新建计划任务' : '新建主题任务',
+				type === 'plan' ? '输入计划名称' : '输入主题名称',
+				{
+					descriptionText: '请输入新任务文件的名称。',
+					confirmButtonText: '创建',
+				},
+			).openAndGetValue();
+			if (!customNameResult) {
+				return;
+			}
+			customName = customNameResult;
+		}
+
+		this.isCreatingTask = true;
+		this.render();
+
+		try {
+			const previewLeaf = this.ensurePreviewLeaf();
+			const result = await createTaskFile({
+				app: this.app,
+				projectName,
+				type,
+				customName,
+				templatePath: this.getTaskTemplatePath(),
+				targetLeaf: previewLeaf,
+				sourceLeaf: this.leaf,
+			});
+			this.previewLeaf = previewLeaf;
+			this.lastOpenedTaskByProject.set(projectName, result.file.path);
+			await this.refreshFromVaultChange();
+			await this.openFileInPreview(result.file);
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : '创建任务文件失败。';
+			new Notice(message);
+		} finally {
+			this.isCreatingTask = false;
+			this.render();
 		}
 	}
 
@@ -561,7 +776,11 @@ export class IOTOTasksCenterView extends ItemView {
 			return;
 		}
 
-		this.openingTaskPath = task.path;
+		await this.openFileInPreview(file);
+	}
+
+	private async openFileInPreview(file: TFile): Promise<void> {
+		this.openingTaskPath = file.path;
 		this.render();
 
 		try {
@@ -570,11 +789,11 @@ export class IOTOTasksCenterView extends ItemView {
 				active: false,
 			});
 			this.previewLeaf = leaf;
-			this.openedTaskPath = task.path;
+			this.openedTaskPath = file.path;
 			if (this.selectedProject) {
 				this.lastOpenedTaskByProject.set(
 					this.selectedProject,
-					task.path,
+					file.path,
 				);
 			}
 		} finally {
@@ -661,6 +880,12 @@ const TASK_FILTER_TABS: Array<{ key: TaskFilterTab; label: string }> = [
 	{ key: 'incomplete', label: '未完成' },
 	{ key: 'completed', label: '已完成' },
 	{ key: 'all', label: '全部' },
+];
+
+const TASK_CREATION_OPTIONS: Array<{ key: TaskCreationType; label: string }> = [
+	{ key: 'date', label: '日期任务' },
+	{ key: 'plan', label: '计划任务' },
+	{ key: 'topic', label: '主题任务' },
 ];
 
 function getWorkspaceLeafId(leaf: WorkspaceLeaf | null): string | null {

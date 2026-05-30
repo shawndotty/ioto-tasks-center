@@ -22,6 +22,7 @@ export default class IOTOTasksCenter extends Plugin {
 					leaf,
 					() => this.settings.projectListSortMode,
 					() => this.settings.hiddenProjectNames,
+					() => this.settings.taskTemplatePath,
 				),
 		);
 
@@ -84,6 +85,17 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.hiddenProjectNames = nextHiddenProjectNames;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateTaskTemplatePath(path: string): Promise<void> {
+		const nextPath = path.trim();
+		if (this.settings.taskTemplatePath === nextPath) {
+			return;
+		}
+
+		this.settings.taskTemplatePath = nextPath;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}

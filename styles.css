@@ -35,6 +35,83 @@
 	margin-bottom: 6px;
 }
 
+.ioto-tasks-center__section-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.ioto-tasks-center__section-header .ioto-tasks-center__section-title {
+	margin-bottom: 0;
+}
+
+.ioto-tasks-center__section-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.ioto-tasks-center__add-task-button {
+	appearance: none;
+	padding: 6px 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	font-weight: 600;
+	cursor: pointer;
+	transition:
+		background-color 120ms ease,
+		border-color 120ms ease,
+		color 120ms ease;
+}
+
+.ioto-tasks-center__add-task-button:hover:not(:disabled) {
+	background: var(--background-modifier-hover);
+	border-color: var(--interactive-accent);
+}
+
+.ioto-tasks-center__add-task-button:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.ioto-tasks-center__icon-button {
+	appearance: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: transparent;
+	color: var(--text-muted);
+	font-size: var(--font-ui-medium);
+	font-weight: 600;
+	line-height: 1;
+	cursor: pointer;
+	transition:
+		background-color 120ms ease,
+		border-color 120ms ease,
+		color 120ms ease;
+}
+
+.ioto-tasks-center__icon-button:hover:not(:disabled) {
+	background: var(--background-modifier-hover);
+	border-color: var(--interactive-accent);
+	color: var(--text-normal);
+}
+
+.ioto-tasks-center__icon-button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
 .ioto-tasks-center__tabs {
 	display: flex;
 	flex-wrap: wrap;
@@ -307,6 +384,23 @@ button:not(.clickable-icon).ioto-tasks-center__task-row:hover {
 .ioto-tasks-center__state-desc {
 	color: var(--text-muted);
 	line-height: 1.5;
+}
+
+.ioto-tasks-center__modal-desc {
+	margin: 0 0 12px;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.ioto-tasks-center__modal-input {
+	width: 100%;
+}
+
+.ioto-tasks-center__modal-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 16px;
 }
 
 .ioto-tasks-center__state.is-loading {
