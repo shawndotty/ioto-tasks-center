@@ -1,8 +1,222 @@
-/*
+.ioto-tasks-center-view {
+	height: 100%;
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.ioto-tasks-center {
+	display: grid;
+	grid-template-columns: minmax(220px, 28%) minmax(0, 1fr);
+	gap: 16px;
+	height: 100%;
+	padding: 16px;
+	box-sizing: border-box;
+}
 
-If your plugin does not need CSS, delete this file.
+.ioto-tasks-center__pane {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	padding: 16px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 12px;
+	background: var(--background-primary);
+}
 
-*/
+.ioto-tasks-center__pane--projects {
+	min-width: 0;
+}
+
+.ioto-tasks-center__pane--tasks {
+	min-width: 0;
+}
+
+.ioto-tasks-center__section-title {
+	font-size: var(--font-ui-large);
+	font-weight: 600;
+	margin-bottom: 6px;
+}
+
+.ioto-tasks-center__section-desc {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	margin-bottom: 16px;
+}
+
+.ioto-tasks-center__project-list,
+.ioto-tasks-center__task-list {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	overflow: auto;
+}
+
+.ioto-tasks-center__project-list {
+	gap: 10px;
+}
+
+.ioto-tasks-center__task-list {
+	gap: 0;
+
+	background: var(--background-primary);
+}
+
+.ioto-tasks-center__project-item {
+	width: 100%;
+	padding: 12px 14px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	text-align: left;
+	cursor: pointer;
+	transition:
+		background-color 120ms ease,
+		border-color 120ms ease,
+		transform 120ms ease;
+}
+
+.ioto-tasks-center__project-item:hover {
+	border-color: var(--interactive-accent);
+	background: var(--background-modifier-hover);
+}
+
+.ioto-tasks-center__project-item.is-selected {
+	border-color: var(--interactive-accent);
+	background: color-mix(
+		in srgb,
+		var(--interactive-accent) 14%,
+		var(--background-secondary)
+	);
+	color: var(--text-normal);
+	font-weight: 600;
+}
+
+.ioto-tasks-center__task-row {
+	appearance: none;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	align-items: center;
+	width: 100%;
+	padding: 20px 14px;
+	border: 0;
+	border-bottom: 1px solid var(--background-modifier-border);
+	border-radius: 0;
+	background: transparent;
+	color: var(--text-normal);
+	text-align: left;
+	cursor: pointer;
+	transition:
+		background-color 120ms ease,
+		border-color 120ms ease,
+		transform 120ms ease;
+}
+
+.ioto-tasks-center__task-row:last-child {
+	border-bottom: 0;
+}
+
+.ioto-tasks-center__task-row:hover {
+	background: var(--background-modifier-hover);
+}
+
+.ioto-tasks-center__task-row:active {
+	transform: translateY(1px);
+}
+
+.ioto-tasks-center__task-row.is-active {
+	background: color-mix(
+		in srgb,
+		var(--interactive-accent) 12%,
+		var(--background-primary)
+	);
+}
+
+.ioto-tasks-center__task-row.is-opening {
+	opacity: 0.72;
+}
+
+.ioto-tasks-center__task-title {
+	flex: 1 1 auto;
+	min-width: 0;
+	font-size: var(--font-ui-medium);
+	font-weight: 600;
+	color: var(--text-normal);
+	line-height: 1.4;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ioto-tasks-center__task-status {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-size: var(--font-ui-smaller);
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.ioto-tasks-center__task-status--todo {
+	background: color-mix(in srgb, var(--color-orange) 18%, transparent);
+	color: var(--color-orange);
+}
+
+.ioto-tasks-center__task-status--in-progress {
+	background: color-mix(in srgb, var(--color-blue) 18%, transparent);
+	color: var(--color-blue);
+}
+
+.ioto-tasks-center__task-status--completed {
+	background: color-mix(in srgb, var(--color-green) 18%, transparent);
+	color: var(--color-green);
+}
+
+.ioto-tasks-center__task-status--empty {
+	background: color-mix(
+		in srgb,
+		var(--background-modifier-border) 45%,
+		transparent
+	);
+	color: var(--text-faint);
+}
+
+.ioto-tasks-center__state {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: flex-start;
+	min-height: 140px;
+	padding: 16px;
+	border: 1px dashed var(--background-modifier-border);
+	border-radius: 12px;
+	background: var(--background-secondary);
+}
+
+.ioto-tasks-center__state-title {
+	font-size: var(--font-ui-medium);
+	font-weight: 600;
+	margin-bottom: 6px;
+}
+
+.ioto-tasks-center__state-desc {
+	color: var(--text-muted);
+	line-height: 1.5;
+}
+
+.ioto-tasks-center__state.is-loading {
+	border-style: solid;
+}
+
+@media (max-width: 900px) {
+	.ioto-tasks-center {
+		grid-template-columns: 1fr;
+	}
+
+	.ioto-tasks-center__task-row {
+		gap: 12px;
+	}
+}

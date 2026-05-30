@@ -1,92 +1,33 @@
-import {
-	Editor,
-	MarkdownView,
-	MarkdownFileInfo,
-	Modal,
-	Notice,
-	Plugin,
-} from 'obsidian';
+import { Plugin, TAbstractFile, WorkspaceLeaf } from 'obsidian';
 import {
 	DEFAULT_SETTINGS,
+	IOTOTasksCenterSettingTab,
 	IOTOTasksCenterSettings,
-	SampleSettingTab,
 } from './settings';
-
-// Remember to rename these classes and interfaces!
+import {
+	IOTO_TASKS_CENTER_VIEW_TYPE,
+	IOTOTasksCenterView,
+} from './views/iotoTasksCenterView';
 
 export default class IOTOTasksCenter extends Plugin {
 	settings!: IOTOTasksCenterSettings;
 
 	async onload() {
 		await this.loadSettings();
-
-		// This creates an icon in the left ribbon.
-		this.addRibbonIcon('dice', 'Sample', (_evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
-
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status bar text');
-
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-modal-simple',
-			name: 'Open modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			},
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'replace-selected',
-			name: 'Replace selected content',
-			editorCallback: (
-				editor: Editor,
-				_ctx: MarkdownView | MarkdownFileInfo,
-			) => {
-				editor.replaceSelection('Sample editor command');
-			},
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-modal-complex',
-			name: 'Open modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView =
-					this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-				return false;
-			},
-		});
-
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(activeDocument, 'click', (_evt: MouseEvent) => {
-			new Notice('Click');
-		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(
-			window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000),
+		this.registerView(
+			IOTO_TASKS_CENTER_VIEW_TYPE,
+			(leaf) => new IOTOTasksCenterView(leaf),
 		);
-	}
 
-	onunload() {}
+		this.addCommand({
+			id: 'open-tasks-center-view',
+			name: '打开任务中心视图',
+			callback: () => this.activateIOTOTasksCenterView(),
+		});
+
+		this.addSettingTab(new IOTOTasksCenterSettingTab(this.app, this));
+		this.registerVaultRefreshEvents();
+	}
 
 	async loadSettings() {
 		this.settings = Object.assign(
@@ -99,16 +40,70 @@ export default class IOTOTasksCenter extends Plugin {
 	async saveSettings() {
 		await this.saveData(this.settings);
 	}
-}
 
-class SampleModal extends Modal {
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.setText('Woah!');
+	private registerVaultRefreshEvents(): void {
+		this.registerEvent(
+			this.app.vault.on('create', (file) => {
+				void this.handleVaultChange(file);
+			}),
+		);
+		this.registerEvent(
+			this.app.vault.on('delete', (file) => {
+				void this.handleVaultChange(file);
+			}),
+		);
+		this.registerEvent(
+			this.app.vault.on('modify', (file) => {
+				void this.handleVaultChange(file);
+			}),
+		);
+		this.registerEvent(
+			this.app.vault.on('rename', (file, oldPath) => {
+				void this.handleVaultChange(file, oldPath);
+			}),
+		);
 	}
 
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
+	async activateIOTOTasksCenterView(): Promise<void> {
+		const leaf = this.getOrCreateIOTOTasksCenterLeaf();
+		await leaf.setViewState({
+			type: IOTO_TASKS_CENTER_VIEW_TYPE,
+			active: true,
+		});
+	}
+
+	private getOrCreateIOTOTasksCenterLeaf(): WorkspaceLeaf {
+		const existingLeaf = this.app.workspace.getLeavesOfType(
+			IOTO_TASKS_CENTER_VIEW_TYPE,
+		)[0];
+		return existingLeaf ?? this.app.workspace.getLeaf(true);
+	}
+
+	private async handleVaultChange(
+		file: TAbstractFile,
+		oldPath?: string,
+	): Promise<void> {
+		if (!this.shouldRefreshTasksCenter(file.path, oldPath)) {
+			return;
+		}
+
+		const leaves = this.app.workspace.getLeavesOfType(
+			IOTO_TASKS_CENTER_VIEW_TYPE,
+		);
+		for (const leaf of leaves) {
+			const view = leaf.view;
+			if (view instanceof IOTOTasksCenterView) {
+				await view.refreshFromVaultChange();
+			}
+		}
+	}
+
+	private shouldRefreshTasksCenter(path: string, oldPath?: string): boolean {
+		return [path, oldPath]
+			.filter((value): value is string => Boolean(value))
+			.some(
+				(candidate) =>
+					candidate === '3-任务' || candidate.startsWith('3-任务/'),
+			);
 	}
 }
