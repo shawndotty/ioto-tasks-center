@@ -1,7 +1,10 @@
 import { FileView, ItemView, TFile, WorkspaceLeaf } from 'obsidian';
 
 import { listProjectFolders, listProjectTaskFiles } from '../tasks-center/data';
-import { sortProjectEntries } from '../tasks-center/project-sort';
+import {
+	filterHiddenProjectEntries,
+	sortProjectEntries,
+} from '../tasks-center/project-sort';
 import type { ProjectListSortMode } from '../settings';
 import {
 	ProjectFolderEntry,
@@ -39,14 +42,17 @@ export class IOTOTasksCenterView extends ItemView {
 	private isTasksLoading = false;
 	private refreshToken = 0;
 	private readonly getProjectListSortMode: () => ProjectListSortMode;
+	private readonly getHiddenProjectNames: () => string[];
 
 	constructor(
 		leaf: WorkspaceLeaf,
 		getProjectListSortMode: () => ProjectListSortMode,
+		getHiddenProjectNames: () => string[],
 	) {
 		super(leaf);
 		this.navigation = true;
 		this.getProjectListSortMode = getProjectListSortMode;
+		this.getHiddenProjectNames = getHiddenProjectNames;
 	}
 
 	getViewType(): string {
@@ -98,9 +104,8 @@ export class IOTOTasksCenterView extends ItemView {
 		await this.loadProjects(previousSelection);
 	}
 
-	handleSettingsChange(): void {
-		this.applyProjectSorting();
-		this.render();
+	async handleSettingsChange(): Promise<void> {
+		await this.refreshFromVaultChange();
 	}
 
 	private async loadProjects(
@@ -116,14 +121,17 @@ export class IOTOTasksCenterView extends ItemView {
 		}
 
 		this.projectResult = result;
-		this.projects = result.projects;
+		this.projects = filterHiddenProjectEntries(
+			result.projects,
+			this.getHiddenProjectNames(),
+		);
 		this.projectIncompleteCounts = await this.buildProjectIncompleteCounts(
 			result.projects,
 		);
 		this.applyProjectSorting();
 		this.isProjectsLoading = false;
 
-		if (result.status !== 'success' || result.projects.length === 0) {
+		if (result.status !== 'success' || this.projects.length === 0) {
 			this.selectedProject = null;
 			this.taskResult = null;
 			this.tasks = [];
@@ -238,10 +246,14 @@ export class IOTOTasksCenterView extends ItemView {
 		}
 
 		if (this.projects.length === 0) {
+			const isFilteredByHiddenProjects =
+				this.projectResult.projects.length > 0;
 			this.renderState(
 				listEl,
-				'暂无项目',
-				`${TASKS_ROOT_PATH} 下还没有一级项目文件夹。`,
+				isFilteredByHiddenProjects ? '当前没有可见项目' : '暂无项目',
+				isFilteredByHiddenProjects
+					? '所有项目都已被隐藏，可在插件设置中随时取消隐藏。'
+					: `${TASKS_ROOT_PATH} 下还没有一级项目文件夹。`,
 				'is-empty',
 			);
 			return;

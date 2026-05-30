@@ -24,3 +24,13 @@ export function sortProjectEntries(
 		return PROJECT_NAME_COLLATOR.compare(left.name, right.name);
 	});
 }
+
+export function filterHiddenProjectEntries(
+	projects: ProjectFolderEntry[],
+	hiddenProjectNames: Iterable<string>,
+): ProjectFolderEntry[] {
+	const hiddenProjectNameSet = new Set(hiddenProjectNames);
+	return projects.filter(
+		(project) => !hiddenProjectNameSet.has(project.name),
+	);
+}

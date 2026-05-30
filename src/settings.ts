@@ -1,15 +1,23 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import IOTOTasksCenter from './main';
+import { listProjectFolders, listProjectTaskFiles } from './tasks-center/data';
+import {
+	filterHiddenProjectEntries,
+	sortProjectEntries,
+} from './tasks-center/project-sort';
+import type { ProjectFolderEntry } from './tasks-center/types';
 import { TASKS_ROOT_PATH } from './tasks-center/types';
 
 export type ProjectListSortMode = 'incomplete-count' | 'name';
 
 export interface IOTOTasksCenterSettings {
 	projectListSortMode: ProjectListSortMode;
+	hiddenProjectNames: string[];
 }
 
 export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	projectListSortMode: 'incomplete-count',
+	hiddenProjectNames: [],
 };
 
 export const PROJECT_LIST_SORT_MODE_OPTIONS: Record<
@@ -92,7 +100,110 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 						}
 
 						await this.plugin.updateProjectListSortMode(value);
+						this.display();
 					});
 			});
+
+		new Setting(containerEl).setName('隐藏项目列表').setHeading();
+
+		const hiddenProjectsDesc = containerEl.createDiv();
+		hiddenProjectsDesc.addClass('setting-item-description');
+		hiddenProjectsDesc.setText(
+			'勾选后，对应项目会从左侧项目列表中隐藏。修改后立即生效，并会自动保存。',
+		);
+
+		const hiddenProjectsContainer = containerEl.createDiv();
+		void this.displayHiddenProjectSettings(hiddenProjectsContainer);
 	}
+
+	private async displayHiddenProjectSettings(
+		containerEl: HTMLElement,
+	): Promise<void> {
+		containerEl.empty();
+		containerEl.createDiv({
+			text: '正在加载项目列表...',
+		});
+
+		const projectsResult = listProjectFolders(this.app);
+		if (projectsResult.status === 'root-missing') {
+			containerEl.empty();
+			new Setting(containerEl)
+				.setName('未找到任务根目录')
+				.setDesc(`请先在 vault 中创建 ${TASKS_ROOT_PATH} 目录。`);
+			return;
+		}
+
+		if (projectsResult.projects.length === 0) {
+			containerEl.empty();
+			new Setting(containerEl)
+				.setName('暂无可配置项目')
+				.setDesc(`${TASKS_ROOT_PATH} 下还没有一级项目文件夹。`);
+			return;
+		}
+
+		const incompleteCounts = await buildProjectIncompleteCounts(
+			this.app,
+			projectsResult.projects,
+		);
+		const visibleProjects = sortProjectEntries(
+			filterHiddenProjectEntries(
+				projectsResult.projects,
+				this.plugin.settings.hiddenProjectNames,
+			),
+			incompleteCounts,
+			this.plugin.settings.projectListSortMode,
+		);
+		const hiddenProjects = sortProjectEntries(
+			projectsResult.projects.filter((project) =>
+				this.plugin.settings.hiddenProjectNames.includes(project.name),
+			),
+			incompleteCounts,
+			this.plugin.settings.projectListSortMode,
+		);
+		const allProjects = [...visibleProjects, ...hiddenProjects];
+
+		containerEl.empty();
+
+		for (const project of allProjects) {
+			const incompleteCount = incompleteCounts.get(project.name) ?? 0;
+			const hidden = this.plugin.settings.hiddenProjectNames.includes(
+				project.name,
+			);
+			const description =
+				incompleteCount > 0
+					? `当前有 ${incompleteCount} 个未完成任务`
+					: '当前无未完成任务';
+
+			new Setting(containerEl)
+				.setName(project.name)
+				.setDesc(description)
+				.addToggle((toggle) =>
+					toggle.setValue(hidden).onChange(async (value) => {
+						await this.plugin.setProjectHidden(project.name, value);
+						await this.displayHiddenProjectSettings(containerEl);
+					}),
+				);
+		}
+	}
+}
+
+async function buildProjectIncompleteCounts(
+	app: App,
+	projects: ProjectFolderEntry[],
+): Promise<Map<string, number>> {
+	const entries = await Promise.all(
+		projects.map(async (project) => {
+			const result = await listProjectTaskFiles(app, project.name);
+			const incompleteCount = result.tasks.filter((task) =>
+				isIncompleteTaskStatus(task.status.key),
+			).length;
+			return [project.name, incompleteCount] as const;
+		}),
+	);
+
+	return new Map(entries);
+}
+
+function isIncompleteTaskStatus(statusKey: string): boolean {
+	return statusKey === 'todo' || statusKey === 'in-progress';
 }

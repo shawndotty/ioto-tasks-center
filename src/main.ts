@@ -21,6 +21,7 @@ export default class IOTOTasksCenter extends Plugin {
 				new IOTOTasksCenterView(
 					leaf,
 					() => this.settings.projectListSortMode,
+					() => this.settings.hiddenProjectNames,
 				),
 		);
 
@@ -54,6 +55,35 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.projectListSortMode = sortMode;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async setProjectHidden(
+		projectName: string,
+		hidden: boolean,
+	): Promise<void> {
+		const hiddenProjectNameSet = new Set(this.settings.hiddenProjectNames);
+		if (hidden) {
+			hiddenProjectNameSet.add(projectName);
+		} else {
+			hiddenProjectNameSet.delete(projectName);
+		}
+
+		const nextHiddenProjectNames = [...hiddenProjectNameSet].sort(
+			(left, right) =>
+				left.localeCompare(right, undefined, { numeric: true }),
+		);
+		if (
+			areStringArraysEqual(
+				this.settings.hiddenProjectNames,
+				nextHiddenProjectNames,
+			)
+		) {
+			return;
+		}
+
+		this.settings.hiddenProjectNames = nextHiddenProjectNames;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}
@@ -122,7 +152,7 @@ export default class IOTOTasksCenter extends Plugin {
 		for (const leaf of leaves) {
 			const view = leaf.view;
 			if (view instanceof IOTOTasksCenterView) {
-				view.handleSettingsChange();
+				void view.handleSettingsChange();
 			}
 		}
 	}
@@ -135,4 +165,11 @@ export default class IOTOTasksCenter extends Plugin {
 					candidate === '3-任务' || candidate.startsWith('3-任务/'),
 			);
 	}
+}
+
+function areStringArraysEqual(left: string[], right: string[]): boolean {
+	return (
+		left.length === right.length &&
+		left.every((value, index) => value === right[index])
+	);
 }

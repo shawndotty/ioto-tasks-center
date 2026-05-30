@@ -6,6 +6,9 @@ const jiti = createJiti(import.meta.url, { moduleCache: false });
 const { sortProjectEntries } = await jiti.import(
 	'../src/tasks-center/project-sort.ts',
 );
+const { filterHiddenProjectEntries } = await jiti.import(
+	'../src/tasks-center/project-sort.ts',
+);
 
 test('默认按未完成任务数量从多到少排序，并在同数量时按名称排序', () => {
 	const sortedProjects = sortProjectEntries(
@@ -46,5 +49,21 @@ test('按项目名称排序时支持数字顺序', () => {
 	assert.deepEqual(
 		sortedProjects.map((project) => project.name),
 		['项目1', '项目2', '项目10'],
+	);
+});
+
+test('隐藏项目过滤会移除已配置隐藏的项目', () => {
+	const visibleProjects = filterHiddenProjectEntries(
+		[
+			{ name: '项目1', path: '3-任务/项目1' },
+			{ name: '项目2', path: '3-任务/项目2' },
+			{ name: '项目3', path: '3-任务/项目3' },
+		],
+		['项目2'],
+	);
+
+	assert.deepEqual(
+		visibleProjects.map((project) => project.name),
+		['项目1', '项目3'],
 	);
 });
