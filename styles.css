@@ -209,11 +209,16 @@
 		transform 120ms ease;
 }
 
+button:not(.clickable-icon).ioto-tasks-center__task-row{
+    background: transparent;
+    box-shadow: none;
+}
+
 .ioto-tasks-center__task-row:last-child {
 	border-bottom: 0;
 }
 
-.ioto-tasks-center__task-row:hover {
+button:not(.clickable-icon).ioto-tasks-center__task-row:hover {
 	background: var(--background-modifier-hover);
 }
 
@@ -236,7 +241,7 @@
 .ioto-tasks-center__task-title {
 	flex: 1 1 auto;
 	min-width: 0;
-	font-size: var(--font-ui-medium);
+	font-size: var(--font-ui-small);
 	font-weight: 600;
 	color: var(--text-normal);
 	line-height: 1.4;
