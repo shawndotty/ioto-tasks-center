@@ -1,6 +1,8 @@
 import { FileView, ItemView, TFile, WorkspaceLeaf } from 'obsidian';
 
 import { listProjectFolders, listProjectTaskFiles } from '../tasks-center/data';
+import { sortProjectEntries } from '../tasks-center/project-sort';
+import type { ProjectListSortMode } from '../settings';
 import {
 	ProjectFolderEntry,
 	ProjectListResult,
@@ -36,10 +38,15 @@ export class IOTOTasksCenterView extends ItemView {
 	private isProjectsLoading = false;
 	private isTasksLoading = false;
 	private refreshToken = 0;
+	private readonly getProjectListSortMode: () => ProjectListSortMode;
 
-	constructor(leaf: WorkspaceLeaf) {
+	constructor(
+		leaf: WorkspaceLeaf,
+		getProjectListSortMode: () => ProjectListSortMode,
+	) {
 		super(leaf);
 		this.navigation = true;
+		this.getProjectListSortMode = getProjectListSortMode;
 	}
 
 	getViewType(): string {
@@ -91,6 +98,11 @@ export class IOTOTasksCenterView extends ItemView {
 		await this.loadProjects(previousSelection);
 	}
 
+	handleSettingsChange(): void {
+		this.applyProjectSorting();
+		this.render();
+	}
+
 	private async loadProjects(
 		preferredProject?: string | null,
 	): Promise<void> {
@@ -108,6 +120,7 @@ export class IOTOTasksCenterView extends ItemView {
 		this.projectIncompleteCounts = await this.buildProjectIncompleteCounts(
 			result.projects,
 		);
+		this.applyProjectSorting();
 		this.isProjectsLoading = false;
 
 		if (result.status !== 'success' || result.projects.length === 0) {
@@ -235,6 +248,8 @@ export class IOTOTasksCenterView extends ItemView {
 		}
 
 		for (const project of this.projects) {
+			const incompleteCount =
+				this.projectIncompleteCounts.get(project.name) ?? 0;
 			const itemEl = listEl.createEl('button', {
 				cls: 'ioto-tasks-center__project-item',
 			});
@@ -243,10 +258,12 @@ export class IOTOTasksCenterView extends ItemView {
 				cls: 'ioto-tasks-center__project-name',
 				text: project.name,
 			});
-			itemEl.createSpan({
-				cls: 'ioto-tasks-center__project-count',
-				text: `${this.projectIncompleteCounts.get(project.name) ?? 0}`,
-			});
+			if (incompleteCount > 0) {
+				itemEl.createSpan({
+					cls: 'ioto-tasks-center__project-count',
+					text: `${incompleteCount}`,
+				});
+			}
 
 			if (project.name === this.selectedProject) {
 				itemEl.addClass('is-selected');
@@ -478,6 +495,14 @@ export class IOTOTasksCenterView extends ItemView {
 		);
 
 		return new Map(entries);
+	}
+
+	private applyProjectSorting(): void {
+		this.projects = sortProjectEntries(
+			this.projects,
+			this.projectIncompleteCounts,
+			this.getProjectListSortMode(),
+		);
 	}
 
 	private renderState(

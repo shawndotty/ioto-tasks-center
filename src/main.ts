@@ -3,6 +3,7 @@ import {
 	DEFAULT_SETTINGS,
 	IOTOTasksCenterSettingTab,
 	IOTOTasksCenterSettings,
+	ProjectListSortMode,
 } from './settings';
 import {
 	IOTO_TASKS_CENTER_VIEW_TYPE,
@@ -16,7 +17,11 @@ export default class IOTOTasksCenter extends Plugin {
 		await this.loadSettings();
 		this.registerView(
 			IOTO_TASKS_CENTER_VIEW_TYPE,
-			(leaf) => new IOTOTasksCenterView(leaf),
+			(leaf) =>
+				new IOTOTasksCenterView(
+					leaf,
+					() => this.settings.projectListSortMode,
+				),
 		);
 
 		this.addCommand({
@@ -39,6 +44,18 @@ export default class IOTOTasksCenter extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+	}
+
+	async updateProjectListSortMode(
+		sortMode: ProjectListSortMode,
+	): Promise<void> {
+		if (this.settings.projectListSortMode === sortMode) {
+			return;
+		}
+
+		this.settings.projectListSortMode = sortMode;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
 	}
 
 	private registerVaultRefreshEvents(): void {
@@ -94,6 +111,18 @@ export default class IOTOTasksCenter extends Plugin {
 			const view = leaf.view;
 			if (view instanceof IOTOTasksCenterView) {
 				await view.refreshFromVaultChange();
+			}
+		}
+	}
+
+	private applySettingsToOpenViews(): void {
+		const leaves = this.app.workspace.getLeavesOfType(
+			IOTO_TASKS_CENTER_VIEW_TYPE,
+		);
+		for (const leaf of leaves) {
+			const view = leaf.view;
+			if (view instanceof IOTOTasksCenterView) {
+				view.handleSettingsChange();
 			}
 		}
 	}
