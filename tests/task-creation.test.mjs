@@ -62,10 +62,14 @@ test('任务名称归一化会折叠空白并替换非法字符', () => {
 	assert.equal(normalizeCustomTaskName('   '), null);
 });
 
-test('任务目标路径固定在 3-任务/项目名/文件名 下', () => {
-	const targetPath = resolveTaskTargetPath('项目A', '项目A-计划-阶段一.md');
+test('任务目标路径会落在自定义任务根目录/项目名/文件名 下', () => {
+	const targetPath = resolveTaskTargetPath(
+		'工作区/任务',
+		'项目A',
+		'项目A-计划-阶段一.md',
+	);
 
-	assert.equal(targetPath, '3-任务/项目A/项目A-计划-阶段一.md');
+	assert.equal(targetPath, '工作区/任务/项目A/项目A-计划-阶段一.md');
 });
 
 test('Templater 命令 ID 生成规则正确', () => {

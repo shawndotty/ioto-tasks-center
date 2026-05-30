@@ -1,11 +1,10 @@
 import { App, Notice, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
 
-import { TASKS_ROOT_PATH } from './types';
-
 export type TaskCreationType = 'date' | 'plan' | 'topic';
 
 export interface CreateTaskFileOptions {
 	app: App;
+	tasksRootPath: string;
 	projectName: string;
 	type: TaskCreationType;
 	customName?: string;
@@ -64,10 +63,11 @@ export function normalizeCustomTaskName(input: string): string | null {
 }
 
 export function resolveTaskTargetPath(
+	tasksRootPath: string,
 	projectName: string,
 	fileName: string,
 ): string {
-	return normalizeVaultPath(`${TASKS_ROOT_PATH}/${projectName}/${fileName}`);
+	return normalizeVaultPath(`${tasksRootPath}/${projectName}/${fileName}`);
 }
 
 export function getTemplaterCommandId(templatePath: string): string {
@@ -128,6 +128,7 @@ export async function createTaskFile(
 ): Promise<CreateTaskFileResult> {
 	const {
 		app,
+		tasksRootPath,
 		projectName,
 		type,
 		customName,
@@ -144,9 +145,13 @@ export async function createTaskFile(
 		new Date(),
 		normalizedCustomName ?? undefined,
 	);
-	const targetPath = resolveTaskTargetPath(projectName, fileName);
+	const targetPath = resolveTaskTargetPath(
+		tasksRootPath,
+		projectName,
+		fileName,
+	);
 	const projectFolder = app.vault.getAbstractFileByPath(
-		normalizeVaultPath(`${TASKS_ROOT_PATH}/${projectName}`),
+		normalizeVaultPath(`${tasksRootPath}/${projectName}`),
 	);
 	if (!(projectFolder instanceof TFolder)) {
 		throw new Error(`项目目录不存在：${projectName}`);

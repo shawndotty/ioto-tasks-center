@@ -3,7 +3,6 @@ import { App, TFile, TFolder } from 'obsidian';
 import {
 	ProjectFolderEntry,
 	ProjectListResult,
-	TASKS_ROOT_PATH,
 	TaskFileEntry,
 	TaskFileListResult,
 	TaskFileStatus,
@@ -13,13 +12,19 @@ const OBSIDIAN_COMMENT_BLOCK_PATTERN = /%%[\s\S]*?%%/g;
 const HTML_COMMENT_BLOCK_PATTERN = /<!--[\s\S]*?-->/g;
 const TASK_LINE_PATTERN = /^\s*(?:[-*+]|\d+\.)\s+\[([ xX])\](.*)$/;
 
-export function getTasksRootFolder(app: App): TFolder | null {
-	const root = app.vault.getAbstractFileByPath(TASKS_ROOT_PATH);
+export function getTasksRootFolder(
+	app: App,
+	tasksRootPath: string,
+): TFolder | null {
+	const root = app.vault.getAbstractFileByPath(tasksRootPath);
 	return root instanceof TFolder ? root : null;
 }
 
-export function listProjectFolders(app: App): ProjectListResult {
-	const rootFolder = getTasksRootFolder(app);
+export function listProjectFolders(
+	app: App,
+	tasksRootPath: string,
+): ProjectListResult {
+	const rootFolder = getTasksRootFolder(app, tasksRootPath);
 	if (!rootFolder) {
 		return {
 			status: 'root-missing',
@@ -45,10 +50,11 @@ export function listProjectFolders(app: App): ProjectListResult {
 
 export async function listProjectTaskFiles(
 	app: App,
+	tasksRootPath: string,
 	projectName: string,
 ): Promise<TaskFileListResult> {
-	const rootFolder = getTasksRootFolder(app);
-	const projectPath = `${TASKS_ROOT_PATH}/${projectName}`;
+	const rootFolder = getTasksRootFolder(app, tasksRootPath);
+	const projectPath = `${tasksRootPath}/${projectName}`;
 
 	if (!rootFolder) {
 		return {

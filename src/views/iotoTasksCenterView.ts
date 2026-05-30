@@ -21,7 +21,6 @@ import type { ProjectListSortMode } from '../settings';
 import {
 	ProjectFolderEntry,
 	ProjectListResult,
-	TASKS_ROOT_PATH,
 	TaskFileEntry,
 	TaskFileListResult,
 } from '../tasks-center/types';
@@ -60,18 +59,21 @@ export class IOTOTasksCenterView extends ItemView {
 	private isCreatingProject = false;
 	private isCreatingTask = false;
 	private refreshToken = 0;
+	private readonly getTasksRootPath: () => string;
 	private readonly getProjectListSortMode: () => ProjectListSortMode;
 	private readonly getHiddenProjectNames: () => string[];
 	private readonly getTaskTemplatePath: () => string;
 
 	constructor(
 		leaf: WorkspaceLeaf,
+		getTasksRootPath: () => string,
 		getProjectListSortMode: () => ProjectListSortMode,
 		getHiddenProjectNames: () => string[],
 		getTaskTemplatePath: () => string,
 	) {
 		super(leaf);
 		this.navigation = true;
+		this.getTasksRootPath = getTasksRootPath;
 		this.getProjectListSortMode = getProjectListSortMode;
 		this.getHiddenProjectNames = getHiddenProjectNames;
 		this.getTaskTemplatePath = getTaskTemplatePath;
@@ -137,7 +139,7 @@ export class IOTOTasksCenterView extends ItemView {
 		this.isProjectsLoading = true;
 		this.render();
 
-		const result = listProjectFolders(this.app);
+		const result = listProjectFolders(this.app, this.getTasksRootPath());
 		if (token !== this.refreshToken) {
 			return;
 		}
@@ -191,7 +193,11 @@ export class IOTOTasksCenterView extends ItemView {
 
 	private async loadTasks(projectName: string): Promise<void> {
 		const token = ++this.refreshToken;
-		const result = await listProjectTaskFiles(this.app, projectName);
+		const result = await listProjectTaskFiles(
+			this.app,
+			this.getTasksRootPath(),
+			projectName,
+		);
 
 		if (token !== this.refreshToken) {
 			return;
@@ -230,6 +236,7 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private renderProjectsPane(container: HTMLElement): void {
+		const tasksRootPath = this.getTasksRootPath();
 		const headerEl = container.createDiv({
 			cls: 'ioto-tasks-center__section-header',
 		});
@@ -253,7 +260,7 @@ export class IOTOTasksCenterView extends ItemView {
 		});
 
 		const helperText = this.isProjectsLoading
-			? '正在扫描 3-任务 根目录...'
+			? `正在扫描 ${tasksRootPath} 根目录...`
 			: '选择一个项目后，在右侧查看对应任务文件。';
 		container.createDiv({
 			cls: 'ioto-tasks-center__section-desc',
@@ -268,7 +275,7 @@ export class IOTOTasksCenterView extends ItemView {
 			this.renderState(
 				listEl,
 				'正在加载项目',
-				`正在读取 ${TASKS_ROOT_PATH} 下的一级子目录。`,
+				`正在读取 ${tasksRootPath} 下的一级子目录。`,
 				'is-loading',
 			);
 			return;
@@ -278,7 +285,7 @@ export class IOTOTasksCenterView extends ItemView {
 			this.renderState(
 				listEl,
 				'未找到任务根目录',
-				`请先在 vault 中创建 ${TASKS_ROOT_PATH} 目录。`,
+				`请先在 vault 中创建 ${tasksRootPath} 目录。`,
 				'is-empty',
 			);
 			return;
@@ -292,7 +299,7 @@ export class IOTOTasksCenterView extends ItemView {
 				isFilteredByHiddenProjects ? '当前没有可见项目' : '暂无项目',
 				isFilteredByHiddenProjects
 					? '所有项目都已被隐藏，可在插件设置中随时取消隐藏。'
-					: `${TASKS_ROOT_PATH} 下还没有一级项目文件夹。`,
+					: `${tasksRootPath} 下还没有一级项目文件夹。`,
 				'is-empty',
 			);
 			return;
@@ -334,6 +341,7 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private renderTasksPane(container: HTMLElement): void {
+		const tasksRootPath = this.getTasksRootPath();
 		const headerEl = container.createDiv({
 			cls: 'ioto-tasks-center__section-header',
 		});
@@ -374,7 +382,7 @@ export class IOTOTasksCenterView extends ItemView {
 			this.renderState(
 				listEl,
 				'无法加载任务',
-				`${TASKS_ROOT_PATH} 根目录不存在，因此无法读取任务文件。`,
+				`${tasksRootPath} 根目录不存在，因此无法读取任务文件。`,
 				'is-empty',
 			);
 			return;
@@ -394,7 +402,7 @@ export class IOTOTasksCenterView extends ItemView {
 			this.renderState(
 				listEl,
 				'正在加载任务',
-				`正在读取 ${TASKS_ROOT_PATH}/${this.selectedProject} 下的 Markdown 文件。`,
+				`正在读取 ${tasksRootPath}/${this.selectedProject} 下的 Markdown 文件。`,
 				'is-loading',
 			);
 			return;
@@ -505,6 +513,7 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private getAddProjectButtonLabel(): string {
+		const tasksRootPath = this.getTasksRootPath();
 		if (this.isCreatingProject) {
 			return '正在创建项目';
 		}
@@ -514,10 +523,10 @@ export class IOTOTasksCenterView extends ItemView {
 		}
 
 		if (this.projectResult.status === 'root-missing') {
-			return `请先创建 ${TASKS_ROOT_PATH} 目录`;
+			return `请先创建 ${tasksRootPath} 目录`;
 		}
 
-		return `在 ${TASKS_ROOT_PATH} 下添加项目`;
+		return `在 ${tasksRootPath} 下添加项目`;
 	}
 
 	private async handleCreateProject(): Promise<void> {
@@ -544,6 +553,7 @@ export class IOTOTasksCenterView extends ItemView {
 		try {
 			const result = await createProjectFolder(
 				this.app,
+				this.getTasksRootPath(),
 				projectNameResult,
 			);
 			if (!result.created) {
@@ -610,6 +620,7 @@ export class IOTOTasksCenterView extends ItemView {
 			const previewLeaf = this.ensurePreviewLeaf();
 			const result = await createTaskFile({
 				app: this.app,
+				tasksRootPath: this.getTasksRootPath(),
 				projectName,
 				type,
 				customName,
@@ -714,10 +725,12 @@ export class IOTOTasksCenterView extends ItemView {
 	private async buildProjectIncompleteCounts(
 		projects: ProjectFolderEntry[],
 	): Promise<Map<string, number>> {
+		const tasksRootPath = this.getTasksRootPath();
 		const entries = await Promise.all(
 			projects.map(async (project) => {
 				const result = await listProjectTaskFiles(
 					this.app,
+					tasksRootPath,
 					project.name,
 				);
 				const incompleteCount = result.tasks.filter((task) =>

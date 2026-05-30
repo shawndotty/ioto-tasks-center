@@ -1,4 +1,16 @@
-export const TASKS_ROOT_PATH = '3-任务';
+export const DEFAULT_TASKS_ROOT_PATH = '3-任务';
+
+export function normalizeTasksRootPath(input: string): string {
+	const normalized = input
+		.trim()
+		.replace(/\\/g, '/')
+		.replace(/\/{2,}/g, '/')
+		.replace(/^\.\//, '')
+		.replace(/^\/+/, '')
+		.replace(/\/+$/g, '');
+
+	return normalized.length > 0 ? normalized : DEFAULT_TASKS_ROOT_PATH;
+}
 
 export interface ProjectFolderEntry {
 	name: string;

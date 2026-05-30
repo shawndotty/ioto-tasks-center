@@ -1,7 +1,5 @@
 import { App, TFolder } from 'obsidian';
 
-import { TASKS_ROOT_PATH } from './types';
-
 export interface CreateProjectFolderResult {
 	name: string;
 	path: string;
@@ -19,12 +17,16 @@ export function normalizeProjectName(input: string): string | null {
 	return normalized.length > 0 ? normalized : null;
 }
 
-export function resolveProjectTargetPath(projectName: string): string {
-	return normalizeVaultPath(`${TASKS_ROOT_PATH}/${projectName}`);
+export function resolveProjectTargetPath(
+	tasksRootPath: string,
+	projectName: string,
+): string {
+	return normalizeVaultPath(`${tasksRootPath}/${projectName}`);
 }
 
 export async function createProjectFolder(
 	app: App,
+	tasksRootPath: string,
 	projectName: string,
 ): Promise<CreateProjectFolderResult> {
 	const normalizedName = normalizeProjectName(projectName);
@@ -32,12 +34,12 @@ export async function createProjectFolder(
 		throw new Error('项目名称不能为空。');
 	}
 
-	const rootFolder = app.vault.getAbstractFileByPath(TASKS_ROOT_PATH);
+	const rootFolder = app.vault.getAbstractFileByPath(tasksRootPath);
 	if (!(rootFolder instanceof TFolder)) {
-		throw new Error(`请先创建 ${TASKS_ROOT_PATH} 目录。`);
+		throw new Error(`请先创建 ${tasksRootPath} 目录。`);
 	}
 
-	const targetPath = resolveProjectTargetPath(normalizedName);
+	const targetPath = resolveProjectTargetPath(tasksRootPath, normalizedName);
 	const existingFile = app.vault.getAbstractFileByPath(targetPath);
 	if (existingFile instanceof TFolder) {
 		return {

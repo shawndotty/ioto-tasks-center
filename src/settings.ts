@@ -3,17 +3,22 @@ import IOTOTasksCenter from './main';
 import { listProjectFolders, listProjectTaskFiles } from './tasks-center/data';
 import { sortProjectEntries } from './tasks-center/project-sort';
 import type { ProjectFolderEntry } from './tasks-center/types';
-import { TASKS_ROOT_PATH } from './tasks-center/types';
+import {
+	DEFAULT_TASKS_ROOT_PATH,
+	normalizeTasksRootPath,
+} from './tasks-center/types';
 
 export type ProjectListSortMode = 'incomplete-count' | 'name';
 
 export interface IOTOTasksCenterSettings {
+	tasksRootPath: string;
 	projectListSortMode: ProjectListSortMode;
 	hiddenProjectNames: string[];
 	taskTemplatePath: string;
 }
 
 export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
+	tasksRootPath: DEFAULT_TASKS_ROOT_PATH,
 	projectListSortMode: 'incomplete-count',
 	hiddenProjectNames: [],
 	taskTemplatePath: '',
@@ -51,7 +56,16 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('任务根目录')
 			.setDesc(
-				`当前视图固定从 vault 中读取 ${TASKS_ROOT_PATH} 目录，并将其一级子文件夹识别为项目列表。`,
+				'填写一个 vault 相对路径。任务中心会将该目录的一级子文件夹识别为项目列表。',
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder(DEFAULT_TASKS_ROOT_PATH)
+					.setValue(this.plugin.settings.tasksRootPath)
+					.onChange(async (value) => {
+						await this.plugin.updateTasksRootPath(value);
+						this.display();
+					}),
 			);
 
 		new Setting(containerEl)
@@ -74,7 +88,7 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('自动刷新')
 			.setDesc(
-				'当 3-任务 目录下发生创建、删除、重命名或内容修改时，已打开的任务中心视图会自动刷新。',
+				`当 ${this.plugin.settings.tasksRootPath} 目录下发生创建、删除、重命名或内容修改时，已打开的任务中心视图会自动刷新。`,
 			);
 
 		new Setting(containerEl).setName('任务创建').setHeading();
@@ -144,12 +158,13 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 			text: '正在加载项目列表...',
 		});
 
-		const projectsResult = listProjectFolders(this.app);
+		const tasksRootPath = this.plugin.settings.tasksRootPath;
+		const projectsResult = listProjectFolders(this.app, tasksRootPath);
 		if (projectsResult.status === 'root-missing') {
 			containerEl.empty();
 			new Setting(containerEl)
 				.setName('未找到任务根目录')
-				.setDesc(`请先在 vault 中创建 ${TASKS_ROOT_PATH} 目录。`);
+				.setDesc(`请先在 vault 中创建 ${tasksRootPath} 目录。`);
 			return;
 		}
 
@@ -157,12 +172,13 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 			containerEl.empty();
 			new Setting(containerEl)
 				.setName('暂无可配置项目')
-				.setDesc(`${TASKS_ROOT_PATH} 下还没有一级项目文件夹。`);
+				.setDesc(`${tasksRootPath} 下还没有一级项目文件夹。`);
 			return;
 		}
 
 		const incompleteCounts = await buildProjectIncompleteCounts(
 			this.app,
+			tasksRootPath,
 			projectsResult.projects,
 		);
 		const allProjects = sortProjectEntries(
@@ -198,11 +214,16 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 
 async function buildProjectIncompleteCounts(
 	app: App,
+	tasksRootPath: string,
 	projects: ProjectFolderEntry[],
 ): Promise<Map<string, number>> {
 	const entries = await Promise.all(
 		projects.map(async (project) => {
-			const result = await listProjectTaskFiles(app, project.name);
+			const result = await listProjectTaskFiles(
+				app,
+				tasksRootPath,
+				project.name,
+			);
 			const incompleteCount = result.tasks.filter((task) =>
 				isIncompleteTaskStatus(task.status.key),
 			).length;
@@ -232,4 +253,8 @@ function getTemplaterTemplatesFolder(app: App): string | null {
 	return typeof templatesFolder === 'string' && templatesFolder.length > 0
 		? templatesFolder
 		: null;
+}
+
+export function normalizeConfiguredTasksRootPath(path: string): string {
+	return normalizeTasksRootPath(path);
 }

@@ -13,8 +13,8 @@ test('项目名称归一化会折叠空白并替换非法字符', () => {
 	assert.equal(normalizeProjectName('   '), null);
 });
 
-test('项目目标路径固定在 3-任务/项目名 下', () => {
-	const targetPath = resolveProjectTargetPath('新项目');
+test('项目目标路径会落在自定义任务根目录/项目名 下', () => {
+	const targetPath = resolveProjectTargetPath('工作区/任务', '新项目');
 
-	assert.equal(targetPath, '3-任务/新项目');
+	assert.equal(targetPath, '工作区/任务/新项目');
 });

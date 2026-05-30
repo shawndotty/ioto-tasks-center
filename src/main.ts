@@ -4,6 +4,7 @@ import {
 	IOTOTasksCenterSettingTab,
 	IOTOTasksCenterSettings,
 	ProjectListSortMode,
+	normalizeConfiguredTasksRootPath,
 } from './settings';
 import {
 	IOTO_TASKS_CENTER_VIEW_TYPE,
@@ -20,6 +21,7 @@ export default class IOTOTasksCenter extends Plugin {
 			(leaf) =>
 				new IOTOTasksCenterView(
 					leaf,
+					() => this.settings.tasksRootPath,
 					() => this.settings.projectListSortMode,
 					() => this.settings.hiddenProjectNames,
 					() => this.settings.taskTemplatePath,
@@ -42,6 +44,9 @@ export default class IOTOTasksCenter extends Plugin {
 			DEFAULT_SETTINGS,
 			(await this.loadData()) as Partial<IOTOTasksCenterSettings>,
 		);
+		this.settings.tasksRootPath = normalizeConfiguredTasksRootPath(
+			this.settings.tasksRootPath,
+		);
 	}
 
 	async saveSettings() {
@@ -56,6 +61,17 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.projectListSortMode = sortMode;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateTasksRootPath(path: string): Promise<void> {
+		const nextPath = normalizeConfiguredTasksRootPath(path);
+		if (this.settings.tasksRootPath === nextPath) {
+			return;
+		}
+
+		this.settings.tasksRootPath = nextPath;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}
@@ -170,11 +186,13 @@ export default class IOTOTasksCenter extends Plugin {
 	}
 
 	private shouldRefreshTasksCenter(path: string, oldPath?: string): boolean {
+		const tasksRootPath = this.settings.tasksRootPath;
 		return [path, oldPath]
 			.filter((value): value is string => Boolean(value))
 			.some(
 				(candidate) =>
-					candidate === '3-任务' || candidate.startsWith('3-任务/'),
+					candidate === tasksRootPath ||
+					candidate.startsWith(`${tasksRootPath}/`),
 			);
 	}
 }
