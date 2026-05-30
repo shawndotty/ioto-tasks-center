@@ -14,6 +14,10 @@ import {
 	sortProjectEntries,
 } from '../tasks-center/project-sort';
 import { createTaskFile } from '../tasks-center/task-creation';
+import {
+	assignUpTaskToFile,
+	removeUpTaskFromFile,
+} from '../tasks-center/up-task-assignment';
 import type {
 	TaskCreationType,
 	TaskTemplateConfig,
@@ -30,13 +34,23 @@ import {
 	resolveActiveTaskPath,
 	shouldSkipOpeningTask,
 } from './task-preview-state';
+import { validateTaskParentDrop } from './task-drag';
+import {
+	getTaskFilterCounts,
+	isTaskFilterTab,
+	matchesTaskFilterTab,
+	type TaskFilterTab,
+	TASK_FILTER_TABS,
+} from './task-filter-tabs';
 import { buildVisibleTaskHierarchy } from './task-hierarchy';
+import { filterTasksBySearchQuery } from './task-search';
 
 export const IOTO_TASKS_CENTER_VIEW_TYPE = 'IOTOTasksCenter';
-type TaskFilterTab = 'incomplete' | 'completed' | 'all';
 interface IOTOTasksCenterViewState {
 	selectedProject?: string;
 	activeTaskFilterTab?: TaskFilterTab;
+	taskSearchQuery?: string;
+	taskSearchInputValue?: string;
 	openedTaskPath?: string;
 	previewLeafId?: string;
 }
@@ -47,8 +61,14 @@ export class IOTOTasksCenterView extends ItemView {
 	private selectedProject: string | null = null;
 	private tasks: TaskFileEntry[] = [];
 	private activeTaskFilterTab: TaskFilterTab = 'incomplete';
+	private taskSearchQuery = '';
+	private taskSearchInputValue = '';
 	private openedTaskPath: string | null = null;
 	private openingTaskPath: string | null = null;
+	private draggingTaskPath: string | null = null;
+	private dropTargetTaskPath: string | null = null;
+	private invalidDropTargetTaskPath: string | null = null;
+	private isRemoveUpTaskDropTarget = false;
 	private previewLeaf: WorkspaceLeaf | null = null;
 	private readonly lastOpenedTaskByProject = new Map<string, string>();
 	private projectResult: ProjectListResult = {
@@ -60,6 +80,7 @@ export class IOTOTasksCenterView extends ItemView {
 	private isTasksLoading = false;
 	private isCreatingProject = false;
 	private isCreatingTask = false;
+	private isUpdatingUpTask = false;
 	private refreshToken = 0;
 	private readonly getTasksRootPath: () => string;
 	private readonly getProjectListSortMode: () => ProjectListSortMode;
@@ -112,6 +133,8 @@ export class IOTOTasksCenterView extends ItemView {
 		return {
 			selectedProject: this.selectedProject ?? undefined,
 			activeTaskFilterTab: this.activeTaskFilterTab,
+			taskSearchQuery: this.taskSearchQuery || undefined,
+			taskSearchInputValue: this.taskSearchInputValue || undefined,
 			openedTaskPath: this.openedTaskPath ?? undefined,
 			previewLeafId: getWorkspaceLeafId(this.previewLeaf) ?? undefined,
 		};
@@ -123,6 +146,9 @@ export class IOTOTasksCenterView extends ItemView {
 		this.openedTaskPath = viewState.openedTaskPath ?? null;
 		this.activeTaskFilterTab =
 			viewState.activeTaskFilterTab ?? 'incomplete';
+		this.taskSearchQuery = viewState.taskSearchQuery ?? '';
+		this.taskSearchInputValue =
+			viewState.taskSearchInputValue ?? this.taskSearchQuery;
 		this.previewLeaf =
 			(viewState.previewLeafId
 				? this.findLeafById(viewState.previewLeafId)
@@ -379,6 +405,7 @@ export class IOTOTasksCenterView extends ItemView {
 			text: currentProjectText,
 		});
 
+		this.renderTaskSearch(container);
 		this.renderTaskTabs(container);
 
 		const listEl = container.createDiv({
@@ -445,21 +472,45 @@ export class IOTOTasksCenterView extends ItemView {
 			return;
 		}
 
+		const tabVisibleTasks = this.getTasksForActiveTab();
 		const visibleTasks = this.getVisibleTasks();
 		if (visibleTasks.length === 0) {
-			this.renderTaskFilterEmptyState(listEl);
+			if (tabVisibleTasks.length === 0) {
+				this.renderTaskFilterEmptyState(listEl);
+				return;
+			}
+
+			this.renderTaskSearchEmptyState(listEl);
 			return;
 		}
 		const hierarchicalVisibleTasks =
 			buildVisibleTaskHierarchy(visibleTasks);
 
 		const activeTaskPath = this.getActiveTaskPath();
+		const removeZoneEl = listEl.createDiv({
+			cls: 'ioto-tasks-center__remove-up-task-drop-zone',
+		});
+		if (this.isRemoveUpTaskDropTarget) {
+			removeZoneEl.addClass('is-drop-target');
+		}
+		removeZoneEl.setText('将任务拖到这里可移除父任务');
+		removeZoneEl.addEventListener('dragover', (event) => {
+			this.handleRemoveUpTaskDragOver(event, removeZoneEl);
+		});
+		removeZoneEl.addEventListener('dragleave', (event) => {
+			this.handleRemoveUpTaskDragLeave(event, removeZoneEl);
+		});
+		removeZoneEl.addEventListener('drop', (event) => {
+			void this.handleRemoveUpTaskDrop(event, removeZoneEl);
+		});
 
 		for (const task of hierarchicalVisibleTasks) {
 			const rowEl = listEl.createEl('button', {
 				cls: 'ioto-tasks-center__task-row',
 			});
 			rowEl.type = 'button';
+			rowEl.draggable = !this.isUpdatingUpTask;
+			rowEl.dataset.taskPath = task.path;
 			rowEl.style.setProperty(
 				'--ioto-task-indent-level',
 				`${task.indentLevel ?? 0}`,
@@ -476,6 +527,18 @@ export class IOTOTasksCenterView extends ItemView {
 				rowEl.addClass('is-opening');
 			}
 
+			if (task.path === this.draggingTaskPath) {
+				rowEl.addClass('is-dragging');
+			}
+
+			if (task.path === this.dropTargetTaskPath) {
+				rowEl.addClass('is-drop-target');
+			}
+
+			if (task.path === this.invalidDropTargetTaskPath) {
+				rowEl.addClass('is-drop-invalid');
+			}
+
 			rowEl.createDiv({
 				cls: 'ioto-tasks-center__task-title',
 				text: task.title,
@@ -488,6 +551,21 @@ export class IOTOTasksCenterView extends ItemView {
 
 			rowEl.addEventListener('click', () => {
 				void this.openTaskFile(task);
+			});
+			rowEl.addEventListener('dragstart', (event) => {
+				this.handleTaskDragStart(event, task, rowEl);
+			});
+			rowEl.addEventListener('dragover', (event) => {
+				this.handleTaskDragOver(event, task, rowEl);
+			});
+			rowEl.addEventListener('dragleave', (event) => {
+				this.handleTaskDragLeave(event, task, rowEl);
+			});
+			rowEl.addEventListener('drop', (event) => {
+				void this.handleTaskDrop(event, task, rowEl);
+			});
+			rowEl.addEventListener('dragend', () => {
+				this.clearTaskDragState();
 			});
 		}
 	}
@@ -502,6 +580,376 @@ export class IOTOTasksCenterView extends ItemView {
 				(project) => project.name === this.selectedProject,
 			),
 		);
+	}
+
+	private renderTaskSearch(container: HTMLElement): void {
+		const searchContainerEl = container.createDiv({
+			cls: 'ioto-tasks-center__task-search',
+		});
+		const searchControlsEl = searchContainerEl.createDiv({
+			cls: 'ioto-tasks-center__task-search-controls',
+		});
+		const searchInputWrapperEl = searchControlsEl.createDiv({
+			cls: 'ioto-tasks-center__task-search-input-wrapper',
+		});
+		const searchInputEl = searchInputWrapperEl.createEl('input', {
+			cls: 'ioto-tasks-center__task-search-input',
+			type: 'search',
+		});
+		searchInputEl.placeholder = '搜索任务文件名';
+		searchInputEl.value = this.taskSearchInputValue;
+		searchInputEl.disabled = !this.canSearchTasks();
+		searchInputEl.addEventListener('input', () => {
+			this.taskSearchInputValue = searchInputEl.value;
+		});
+		searchInputEl.addEventListener('keydown', (event) => {
+			if (event.key !== 'Enter') {
+				return;
+			}
+
+			event.preventDefault();
+			this.applyTaskSearchQuery();
+		});
+		if (this.taskSearchInputValue || this.taskSearchQuery) {
+			const clearButtonEl = searchInputWrapperEl.createEl('button', {
+				cls: 'ioto-tasks-center__task-search-clear-button',
+				text: 'X',
+			});
+			clearButtonEl.type = 'button';
+			clearButtonEl.disabled = !this.canSearchTasks();
+			clearButtonEl.ariaLabel = '清空任务搜索';
+			clearButtonEl.title = '清空搜索';
+			clearButtonEl.addEventListener('click', () => {
+				this.clearTaskSearch();
+			});
+		}
+		const searchButtonEl = searchControlsEl.createEl('button', {
+			cls: 'ioto-tasks-center__task-search-button',
+			text: '搜索',
+		});
+		searchButtonEl.type = 'button';
+		searchButtonEl.disabled = !this.canSearchTasks();
+		searchButtonEl.ariaLabel = '执行任务搜索';
+		searchButtonEl.addEventListener('click', () => {
+			this.applyTaskSearchQuery();
+		});
+	}
+
+	private canSearchTasks(): boolean {
+		return Boolean(
+			this.selectedProject &&
+			!this.isTasksLoading &&
+			this.taskResult &&
+			this.taskResult.status === 'success',
+		);
+	}
+
+	private applyTaskSearchQuery(): void {
+		const nextQuery = this.taskSearchInputValue;
+		if (nextQuery === this.taskSearchQuery) {
+			return;
+		}
+
+		this.taskSearchQuery = nextQuery;
+		this.render();
+	}
+
+	private clearTaskSearch(): void {
+		if (!this.taskSearchInputValue && !this.taskSearchQuery) {
+			return;
+		}
+
+		this.taskSearchInputValue = '';
+		this.taskSearchQuery = '';
+		this.render();
+	}
+
+	private handleTaskDragStart(
+		event: DragEvent,
+		task: TaskFileEntry,
+		rowEl: HTMLButtonElement,
+	): void {
+		if (this.isUpdatingUpTask) {
+			event.preventDefault();
+			return;
+		}
+
+		this.draggingTaskPath = task.path;
+		this.dropTargetTaskPath = null;
+		this.invalidDropTargetTaskPath = null;
+		this.isRemoveUpTaskDropTarget = false;
+		rowEl.addClass('is-dragging');
+		if (event.dataTransfer) {
+			event.dataTransfer.effectAllowed = 'move';
+			event.dataTransfer.setData('text/plain', task.path);
+		}
+	}
+
+	private handleTaskDragOver(
+		event: DragEvent,
+		task: TaskFileEntry,
+		rowEl: HTMLButtonElement,
+	): void {
+		if (!this.draggingTaskPath || this.isUpdatingUpTask) {
+			return;
+		}
+
+		const validation = validateTaskParentDrop(
+			this.tasks,
+			this.draggingTaskPath,
+			task.path,
+		);
+		if (!validation.valid) {
+			this.setCurrentDropTarget(task.path, true, rowEl);
+			return;
+		}
+
+		event.preventDefault();
+		if (event.dataTransfer) {
+			event.dataTransfer.dropEffect = 'move';
+		}
+		this.setCurrentDropTarget(task.path, false, rowEl);
+	}
+
+	private handleTaskDragLeave(
+		event: DragEvent,
+		task: TaskFileEntry,
+		rowEl: HTMLButtonElement,
+	): void {
+		const nextTarget = event.relatedTarget;
+		if (nextTarget instanceof Node && rowEl.contains(nextTarget)) {
+			return;
+		}
+
+		if (
+			this.dropTargetTaskPath === task.path ||
+			this.invalidDropTargetTaskPath === task.path
+		) {
+			rowEl.removeClass('is-drop-target', 'is-drop-invalid');
+			this.dropTargetTaskPath = null;
+			this.invalidDropTargetTaskPath = null;
+		}
+	}
+
+	private async handleTaskDrop(
+		event: DragEvent,
+		targetTask: TaskFileEntry,
+		rowEl: HTMLButtonElement,
+	): Promise<void> {
+		event.preventDefault();
+		const draggedTaskPath = this.draggingTaskPath;
+		if (!draggedTaskPath || this.isUpdatingUpTask) {
+			return;
+		}
+
+		const validation = validateTaskParentDrop(
+			this.tasks,
+			draggedTaskPath,
+			targetTask.path,
+		);
+		if (!validation.valid) {
+			new Notice(getTaskDropValidationMessage(validation.reason));
+			this.clearTaskDragState();
+			return;
+		}
+
+		await this.assignDraggedTaskToParent(
+			draggedTaskPath,
+			targetTask,
+			rowEl,
+		);
+	}
+
+	private setCurrentDropTarget(
+		taskPath: string,
+		invalid: boolean,
+		rowEl: HTMLButtonElement,
+	): void {
+		if (this.dropTargetTaskPath && this.dropTargetTaskPath !== taskPath) {
+			this.findTaskRowByPath(this.dropTargetTaskPath)?.removeClass(
+				'is-drop-target',
+			);
+		}
+
+		if (
+			this.invalidDropTargetTaskPath &&
+			this.invalidDropTargetTaskPath !== taskPath
+		) {
+			this.findTaskRowByPath(this.invalidDropTargetTaskPath)?.removeClass(
+				'is-drop-invalid',
+			);
+		}
+
+		this.dropTargetTaskPath = invalid ? null : taskPath;
+		this.invalidDropTargetTaskPath = invalid ? taskPath : null;
+		rowEl.toggleClass('is-drop-target', !invalid);
+		rowEl.toggleClass('is-drop-invalid', invalid);
+	}
+
+	private clearTaskDragState(): void {
+		for (const rowEl of this.getTaskRowElements()) {
+			rowEl.removeClass(
+				'is-dragging',
+				'is-drop-target',
+				'is-drop-invalid',
+			);
+		}
+		this.contentEl
+			.querySelector('.ioto-tasks-center__remove-up-task-drop-zone')
+			?.removeClass('is-drop-target');
+
+		this.draggingTaskPath = null;
+		this.dropTargetTaskPath = null;
+		this.invalidDropTargetTaskPath = null;
+		this.isRemoveUpTaskDropTarget = false;
+	}
+
+	private getTaskRowElements(): HTMLButtonElement[] {
+		return Array.from(
+			this.contentEl.querySelectorAll<HTMLButtonElement>(
+				'.ioto-tasks-center__task-row',
+			),
+		);
+	}
+
+	private findTaskRowByPath(taskPath: string): HTMLButtonElement | null {
+		for (const rowEl of this.getTaskRowElements()) {
+			if (rowEl.dataset.taskPath === taskPath) {
+				return rowEl;
+			}
+		}
+
+		return null;
+	}
+
+	private async assignDraggedTaskToParent(
+		draggedTaskPath: string,
+		targetTask: TaskFileEntry,
+		rowEl: HTMLButtonElement,
+	): Promise<void> {
+		const draggedFile =
+			this.app.vault.getAbstractFileByPath(draggedTaskPath);
+		if (!(draggedFile instanceof TFile)) {
+			this.clearTaskDragState();
+			new Notice('未找到被拖拽的任务文件。');
+			return;
+		}
+
+		this.isUpdatingUpTask = true;
+		rowEl.removeClass('is-drop-target', 'is-drop-invalid');
+
+		try {
+			await assignUpTaskToFile(this.app, draggedFile, targetTask.title);
+			if (this.selectedProject) {
+				this.isTasksLoading = true;
+				this.render();
+				await this.loadTasks(this.selectedProject);
+			}
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : '更新 UpTask 失败。';
+			new Notice(message);
+		} finally {
+			this.isUpdatingUpTask = false;
+			this.clearTaskDragState();
+			this.render();
+		}
+	}
+
+	private handleRemoveUpTaskDragOver(
+		event: DragEvent,
+		dropZoneEl: HTMLDivElement,
+	): void {
+		if (!this.draggingTaskPath || this.isUpdatingUpTask) {
+			return;
+		}
+
+		event.preventDefault();
+		if (event.dataTransfer) {
+			event.dataTransfer.dropEffect = 'move';
+		}
+		this.clearCurrentTaskDropTargetClasses();
+		this.isRemoveUpTaskDropTarget = true;
+		dropZoneEl.addClass('is-drop-target');
+	}
+
+	private handleRemoveUpTaskDragLeave(
+		event: DragEvent,
+		dropZoneEl: HTMLDivElement,
+	): void {
+		const nextTarget = event.relatedTarget;
+		if (nextTarget instanceof Node && dropZoneEl.contains(nextTarget)) {
+			return;
+		}
+
+		this.isRemoveUpTaskDropTarget = false;
+		dropZoneEl.removeClass('is-drop-target');
+	}
+
+	private async handleRemoveUpTaskDrop(
+		event: DragEvent,
+		dropZoneEl: HTMLDivElement,
+	): Promise<void> {
+		event.preventDefault();
+		const draggedTaskPath = this.draggingTaskPath;
+		if (!draggedTaskPath || this.isUpdatingUpTask) {
+			return;
+		}
+
+		this.isRemoveUpTaskDropTarget = false;
+		dropZoneEl.removeClass('is-drop-target');
+		await this.removeDraggedTaskParent(draggedTaskPath);
+	}
+
+	private clearCurrentTaskDropTargetClasses(): void {
+		if (this.dropTargetTaskPath) {
+			this.findTaskRowByPath(this.dropTargetTaskPath)?.removeClass(
+				'is-drop-target',
+			);
+			this.dropTargetTaskPath = null;
+		}
+
+		if (this.invalidDropTargetTaskPath) {
+			this.findTaskRowByPath(this.invalidDropTargetTaskPath)?.removeClass(
+				'is-drop-invalid',
+			);
+			this.invalidDropTargetTaskPath = null;
+		}
+
+		this.contentEl
+			.querySelector('.ioto-tasks-center__remove-up-task-drop-zone')
+			?.removeClass('is-drop-target');
+		this.isRemoveUpTaskDropTarget = false;
+	}
+
+	private async removeDraggedTaskParent(
+		draggedTaskPath: string,
+	): Promise<void> {
+		const draggedFile =
+			this.app.vault.getAbstractFileByPath(draggedTaskPath);
+		if (!(draggedFile instanceof TFile)) {
+			this.clearTaskDragState();
+			new Notice('未找到被拖拽的任务文件。');
+			return;
+		}
+
+		this.isUpdatingUpTask = true;
+		try {
+			await removeUpTaskFromFile(this.app, draggedFile);
+			if (this.selectedProject) {
+				this.isTasksLoading = true;
+				this.render();
+				await this.loadTasks(this.selectedProject);
+			}
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : '移除 UpTask 失败。';
+			new Notice(message);
+		} finally {
+			this.isUpdatingUpTask = false;
+			this.clearTaskDragState();
+			this.render();
+		}
 	}
 
 	private getAddTaskButtonLabel(): string {
@@ -709,37 +1157,28 @@ export class IOTOTasksCenterView extends ItemView {
 		}
 	}
 
-	private getVisibleTasks(): TaskFileEntry[] {
+	private getTasksForActiveTab(): TaskFileEntry[] {
 		return this.tasks.filter((task) =>
 			this.matchesTaskFilterTab(task, this.activeTaskFilterTab),
 		);
 	}
 
+	private getVisibleTasks(): TaskFileEntry[] {
+		return filterTasksBySearchQuery(
+			this.getTasksForActiveTab(),
+			this.taskSearchQuery,
+		);
+	}
+
 	private getTaskFilterCounts(): Record<TaskFilterTab, number> {
-		return {
-			incomplete: this.tasks.filter((task) =>
-				this.matchesTaskFilterTab(task, 'incomplete'),
-			).length,
-			completed: this.tasks.filter((task) =>
-				this.matchesTaskFilterTab(task, 'completed'),
-			).length,
-			all: this.tasks.length,
-		};
+		return getTaskFilterCounts(this.tasks);
 	}
 
 	private matchesTaskFilterTab(
 		task: TaskFileEntry,
 		tab: TaskFilterTab,
 	): boolean {
-		if (tab === 'all') {
-			return true;
-		}
-
-		if (tab === 'completed') {
-			return task.status.key === 'completed';
-		}
-
-		return isIncompleteTaskStatus(task.status.key);
+		return matchesTaskFilterTab(task, tab);
 	}
 
 	private renderTaskFilterEmptyState(container: HTMLElement): void {
@@ -750,6 +1189,16 @@ export class IOTOTasksCenterView extends ItemView {
 			container,
 			'当前筛选下暂无任务',
 			`${tabLabel} 标签下没有可显示的任务文件。`,
+			'is-empty',
+		);
+	}
+
+	private renderTaskSearchEmptyState(container: HTMLElement): void {
+		const keyword = this.taskSearchQuery.trim();
+		this.renderState(
+			container,
+			'未找到匹配任务',
+			`当前项目下没有文件名匹配“${keyword}”的任务文件。`,
 			'is-empty',
 		);
 	}
@@ -953,12 +1402,6 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 }
 
-const TASK_FILTER_TABS: Array<{ key: TaskFilterTab; label: string }> = [
-	{ key: 'incomplete', label: '未完成' },
-	{ key: 'completed', label: '已完成' },
-	{ key: 'all', label: '全部' },
-];
-
 const TASK_CREATION_OPTIONS: Array<{ key: TaskCreationType; label: string }> = [
 	{ key: 'date', label: '日期任务' },
 	{ key: 'normal', label: '普通任务' },
@@ -986,6 +1429,14 @@ function parseViewState(state: unknown): IOTOTasksCenterViewState {
 			typeof candidate.selectedProject === 'string'
 				? candidate.selectedProject
 				: undefined,
+		taskSearchQuery:
+			typeof candidate.taskSearchQuery === 'string'
+				? candidate.taskSearchQuery
+				: undefined,
+		taskSearchInputValue:
+			typeof candidate.taskSearchInputValue === 'string'
+				? candidate.taskSearchInputValue
+				: undefined,
 		openedTaskPath:
 			typeof candidate.openedTaskPath === 'string'
 				? candidate.openedTaskPath
@@ -1000,12 +1451,21 @@ function parseViewState(state: unknown): IOTOTasksCenterViewState {
 	};
 }
 
-function isTaskFilterTab(value: unknown): value is TaskFilterTab {
-	return value === 'incomplete' || value === 'completed' || value === 'all';
-}
-
 function isIncompleteTaskStatus(
 	statusKey: TaskFileEntry['status']['key'],
 ): boolean {
 	return statusKey === 'todo' || statusKey === 'in-progress';
+}
+
+function getTaskDropValidationMessage(
+	reason: 'self' | 'descendant' | 'missing',
+): string {
+	switch (reason) {
+		case 'self':
+			return '不能将任务拖拽到自身上。';
+		case 'descendant':
+			return '不能把父任务拖到自己的子任务下。';
+		case 'missing':
+			return '拖拽目标已不可用，请重试。';
+	}
 }

@@ -52,6 +52,21 @@ Quick starting guide for new plugin devs:
 - `npm i` to install dependencies.
 - `npm run dev` to start compilation in watch mode.
 
+## Task List Search
+
+- The task center task list supports searching by task file name.
+- Search only applies to the currently selected project's task list.
+- Search works together with the `今天`、`未完成`、`已完成`、`全部` tabs.
+- Search only filters the current result set and does not change the original task order.
+- The `今天` tab shows tasks in the current project whose creation date is today.
+
+## UpTask Drag And Drop
+
+- In the task center, drag one task row onto another task row to set the target task as the parent task.
+- This interaction automatically writes the target task's wikilink into the dragged task's `UpTask` property.
+- After the drop succeeds, the task list reloads immediately and updates the hierarchy display without reloading Obsidian.
+- If you drag a task to the “remove parent task” drop zone, the task's `UpTask` property will be removed and the task will return to the top level.
+
 ## Manually installing the plugin
 
 - Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.

@@ -90,7 +90,7 @@ export async function listProjectTaskFiles(
 				ctime: file.stat.ctime,
 				size: file.stat.size,
 				status: await getTaskFileStatus(app, file),
-				upTaskTitles: getUpTaskTitles(app, file),
+				upTaskTitles: await getUpTaskTitles(app, file),
 			})),
 		)
 	).sort((left, right) => {
@@ -119,9 +119,18 @@ export async function listProjectTaskFiles(
 	};
 }
 
-function getUpTaskTitles(app: App, file: TFile): string[] {
-	const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
-	return parseUpTaskFrontmatterValue(frontmatter?.UpTask);
+async function getUpTaskTitles(app: App, file: TFile): Promise<string[]> {
+	try {
+		const content = await app.vault.cachedRead(file);
+		return resolveUpTaskTitlesFromSources({
+			content,
+			metadataValue:
+				app.metadataCache.getFileCache(file)?.frontmatter?.UpTask,
+		});
+	} catch {
+		const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
+		return parseUpTaskFrontmatterValue(frontmatter?.UpTask);
+	}
 }
 
 export function parseUpTaskFrontmatterValue(value: unknown): string[] {
@@ -140,6 +149,22 @@ export function parseUpTaskFrontmatterValue(value: unknown): string[] {
 	return [];
 }
 
+export function resolveUpTaskTitlesFromSources(options: {
+	content?: string | null;
+	metadataValue?: unknown;
+}): string[] {
+	if (typeof options.content === 'string') {
+		return getUpTaskTitlesFromContent(options.content);
+	}
+
+	return parseUpTaskFrontmatterValue(options.metadataValue);
+}
+
+export function getUpTaskTitlesFromContent(content: string): string[] {
+	const upTaskValue = extractUpTaskFrontmatterValue(content);
+	return parseUpTaskFrontmatterValue(upTaskValue);
+}
+
 function normalizeUpTaskTitle(value: string): string {
 	const trimmedValue = value.trim();
 	const wikilinkMatch = trimmedValue.match(/^\[\[([\s\S]*?)\]\]$/);
@@ -148,6 +173,82 @@ function normalizeUpTaskTitle(value: string): string {
 		: trimmedValue;
 
 	return normalizedValue;
+}
+
+function extractUpTaskFrontmatterValue(
+	content: string,
+): string | string[] | undefined {
+	const frontmatterBody = extractFrontmatterBody(content);
+	if (!frontmatterBody) {
+		return undefined;
+	}
+
+	const lines = frontmatterBody.split(/\r?\n/);
+	for (let index = 0; index < lines.length; index += 1) {
+		const line = lines[index] ?? '';
+		const match = line.match(/^\s*UpTask:\s*(.*)$/);
+		if (!match) {
+			continue;
+		}
+
+		const inlineValue = stripMatchingQuotes((match[1] ?? '').trim());
+		if (inlineValue) {
+			return inlineValue;
+		}
+
+		const listValues: string[] = [];
+		for (
+			let nextIndex = index + 1;
+			nextIndex < lines.length;
+			nextIndex += 1
+		) {
+			const nextLine = lines[nextIndex] ?? '';
+			if (!nextLine.trim()) {
+				if (listValues.length > 0) {
+					break;
+				}
+				continue;
+			}
+
+			const listItemMatch = nextLine.match(/^\s*-\s*(.+)\s*$/);
+			if (listItemMatch) {
+				listValues.push(
+					stripMatchingQuotes((listItemMatch[1] ?? '').trim()),
+				);
+				continue;
+			}
+
+			break;
+		}
+
+		return listValues;
+	}
+
+	return undefined;
+}
+
+function extractFrontmatterBody(content: string): string | null {
+	const frontmatterMatch = content.match(
+		/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/,
+	);
+	return frontmatterMatch?.[1] ?? null;
+}
+
+function stripMatchingQuotes(value: string): string {
+	if (value.length < 2) {
+		return value;
+	}
+
+	const firstChar = value[0];
+	const lastChar = value[value.length - 1];
+	if (
+		(firstChar === '"' && lastChar === '"') ||
+		(firstChar === "'" && lastChar === "'")
+	) {
+		return value.slice(1, -1).trim();
+	}
+
+	return value;
 }
 
 async function getTaskFileStatus(

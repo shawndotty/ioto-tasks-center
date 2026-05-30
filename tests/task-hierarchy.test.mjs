@@ -3,7 +3,11 @@ import test from 'node:test';
 import { createJiti } from 'jiti';
 
 const jiti = createJiti(import.meta.url, { moduleCache: false });
-const { parseUpTaskFrontmatterValue } = await jiti.import(
+const {
+	getUpTaskTitlesFromContent,
+	parseUpTaskFrontmatterValue,
+	resolveUpTaskTitlesFromSources,
+} = await jiti.import(
 	'../src/tasks-center/data.ts',
 );
 const { buildVisibleTaskHierarchy } = await jiti.import(
@@ -49,6 +53,29 @@ test('UpTask 列表中混合普通标题与 wikilink 时会统一解析', () => 
 	assert.deepEqual(
 		parseUpTaskFrontmatterValue(['父任务', ' [[第二父任务]] ', '  ']),
 		['父任务', '第二父任务'],
+	);
+});
+
+test('从正文 frontmatter 中可读取单值 UpTask', () => {
+	const content = '---\nUpTask: "[[父任务]]"\nProject:\n  - "项目A"\n---\n\n正文内容';
+	assert.deepEqual(getUpTaskTitlesFromContent(content), ['父任务']);
+});
+
+test('从正文 frontmatter 中可读取 List 形式 UpTask', () => {
+	const content =
+		'---\nProject:\n  - "项目A"\nUpTask:\n  - "[[父任务]]"\n  - 第二父任务\n---\n\n正文内容';
+	assert.deepEqual(getUpTaskTitlesFromContent(content), ['父任务', '第二父任务']);
+});
+
+test('正文内容中的 UpTask 会优先于旧 metadata cache 值', () => {
+	const content =
+		'---\nUpTask:\n  - "[[新父任务]]"\n---\n\n正文内容';
+	assert.deepEqual(
+		resolveUpTaskTitlesFromSources({
+			content,
+			metadataValue: '[[旧父任务]]',
+		}),
+		['新父任务'],
 	);
 });
 

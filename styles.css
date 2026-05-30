@@ -178,6 +178,118 @@
 	margin-bottom: 16px;
 }
 
+.ioto-tasks-center__task-search {
+	margin-bottom: 12px;
+}
+
+.ioto-tasks-center__task-search-controls {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.ioto-tasks-center__task-search-input-wrapper {
+	position: relative;
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.ioto-tasks-center__task-search-input {
+	width: 100%;
+	padding: 8px 12px;
+	padding-right: 36px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	transition:
+		border-color 120ms ease,
+		box-shadow 120ms ease,
+		background-color 120ms ease;
+}
+
+.ioto-tasks-center__task-search-input::placeholder {
+	color: var(--text-faint);
+}
+
+.ioto-tasks-center__task-search-input:hover:not(:disabled) {
+	border-color: var(--interactive-accent);
+}
+
+.ioto-tasks-center__task-search-input:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px
+		color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+}
+
+.ioto-tasks-center__task-search-input:disabled {
+	opacity: 0.65;
+	cursor: not-allowed;
+	background: var(--background-secondary);
+}
+
+.ioto-tasks-center__task-search-clear-button {
+	position: absolute;
+	top: 50%;
+	right: 8px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	padding: 0;
+	border: 0;
+	border-radius: 999px;
+	background: var(--background-modifier-hover);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-weight: 700;
+	line-height: 1;
+	transform: translateY(-50%);
+	cursor: pointer;
+	transition:
+		background-color 120ms ease,
+		color 120ms ease;
+}
+
+.ioto-tasks-center__task-search-clear-button:hover:not(:disabled) {
+	background: var(--background-modifier-border);
+	color: var(--text-normal);
+}
+
+.ioto-tasks-center__task-search-clear-button:disabled {
+	opacity: 0.65;
+	cursor: not-allowed;
+}
+
+.ioto-tasks-center__task-search-button {
+	flex: 0 0 auto;
+	padding: 8px 14px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	font-weight: 600;
+	cursor: pointer;
+	transition:
+		background-color 120ms ease,
+		border-color 120ms ease,
+		color 120ms ease;
+}
+
+.ioto-tasks-center__task-search-button:hover:not(:disabled) {
+	border-color: var(--interactive-accent);
+	background: var(--background-modifier-hover);
+}
+
+.ioto-tasks-center__task-search-button:disabled {
+	opacity: 0.65;
+	cursor: not-allowed;
+}
+
 .ioto-tasks-center__project-list,
 .ioto-tasks-center__task-list {
 	display: flex;
@@ -314,6 +426,72 @@ button:not(.clickable-icon).ioto-tasks-center__task-row:hover {
 		var(--interactive-accent) 12%,
 		var(--background-primary)
 	);
+}
+
+.ioto-tasks-center__task-row.is-dragging {
+	opacity: 0.55;
+	cursor: grabbing;
+}
+
+.ioto-tasks-center__task-row.is-drop-target {
+	background: color-mix(
+		in srgb,
+		var(--interactive-accent) 22%,
+		var(--background-primary)
+	);
+	border-color: color-mix(
+		in srgb,
+		var(--interactive-accent) 60%,
+		var(--background-modifier-border)
+	);
+	box-shadow:
+		inset 3px 0 0 var(--interactive-accent),
+		inset 0 0 0 1px color-mix(
+			in srgb,
+			var(--interactive-accent) 45%,
+			var(--background-modifier-border)
+		);
+}
+
+.ioto-tasks-center__task-row.is-drop-target .ioto-tasks-center__task-title {
+	color: var(--text-normal);
+}
+
+.ioto-tasks-center__remove-up-task-drop-zone {
+	margin-bottom: 10px;
+	padding: 10px 12px;
+	border: 1px dashed var(--background-modifier-border);
+	border-radius: 10px;
+	background: var(--background-primary-alt);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	text-align: center;
+	transition:
+		background-color 120ms ease,
+		border-color 120ms ease,
+		color 120ms ease,
+		box-shadow 120ms ease;
+}
+
+.ioto-tasks-center__remove-up-task-drop-zone.is-drop-target {
+	background: color-mix(
+		in srgb,
+		var(--interactive-accent) 16%,
+		var(--background-primary)
+	);
+	border-color: var(--interactive-accent);
+	color: var(--text-normal);
+	box-shadow: inset 0 0 0 1px
+		color-mix(
+			in srgb,
+			var(--interactive-accent) 45%,
+			var(--background-modifier-border)
+		);
+}
+
+.ioto-tasks-center__task-row.is-drop-invalid {
+	background: color-mix(in srgb, var(--color-red) 10%, var(--background-primary));
+	box-shadow: inset 0 0 0 1px var(--color-red);
 }
 
 .ioto-tasks-center__task-row.is-opening {
