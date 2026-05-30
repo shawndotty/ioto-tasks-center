@@ -105,7 +105,7 @@ export class IOTOTasksCenterView extends ItemView {
 
 		this.projectResult = result;
 		this.projects = result.projects;
-		this.projectIncompleteCounts = this.buildProjectIncompleteCounts(
+		this.projectIncompleteCounts = await this.buildProjectIncompleteCounts(
 			result.projects,
 		);
 		this.isProjectsLoading = false;
@@ -148,7 +148,7 @@ export class IOTOTasksCenterView extends ItemView {
 
 	private async loadTasks(projectName: string): Promise<void> {
 		const token = ++this.refreshToken;
-		const result = listProjectTaskFiles(this.app, projectName);
+		const result = await listProjectTaskFiles(this.app, projectName);
 
 		if (token !== this.refreshToken) {
 			return;
@@ -446,7 +446,7 @@ export class IOTOTasksCenterView extends ItemView {
 			return task.status.key === 'completed';
 		}
 
-		return task.status.key !== 'completed';
+		return isIncompleteTaskStatus(task.status.key);
 	}
 
 	private renderTaskFilterEmptyState(container: HTMLElement): void {
@@ -461,20 +461,23 @@ export class IOTOTasksCenterView extends ItemView {
 		);
 	}
 
-	private buildProjectIncompleteCounts(
+	private async buildProjectIncompleteCounts(
 		projects: ProjectFolderEntry[],
-	): Map<string, number> {
-		const counts = new Map<string, number>();
+	): Promise<Map<string, number>> {
+		const entries = await Promise.all(
+			projects.map(async (project) => {
+				const result = await listProjectTaskFiles(
+					this.app,
+					project.name,
+				);
+				const incompleteCount = result.tasks.filter((task) =>
+					isIncompleteTaskStatus(task.status.key),
+				).length;
+				return [project.name, incompleteCount] as const;
+			}),
+		);
 
-		for (const project of projects) {
-			const result = listProjectTaskFiles(this.app, project.name);
-			const incompleteCount = result.tasks.filter(
-				(task) => task.status.key !== 'completed',
-			).length;
-			counts.set(project.name, incompleteCount);
-		}
-
-		return counts;
+		return new Map(entries);
 	}
 
 	private renderState(
@@ -659,4 +662,10 @@ function parseViewState(state: unknown): IOTOTasksCenterViewState {
 
 function isTaskFilterTab(value: unknown): value is TaskFilterTab {
 	return value === 'incomplete' || value === 'completed' || value === 'all';
+}
+
+function isIncompleteTaskStatus(
+	statusKey: TaskFileEntry['status']['key'],
+): boolean {
+	return statusKey === 'todo' || statusKey === 'in-progress';
 }
