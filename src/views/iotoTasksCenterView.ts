@@ -29,6 +29,7 @@ import {
 	resolveActiveTaskPath,
 	shouldSkipOpeningTask,
 } from './task-preview-state';
+import { buildVisibleTaskHierarchy } from './task-hierarchy';
 
 export const IOTO_TASKS_CENTER_VIEW_TYPE = 'IOTOTasksCenter';
 type TaskFilterTab = 'incomplete' | 'completed' | 'all';
@@ -443,14 +444,23 @@ export class IOTOTasksCenterView extends ItemView {
 			this.renderTaskFilterEmptyState(listEl);
 			return;
 		}
+		const hierarchicalVisibleTasks =
+			buildVisibleTaskHierarchy(visibleTasks);
 
 		const activeTaskPath = this.getActiveTaskPath();
 
-		for (const task of visibleTasks) {
+		for (const task of hierarchicalVisibleTasks) {
 			const rowEl = listEl.createEl('button', {
 				cls: 'ioto-tasks-center__task-row',
 			});
 			rowEl.type = 'button';
+			rowEl.style.setProperty(
+				'--ioto-task-indent-level',
+				`${task.indentLevel ?? 0}`,
+			);
+			if ((task.indentLevel ?? 0) > 0) {
+				rowEl.addClass('is-subtask');
+			}
 
 			if (task.path === activeTaskPath) {
 				rowEl.addClass('is-active');
@@ -462,7 +472,7 @@ export class IOTOTasksCenterView extends ItemView {
 
 			rowEl.createDiv({
 				cls: 'ioto-tasks-center__task-title',
-				text: task.basename,
+				text: task.title,
 			});
 			const statusEl = rowEl.createSpan({
 				cls: `ioto-tasks-center__task-status ioto-tasks-center__task-status--${task.status.key}`,

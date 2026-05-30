@@ -84,11 +84,13 @@ export async function listProjectTaskFiles(
 			markdownFiles.map(async (file) => ({
 				name: file.name,
 				basename: file.basename,
+				title: file.basename,
 				path: file.path,
 				mtime: file.stat.mtime,
 				ctime: file.stat.ctime,
 				size: file.stat.size,
 				status: await getTaskFileStatus(app, file),
+				upTaskTitles: getUpTaskTitles(app, file),
 			})),
 		)
 	).sort((left, right) => {
@@ -115,6 +117,37 @@ export async function listProjectTaskFiles(
 		projectPath,
 		tasks,
 	};
+}
+
+function getUpTaskTitles(app: App, file: TFile): string[] {
+	const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
+	return parseUpTaskFrontmatterValue(frontmatter?.UpTask);
+}
+
+export function parseUpTaskFrontmatterValue(value: unknown): string[] {
+	if (typeof value === 'string') {
+		const normalized = normalizeUpTaskTitle(value);
+		return normalized ? [normalized] : [];
+	}
+
+	if (Array.isArray(value)) {
+		return value
+			.filter((item): item is string => typeof item === 'string')
+			.map((item) => normalizeUpTaskTitle(item))
+			.filter((item) => item.length > 0);
+	}
+
+	return [];
+}
+
+function normalizeUpTaskTitle(value: string): string {
+	const trimmedValue = value.trim();
+	const wikilinkMatch = trimmedValue.match(/^\[\[([\s\S]*?)\]\]$/);
+	const normalizedValue = wikilinkMatch
+		? (wikilinkMatch[1] ?? '').trim()
+		: trimmedValue;
+
+	return normalizedValue;
 }
 
 async function getTaskFileStatus(

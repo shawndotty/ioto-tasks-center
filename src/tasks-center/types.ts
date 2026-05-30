@@ -20,11 +20,14 @@ export interface ProjectFolderEntry {
 export interface TaskFileEntry {
 	name: string;
 	basename: string;
+	title: string;
 	path: string;
 	mtime: number;
 	ctime: number;
 	size: number;
 	status: TaskFileStatus;
+	upTaskTitles: string[];
+	indentLevel?: number;
 }
 
 export interface TaskFileStatus {

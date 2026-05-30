@@ -272,7 +272,12 @@
 	gap: 16px;
 	align-items: center;
 	width: 100%;
-	padding: 20px 14px;
+	padding-top: 20px;
+	padding-right: 14px;
+	padding-bottom: 20px;
+	padding-left: calc(
+		14px + (var(--ioto-task-indent-level, 0) * 20px)
+	);
 	border: 0;
 	border-bottom: 1px solid var(--background-modifier-border);
 	border-radius: 0;
@@ -313,6 +318,10 @@ button:not(.clickable-icon).ioto-tasks-center__task-row:hover {
 
 .ioto-tasks-center__task-row.is-opening {
 	opacity: 0.72;
+}
+
+.ioto-tasks-center__task-row.is-subtask .ioto-tasks-center__task-title {
+	color: var(--text-normal);
 }
 
 .ioto-tasks-center__task-title {
