@@ -64,6 +64,7 @@ export class IOTOTasksCenterView extends ItemView {
 	private readonly getProjectListSortMode: () => ProjectListSortMode;
 	private readonly getHiddenProjectNames: () => string[];
 	private readonly getTaskTemplatePath: () => string;
+	private readonly getDateTaskDateFormat: () => string;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -71,6 +72,7 @@ export class IOTOTasksCenterView extends ItemView {
 		getProjectListSortMode: () => ProjectListSortMode,
 		getHiddenProjectNames: () => string[],
 		getTaskTemplatePath: () => string,
+		getDateTaskDateFormat: () => string,
 	) {
 		super(leaf);
 		this.navigation = true;
@@ -78,6 +80,7 @@ export class IOTOTasksCenterView extends ItemView {
 		this.getProjectListSortMode = getProjectListSortMode;
 		this.getHiddenProjectNames = getHiddenProjectNames;
 		this.getTaskTemplatePath = getTaskTemplatePath;
+		this.getDateTaskDateFormat = getDateTaskDateFormat;
 	}
 
 	getViewType(): string {
@@ -650,6 +653,7 @@ export class IOTOTasksCenterView extends ItemView {
 				type,
 				customName,
 				templatePath: this.getTaskTemplatePath(),
+				dateTaskDateFormat: this.getDateTaskDateFormat(),
 				targetLeaf: previewLeaf,
 				sourceLeaf: this.leaf,
 			});

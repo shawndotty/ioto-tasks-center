@@ -1,5 +1,10 @@
 import { App, Notice, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
 
+import {
+	formatDateByPattern,
+	normalizeDateTaskDateFormat,
+} from './date-task-format';
+
 export type TaskCreationType = 'date' | 'plan' | 'topic' | 'normal';
 
 export interface CreateTaskFileOptions {
@@ -9,6 +14,7 @@ export interface CreateTaskFileOptions {
 	type: TaskCreationType;
 	customName?: string;
 	templatePath: string;
+	dateTaskDateFormat: string;
 	targetLeaf?: WorkspaceLeaf | null;
 	sourceLeaf?: WorkspaceLeaf | null;
 }
@@ -36,10 +42,11 @@ export function buildTaskFileName(
 	projectName: string,
 	type: TaskCreationType,
 	date: Date,
+	dateTaskDateFormat: string,
 	customName?: string,
 ): string {
 	if (type === 'date') {
-		return `${projectName}-${formatDate(date)}.md`;
+		return `${projectName}-${formatDate(date, dateTaskDateFormat)}.md`;
 	}
 
 	const normalizedName = normalizeCustomTaskName(customName ?? '');
@@ -171,6 +178,7 @@ export async function createTaskFile(
 		type,
 		customName,
 		templatePath,
+		dateTaskDateFormat,
 		targetLeaf,
 		sourceLeaf,
 	} = options;
@@ -181,6 +189,7 @@ export async function createTaskFile(
 		projectName,
 		type,
 		new Date(),
+		dateTaskDateFormat,
 		normalizedCustomName ?? undefined,
 	);
 	const targetPath = resolveTaskTargetPath(
@@ -389,11 +398,13 @@ async function applyTaskPropertiesToFile(
 	}
 }
 
-function formatDate(date: Date): string {
-	const year = date.getFullYear();
-	const month = `${date.getMonth() + 1}`.padStart(2, '0');
-	const day = `${date.getDate()}`.padStart(2, '0');
-	return `${year}-${month}-${day}`;
+export function resolveValidDateTaskDateFormat(format: string): string {
+	return normalizeDateTaskDateFormat(format);
+}
+
+function formatDate(date: Date, dateTaskDateFormat: string): string {
+	const validFormat = resolveValidDateTaskDateFormat(dateTaskDateFormat);
+	return formatDateByPattern(date, validFormat);
 }
 
 function normalizeVaultPath(path: string): string {

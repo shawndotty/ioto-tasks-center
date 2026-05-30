@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import IOTOTasksCenter from './main';
 import { listProjectFolders, listProjectTaskFiles } from './tasks-center/data';
+import { DEFAULT_DATE_TASK_DATE_FORMAT } from './tasks-center/date-task-format';
 import { sortProjectEntries } from './tasks-center/project-sort';
 import type { ProjectFolderEntry } from './tasks-center/types';
 import {
@@ -15,6 +16,7 @@ export interface IOTOTasksCenterSettings {
 	projectListSortMode: ProjectListSortMode;
 	hiddenProjectNames: string[];
 	taskTemplatePath: string;
+	dateTaskDateFormat: string;
 }
 
 export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
@@ -22,6 +24,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	projectListSortMode: 'incomplete-count',
 	hiddenProjectNames: [],
 	taskTemplatePath: '',
+	dateTaskDateFormat: DEFAULT_DATE_TASK_DATE_FORMAT,
 };
 
 export const PROJECT_LIST_SORT_MODE_OPTIONS: Record<
@@ -109,6 +112,21 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.taskTemplatePath)
 					.onChange(async (value) => {
 						await this.plugin.updateTaskTemplatePath(value);
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName('日期任务日期格式')
+			.setDesc(
+				`支持 Moment/Day.js 风格格式，例如 ${DEFAULT_DATE_TASK_DATE_FORMAT}、YYYY年MM月DD日。若填写无效格式，会自动回退为默认值。`,
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder(DEFAULT_DATE_TASK_DATE_FORMAT)
+					.setValue(this.plugin.settings.dateTaskDateFormat)
+					.onChange(async (value) => {
+						await this.plugin.updateDateTaskDateFormat(value);
+						this.display();
 					}),
 			);
 

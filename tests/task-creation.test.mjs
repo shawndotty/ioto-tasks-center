@@ -10,6 +10,7 @@ const {
 	getTemplaterCommandId,
 	normalizeCustomTaskName,
 	removeListProperty,
+	resolveValidDateTaskDateFormat,
 	resolveTaskTargetPath,
 	upsertListProperty,
 	upsertProjectProperty,
@@ -17,10 +18,26 @@ const {
 
 const FIXED_LOCAL_DATE = new Date(2026, 4, 30, 12, 0, 0);
 
-test('日期任务命名符合 项目名-YYYY-MM-DD.md 规则', () => {
-	const fileName = buildTaskFileName('项目A', 'date', FIXED_LOCAL_DATE);
+test('默认日期格式仍生成 项目名-YYYY-MM-DD.md', () => {
+	const fileName = buildTaskFileName(
+		'项目A',
+		'date',
+		FIXED_LOCAL_DATE,
+		'YYYY-MM-DD',
+	);
 
 	assert.equal(fileName, '项目A-2026-05-30.md');
+});
+
+test('自定义日期格式会生成对应的日期任务文件名', () => {
+	const fileName = buildTaskFileName(
+		'项目A',
+		'date',
+		FIXED_LOCAL_DATE,
+		'YYYY年MM月DD日',
+	);
+
+	assert.equal(fileName, '项目A-2026年05月30日.md');
 });
 
 test('计划任务命名符合 项目名-计划-名称.md 规则', () => {
@@ -28,6 +45,7 @@ test('计划任务命名符合 项目名-计划-名称.md 规则', () => {
 		'项目A',
 		'plan',
 		FIXED_LOCAL_DATE,
+		'YYYY-MM-DD',
 		'阶段一',
 	);
 
@@ -39,6 +57,7 @@ test('主题任务命名符合 项目名-主题-名称.md 规则', () => {
 		'项目A',
 		'topic',
 		FIXED_LOCAL_DATE,
+		'YYYY-MM-DD',
 		'发布复盘',
 	);
 
@@ -50,6 +69,7 @@ test('普通任务命名符合 用户输入名称.md 规则', () => {
 		'项目A',
 		'normal',
 		FIXED_LOCAL_DATE,
+		'YYYY-MM-DD',
 		'发布复盘',
 	);
 
@@ -58,18 +78,50 @@ test('普通任务命名符合 用户输入名称.md 规则', () => {
 
 test('计划和主题任务名称为空时会抛出错误', () => {
 	assert.throws(
-		() => buildTaskFileName('项目A', 'plan', FIXED_LOCAL_DATE, '   '),
+		() =>
+			buildTaskFileName(
+				'项目A',
+				'plan',
+				FIXED_LOCAL_DATE,
+				'YYYY-MM-DD',
+				'   ',
+			),
 		/任务名称不能为空/,
 	);
 
 	assert.throws(
-		() => buildTaskFileName('项目A', 'topic', FIXED_LOCAL_DATE, ''),
+		() =>
+			buildTaskFileName(
+				'项目A',
+				'topic',
+				FIXED_LOCAL_DATE,
+				'YYYY-MM-DD',
+				'',
+			),
 		/任务名称不能为空/,
 	);
 
 	assert.throws(
-		() => buildTaskFileName('项目A', 'normal', FIXED_LOCAL_DATE, '   '),
+		() =>
+			buildTaskFileName(
+				'项目A',
+				'normal',
+				FIXED_LOCAL_DATE,
+				'YYYY-MM-DD',
+				'   ',
+			),
 		/任务名称不能为空/,
+	);
+});
+
+test('空白日期格式会回退到默认值', () => {
+	assert.equal(resolveValidDateTaskDateFormat('   '), 'YYYY-MM-DD');
+});
+
+test('无效日期格式会回退到默认值', () => {
+	assert.equal(
+		resolveValidDateTaskDateFormat('[invalid-format]'),
+		'YYYY-MM-DD',
 	);
 });
 

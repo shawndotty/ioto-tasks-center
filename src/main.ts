@@ -1,4 +1,5 @@
 import { Plugin, TAbstractFile, WorkspaceLeaf } from 'obsidian';
+import { normalizeDateTaskDateFormat } from './tasks-center/date-task-format';
 import {
 	DEFAULT_SETTINGS,
 	IOTOTasksCenterSettingTab,
@@ -25,6 +26,7 @@ export default class IOTOTasksCenter extends Plugin {
 					() => this.settings.projectListSortMode,
 					() => this.settings.hiddenProjectNames,
 					() => this.settings.taskTemplatePath,
+					() => this.settings.dateTaskDateFormat,
 				),
 		);
 
@@ -46,6 +48,9 @@ export default class IOTOTasksCenter extends Plugin {
 		);
 		this.settings.tasksRootPath = normalizeConfiguredTasksRootPath(
 			this.settings.tasksRootPath,
+		);
+		this.settings.dateTaskDateFormat = normalizeDateTaskDateFormat(
+			this.settings.dateTaskDateFormat,
 		);
 	}
 
@@ -112,6 +117,17 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.taskTemplatePath = nextPath;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateDateTaskDateFormat(format: string): Promise<void> {
+		const nextFormat = normalizeDateTaskDateFormat(format);
+		if (this.settings.dateTaskDateFormat === nextFormat) {
+			return;
+		}
+
+		this.settings.dateTaskDateFormat = nextFormat;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}
