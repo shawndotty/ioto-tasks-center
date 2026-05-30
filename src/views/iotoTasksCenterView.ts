@@ -26,6 +26,10 @@ import {
 	TaskFileListResult,
 } from '../tasks-center/types';
 import { TaskNameModal } from '../ui/taskNameModal';
+import {
+	resolveActiveTaskPath,
+	shouldSkipOpeningTask,
+} from './task-preview-state';
 
 export const IOTO_TASKS_CENTER_VIEW_TYPE = 'IOTOTasksCenter';
 type TaskFilterTab = 'incomplete' | 'completed' | 'all';
@@ -432,13 +436,15 @@ export class IOTOTasksCenterView extends ItemView {
 			return;
 		}
 
+		const activeTaskPath = this.getActiveTaskPath();
+
 		for (const task of visibleTasks) {
 			const rowEl = listEl.createEl('button', {
 				cls: 'ioto-tasks-center__task-row',
 			});
 			rowEl.type = 'button';
 
-			if (task.path === this.openedTaskPath) {
+			if (task.path === activeTaskPath) {
 				rowEl.addClass('is-active');
 			}
 
@@ -763,10 +769,17 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private async openTaskFile(task: TaskFileEntry): Promise<void> {
+		const previewLeafAvailable = Boolean(
+			this.previewLeaf && this.isLeafAvailable(this.previewLeaf),
+		);
+		const previewedFilePath = this.getPreviewLeafFilePath();
 		if (
-			task.path === this.openedTaskPath &&
-			this.previewLeaf &&
-			this.isLeafAvailable(this.previewLeaf)
+			shouldSkipOpeningTask({
+				targetTaskPath: task.path,
+				openedTaskPath: this.openedTaskPath,
+				previewLeafAvailable,
+				previewedFilePath,
+			})
 		) {
 			return;
 		}
@@ -800,6 +813,25 @@ export class IOTOTasksCenterView extends ItemView {
 			this.openingTaskPath = null;
 			this.render();
 		}
+	}
+
+	private getActiveTaskPath(): string | null {
+		return resolveActiveTaskPath({
+			openedTaskPath: this.openedTaskPath,
+			previewLeafAvailable: Boolean(
+				this.previewLeaf && this.isLeafAvailable(this.previewLeaf),
+			),
+			previewedFilePath: this.getPreviewLeafFilePath(),
+		});
+	}
+
+	private getPreviewLeafFilePath(): string | null {
+		if (!this.previewLeaf || !this.isLeafAvailable(this.previewLeaf)) {
+			return null;
+		}
+
+		const view = this.previewLeaf.view;
+		return view instanceof FileView && view.file ? view.file.path : null;
 	}
 
 	private ensurePreviewLeaf(): WorkspaceLeaf {
