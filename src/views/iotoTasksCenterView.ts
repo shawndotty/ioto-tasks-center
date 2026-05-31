@@ -149,8 +149,7 @@ export class IOTOTasksCenterView extends ItemView {
 		const viewState = parseViewState(state);
 		this.selectedProject = viewState.selectedProject ?? null;
 		this.openedTaskPath = viewState.openedTaskPath ?? null;
-		this.activeTaskFilterTab =
-			viewState.activeTaskFilterTab ?? 'incomplete';
+		this.activeTaskFilterTab = viewState.activeTaskFilterTab ?? 'today';
 		this.taskSearchQuery = viewState.taskSearchQuery ?? '';
 		this.taskSearchInputValue =
 			viewState.taskSearchInputValue ?? this.taskSearchQuery;
