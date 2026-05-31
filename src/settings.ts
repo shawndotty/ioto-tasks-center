@@ -261,7 +261,7 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 			})
 			.addExtraButton((button) => {
 				button
-					.setIcon('refresh')
+					.setIcon('refresh-cw')
 					.setTooltip('清除')
 					.onClick(async () => {
 						await this.plugin.updateTaskTemplateConfig(taskType, {
