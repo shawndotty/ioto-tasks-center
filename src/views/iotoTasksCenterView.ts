@@ -64,7 +64,7 @@ export class IOTOTasksCenterView extends ItemView {
 	private projectIncompleteCounts = new Map<string, number>();
 	private selectedProject: string | null = null;
 	private tasks: TaskFileEntry[] = [];
-	private activeTaskFilterTab: TaskFilterTab = 'incomplete';
+	private activeTaskFilterTab: TaskFilterTab = 'today';
 	private taskSearchQuery = '';
 	private taskSearchInputValue = '';
 	private openedTaskPath: string | null = null;
