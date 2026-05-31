@@ -42,6 +42,10 @@ import {
 	type TaskFilterTab,
 	TASK_FILTER_TABS,
 } from './task-filter-tabs';
+import {
+	captureProjectListScrollTop,
+	restoreProjectListScrollTop,
+} from './project-list-scroll';
 import { buildVisibleTaskHierarchy } from './task-hierarchy';
 import { filterTasksBySearchQuery } from './task-search';
 
@@ -81,6 +85,7 @@ export class IOTOTasksCenterView extends ItemView {
 	private isCreatingProject = false;
 	private isCreatingTask = false;
 	private isUpdatingUpTask = false;
+	private projectListScrollTop = 0;
 	private refreshToken = 0;
 	private readonly getTasksRootPath: () => string;
 	private readonly getProjectListSortMode: () => ProjectListSortMode;
@@ -253,6 +258,10 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private render(): void {
+		this.projectListScrollTop = captureProjectListScrollTop(
+			this.contentEl,
+			this.projectListScrollTop,
+		);
 		const root = this.contentEl;
 		root.empty();
 
@@ -303,6 +312,9 @@ export class IOTOTasksCenterView extends ItemView {
 		const listEl = container.createDiv({
 			cls: 'ioto-tasks-center__project-list',
 		});
+		listEl.addEventListener('scroll', () => {
+			this.projectListScrollTop = listEl.scrollTop;
+		});
 
 		if (this.isProjectsLoading) {
 			this.renderState(
@@ -311,6 +323,7 @@ export class IOTOTasksCenterView extends ItemView {
 				`正在读取 ${tasksRootPath} 下的一级子目录。`,
 				'is-loading',
 			);
+			restoreProjectListScrollTop(listEl, this.projectListScrollTop);
 			return;
 		}
 
@@ -321,6 +334,7 @@ export class IOTOTasksCenterView extends ItemView {
 				`请先在 vault 中创建 ${tasksRootPath} 目录。`,
 				'is-empty',
 			);
+			restoreProjectListScrollTop(listEl, this.projectListScrollTop);
 			return;
 		}
 
@@ -335,6 +349,7 @@ export class IOTOTasksCenterView extends ItemView {
 					: `${tasksRootPath} 下还没有一级项目文件夹。`,
 				'is-empty',
 			);
+			restoreProjectListScrollTop(listEl, this.projectListScrollTop);
 			return;
 		}
 
@@ -371,6 +386,8 @@ export class IOTOTasksCenterView extends ItemView {
 				void this.selectProject(project.name);
 			});
 		}
+
+		restoreProjectListScrollTop(listEl, this.projectListScrollTop);
 	}
 
 	private renderTasksPane(container: HTMLElement): void {
