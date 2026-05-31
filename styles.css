@@ -176,6 +176,7 @@
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 	margin-bottom: 16px;
+	margin-top: 8px;
 }
 
 .ioto-tasks-center__task-search {
