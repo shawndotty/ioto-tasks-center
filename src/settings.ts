@@ -242,16 +242,20 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 					.setButtonText('选择')
 					.setIcon('file')
 					.onClick(() => {
-						new ImportModal(this.app, async (file: TFile) => {
-							await this.plugin.updateTaskTemplateConfig(
-								taskType,
-								{
-									templatePath: file.path,
-								},
-							);
-							await this.plugin.saveSettings();
-							this.display(); // Refresh to show updated value
-						}).open();
+						new ImportModal(
+							this.app,
+							async (file: TFile) => {
+								await this.plugin.updateTaskTemplateConfig(
+									taskType,
+									{
+										templatePath: file.path,
+									},
+								);
+								await this.plugin.saveSettings();
+								this.display(); // Refresh to show updated value
+							},
+							[templaterTemplatesFolder || ''],
+						).open();
 					});
 			})
 			.addExtraButton((button) => {
