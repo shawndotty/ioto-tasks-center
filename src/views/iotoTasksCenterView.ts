@@ -1309,7 +1309,7 @@ export class IOTOTasksCenterView extends ItemView {
 		try {
 			const leaf = this.ensurePreviewLeaf();
 			await leaf.openFile(file, {
-				active: false,
+				active: true,
 			});
 			this.previewLeaf = leaf;
 			this.openedTaskPath = file.path;
