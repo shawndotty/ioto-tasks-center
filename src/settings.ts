@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting, TFile } from 'obsidian';
 import IOTOTasksCenter from './main';
 import { listProjectFolders, listProjectTaskFiles } from './tasks-center/data';
 import { DEFAULT_DATE_TASK_DATE_FORMAT } from './tasks-center/date-task-format';
@@ -14,6 +14,7 @@ import {
 	DEFAULT_TASKS_ROOT_PATH,
 	normalizeTasksRootPath,
 } from './tasks-center/types';
+import { ImportModal } from './modals/ImportModal';
 
 export type ProjectListSortMode = 'incomplete-count' | 'name';
 
@@ -235,7 +236,36 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 							templatePath: value.trim(),
 						});
 					}),
-			);
+			)
+			.addButton((button) => {
+				button
+					.setButtonText('选择')
+					.setIcon('file')
+					.onClick(() => {
+						new ImportModal(this.app, async (file: TFile) => {
+							await this.plugin.updateTaskTemplateConfig(
+								taskType,
+								{
+									templatePath: file.path,
+								},
+							);
+							await this.plugin.saveSettings();
+							this.display(); // Refresh to show updated value
+						}).open();
+					});
+			})
+			.addExtraButton((button) => {
+				button
+					.setIcon('refresh')
+					.setTooltip('清除')
+					.onClick(async () => {
+						await this.plugin.updateTaskTemplateConfig(taskType, {
+							templatePath: '',
+						});
+						await this.plugin.saveSettings();
+						this.display(); // Refresh to show updated value
+					});
+			});
 
 		new Setting(containerEl)
 			.setName('模板内容')

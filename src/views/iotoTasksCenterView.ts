@@ -1420,10 +1420,10 @@ export class IOTOTasksCenterView extends ItemView {
 }
 
 const TASK_CREATION_OPTIONS: Array<{ key: TaskCreationType; label: string }> = [
-	{ key: 'date', label: '日期任务' },
 	{ key: 'normal', label: '普通任务' },
-	{ key: 'plan', label: '计划任务' },
+	{ key: 'date', label: '日期任务' },
 	{ key: 'topic', label: '主题任务' },
+	{ key: 'plan', label: '计划任务' },
 ];
 
 function getWorkspaceLeafId(leaf: WorkspaceLeaf | null): string | null {
