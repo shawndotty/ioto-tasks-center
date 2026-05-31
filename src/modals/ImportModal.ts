@@ -21,7 +21,7 @@ export class ImportModal extends FuzzySuggestModal<TFile> {
 			.getFiles()
 			.filter((f) => f.extension === 'md')
 			.filter((f) =>
-				this.filterString.every((s) => f.basename.includes(s)),
+				this.filterString.every((s) => f.path.startsWith(s)),
 			);
 	}
 

@@ -218,8 +218,8 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 			});
 
 		const fileModeDesc = templaterTemplatesFolder
-			? `填写一个 vault 相对路径的 Markdown 模板文件。该模式支持 Templater；若可用将优先自动执行，失败时回退为写入模板原文。当前 Templater 模板目录：${templaterTemplatesFolder}`
-			: '填写一个 vault 相对路径的 Markdown 模板文件。该模式支持 Templater；若可用将优先自动执行，失败时回退为写入模板原文。';
+			? `该模式支持 Templater，当前 Templater 模板目录：${templaterTemplatesFolder}`
+			: '该模式支持 Templater';
 		new Setting(containerEl)
 			.setName('模板文件路径')
 			.setDesc(
@@ -242,6 +242,7 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 					.setButtonText('选择')
 					.setIcon('file')
 					.onClick(() => {
+						console.dir(templaterTemplatesFolder);
 						new ImportModal(
 							this.app,
 							async (file: TFile) => {
@@ -404,8 +405,8 @@ export function isTaskTemplateSourceMode(
 }
 
 const TASK_TEMPLATE_TYPES: TaskCreationType[] = [
-	'date',
-	'plan',
-	'topic',
 	'normal',
+	'topic',
+	'plan',
+	'date',
 ];
