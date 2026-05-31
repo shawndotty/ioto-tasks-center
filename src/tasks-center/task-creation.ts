@@ -284,6 +284,7 @@ async function applyTemplateFileToFile(
 	}
 
 	if (targetLeaf) {
+		const initialContent = await app.vault.read(file);
 		const commandId = await ensureTemplateCommandEnabled(
 			app,
 			templateFile.path,
@@ -297,6 +298,7 @@ async function applyTemplateFileToFile(
 				sourceLeaf,
 			);
 			if (executed) {
+				await waitForFileContentChange(app, file, initialContent);
 				return true;
 			}
 		}
@@ -399,7 +401,7 @@ async function applyTaskPropertiesToFile(
 	},
 ): Promise<void> {
 	const { projectName, type, customName } = options;
-	let nextContent = await app.vault.cachedRead(file);
+	let nextContent = await app.vault.read(file);
 
 	nextContent = upsertListProperty(nextContent, 'Project', projectName);
 
@@ -415,10 +417,34 @@ async function applyTaskPropertiesToFile(
 		nextContent = upsertListProperty(nextContent, 'Plan', customName);
 	}
 
-	const currentContent = await app.vault.cachedRead(file);
+	const currentContent = await app.vault.read(file);
 	if (nextContent !== currentContent) {
 		await app.vault.modify(file, nextContent);
 	}
+}
+
+async function waitForFileContentChange(
+	app: App,
+	file: TFile,
+	initialContent: string,
+): Promise<void> {
+	const maxAttempts = 20;
+	const delayMs = 50;
+
+	for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+		const currentContent = await app.vault.read(file);
+		if (currentContent !== initialContent) {
+			return;
+		}
+
+		await delay(delayMs);
+	}
+}
+
+function delay(ms: number): Promise<void> {
+	return new Promise((resolve) => {
+		window.setTimeout(resolve, ms);
+	});
 }
 
 export function resolveValidDateTaskDateFormat(format: string): string {
