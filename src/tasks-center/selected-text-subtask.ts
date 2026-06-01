@@ -13,9 +13,9 @@ import {
 	createTaskFile,
 	extractListPropertyValuesFromContent,
 	normalizeCustomTaskName,
-	type TaskTemplateConfig,
 	upsertListPropertyValues,
 } from './task-creation';
+import type { TaskTemplateConfig } from './task-template-config';
 import { assignUpTaskToFile } from './up-task-assignment';
 
 export interface ConvertSelectedTextToSubtaskOptions {
@@ -91,6 +91,7 @@ export async function convertSelectedTextToSubtask(
 			sourceLeaf,
 			sourceFile,
 			sourceSelection,
+			editor,
 		);
 		throw new Error('不能把当前任务文件本身转换为它自己的子任务。');
 	}

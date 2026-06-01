@@ -239,37 +239,36 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 			)
 			.addButton((button) => {
 				button
-					.setButtonText('选择')
-					.setIcon('file')
+					.setButtonText('选择模板')
 					.onClick(() => {
-						console.dir(templaterTemplatesFolder);
 						new ImportModal(
 							this.app,
-							async (file: TFile) => {
-								await this.plugin.updateTaskTemplateConfig(
-									taskType,
-									{
-										templatePath: file.path,
-									},
-								);
-								await this.plugin.saveSettings();
-								this.display(); // Refresh to show updated value
+							(file: TFile) => {
+								void (async () => {
+									await this.plugin.updateTaskTemplateConfig(
+										taskType,
+										{
+											templatePath: file.path,
+										},
+									);
+									await this.plugin.saveSettings();
+									this.display();
+								})();
 							},
 							[templaterTemplatesFolder || ''],
 						).open();
 					});
 			})
-			.addExtraButton((button) => {
-				button
-					.setIcon('refresh-cw')
-					.setTooltip('清除')
-					.onClick(async () => {
+			.addButton((button) => {
+				button.setButtonText('清空').onClick(() => {
+					void (async () => {
 						await this.plugin.updateTaskTemplateConfig(taskType, {
 							templatePath: '',
 						});
 						await this.plugin.saveSettings();
-						this.display(); // Refresh to show updated value
-					});
+						this.display();
+					})();
+				});
 			});
 
 		new Setting(containerEl)
