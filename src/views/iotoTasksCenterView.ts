@@ -3,6 +3,7 @@ import {
 	ItemView,
 	Menu,
 	Notice,
+	setIcon,
 	TFile,
 	WorkspaceLeaf,
 } from 'obsidian';
@@ -22,8 +23,16 @@ import type {
 	TaskCreationType,
 	TaskTemplateConfig,
 } from '../tasks-center/task-template-config';
-import type { ProjectListSortMode } from '../settings';
+import type {
+	ProjectListSortMode,
+	TaskListGroupMode,
+	TaskListSortMode,
+} from '../settings';
 import {
+	TASK_LIST_GROUP_MODE_OPTIONS,
+	TASK_LIST_SORT_MODE_OPTIONS,
+} from '../settings';
+import type {
 	ProjectFolderEntry,
 	ProjectListResult,
 	TaskFileEntry,
@@ -47,6 +56,7 @@ import {
 	restoreProjectListScrollTop,
 } from './project-list-scroll';
 import { buildVisibleTaskHierarchy } from './task-hierarchy';
+import { buildTaskPresentationSections } from './task-list-presentation';
 import { filterTasksBySearchQuery } from './task-search';
 
 export const IOTO_TASKS_CENTER_VIEW_TYPE = 'IOTOTasksCenter';
@@ -89,7 +99,15 @@ export class IOTOTasksCenterView extends ItemView {
 	private refreshToken = 0;
 	private readonly getTasksRootPath: () => string;
 	private readonly getProjectListSortMode: () => ProjectListSortMode;
+	private readonly getTaskListSortMode: () => TaskListSortMode;
+	private readonly getTaskListGroupMode: () => TaskListGroupMode;
 	private readonly getHiddenProjectNames: () => string[];
+	private readonly updateTaskListSortMode: (
+		sortMode: TaskListSortMode,
+	) => Promise<void>;
+	private readonly updateTaskListGroupMode: (
+		groupMode: TaskListGroupMode,
+	) => Promise<void>;
 	private readonly getTaskTemplateConfig: (
 		type: TaskCreationType,
 	) => TaskTemplateConfig;
@@ -99,7 +117,13 @@ export class IOTOTasksCenterView extends ItemView {
 		leaf: WorkspaceLeaf,
 		getTasksRootPath: () => string,
 		getProjectListSortMode: () => ProjectListSortMode,
+		getTaskListSortMode: () => TaskListSortMode,
+		getTaskListGroupMode: () => TaskListGroupMode,
 		getHiddenProjectNames: () => string[],
+		updateTaskListSortMode: (sortMode: TaskListSortMode) => Promise<void>,
+		updateTaskListGroupMode: (
+			groupMode: TaskListGroupMode,
+		) => Promise<void>,
 		getTaskTemplateConfig: (type: TaskCreationType) => TaskTemplateConfig,
 		getDateTaskDateFormat: () => string,
 	) {
@@ -107,7 +131,11 @@ export class IOTOTasksCenterView extends ItemView {
 		this.navigation = true;
 		this.getTasksRootPath = getTasksRootPath;
 		this.getProjectListSortMode = getProjectListSortMode;
+		this.getTaskListSortMode = getTaskListSortMode;
+		this.getTaskListGroupMode = getTaskListGroupMode;
 		this.getHiddenProjectNames = getHiddenProjectNames;
+		this.updateTaskListSortMode = updateTaskListSortMode;
+		this.updateTaskListGroupMode = updateTaskListGroupMode;
 		this.getTaskTemplateConfig = getTaskTemplateConfig;
 		this.getDateTaskDateFormat = getDateTaskDateFormat;
 	}
@@ -413,9 +441,7 @@ export class IOTOTasksCenterView extends ItemView {
 			void this.showTaskCreationMenu(event);
 		});
 
-		const currentProjectText = this.selectedProject
-			? `当前项目：${this.selectedProject}，共 ${this.tasks.length} 个文件，按最近修改时间排序`
-			: '当前未选中任何项目';
+		const currentProjectText = this.getTaskListDescription();
 		container.createDiv({
 			cls: 'ioto-tasks-center__section-desc',
 			text: currentProjectText,
@@ -499,9 +525,8 @@ export class IOTOTasksCenterView extends ItemView {
 			this.renderTaskSearchEmptyState(listEl);
 			return;
 		}
-		const hierarchicalVisibleTasks =
-			buildVisibleTaskHierarchy(visibleTasks);
-
+		const presentationSections =
+			this.getTaskPresentationSections(visibleTasks);
 		const activeTaskPath = this.getActiveTaskPath();
 		const removeZoneEl = listEl.createDiv({
 			cls: 'ioto-tasks-center__remove-up-task-drop-zone',
@@ -520,8 +545,31 @@ export class IOTOTasksCenterView extends ItemView {
 			void this.handleRemoveUpTaskDrop(event, removeZoneEl);
 		});
 
-		for (const task of hierarchicalVisibleTasks) {
-			const rowEl = listEl.createEl('button', {
+		for (const section of presentationSections) {
+			const sectionEl = listEl.createDiv({
+				cls: 'ioto-tasks-center__task-group',
+			});
+			if (section.label) {
+				sectionEl.createDiv({
+					cls: 'ioto-tasks-center__task-group-title',
+					text: section.label,
+				});
+			}
+			this.renderTaskRows(
+				sectionEl,
+				buildVisibleTaskHierarchy(section.tasks),
+				activeTaskPath,
+			);
+		}
+	}
+
+	private renderTaskRows(
+		container: HTMLElement,
+		tasks: TaskFileEntry[],
+		activeTaskPath: string | null,
+	): void {
+		for (const task of tasks) {
+			const rowEl = container.createEl('button', {
 				cls: 'ioto-tasks-center__task-row',
 			});
 			rowEl.type = 'button';
@@ -568,16 +616,16 @@ export class IOTOTasksCenterView extends ItemView {
 			rowEl.addEventListener('click', () => {
 				void this.openTaskFile(task);
 			});
-			rowEl.addEventListener('dragstart', (event) => {
+			rowEl.addEventListener('dragstart', (event: DragEvent) => {
 				this.handleTaskDragStart(event, task, rowEl);
 			});
-			rowEl.addEventListener('dragover', (event) => {
+			rowEl.addEventListener('dragover', (event: DragEvent) => {
 				this.handleTaskDragOver(event, task, rowEl);
 			});
-			rowEl.addEventListener('dragleave', (event) => {
+			rowEl.addEventListener('dragleave', (event: DragEvent) => {
 				this.handleTaskDragLeave(event, task, rowEl);
 			});
-			rowEl.addEventListener('drop', (event) => {
+			rowEl.addEventListener('drop', (event: DragEvent) => {
 				void this.handleTaskDrop(event, task, rowEl);
 			});
 			rowEl.addEventListener('dragend', () => {
@@ -1139,8 +1187,11 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private renderTaskTabs(container: HTMLElement): void {
-		const tabListEl = container.createDiv({
-			cls: 'ioto-tasks-center__tabs',
+		const tabBarEl = container.createDiv({
+			cls: 'ioto-tasks-center__tabs-bar',
+		});
+		const tabListEl = tabBarEl.createDiv({
+			cls: 'ioto-tasks-center__tabs ioto-tasks-center__tabs-list',
 		});
 		const counts = this.getTaskFilterCounts();
 
@@ -1171,6 +1222,20 @@ export class IOTOTasksCenterView extends ItemView {
 				this.render();
 			});
 		}
+
+		const settingsContainerEl = tabBarEl.createDiv({
+			cls: 'ioto-tasks-center__tabs-settings',
+		});
+		const settingsButtonEl = settingsContainerEl.createEl('button', {
+			cls: 'ioto-tasks-center__tab-settings-button',
+		});
+		settingsButtonEl.type = 'button';
+		settingsButtonEl.ariaLabel = '任务列表呈现设置';
+		settingsButtonEl.title = '任务列表呈现设置';
+		setIcon(settingsButtonEl, 'sliders-horizontal');
+		settingsButtonEl.addEventListener('click', (event: MouseEvent) => {
+			this.showTaskPresentationMenu(event);
+		});
 	}
 
 	private getTasksForActiveTab(): TaskFileEntry[] {
@@ -1186,6 +1251,28 @@ export class IOTOTasksCenterView extends ItemView {
 		);
 	}
 
+	private getTaskPresentationSections(tasks: TaskFileEntry[]) {
+		return buildTaskPresentationSections(tasks, {
+			sortMode: this.getTaskListSortMode(),
+			groupMode: this.getTaskListGroupMode(),
+		});
+	}
+
+	private getTaskListDescription(): string {
+		if (!this.selectedProject) {
+			return '当前未选中任何项目';
+		}
+
+		const sortDescription =
+			TASK_LIST_SORT_MODE_OPTIONS[this.getTaskListSortMode()];
+		const groupMode = this.getTaskListGroupMode();
+		const groupDescription =
+			groupMode === 'none'
+				? ''
+				: `，${TASK_LIST_GROUP_MODE_OPTIONS[groupMode]}`;
+		return `当前项目：${this.selectedProject}，共 ${this.tasks.length} 个文件，按${sortDescription}排序${groupDescription}`;
+	}
+
 	private getTaskFilterCounts(): Record<TaskFilterTab, number> {
 		return getTaskFilterCounts(this.tasks);
 	}
@@ -1195,6 +1282,66 @@ export class IOTOTasksCenterView extends ItemView {
 		tab: TaskFilterTab,
 	): boolean {
 		return matchesTaskFilterTab(task, tab);
+	}
+
+	private showTaskPresentationMenu(event: MouseEvent): void {
+		const menu = new Menu();
+		const currentSortMode = this.getTaskListSortMode();
+		const currentGroupMode = this.getTaskListGroupMode();
+
+		for (const sortMode of TASK_LIST_SORT_MODE_ORDER) {
+			const label = TASK_LIST_SORT_MODE_OPTIONS[sortMode];
+			menu.addItem((item) =>
+				item
+					.setTitle(
+						formatMenuOptionTitle(
+							'排序',
+							label,
+							sortMode === currentSortMode,
+						),
+					)
+					.onClick(() => {
+						void this.updateTaskListSortMode(sortMode).catch(
+							(error: unknown) => {
+								const message =
+									error instanceof Error
+										? error.message
+										: '更新任务列表排序失败。';
+								new Notice(message);
+							},
+						);
+					}),
+			);
+		}
+
+		menu.addSeparator();
+
+		for (const groupMode of TASK_LIST_GROUP_MODE_ORDER) {
+			const label = TASK_LIST_GROUP_MODE_OPTIONS[groupMode];
+			menu.addItem((item) =>
+				item
+					.setTitle(
+						formatMenuOptionTitle(
+							'分组',
+							label,
+							groupMode === currentGroupMode,
+						),
+					)
+					.onClick(() => {
+						void this.updateTaskListGroupMode(groupMode).catch(
+							(error: unknown) => {
+								const message =
+									error instanceof Error
+										? error.message
+										: '更新任务列表分组失败。';
+								new Notice(message);
+							},
+						);
+					}),
+			);
+		}
+
+		menu.showAtMouseEvent(event);
 	}
 
 	private renderTaskFilterEmptyState(container: HTMLElement): void {
@@ -1424,6 +1571,25 @@ const TASK_CREATION_OPTIONS: Array<{ key: TaskCreationType; label: string }> = [
 	{ key: 'topic', label: '主题任务' },
 	{ key: 'plan', label: '计划任务' },
 ];
+
+const TASK_LIST_SORT_MODE_ORDER: TaskListSortMode[] = [
+	'created-desc',
+	'created-asc',
+	'updated-desc',
+	'updated-asc',
+	'name-asc',
+	'name-desc',
+];
+
+const TASK_LIST_GROUP_MODE_ORDER: TaskListGroupMode[] = ['none', 'status'];
+
+function formatMenuOptionTitle(
+	category: '排序' | '分组',
+	label: string,
+	active: boolean,
+): string {
+	return active ? `${category}：${label}（当前）` : `${category}：${label}`;
+}
 
 function getWorkspaceLeafId(leaf: WorkspaceLeaf | null): string | null {
 	if (!leaf) {

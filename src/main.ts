@@ -16,6 +16,8 @@ import {
 	IOTOTasksCenterSettingTab,
 	IOTOTasksCenterSettings,
 	ProjectListSortMode,
+	TaskListGroupMode,
+	TaskListSortMode,
 	normalizeConfiguredTasksRootPath,
 } from './settings';
 import {
@@ -35,7 +37,11 @@ export default class IOTOTasksCenter extends Plugin {
 					leaf,
 					() => this.settings.tasksRootPath,
 					() => this.settings.projectListSortMode,
+					() => this.settings.taskListSortMode,
+					() => this.settings.taskListGroupMode,
 					() => this.settings.hiddenProjectNames,
+					(sortMode) => this.updateTaskListSortMode(sortMode),
+					(groupMode) => this.updateTaskListGroupMode(groupMode),
 					(type) => this.settings.taskTemplateConfigs[type],
 					() => this.settings.dateTaskDateFormat,
 				),
@@ -66,7 +72,8 @@ export default class IOTOTasksCenter extends Plugin {
 						editor,
 						ctx,
 						tasksRootPath: this.settings.tasksRootPath,
-						templateConfig: this.settings.taskTemplateConfigs.normal,
+						templateConfig:
+							this.settings.taskTemplateConfigs.normal,
 						dateTaskDateFormat: this.settings.dateTaskDateFormat,
 					}).catch((error: unknown) => {
 						const message =
@@ -114,6 +121,26 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.projectListSortMode = sortMode;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateTaskListSortMode(sortMode: TaskListSortMode): Promise<void> {
+		if (this.settings.taskListSortMode === sortMode) {
+			return;
+		}
+
+		this.settings.taskListSortMode = sortMode;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateTaskListGroupMode(groupMode: TaskListGroupMode): Promise<void> {
+		if (this.settings.taskListGroupMode === groupMode) {
+			return;
+		}
+
+		this.settings.taskListGroupMode = groupMode;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}

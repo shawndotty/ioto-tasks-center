@@ -112,11 +112,62 @@
 	cursor: not-allowed;
 }
 
+.ioto-tasks-center__tabs-bar {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+
 .ioto-tasks-center__tabs {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 8px;
-	margin-bottom: 12px;
+	margin-bottom: 0;
+}
+
+.ioto-tasks-center__tabs-list {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.ioto-tasks-center__tabs-settings {
+	flex: 0 0 auto;
+}
+
+button:not(.clickable-icon).ioto-tasks-center__tab-settings-button {
+	background: transparent;
+	box-shadow: none;
+}
+
+.ioto-tasks-center__tab-settings-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	padding: 0;
+	border: none;
+	border-radius: 999px;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	transition:
+		background-color 120ms ease,
+		border-color 120ms ease,
+		color 120ms ease;
+}
+
+.ioto-tasks-center__tab-settings-button:hover {
+	background: var(--background-modifier-hover);
+	border-color: var(--interactive-accent);
+	color: var(--text-normal);
+}
+
+.ioto-tasks-center__tab-settings-button svg {
+	width: 16px;
+	height: 16px;
 }
 
 .ioto-tasks-center__tab {
@@ -307,6 +358,28 @@
 	gap: 0;
 
 	background: var(--background-primary);
+}
+
+.ioto-tasks-center__task-group {
+	display: flex;
+	flex-direction: column;
+}
+
+.ioto-tasks-center__task-group-title {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	padding: 10px 14px 8px;
+	background: color-mix(
+		in srgb,
+		var(--background-primary) 88%,
+		var(--background-secondary)
+	);
+	border-bottom: 1px solid var(--background-modifier-border);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-weight: 700;
+	letter-spacing: 0.02em;
 }
 
 .ioto-tasks-center__project-item {
@@ -602,5 +675,14 @@ button:not(.clickable-icon).ioto-tasks-center__task-row:hover {
 
 	.ioto-tasks-center__task-row {
 		gap: 12px;
+	}
+
+	.ioto-tasks-center__tabs-bar {
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.ioto-tasks-center__tabs-settings {
+		align-self: flex-end;
 	}
 }

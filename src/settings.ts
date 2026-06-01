@@ -17,10 +17,20 @@ import {
 import { ImportModal } from './modals/ImportModal';
 
 export type ProjectListSortMode = 'incomplete-count' | 'name';
+export type TaskListSortMode =
+	| 'created-desc'
+	| 'created-asc'
+	| 'updated-desc'
+	| 'updated-asc'
+	| 'name-asc'
+	| 'name-desc';
+export type TaskListGroupMode = 'none' | 'status';
 
 export interface IOTOTasksCenterSettings {
 	tasksRootPath: string;
 	projectListSortMode: ProjectListSortMode;
+	taskListSortMode: TaskListSortMode;
+	taskListGroupMode: TaskListGroupMode;
 	hiddenProjectNames: string[];
 	taskTemplateConfigs: TaskTemplateConfigMap;
 	dateTaskDateFormat: string;
@@ -29,6 +39,8 @@ export interface IOTOTasksCenterSettings {
 export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	tasksRootPath: DEFAULT_TASKS_ROOT_PATH,
 	projectListSortMode: 'incomplete-count',
+	taskListSortMode: 'created-desc',
+	taskListGroupMode: 'none',
 	hiddenProjectNames: [],
 	taskTemplateConfigs: createDefaultTaskTemplateConfigMap(),
 	dateTaskDateFormat: DEFAULT_DATE_TASK_DATE_FORMAT,
@@ -42,10 +54,39 @@ export const PROJECT_LIST_SORT_MODE_OPTIONS: Record<
 	name: '按项目名称',
 };
 
+export const TASK_LIST_SORT_MODE_OPTIONS: Record<TaskListSortMode, string> = {
+	'created-desc': '创建时间（从新到旧）',
+	'created-asc': '创建时间（从旧到新）',
+	'updated-desc': '更新时间（从新到旧）',
+	'updated-asc': '更新时间（从旧到新）',
+	'name-asc': '文件名（A到Z）',
+	'name-desc': '文件名（Z到A）',
+};
+
+export const TASK_LIST_GROUP_MODE_OPTIONS: Record<TaskListGroupMode, string> = {
+	none: '不分组',
+	status: '按任务状态分组',
+};
+
 export function isProjectListSortMode(
 	value: string,
 ): value is ProjectListSortMode {
 	return value === 'incomplete-count' || value === 'name';
+}
+
+export function isTaskListSortMode(value: string): value is TaskListSortMode {
+	return (
+		value === 'created-desc' ||
+		value === 'created-asc' ||
+		value === 'updated-desc' ||
+		value === 'updated-asc' ||
+		value === 'name-asc' ||
+		value === 'name-desc'
+	);
+}
+
+export function isTaskListGroupMode(value: string): value is TaskListGroupMode {
+	return value === 'none' || value === 'status';
 }
 
 export const TASK_TEMPLATE_SOURCE_MODE_OPTIONS: Record<
