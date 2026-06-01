@@ -95,6 +95,7 @@ export class IOTOTasksCenterView extends ItemView {
 	private isCreatingProject = false;
 	private isCreatingTask = false;
 	private isUpdatingUpTask = false;
+	private readonly collapsedTaskGroups = new Set<string>();
 	private projectListScrollTop = 0;
 	private refreshToken = 0;
 	private readonly getTasksRootPath: () => string;
@@ -527,6 +528,7 @@ export class IOTOTasksCenterView extends ItemView {
 		}
 		const presentationSections =
 			this.getTaskPresentationSections(visibleTasks);
+		this.syncCollapsedTaskGroups(presentationSections);
 		const activeTaskPath = this.getActiveTaskPath();
 		const removeZoneEl = listEl.createDiv({
 			cls: 'ioto-tasks-center__remove-up-task-drop-zone',
@@ -549,14 +551,58 @@ export class IOTOTasksCenterView extends ItemView {
 			const sectionEl = listEl.createDiv({
 				cls: 'ioto-tasks-center__task-group',
 			});
-			if (section.label) {
-				sectionEl.createDiv({
-					cls: 'ioto-tasks-center__task-group-title',
-					text: section.label,
-				});
+			if (!section.label) {
+				this.renderTaskRows(
+					sectionEl,
+					buildVisibleTaskHierarchy(section.tasks),
+					activeTaskPath,
+				);
+				continue;
 			}
+
+			const collapsed = this.isTaskGroupCollapsed(section.key);
+			sectionEl.toggleClass('is-collapsed', collapsed);
+			sectionEl.toggleClass('is-expanded', !collapsed);
+
+			const groupBodyId = `ioto-tasks-center-task-group-${section.key}`;
+			const groupHeaderEl = sectionEl.createEl('button', {
+				cls: 'ioto-tasks-center__task-group-header',
+			});
+			groupHeaderEl.type = 'button';
+			groupHeaderEl.ariaLabel = `${collapsed ? '展开' : '折叠'}${section.label}分组`;
+			groupHeaderEl.title = `${collapsed ? '展开' : '折叠'}${section.label}分组`;
+			groupHeaderEl.setAttribute(
+				'aria-expanded',
+				collapsed ? 'false' : 'true',
+			);
+			groupHeaderEl.setAttribute('aria-controls', groupBodyId);
+			const iconEl = groupHeaderEl.createSpan({
+				cls: 'ioto-tasks-center__task-group-header-icon',
+			});
+			setIcon(iconEl, 'chevron-right');
+			groupHeaderEl.createSpan({
+				cls: 'ioto-tasks-center__task-group-header-label',
+				text: section.label,
+			});
+			groupHeaderEl.createSpan({
+				cls: 'ioto-tasks-center__task-group-header-count',
+				text: `${section.tasks.length}`,
+			});
+			groupHeaderEl.addEventListener('click', () => {
+				this.toggleTaskGroupCollapsed(section.key);
+			});
+
+			const groupBodyEl = sectionEl.createDiv({
+				cls: 'ioto-tasks-center__task-group-body',
+			});
+			groupBodyEl.id = groupBodyId;
+			groupBodyEl.toggleClass('is-hidden', collapsed);
+			if (collapsed) {
+				continue;
+			}
+
 			this.renderTaskRows(
-				sectionEl,
+				groupBodyEl,
 				buildVisibleTaskHierarchy(section.tasks),
 				activeTaskPath,
 			);
@@ -1256,6 +1302,41 @@ export class IOTOTasksCenterView extends ItemView {
 			sortMode: this.getTaskListSortMode(),
 			groupMode: this.getTaskListGroupMode(),
 		});
+	}
+
+	private isTaskGroupCollapsed(sectionKey: string): boolean {
+		return this.collapsedTaskGroups.has(sectionKey);
+	}
+
+	private toggleTaskGroupCollapsed(sectionKey: string): void {
+		if (this.collapsedTaskGroups.has(sectionKey)) {
+			this.collapsedTaskGroups.delete(sectionKey);
+		} else {
+			this.collapsedTaskGroups.add(sectionKey);
+		}
+
+		this.render();
+	}
+
+	private syncCollapsedTaskGroups(
+		sections: Array<{ key: string; label: string | null }>,
+	): void {
+		const groupMode = this.getTaskListGroupMode();
+		if (groupMode !== 'status') {
+			this.collapsedTaskGroups.clear();
+			return;
+		}
+
+		const validKeys = new Set(
+			sections
+				.filter((section) => section.label)
+				.map((section) => section.key),
+		);
+		for (const key of [...this.collapsedTaskGroups]) {
+			if (!validKeys.has(key)) {
+				this.collapsedTaskGroups.delete(key);
+			}
+		}
 	}
 
 	private getTaskListDescription(): string {

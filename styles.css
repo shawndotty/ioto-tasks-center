@@ -363,12 +363,22 @@ button:not(.clickable-icon).ioto-tasks-center__tab-settings-button {
 .ioto-tasks-center__task-group {
 	display: flex;
 	flex-direction: column;
+	margin-bottom: 12px;
 }
 
-.ioto-tasks-center__task-group-title {
+button:not(.clickable-icon).ioto-tasks-center__task-group-header {
+	background: transparent;
+	/* box-shadow: none; */
+}
+
+.ioto-tasks-center__task-group-header {
 	position: sticky;
 	top: 0;
 	z-index: 1;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
 	padding: 10px 14px 8px;
 	background: color-mix(
 		in srgb,
@@ -376,10 +386,73 @@ button:not(.clickable-icon).ioto-tasks-center__tab-settings-button {
 		var(--background-secondary)
 	);
 	border-bottom: 1px solid var(--background-modifier-border);
+	border-left: none;
+	border-right: none;
+	border-top: none;
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
 	font-weight: 700;
 	letter-spacing: 0.02em;
+	text-align: left;
+	cursor: pointer;
+	transition:
+		background-color 120ms ease,
+		color 120ms ease;
+}
+
+.ioto-tasks-center__task-group-header:hover {
+	background: color-mix(
+		in srgb,
+		var(--background-primary) 82%,
+		var(--background-modifier-hover)
+	);
+	color: var(--text-normal);
+}
+
+.ioto-tasks-center__task-group-header:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: -2px;
+}
+
+.ioto-tasks-center__task-group-header-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+	width: 16px;
+	height: 16px;
+	color: var(--text-faint);
+	transition: transform 120ms ease;
+}
+
+.ioto-tasks-center__task-group.is-expanded
+	.ioto-tasks-center__task-group-header-icon {
+	transform: rotate(90deg);
+}
+
+.ioto-tasks-center__task-group-header-label {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.ioto-tasks-center__task-group-header-count {
+	flex: 0 0 auto;
+	color: var(--text-faint);
+	font-variant-numeric: tabular-nums;
+}
+
+.ioto-tasks-center__task-group-body {
+	display: flex;
+	flex-direction: column;
+}
+
+.ioto-tasks-center__task-group-body.is-hidden {
+	display: none;
+}
+
+.ioto-tasks-center__task-group.is-collapsed
+	.ioto-tasks-center__task-group-header {
+	border-bottom-color: transparent;
 }
 
 .ioto-tasks-center__project-item {
