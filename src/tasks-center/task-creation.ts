@@ -16,6 +16,7 @@ export interface CreateTaskFileOptions {
 	projectName: string;
 	type: TaskCreationType;
 	customName?: string;
+	targetDirectoryPath?: string;
 	templateConfig: TaskTemplateConfig;
 	dateTaskDateFormat: string;
 	targetLeaf?: WorkspaceLeaf | null;
@@ -80,8 +81,13 @@ export function resolveTaskTargetPath(
 	tasksRootPath: string,
 	projectName: string,
 	fileName: string,
+	targetDirectoryPath?: string,
 ): string {
-	return normalizeVaultPath(`${tasksRootPath}/${projectName}/${fileName}`);
+	const baseDirectoryPath =
+		targetDirectoryPath && targetDirectoryPath.trim().length > 0
+			? targetDirectoryPath
+			: `${tasksRootPath}/${projectName}`;
+	return normalizeVaultPath(`${baseDirectoryPath}/${fileName}`);
 }
 
 export function getTemplaterCommandId(templatePath: string): string {
@@ -92,18 +98,33 @@ export function buildProjectPropertyFrontmatter(projectName: string): string {
 	return buildListPropertyFrontmatter('Project', projectName);
 }
 
+export function buildListPropertyFrontmatterLines(
+	propertyName: string,
+	values: string[],
+): string[] {
+	const normalizedValues = normalizeListPropertyValues(values);
+	if (normalizedValues.length === 0) {
+		return [];
+	}
+
+	return [
+		`${propertyName}:`,
+		...normalizedValues.map((value) => `  - ${JSON.stringify(value)}`),
+	];
+}
+
 export function buildListPropertyFrontmatter(
 	propertyName: string,
 	value: string,
 ): string {
-	return `${propertyName}:\n  - ${JSON.stringify(value)}`;
+	return buildListPropertyFrontmatterLines(propertyName, [value]).join('\n');
 }
 
 export function upsertProjectProperty(
 	content: string,
 	projectName: string,
 ): string {
-	return upsertListProperty(content, 'Project', projectName);
+	return upsertListPropertyValues(content, 'Project', [projectName]);
 }
 
 export function upsertListProperty(
@@ -111,7 +132,23 @@ export function upsertListProperty(
 	propertyName: string,
 	value: string,
 ): string {
-	const propertyBlock = buildListPropertyFrontmatter(propertyName, value);
+	return upsertListPropertyValues(content, propertyName, [value]);
+}
+
+export function upsertListPropertyValues(
+	content: string,
+	propertyName: string,
+	values: string[],
+): string {
+	const propertyLines = buildListPropertyFrontmatterLines(
+		propertyName,
+		values,
+	);
+	if (propertyLines.length === 0) {
+		return removeListProperty(content, propertyName);
+	}
+
+	const propertyBlock = propertyLines.join('\n');
 	const frontmatterMatch = content.match(
 		/^---\r?\n([\s\S]*?)\r?\n---((?:\r?\n)?[\s\S]*)$/,
 	);
@@ -135,6 +172,68 @@ export function upsertListProperty(
 		: propertyBlock;
 
 	return `---\n${nextFrontmatterBody}\n---${remainingContent}`;
+}
+
+export function extractListPropertyValuesFromContent(
+	content: string,
+	propertyName: string,
+): string[] {
+	const frontmatterMatch = content.match(
+		/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/,
+	);
+	if (!frontmatterMatch) {
+		return [];
+	}
+
+	const frontmatterBody = frontmatterMatch[1] ?? '';
+	const lines = frontmatterBody.split(/\r?\n/);
+	const propertyPattern = new RegExp(
+		`^${escapeRegExp(propertyName)}\\s*:\\s*(.*)$`,
+	);
+
+	for (let index = 0; index < lines.length; index += 1) {
+		const line = lines[index] ?? '';
+		const match = line.match(propertyPattern);
+		if (!match) {
+			continue;
+		}
+
+		const inlineValue = normalizeFrontmatterScalarValue(match[1] ?? '');
+		if (inlineValue) {
+			return [inlineValue];
+		}
+
+		const values: string[] = [];
+		for (
+			let nextIndex = index + 1;
+			nextIndex < lines.length;
+			nextIndex += 1
+		) {
+			const nextLine = lines[nextIndex] ?? '';
+			if (nextLine.trim() === '') {
+				continue;
+			}
+			if (!/^[ \t]+/.test(nextLine)) {
+				break;
+			}
+
+			const listMatch = nextLine.match(/^\s*-\s*(.*)$/);
+			if (!listMatch) {
+				continue;
+			}
+
+			const normalizedValue = normalizeFrontmatterScalarValue(
+				listMatch[1] ?? '',
+			);
+			if (normalizedValue) {
+				values.push(normalizedValue);
+			}
+		}
+
+		return normalizeListPropertyValues(values);
+	}
+
+	return [];
 }
 
 export function removeListProperty(
@@ -180,6 +279,7 @@ export async function createTaskFile(
 		projectName,
 		type,
 		customName,
+		targetDirectoryPath,
 		templateConfig,
 		dateTaskDateFormat,
 		targetLeaf,
@@ -199,12 +299,17 @@ export async function createTaskFile(
 		tasksRootPath,
 		projectName,
 		fileName,
+		targetDirectoryPath,
 	);
-	const projectFolder = app.vault.getAbstractFileByPath(
-		normalizeVaultPath(`${tasksRootPath}/${projectName}`),
+	const targetDirectory = app.vault.getAbstractFileByPath(
+		normalizeVaultPath(
+			targetDirectoryPath ?? `${tasksRootPath}/${projectName}`,
+		),
 	);
-	if (!(projectFolder instanceof TFolder)) {
-		throw new Error(`项目目录不存在：${projectName}`);
+	if (!(targetDirectory instanceof TFolder)) {
+		throw new Error(
+			`任务目录不存在：${targetDirectoryPath ?? projectName}`,
+		);
 	}
 
 	const existingFile = app.vault.getAbstractFileByPath(targetPath);
@@ -462,6 +567,33 @@ function normalizeVaultPath(path: string): string {
 		.replace(/\/{2,}/g, '/')
 		.replace(/^\.\//, '')
 		.replace(/\/+$/g, '');
+}
+
+function normalizeListPropertyValues(values: string[]): string[] {
+	const normalizedValues: string[] = [];
+	const seenValues = new Set<string>();
+
+	for (const value of values) {
+		const normalizedValue = normalizeFrontmatterScalarValue(value);
+		if (!normalizedValue || seenValues.has(normalizedValue)) {
+			continue;
+		}
+
+		seenValues.add(normalizedValue);
+		normalizedValues.push(normalizedValue);
+	}
+
+	return normalizedValues;
+}
+
+function normalizeFrontmatterScalarValue(value: string): string {
+	const trimmedValue = value.trim();
+	if (!trimmedValue) {
+		return '';
+	}
+
+	const quotedMatch = trimmedValue.match(/^(['"])([\s\S]*)\1$/);
+	return quotedMatch ? (quotedMatch[2] ?? '').trim() : trimmedValue;
 }
 
 function removeListPropertyFromFrontmatter(

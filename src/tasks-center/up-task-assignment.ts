@@ -15,7 +15,11 @@ export function buildContentWithAssignedUpTask(
 	content: string,
 	parentTaskTitle: string,
 ): string {
-	return upsertListProperty(content, 'UpTask', buildUpTaskWikilink(parentTaskTitle));
+	return upsertListProperty(
+		content,
+		'UpTask',
+		buildUpTaskWikilink(parentTaskTitle),
+	);
 }
 
 export async function assignUpTaskToFile(
@@ -23,7 +27,7 @@ export async function assignUpTaskToFile(
 	file: TFile,
 	parentTaskTitle: string,
 ): Promise<boolean> {
-	const currentContent = await app.vault.cachedRead(file);
+	const currentContent = await app.vault.read(file);
 	const nextContent = buildContentWithAssignedUpTask(
 		currentContent,
 		parentTaskTitle,
@@ -44,7 +48,7 @@ export async function removeUpTaskFromFile(
 	app: App,
 	file: TFile,
 ): Promise<boolean> {
-	const currentContent = await app.vault.cachedRead(file);
+	const currentContent = await app.vault.read(file);
 	const nextContent = buildContentWithRemovedUpTask(currentContent);
 	if (nextContent === currentContent) {
 		return false;

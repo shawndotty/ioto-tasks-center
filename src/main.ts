@@ -1,5 +1,9 @@
-import { Plugin, TAbstractFile, WorkspaceLeaf } from 'obsidian';
+import { Notice, Plugin, TAbstractFile, WorkspaceLeaf } from 'obsidian';
 import { normalizeDateTaskDateFormat } from './tasks-center/date-task-format';
+import {
+	canConvertSelectedTextToSubtask,
+	convertSelectedTextToSubtask,
+} from './tasks-center/selected-text-subtask';
 import {
 	areTaskTemplateConfigsEqual,
 	mergeTaskTemplateConfig,
@@ -41,6 +45,40 @@ export default class IOTOTasksCenter extends Plugin {
 			id: 'open-tasks-center-view',
 			name: '打开任务中心视图',
 			callback: () => this.activateIOTOTasksCenterView(),
+		});
+
+		this.addCommand({
+			id: 'convert-selected-text-to-subtask',
+			name: '将选中文本转为子任务',
+			editorCheckCallback: (checking, editor, ctx) => {
+				const canExecute = canConvertSelectedTextToSubtask(
+					ctx.file,
+					editor.getSelection(),
+					this.settings.tasksRootPath,
+				);
+				if (!canExecute) {
+					return false;
+				}
+
+				if (!checking) {
+					void convertSelectedTextToSubtask({
+						app: this.app,
+						editor,
+						ctx,
+						tasksRootPath: this.settings.tasksRootPath,
+						templateConfig: this.settings.taskTemplateConfigs.normal,
+						dateTaskDateFormat: this.settings.dateTaskDateFormat,
+					}).catch((error: unknown) => {
+						const message =
+							error instanceof Error
+								? error.message
+								: '将选中文本转为子任务失败。';
+						new Notice(message);
+					});
+				}
+
+				return true;
+			},
 		});
 
 		this.addSettingTab(new IOTOTasksCenterSettingTab(this.app, this));

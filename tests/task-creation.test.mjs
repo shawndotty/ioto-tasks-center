@@ -5,14 +5,17 @@ import { createJiti } from 'jiti';
 const jiti = createJiti(import.meta.url, { moduleCache: false });
 const {
 	buildTaskFileName,
+	buildListPropertyFrontmatterLines,
 	buildListPropertyFrontmatter,
 	buildProjectPropertyFrontmatter,
+	extractListPropertyValuesFromContent,
 	getTemplaterCommandId,
 	normalizeCustomTaskName,
 	removeListProperty,
 	resolveValidDateTaskDateFormat,
 	resolveTaskTargetPath,
 	upsertListProperty,
+	upsertListPropertyValues,
 	upsertProjectProperty,
 } = await jiti.import('../src/tasks-center/task-creation.ts');
 const {
@@ -273,6 +276,14 @@ test('通用 List 属性 frontmatter 会按属性名和值生成', () => {
 	assert.equal(frontmatter, 'Subject:\n  - "发布复盘"');
 });
 
+test('多值 List 属性 frontmatter 会为每个值生成列表项', () => {
+	assert.deepEqual(buildListPropertyFrontmatterLines('Project', ['项目A', '项目B']), [
+		'Project:',
+		'  - "项目A"',
+		'  - "项目B"',
+	]);
+});
+
 test('空内容会自动插入 Project 属性 frontmatter', () => {
 	const content = upsertProjectProperty('', '项目A');
 
@@ -309,6 +320,19 @@ test('已有 Project List 时会覆盖为仅包含当前项目的单项 List', (
 	assert.equal(
 		content,
 		'---\nStatus: todo\nProject:\n  - "项目A"\n---\n\n正文内容',
+	);
+});
+
+test('多值 Project 属性会整体覆盖为新的多值列表', () => {
+	const content = upsertListPropertyValues(
+		'---\nStatus: todo\nProject:\n  - "旧项目"\n---\n',
+		'Project',
+		['项目A', '项目B'],
+	);
+
+	assert.equal(
+		content,
+		'---\nStatus: todo\nProject:\n  - "项目A"\n  - "项目B"\n---\n',
 	);
 });
 
@@ -411,4 +435,44 @@ test('普通任务会移除模板里残留的 Plan 属性', () => {
 	);
 
 	assert.equal(content, '---\nProject:\n  - "项目A"\n---\n\n正文内容');
+});
+
+test('可以从 frontmatter 中提取单值列表属性', () => {
+	assert.deepEqual(
+		extractListPropertyValuesFromContent(
+			'---\nProject:\n  - "项目A"\n---\n\n正文内容',
+			'Project',
+		),
+		['项目A'],
+	);
+});
+
+test('可以从 frontmatter 中提取多值列表属性', () => {
+	assert.deepEqual(
+		extractListPropertyValuesFromContent(
+			'---\nProject:\n  - "项目A"\n  - "项目B"\n---\n\n正文内容',
+			'Project',
+		),
+		['项目A', '项目B'],
+	);
+});
+
+test('可以从 frontmatter 中提取标量属性并转为单值列表', () => {
+	assert.deepEqual(
+		extractListPropertyValuesFromContent(
+			'---\nProject: "项目A"\n---\n\n正文内容',
+			'Project',
+		),
+		['项目A'],
+	);
+});
+
+test('缺失属性时提取结果为空数组', () => {
+	assert.deepEqual(
+		extractListPropertyValuesFromContent(
+			'---\nStatus: todo\n---\n\n正文内容',
+			'Project',
+		),
+		[],
+	);
 });
