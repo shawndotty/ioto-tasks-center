@@ -102,6 +102,7 @@ export class IOTOTasksCenterView extends ItemView {
 	private readonly getProjectListSortMode: () => ProjectListSortMode;
 	private readonly getTaskListSortMode: () => TaskListSortMode;
 	private readonly getTaskListGroupMode: () => TaskListGroupMode;
+	private readonly getShowTaskPriority: () => boolean;
 	private readonly getHiddenProjectNames: () => string[];
 	private readonly updateTaskListSortMode: (
 		sortMode: TaskListSortMode,
@@ -109,6 +110,7 @@ export class IOTOTasksCenterView extends ItemView {
 	private readonly updateTaskListGroupMode: (
 		groupMode: TaskListGroupMode,
 	) => Promise<void>;
+	private readonly updateShowTaskPriority: (show: boolean) => Promise<void>;
 	private readonly getTaskTemplateConfig: (
 		type: TaskCreationType,
 	) => TaskTemplateConfig;
@@ -120,11 +122,13 @@ export class IOTOTasksCenterView extends ItemView {
 		getProjectListSortMode: () => ProjectListSortMode,
 		getTaskListSortMode: () => TaskListSortMode,
 		getTaskListGroupMode: () => TaskListGroupMode,
+		getShowTaskPriority: () => boolean,
 		getHiddenProjectNames: () => string[],
 		updateTaskListSortMode: (sortMode: TaskListSortMode) => Promise<void>,
 		updateTaskListGroupMode: (
 			groupMode: TaskListGroupMode,
 		) => Promise<void>,
+		updateShowTaskPriority: (show: boolean) => Promise<void>,
 		getTaskTemplateConfig: (type: TaskCreationType) => TaskTemplateConfig,
 		getDateTaskDateFormat: () => string,
 	) {
@@ -134,9 +138,11 @@ export class IOTOTasksCenterView extends ItemView {
 		this.getProjectListSortMode = getProjectListSortMode;
 		this.getTaskListSortMode = getTaskListSortMode;
 		this.getTaskListGroupMode = getTaskListGroupMode;
+		this.getShowTaskPriority = getShowTaskPriority;
 		this.getHiddenProjectNames = getHiddenProjectNames;
 		this.updateTaskListSortMode = updateTaskListSortMode;
 		this.updateTaskListGroupMode = updateTaskListGroupMode;
+		this.updateShowTaskPriority = updateShowTaskPriority;
 		this.getTaskTemplateConfig = getTaskTemplateConfig;
 		this.getDateTaskDateFormat = getDateTaskDateFormat;
 	}
@@ -653,6 +659,16 @@ export class IOTOTasksCenterView extends ItemView {
 				cls: 'ioto-tasks-center__task-title',
 				text: task.title,
 			});
+			if (
+				this.getShowTaskPriority() &&
+				typeof task.priority === 'number'
+			) {
+				const priorityEl = rowEl.createSpan({
+					cls: `ioto-tasks-center__task-priority ${getTaskPriorityClassName(task.priority)}`,
+					text: `P${task.priority}`,
+				});
+				priorityEl.ariaLabel = `优先级：P${task.priority}`;
+			}
 			const statusEl = rowEl.createSpan({
 				cls: `ioto-tasks-center__task-status ioto-tasks-center__task-status--${task.status.key}`,
 				text: task.status.label,
@@ -1322,7 +1338,7 @@ export class IOTOTasksCenterView extends ItemView {
 		sections: Array<{ key: string; label: string | null }>,
 	): void {
 		const groupMode = this.getTaskListGroupMode();
-		if (groupMode !== 'status') {
+		if (groupMode === 'none') {
 			this.collapsedTaskGroups.clear();
 			return;
 		}
@@ -1351,7 +1367,10 @@ export class IOTOTasksCenterView extends ItemView {
 			groupMode === 'none'
 				? ''
 				: `，${TASK_LIST_GROUP_MODE_OPTIONS[groupMode]}`;
-		return `当前项目：${this.selectedProject}，共 ${this.tasks.length} 个文件，按${sortDescription}排序${groupDescription}`;
+		const priorityDescription = this.getShowTaskPriority()
+			? '，显示优先级'
+			: '';
+		return `当前项目：${this.selectedProject}，共 ${this.tasks.length} 个文件，按${sortDescription}排序${groupDescription}${priorityDescription}`;
 	}
 
 	private getTaskFilterCounts(): Record<TaskFilterTab, number> {
@@ -1369,6 +1388,7 @@ export class IOTOTasksCenterView extends ItemView {
 		const menu = new Menu();
 		const currentSortMode = this.getTaskListSortMode();
 		const currentGroupMode = this.getTaskListGroupMode();
+		const currentShowTaskPriority = this.getShowTaskPriority();
 
 		for (const sortMode of TASK_LIST_SORT_MODE_ORDER) {
 			const label = TASK_LIST_SORT_MODE_OPTIONS[sortMode];
@@ -1418,6 +1438,31 @@ export class IOTOTasksCenterView extends ItemView {
 								new Notice(message);
 							},
 						);
+					}),
+			);
+		}
+
+		menu.addSeparator();
+		for (const visibilityOption of TASK_PRIORITY_VISIBILITY_OPTIONS) {
+			menu.addItem((item) =>
+				item
+					.setTitle(
+						formatMenuOptionTitle(
+							'优先级',
+							visibilityOption.label,
+							visibilityOption.show === currentShowTaskPriority,
+						),
+					)
+					.onClick(() => {
+						void this.updateShowTaskPriority(
+							visibilityOption.show,
+						).catch((error: unknown) => {
+							const message =
+								error instanceof Error
+									? error.message
+									: '更新任务列表优先级显示失败。';
+							new Notice(message);
+						});
 					}),
 			);
 		}
@@ -1660,16 +1705,42 @@ const TASK_LIST_SORT_MODE_ORDER: TaskListSortMode[] = [
 	'updated-asc',
 	'name-asc',
 	'name-desc',
+	'priority-desc',
+	'priority-asc',
 ];
 
-const TASK_LIST_GROUP_MODE_ORDER: TaskListGroupMode[] = ['none', 'status'];
+const TASK_LIST_GROUP_MODE_ORDER: TaskListGroupMode[] = [
+	'none',
+	'status',
+	'priority',
+];
+const TASK_PRIORITY_VISIBILITY_OPTIONS = [
+	{ show: true, label: '显示' },
+	{ show: false, label: '不显示' },
+] as const;
 
 function formatMenuOptionTitle(
-	category: '排序' | '分组',
+	category: '排序' | '分组' | '优先级',
 	label: string,
 	active: boolean,
 ): string {
 	return active ? `${category}：${label}（当前）` : `${category}：${label}`;
+}
+
+function getTaskPriorityClassName(priority: number): string {
+	if (priority === 0) {
+		return 'ioto-tasks-center__task-priority--p0';
+	}
+
+	if (priority === 1) {
+		return 'ioto-tasks-center__task-priority--p1';
+	}
+
+	if (priority === 2) {
+		return 'ioto-tasks-center__task-priority--p2';
+	}
+
+	return 'ioto-tasks-center__task-priority--p3-plus';
 }
 
 function getWorkspaceLeafId(leaf: WorkspaceLeaf | null): string | null {

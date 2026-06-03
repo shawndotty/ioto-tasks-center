@@ -89,6 +89,7 @@ export async function listProjectTaskFiles(
 				mtime: file.stat.mtime,
 				ctime: file.stat.ctime,
 				size: file.stat.size,
+				priority: await getTaskFilePriority(app, file),
 				status: await getTaskFileStatus(app, file),
 				upTaskTitles: await getUpTaskTitles(app, file),
 			})),
@@ -133,6 +134,23 @@ async function getUpTaskTitles(app: App, file: TFile): Promise<string[]> {
 	}
 }
 
+async function getTaskFilePriority(
+	app: App,
+	file: TFile,
+): Promise<number | undefined> {
+	try {
+		const content = await app.vault.cachedRead(file);
+		return resolvePriorityFromSources({
+			content,
+			metadataValue:
+				app.metadataCache.getFileCache(file)?.frontmatter?.Priority,
+		});
+	} catch {
+		const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
+		return parsePriorityFrontmatterValue(frontmatter?.Priority);
+	}
+}
+
 export function parseUpTaskFrontmatterValue(value: unknown): string[] {
 	if (typeof value === 'string') {
 		const normalized = normalizeUpTaskTitle(value);
@@ -163,6 +181,42 @@ export function resolveUpTaskTitlesFromSources(options: {
 export function getUpTaskTitlesFromContent(content: string): string[] {
 	const upTaskValue = extractUpTaskFrontmatterValue(content);
 	return parseUpTaskFrontmatterValue(upTaskValue);
+}
+
+export function parsePriorityFrontmatterValue(
+	value: unknown,
+): number | undefined {
+	if (typeof value === 'number') {
+		return Number.isInteger(value) && value >= 0 ? value : undefined;
+	}
+
+	if (typeof value !== 'string') {
+		return undefined;
+	}
+
+	const normalizedValue = stripMatchingQuotes(value.trim());
+	if (!/^\d+$/.test(normalizedValue)) {
+		return undefined;
+	}
+
+	const priority = Number.parseInt(normalizedValue, 10);
+	return Number.isSafeInteger(priority) ? priority : undefined;
+}
+
+export function resolvePriorityFromSources(options: {
+	content?: string | null;
+	metadataValue?: unknown;
+}): number | undefined {
+	if (typeof options.content === 'string') {
+		return getPriorityFromContent(options.content);
+	}
+
+	return parsePriorityFrontmatterValue(options.metadataValue);
+}
+
+export function getPriorityFromContent(content: string): number | undefined {
+	const priorityValue = extractPriorityFrontmatterValue(content);
+	return parsePriorityFrontmatterValue(priorityValue);
 }
 
 function normalizeUpTaskTitle(value: string): string {
@@ -222,6 +276,25 @@ function extractUpTaskFrontmatterValue(
 		}
 
 		return listValues;
+	}
+
+	return undefined;
+}
+
+function extractPriorityFrontmatterValue(content: string): string | undefined {
+	const frontmatterBody = extractFrontmatterBody(content);
+	if (!frontmatterBody) {
+		return undefined;
+	}
+
+	for (const line of frontmatterBody.split(/\r?\n/)) {
+		const match = line.match(/^\s*Priority:\s*(.*)$/);
+		if (!match) {
+			continue;
+		}
+
+		const value = stripMatchingQuotes((match[1] ?? '').trim());
+		return value || undefined;
 	}
 
 	return undefined;
@@ -311,7 +384,7 @@ function buildTaskFileStatus(taskMarkers: string[]): TaskFileStatus {
 	if (totalTaskCount === 0) {
 		return {
 			key: 'empty',
-			label: '无任务项',
+			label: '无任务',
 			totalTaskCount,
 			completedTaskCount,
 			summary: '未识别到复选框任务',

@@ -23,14 +23,17 @@ export type TaskListSortMode =
 	| 'updated-desc'
 	| 'updated-asc'
 	| 'name-asc'
-	| 'name-desc';
-export type TaskListGroupMode = 'none' | 'status';
+	| 'name-desc'
+	| 'priority-desc'
+	| 'priority-asc';
+export type TaskListGroupMode = 'none' | 'status' | 'priority';
 
 export interface IOTOTasksCenterSettings {
 	tasksRootPath: string;
 	projectListSortMode: ProjectListSortMode;
 	taskListSortMode: TaskListSortMode;
 	taskListGroupMode: TaskListGroupMode;
+	showTaskPriority: boolean;
 	hiddenProjectNames: string[];
 	taskTemplateConfigs: TaskTemplateConfigMap;
 	dateTaskDateFormat: string;
@@ -41,6 +44,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	projectListSortMode: 'incomplete-count',
 	taskListSortMode: 'created-desc',
 	taskListGroupMode: 'none',
+	showTaskPriority: false,
 	hiddenProjectNames: [],
 	taskTemplateConfigs: createDefaultTaskTemplateConfigMap(),
 	dateTaskDateFormat: DEFAULT_DATE_TASK_DATE_FORMAT,
@@ -61,11 +65,14 @@ export const TASK_LIST_SORT_MODE_OPTIONS: Record<TaskListSortMode, string> = {
 	'updated-asc': '更新时间（从旧到新）',
 	'name-asc': '文件名（A到Z）',
 	'name-desc': '文件名（Z到A）',
+	'priority-desc': '优先级（高到低）',
+	'priority-asc': '优先级（低到高）',
 };
 
 export const TASK_LIST_GROUP_MODE_OPTIONS: Record<TaskListGroupMode, string> = {
 	none: '不分组',
 	status: '按任务状态分组',
+	priority: '按优先级分组',
 };
 
 export function isProjectListSortMode(
@@ -81,12 +88,14 @@ export function isTaskListSortMode(value: string): value is TaskListSortMode {
 		value === 'updated-desc' ||
 		value === 'updated-asc' ||
 		value === 'name-asc' ||
-		value === 'name-desc'
+		value === 'name-desc' ||
+		value === 'priority-desc' ||
+		value === 'priority-asc'
 	);
 }
 
 export function isTaskListGroupMode(value: string): value is TaskListGroupMode {
-	return value === 'none' || value === 'status';
+	return value === 'none' || value === 'status' || value === 'priority';
 }
 
 export const TASK_TEMPLATE_SOURCE_MODE_OPTIONS: Record<

@@ -25,6 +25,7 @@ export interface TaskFileEntry {
 	mtime: number;
 	ctime: number;
 	size: number;
+	priority?: number;
 	status: TaskFileStatus;
 	upTaskTitles: string[];
 	indentLevel?: number;
@@ -32,7 +33,7 @@ export interface TaskFileEntry {
 
 export interface TaskFileStatus {
 	key: 'todo' | 'in-progress' | 'completed' | 'empty';
-	label: '待开始' | '进行中' | '已完成' | '无任务项';
+	label: '待开始' | '进行中' | '已完成' | '无任务';
 	totalTaskCount: number;
 	completedTaskCount: number;
 	summary: string;

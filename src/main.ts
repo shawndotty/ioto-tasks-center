@@ -39,9 +39,11 @@ export default class IOTOTasksCenter extends Plugin {
 					() => this.settings.projectListSortMode,
 					() => this.settings.taskListSortMode,
 					() => this.settings.taskListGroupMode,
+					() => this.settings.showTaskPriority,
 					() => this.settings.hiddenProjectNames,
 					(sortMode) => this.updateTaskListSortMode(sortMode),
 					(groupMode) => this.updateTaskListGroupMode(groupMode),
+					(show) => this.updateShowTaskPriority(show),
 					(type) => this.settings.taskTemplateConfigs[type],
 					() => this.settings.dateTaskDateFormat,
 				),
@@ -141,6 +143,16 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.taskListGroupMode = groupMode;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateShowTaskPriority(show: boolean): Promise<void> {
+		if (this.settings.showTaskPriority === show) {
+			return;
+		}
+
+		this.settings.showTaskPriority = show;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}

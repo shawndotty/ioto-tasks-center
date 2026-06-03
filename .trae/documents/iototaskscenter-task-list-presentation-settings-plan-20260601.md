@@ -7,15 +7,15 @@
 本次先支持两类呈现配置：
 
 - 排序
-  - 创建时间（从新到旧）
-  - 创建时间（从旧到新）
-  - 更新时间（从新到旧）
-  - 更新时间（从旧到新）
-  - 文件名（A 到 Z）
-  - 文件名（Z 到 A）
+    - 创建时间（从新到旧）
+    - 创建时间（从旧到新）
+    - 更新时间（从新到旧）
+    - 更新时间（从旧到新）
+    - 文件名（A 到 Z）
+    - 文件名（Z 到 A）
 - 分组
-  - 不分组
-  - 按任务状态分组
+    - 不分组
+    - 按任务状态分组
 
 已确认决策：
 
@@ -42,22 +42,22 @@
 已确认现状：
 
 - 任务区顶部依次渲染：
-  - 标题与“添加任务”按钮
-  - 当前项目说明文案
-  - 搜索框
-  - tab 栏
-  - 任务列表
+    - 标题与“添加任务”按钮
+    - 当前项目说明文案
+    - 搜索框
+    - tab 栏
+    - 任务列表
 - tab 栏由 `renderTaskTabs()` 负责，当前只渲染四个状态筛选 tab：
-  - `today`
-  - `incomplete`
-  - `completed`
-  - `all`
+    - `today`
+    - `incomplete`
+    - `completed`
+    - `all`
 - 当前任务列表的可见数据链路为：
-  - `this.tasks`
-  - `getTasksForActiveTab()`
-  - `filterTasksBySearchQuery()`
-  - `buildVisibleTaskHierarchy()`
-  - 列表渲染
+    - `this.tasks`
+    - `getTasksForActiveTab()`
+    - `filterTasksBySearchQuery()`
+    - `buildVisibleTaskHierarchy()`
+    - 列表渲染
 
 结论：
 
@@ -74,18 +74,18 @@
 已确认现状：
 
 - `TaskFileEntry` 当前包含：
-  - `basename`
-  - `title`
-  - `ctime`
-  - `mtime`
-  - `status`
-  - `path`
+    - `basename`
+    - `title`
+    - `ctime`
+    - `mtime`
+    - `status`
+    - `path`
 - `listProjectTaskFiles()` 当前在读取一级 Markdown 文件后，会先按“最近更新时间倒序”排序，再以 `basename` 兜底
 - `status.key` 当前稳定为：
-  - `todo`
-  - `in-progress`
-  - `completed`
-  - `empty`
+    - `todo`
+    - `in-progress`
+    - `completed`
+    - `empty`
 
 结论：
 
@@ -103,17 +103,17 @@
 已确认现状：
 
 - `IOTOTasksCenterSettings` 当前只包含：
-  - `tasksRootPath`
-  - `projectListSortMode`
-  - `hiddenProjectNames`
-  - `taskTemplateConfigs`
-  - `dateTaskDateFormat`
+    - `tasksRootPath`
+    - `projectListSortMode`
+    - `hiddenProjectNames`
+    - `taskTemplateConfigs`
+    - `dateTaskDateFormat`
 - `main.ts` 通过 getter 将设置传给 `IOTOTasksCenterView`
 - 已存在统一的设置更新链路：
-  - 更新 settings
-  - `saveSettings()`
-  - `applySettingsToOpenViews()`
-  - 视图执行 `handleSettingsChange()`
+    - 更新 settings
+    - `saveSettings()`
+    - `applySettingsToOpenViews()`
+    - 视图执行 `handleSettingsChange()`
 
 结论：
 
@@ -129,11 +129,11 @@
 已确认现状：
 
 - 已有与本次直接相关的样式块：
-  - `.ioto-tasks-center__section-actions`
-  - `.ioto-tasks-center__tabs`
-  - `.ioto-tasks-center__tab`
-  - `.ioto-tasks-center__task-list`
-  - `.ioto-tasks-center__task-row`
+    - `.ioto-tasks-center__section-actions`
+    - `.ioto-tasks-center__tabs`
+    - `.ioto-tasks-center__tab`
+    - `.ioto-tasks-center__task-list`
+    - `.ioto-tasks-center__task-row`
 - 当前 `.ioto-tasks-center__tabs` 是可换行的 flex 容器
 - 没有“tab 栏右侧图标按钮”样式
 - 没有“任务分组标题”样式
@@ -173,18 +173,18 @@
 变更内容：
 
 - 在 `src/settings.ts` 新增任务列表排序与分组的类型定义，例如：
-  - `TaskListSortMode`
-  - `TaskListGroupMode`
+    - `TaskListSortMode`
+    - `TaskListGroupMode`
 - 在 `IOTOTasksCenterSettings` 中新增：
-  - `taskListSortMode`
-  - `taskListGroupMode`
+    - `taskListSortMode`
+    - `taskListGroupMode`
 - 在 `DEFAULT_SETTINGS` 中设置默认值：
-  - `taskListSortMode: 'created-desc'`
-  - `taskListGroupMode: 'none'`
+    - `taskListSortMode: 'created-desc'`
+    - `taskListGroupMode: 'none'`
 - 导出排序/分组选项文案映射，供视图菜单复用
 - 在 `src/main.ts` 中新增更新方法，例如：
-  - `updateTaskListSortMode()`
-  - `updateTaskListGroupMode()`
+    - `updateTaskListSortMode()`
+    - `updateTaskListGroupMode()`
 - 在注册视图时，把新的 getter 传入 `IOTOTasksCenterView`
 
 原因：
@@ -207,20 +207,20 @@
 变更内容：
 
 - 新增纯函数模块，封装：
-  - 任务排序
-  - 任务分组
-  - 分组顺序定义
+    - 任务排序
+    - 任务分组
+    - 分组顺序定义
 - 建议导出函数：
-  - `sortTasksForPresentation(tasks, sortMode)`
-  - `groupTasksForPresentation(tasks, groupMode)`
-  - `buildTaskPresentationSections(tasks, options)`
+    - `sortTasksForPresentation(tasks, sortMode)`
+    - `groupTasksForPresentation(tasks, groupMode)`
+    - `buildTaskPresentationSections(tasks, options)`
 
 建议的数据结构：
 
 - 输出为“可直接渲染的 section 数组”，每个 section 包含：
-  - `key`
-  - `label`
-  - `tasks`
+    - `key`
+    - `label`
+    - `tasks`
 
 排序规则明确为：
 
@@ -235,10 +235,10 @@
 
 - `none`：输出单个 section，不显示分组标题
 - `status`：按以下顺序输出非空分组：
-  - `todo` / `待开始`
-  - `in-progress` / `进行中`
-  - `completed` / `已完成`
-  - `empty` / `无任务项`
+    - `todo` / `待开始`
+    - `in-progress` / `进行中`
+    - `completed` / `已完成`
+    - `empty` / `无任务`
 
 原因：
 
@@ -260,23 +260,23 @@
 变更内容：
 
 - 改造 `renderTaskTabs()` 的 DOM 结构，使其包含：
-  - 左侧 tab 按钮区
-  - 右侧设置按钮区
+    - 左侧 tab 按钮区
+    - 右侧设置按钮区
 - 新增一个图标按钮，使用 `Slider` 图标
 - 点击按钮时弹出 `Menu`
 
 菜单内容建议分为两段：
 
 - 排序
-  - 创建时间（从新到旧）
-  - 创建时间（从旧到新）
-  - 更新时间（从新到旧）
-  - 更新时间（从旧到新）
-  - 文件名（A 到 Z）
-  - 文件名（Z 到 A）
+    - 创建时间（从新到旧）
+    - 创建时间（从旧到新）
+    - 更新时间（从新到旧）
+    - 更新时间（从旧到新）
+    - 文件名（A 到 Z）
+    - 文件名（Z 到 A）
 - 分组
-  - 不分组
-  - 按任务状态分组
+    - 不分组
+    - 按任务状态分组
 
 原因：
 
@@ -299,13 +299,13 @@
 变更内容：
 
 - 新增从设置读取任务列表呈现方式的能力，例如：
-  - `getTaskListSortMode`
-  - `getTaskListGroupMode`
+    - `getTaskListSortMode`
+    - `getTaskListGroupMode`
 - 在现有 `getVisibleTasks()` 结果基础上，新增“呈现 section”计算层
 - 当前渲染流程从：
-  - `visibleTasks -> buildVisibleTaskHierarchy() -> 逐项渲染`
-  改为：
-  - `visibleTasks -> buildTaskPresentationSections() -> section 内 buildVisibleTaskHierarchy() -> 逐组渲染`
+    - `visibleTasks -> buildVisibleTaskHierarchy() -> 逐项渲染`
+      改为：
+    - `visibleTasks -> buildTaskPresentationSections() -> section 内 buildVisibleTaskHierarchy() -> 逐组渲染`
 
 原因：
 
@@ -318,9 +318,9 @@
 - 当 `groupMode === 'status'` 时，为每个 section 先渲染标题，再渲染该组任务
 - 为避免破坏现有父子任务展示，应在“每个分组内部”执行 `buildVisibleTaskHierarchy()`
 - 需要注意父子任务跨状态时的展示边界：
-  - 本次按“当前分组只显示属于该状态的任务”处理
-  - 不跨组补齐父任务或子任务
-  - 这是最可预测、也最容易解释的规则
+    - 本次按“当前分组只显示属于该状态的任务”处理
+    - 不跨组补齐父任务或子任务
+    - 这是最可预测、也最容易解释的规则
 
 ### 5. 更新任务列表说明文案，使其反映当前排序/分组状态
 
@@ -332,9 +332,9 @@
 
 - 当前说明文案固定写着“按最近修改时间排序”
 - 需要改为根据真实设置动态显示，例如：
-  - `当前项目：xxx，共 N 个文件，按创建时间从新到旧排序`
-  - 若启用分组，可补充为：
-    - `当前项目：xxx，共 N 个文件，按创建时间从新到旧排序，按任务状态分组`
+    - `当前项目：xxx，共 N 个文件，按创建时间从新到旧排序`
+    - 若启用分组，可补充为：
+        - `当前项目：xxx，共 N 个文件，按创建时间从新到旧排序，按任务状态分组`
 
 原因：
 
@@ -353,14 +353,14 @@
 变更内容：
 
 - 为 tab 栏拆分布局，例如新增：
-  - `.ioto-tasks-center__tabs-bar`
-  - `.ioto-tasks-center__tabs-list`
-  - `.ioto-tasks-center__tabs-settings`
+    - `.ioto-tasks-center__tabs-bar`
+    - `.ioto-tasks-center__tabs-list`
+    - `.ioto-tasks-center__tabs-settings`
 - 为设置图标按钮新增样式，例如：
-  - `.ioto-tasks-center__tab-settings-button`
+    - `.ioto-tasks-center__tab-settings-button`
 - 为分组标题与分组块新增样式，例如：
-  - `.ioto-tasks-center__task-group`
-  - `.ioto-tasks-center__task-group-title`
+    - `.ioto-tasks-center__task-group`
+    - `.ioto-tasks-center__task-group-title`
 
 原因：
 
@@ -382,13 +382,13 @@
 变更内容：
 
 - 以纯函数测试为主，覆盖：
-  - 默认排序为创建时间从新到旧
-  - 六种排序模式分别生效
-  - 文件名排序在中文/英文场景下稳定
-  - 分组关闭时只返回单个 section
-  - 按状态分组时按既定顺序输出非空组
-  - 分组前先排序，组内顺序正确
-  - 输入数组不被原地修改
+    - 默认排序为创建时间从新到旧
+    - 六种排序模式分别生效
+    - 文件名排序在中文/英文场景下稳定
+    - 分组关闭时只返回单个 section
+    - 按状态分组时按既定顺序输出非空组
+    - 分组前先排序，组内顺序正确
+    - 输入数组不被原地修改
 
 原因：
 
@@ -417,10 +417,10 @@
 - 默认排序固定为“创建时间（从新到旧）”
 - 默认分组固定为“不分组”
 - 按状态分组时，分组顺序固定为：
-  - 待开始
-  - 进行中
-  - 已完成
-  - 无任务项
+    - 待开始
+    - 进行中
+    - 已完成
+    - 无任务
 - 分组标题仅在 `status` 分组模式下显示；`none` 模式不显示额外标题
 - 跨组父子任务不做补齐展示，避免引入超出本次需求的数据联动复杂度
 - 本次不在插件设置页新增同名下拉项，入口以任务列表右上角按钮为主
@@ -428,40 +428,40 @@
 ## Verification Steps
 
 1. 设置默认值验证
-   - 首次安装或旧设置缺失新字段时，任务列表默认按“创建时间（从新到旧）”显示
-   - 默认不分组
+    - 首次安装或旧设置缺失新字段时，任务列表默认按“创建时间（从新到旧）”显示
+    - 默认不分组
 
 2. 菜单交互验证
-   - tab 栏最右侧显示 Slider 图标按钮
-   - 点击按钮可弹出排序/分组菜单
-   - 当前选项在菜单中可识别
+    - tab 栏最右侧显示 Slider 图标按钮
+    - 点击按钮可弹出排序/分组菜单
+    - 当前选项在菜单中可识别
 
 3. 排序行为验证
-   - 六种排序模式都能立即生效
-   - 同时间戳任务使用文件名稳定兜底
-   - 搜索结果与 tab 过滤结果在排序切换后顺序正确
+    - 六种排序模式都能立即生效
+    - 同时间戳任务使用文件名稳定兜底
+    - 搜索结果与 tab 过滤结果在排序切换后顺序正确
 
 4. 分组行为验证
-   - 不分组时保持单列表
-   - 按任务状态分组时，分组标题和任务内容正确对应
-   - 仅有任务的状态组会显示
+    - 不分组时保持单列表
+    - 按任务状态分组时，分组标题和任务内容正确对应
+    - 仅有任务的状态组会显示
 
 5. 状态持久化验证
-   - 修改排序/分组后关闭并重新打开任务中心
-   - 确认设置已被记住
-   - 重启 Obsidian 后再次打开，确认设置仍存在
+    - 修改排序/分组后关闭并重新打开任务中心
+    - 确认设置已被记住
+    - 重启 Obsidian 后再次打开，确认设置仍存在
 
 6. 兼容性验证
-   - 与现有“今天 / 未完成 / 已完成 / 全部” tab 共存
-   - 与任务搜索共存
-   - 与子任务层级显示共存
-   - 与拖拽父任务逻辑共存，至少不出现明显渲染异常
+    - 与现有“今天 / 未完成 / 已完成 / 全部” tab 共存
+    - 与任务搜索共存
+    - 与子任务层级显示共存
+    - 与拖拽父任务逻辑共存，至少不出现明显渲染异常
 
 7. 自动化与静态检查
-   - 运行 `npm test`
-   - 运行 `npm run build`
-   - 运行 `npm run lint`
-   - 对修改文件执行 diagnostics 检查
+    - 运行 `npm test`
+    - 运行 `npm run build`
+    - 运行 `npm run lint`
+    - 对修改文件执行 diagnostics 检查
 
 ## Planned File Touch Points
 

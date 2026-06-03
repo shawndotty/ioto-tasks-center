@@ -661,6 +661,38 @@ button:not(.clickable-icon).ioto-tasks-center__task-row:hover {
 	white-space: nowrap;
 }
 
+.ioto-tasks-center__task-priority {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-size: var(--font-ui-smaller);
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+.ioto-tasks-center__task-priority--p0 {
+	background: color-mix(in srgb, var(--color-red) 18%, transparent);
+	color: var(--color-red);
+}
+
+.ioto-tasks-center__task-priority--p1 {
+	background: color-mix(in srgb, var(--color-orange) 18%, transparent);
+	color: var(--color-orange);
+}
+
+.ioto-tasks-center__task-priority--p2 {
+	background: color-mix(in srgb, var(--color-blue) 18%, transparent);
+	color: var(--color-blue);
+}
+
+.ioto-tasks-center__task-priority--p3-plus {
+	background: color-mix(in srgb, var(--color-green) 18%, transparent);
+	color: var(--color-green);
+}
+
 .ioto-tasks-center__task-status {
 	flex: 0 0 auto;
 	display: inline-flex;

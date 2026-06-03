@@ -22,7 +22,11 @@ export function buildTaskPresentationSections(
 	},
 ): TaskPresentationSection[] {
 	const sortedTasks = sortTasksForPresentation(tasks, options.sortMode);
-	return groupTasksForPresentation(sortedTasks, options.groupMode);
+	return groupTasksForPresentation(
+		sortedTasks,
+		options.groupMode,
+		options.sortMode,
+	);
 }
 
 export function sortTasksForPresentation(
@@ -37,6 +41,7 @@ export function sortTasksForPresentation(
 export function groupTasksForPresentation(
 	tasks: TaskFileEntry[],
 	groupMode: TaskListGroupMode,
+	sortMode: TaskListSortMode = 'created-desc',
 ): TaskPresentationSection[] {
 	if (groupMode === 'none') {
 		return [
@@ -48,9 +53,15 @@ export function groupTasksForPresentation(
 		];
 	}
 
+	if (groupMode === 'priority') {
+		return buildPrioritySections(tasks, sortMode);
+	}
+
 	const sections: TaskPresentationSection[] = [];
 	for (const statusKey of STATUS_GROUP_ORDER) {
-		const groupTasks = tasks.filter((task) => task.status.key === statusKey);
+		const groupTasks = tasks.filter(
+			(task) => task.status.key === statusKey,
+		);
 		if (groupTasks.length === 0) {
 			continue;
 		}
@@ -71,17 +82,37 @@ function compareTasks(
 ): number {
 	switch (sortMode) {
 		case 'created-desc':
-			return compareNumberDesc(left.ctime, right.ctime) || compareName(left, right);
+			return (
+				compareNumberDesc(left.ctime, right.ctime) ||
+				compareName(left, right)
+			);
 		case 'created-asc':
-			return compareNumberAsc(left.ctime, right.ctime) || compareName(left, right);
+			return (
+				compareNumberAsc(left.ctime, right.ctime) ||
+				compareName(left, right)
+			);
 		case 'updated-desc':
-			return compareNumberDesc(left.mtime, right.mtime) || compareName(left, right);
+			return (
+				compareNumberDesc(left.mtime, right.mtime) ||
+				compareName(left, right)
+			);
 		case 'updated-asc':
-			return compareNumberAsc(left.mtime, right.mtime) || compareName(left, right);
+			return (
+				compareNumberAsc(left.mtime, right.mtime) ||
+				compareName(left, right)
+			);
 		case 'name-desc':
 			return compareName(right, left);
 		case 'name-asc':
 			return compareName(left, right);
+		case 'priority-desc':
+			return (
+				comparePriority(left, right, 'desc') || compareName(left, right)
+			);
+		case 'priority-asc':
+			return (
+				comparePriority(left, right, 'asc') || compareName(left, right)
+			);
 	}
 }
 
@@ -100,6 +131,74 @@ function compareName(left: TaskFileEntry, right: TaskFileEntry): number {
 	);
 }
 
+function comparePriority(
+	left: TaskFileEntry,
+	right: TaskFileEntry,
+	direction: 'desc' | 'asc',
+): number {
+	const leftPriority = left.priority;
+	const rightPriority = right.priority;
+
+	if (leftPriority === undefined && rightPriority === undefined) {
+		return 0;
+	}
+
+	if (leftPriority === undefined) {
+		return 1;
+	}
+
+	if (rightPriority === undefined) {
+		return -1;
+	}
+
+	return direction === 'desc'
+		? leftPriority - rightPriority
+		: rightPriority - leftPriority;
+}
+
+function buildPrioritySections(
+	tasks: TaskFileEntry[],
+	sortMode: TaskListSortMode,
+): TaskPresentationSection[] {
+	const groupedTasks = new Map<number, TaskFileEntry[]>();
+	const unsetTasks: TaskFileEntry[] = [];
+
+	for (const task of tasks) {
+		if (task.priority === undefined) {
+			unsetTasks.push(task);
+			continue;
+		}
+
+		const priorityTasks = groupedTasks.get(task.priority);
+		if (priorityTasks) {
+			priorityTasks.push(task);
+			continue;
+		}
+
+		groupedTasks.set(task.priority, [task]);
+	}
+
+	const orderedPriorities = [...groupedTasks.keys()].sort((left, right) =>
+		sortMode === 'priority-asc' ? right - left : left - right,
+	);
+
+	const sections = orderedPriorities.map((priority) => ({
+		key: `priority-${priority}`,
+		label: `P${priority}`,
+		tasks: groupedTasks.get(priority) ?? [],
+	}));
+
+	if (unsetTasks.length > 0) {
+		sections.push({
+			key: 'priority-unset',
+			label: '未设置优先级',
+			tasks: unsetTasks,
+		});
+	}
+
+	return sections;
+}
+
 function getStatusGroupLabel(statusKey: TaskFileStatus['key']): string {
 	switch (statusKey) {
 		case 'todo':
@@ -109,6 +208,6 @@ function getStatusGroupLabel(statusKey: TaskFileStatus['key']): string {
 		case 'completed':
 			return '已完成';
 		case 'empty':
-			return '无任务项';
+			return '无任务';
 	}
 }
