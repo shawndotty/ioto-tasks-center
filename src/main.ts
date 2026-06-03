@@ -1,4 +1,5 @@
 import { Notice, Plugin, TAbstractFile, WorkspaceLeaf } from 'obsidian';
+import { t } from './lang/helpter';
 import { normalizeDateTaskDateFormat } from './tasks-center/date-task-format';
 import {
 	canConvertSelectedTextToSubtask,
@@ -51,13 +52,13 @@ export default class IOTOTasksCenter extends Plugin {
 
 		this.addCommand({
 			id: 'open-tasks-center-view',
-			name: '打开任务中心视图',
+			name: t('command.openTasksCenterView'),
 			callback: () => this.activateIOTOTasksCenterView(),
 		});
 
 		this.addCommand({
 			id: 'convert-selected-text-to-subtask',
-			name: '将选中文本转为子任务',
+			name: t('command.convertSelectedTextToSubtask'),
 			editorCheckCallback: (checking, editor, ctx) => {
 				const canExecute = canConvertSelectedTextToSubtask(
 					ctx.file,
@@ -81,7 +82,7 @@ export default class IOTOTasksCenter extends Plugin {
 						const message =
 							error instanceof Error
 								? error.message
-								: '将选中文本转为子任务失败。';
+								: t('notice.convertSelectedTextToSubtaskFailed');
 						new Notice(message);
 					});
 				}

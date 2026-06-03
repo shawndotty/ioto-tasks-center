@@ -1,3 +1,5 @@
+import { t } from '../lang/helpter';
+
 export const DEFAULT_TASKS_ROOT_PATH = '3-任务';
 
 export function normalizeTasksRootPath(input: string): string {
@@ -32,11 +34,45 @@ export interface TaskFileEntry {
 }
 
 export interface TaskFileStatus {
-	key: 'todo' | 'in-progress' | 'completed' | 'empty';
-	label: '待开始' | '进行中' | '已完成' | '无任务';
+	key: TaskFileStatusKey;
+	label: string;
 	totalTaskCount: number;
 	completedTaskCount: number;
 	summary: string;
+}
+
+export type TaskFileStatusKey = 'todo' | 'in-progress' | 'completed' | 'empty';
+
+export function getTaskStatusLabel(statusKey: TaskFileStatusKey): string {
+	switch (statusKey) {
+		case 'todo':
+			return t('task.status.todo');
+		case 'in-progress':
+			return t('task.status.inProgress');
+		case 'completed':
+			return t('task.status.completed');
+		case 'empty':
+			return t('task.status.empty');
+	}
+}
+
+export function buildTaskStatusSummary(
+	statusKey: TaskFileStatusKey,
+	totalTaskCount: number,
+	completedTaskCount: number,
+): string {
+	switch (statusKey) {
+		case 'empty':
+			return t('task.status.summary.empty');
+		case 'todo':
+			return t('task.status.summary.todo', [String(totalTaskCount)]);
+		case 'completed':
+		case 'in-progress':
+			return t('task.status.summary.completed', [
+				String(completedTaskCount),
+				String(totalTaskCount),
+			]);
+	}
 }
 
 export interface ProjectListResult {

@@ -1,4 +1,5 @@
 import { App, Notice, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
+import { t } from '../lang/helpter';
 
 import {
 	formatDateByPattern,
@@ -55,14 +56,17 @@ export function buildTaskFileName(
 
 	const normalizedName = normalizeCustomTaskName(customName ?? '');
 	if (!normalizedName) {
-		throw new Error('任务名称不能为空。');
+		throw new Error(t('error.taskNameEmpty'));
 	}
 
 	if (type === 'normal') {
 		return `${normalizedName}.md`;
 	}
 
-	const typeLabel = type === 'plan' ? '计划' : '主题';
+	const typeLabel =
+		type === 'plan'
+			? t('task.type.fileName.plan')
+			: t('task.type.fileName.topic');
 	return `${projectName}-${typeLabel}-${normalizedName}.md`;
 }
 
@@ -314,7 +318,7 @@ export async function createTaskFile(
 
 	const existingFile = app.vault.getAbstractFileByPath(targetPath);
 	if (existingFile instanceof TFile) {
-		new Notice('该任务文件已存在，已为你打开现有文件。');
+		new Notice(t('notice.taskFileExists'));
 		return {
 			file: existingFile,
 			created: false,
@@ -411,7 +415,7 @@ async function applyTemplateFileToFile(
 
 	const content = await app.vault.cachedRead(templateFile);
 	await app.vault.modify(file, content);
-	new Notice('模板已插入原文，未自动执行 templater 语法。');
+	new Notice(t('notice.templateInsertedOnly'));
 	return false;
 }
 

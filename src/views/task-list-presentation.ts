@@ -1,3 +1,4 @@
+import { t } from '../lang/helpter';
 import type { TaskListGroupMode, TaskListSortMode } from '../settings';
 import type { TaskFileEntry, TaskFileStatus } from '../tasks-center/types';
 
@@ -191,7 +192,7 @@ function buildPrioritySections(
 	if (unsetTasks.length > 0) {
 		sections.push({
 			key: 'priority-unset',
-			label: '未设置优先级',
+			label: t('task.group.priorityUnset'),
 			tasks: unsetTasks,
 		});
 	}
@@ -202,12 +203,12 @@ function buildPrioritySections(
 function getStatusGroupLabel(statusKey: TaskFileStatus['key']): string {
 	switch (statusKey) {
 		case 'todo':
-			return '待开始';
+			return t('task.status.todo');
 		case 'in-progress':
-			return '进行中';
+			return t('task.status.inProgress');
 		case 'completed':
-			return '已完成';
+			return t('task.status.completed');
 		case 'empty':
-			return '无任务';
+			return t('task.status.empty');
 	}
 }

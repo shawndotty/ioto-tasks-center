@@ -1,13 +1,19 @@
+import { t } from '../lang/helpter';
 import type { TaskFileEntry } from '../tasks-center/types';
 
 export type TaskFilterTab = 'today' | 'incomplete' | 'completed' | 'all';
 
-export const TASK_FILTER_TABS: Array<{ key: TaskFilterTab; label: string }> = [
-	{ key: 'today', label: '今天' },
-	{ key: 'incomplete', label: '未完成' },
-	{ key: 'completed', label: '已完成' },
-	{ key: 'all', label: '全部' },
-];
+export function getTaskFilterTabs(): Array<{
+	key: TaskFilterTab;
+	label: string;
+}> {
+	return [
+		{ key: 'today', label: t('task.filter.today') },
+		{ key: 'incomplete', label: t('task.filter.incomplete') },
+		{ key: 'completed', label: t('task.filter.completed') },
+		{ key: 'all', label: t('task.filter.all') },
+	];
+}
 
 export function isTaskFilterTab(value: unknown): value is TaskFilterTab {
 	return (

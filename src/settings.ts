@@ -1,4 +1,5 @@
 import { App, PluginSettingTab, Setting, TFile } from 'obsidian';
+import { t } from './lang/helpter';
 import IOTOTasksCenter from './main';
 import { listProjectFolders, listProjectTaskFiles } from './tasks-center/data';
 import { DEFAULT_DATE_TASK_DATE_FORMAT } from './tasks-center/date-task-format';
@@ -50,30 +51,39 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	dateTaskDateFormat: DEFAULT_DATE_TASK_DATE_FORMAT,
 };
 
-export const PROJECT_LIST_SORT_MODE_OPTIONS: Record<
+export function getProjectListSortModeOptions(): Record<
 	ProjectListSortMode,
 	string
-> = {
-	'incomplete-count': '按未完成任务数量',
-	name: '按项目名称',
-};
+> {
+	return {
+		'incomplete-count': t('task.sort.incompleteCount'),
+		name: t('task.sort.projectName'),
+	};
+}
 
-export const TASK_LIST_SORT_MODE_OPTIONS: Record<TaskListSortMode, string> = {
-	'created-desc': '创建时间（从新到旧）',
-	'created-asc': '创建时间（从旧到新）',
-	'updated-desc': '更新时间（从新到旧）',
-	'updated-asc': '更新时间（从旧到新）',
-	'name-asc': '文件名（A到Z）',
-	'name-desc': '文件名（Z到A）',
-	'priority-desc': '优先级（高到低）',
-	'priority-asc': '优先级（低到高）',
-};
+export function getTaskListSortModeOptions(): Record<TaskListSortMode, string> {
+	return {
+		'created-desc': t('task.sort.createdDesc'),
+		'created-asc': t('task.sort.createdAsc'),
+		'updated-desc': t('task.sort.updatedDesc'),
+		'updated-asc': t('task.sort.updatedAsc'),
+		'name-asc': t('task.sort.nameAsc'),
+		'name-desc': t('task.sort.nameDesc'),
+		'priority-desc': t('task.sort.priorityDesc'),
+		'priority-asc': t('task.sort.priorityAsc'),
+	};
+}
 
-export const TASK_LIST_GROUP_MODE_OPTIONS: Record<TaskListGroupMode, string> = {
-	none: '不分组',
-	status: '按任务状态分组',
-	priority: '按优先级分组',
-};
+export function getTaskListGroupModeOptions(): Record<
+	TaskListGroupMode,
+	string
+> {
+	return {
+		none: t('task.group.none'),
+		status: t('task.group.status'),
+		priority: t('task.group.priority'),
+	};
+}
 
 export function isProjectListSortMode(
 	value: string,
@@ -98,20 +108,24 @@ export function isTaskListGroupMode(value: string): value is TaskListGroupMode {
 	return value === 'none' || value === 'status' || value === 'priority';
 }
 
-export const TASK_TEMPLATE_SOURCE_MODE_OPTIONS: Record<
+export function getTaskTemplateSourceModeOptions(): Record<
 	TaskTemplateSourceMode,
 	string
-> = {
-	file: '使用模板文件',
-	inline: '直接输入模板内容',
-};
+> {
+	return {
+		file: t('task.template.source.file'),
+		inline: t('task.template.source.inline'),
+	};
+}
 
-const TASK_TYPE_TEMPLATE_LABELS: Record<TaskCreationType, string> = {
-	date: '日期任务',
-	plan: '计划任务',
-	topic: '主题任务',
-	normal: '普通任务',
-};
+function getTaskTypeTemplateLabels(): Record<TaskCreationType, string> {
+	return {
+		date: t('task.type.date'),
+		plan: t('task.type.plan'),
+		topic: t('task.type.topic'),
+		normal: t('task.type.normal'),
+	};
+}
 
 export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 	plugin: IOTOTasksCenter;
@@ -123,16 +137,17 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 
 	display(): void {
 		const { containerEl } = this;
+		const projectSortModeOptions = getProjectListSortModeOptions();
 
 		containerEl.empty();
 
-		new Setting(containerEl).setName('任务中心').setHeading();
+		new Setting(containerEl)
+			.setName(t('settings.heading.main'))
+			.setHeading();
 
 		new Setting(containerEl)
-			.setName('任务根目录')
-			.setDesc(
-				'填写一个 vault 相对路径。任务中心会将该目录的一级子文件夹识别为项目列表。',
-			)
+			.setName(t('settings.tasksRootPath.name'))
+			.setDesc(t('settings.tasksRootPath.desc'))
 			.addText((text) =>
 				text
 					.setPlaceholder(DEFAULT_TASKS_ROOT_PATH)
@@ -144,36 +159,36 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName('视图入口')
-			.setDesc(
-				'可通过命令面板执行“打开任务中心视图”，也可以在这里直接打开任务中心。',
-			)
+			.setName(t('settings.viewEntry.name'))
+			.setDesc(t('settings.viewEntry.desc'))
 			.addButton((button) =>
-				button.setButtonText('打开任务中心').onClick(async () => {
-					await this.plugin.activateIOTOTasksCenterView();
-				}),
+				button
+					.setButtonText(t('settings.viewEntry.button'))
+					.onClick(async () => {
+						await this.plugin.activateIOTOTasksCenterView();
+					}),
 			);
 
 		new Setting(containerEl)
-			.setName('任务列表行为')
+			.setName(t('settings.taskListBehavior.name'))
+			.setDesc(t('settings.taskListBehavior.desc'));
+
+		new Setting(containerEl)
+			.setName(t('settings.autoRefresh.name'))
 			.setDesc(
-				'右侧仅显示当前项目目录下的一级 Markdown 文件。点击任务项会在任务中心右侧固定 pane 中打开对应文件。',
+				t('settings.autoRefresh.desc', [
+					this.plugin.settings.tasksRootPath,
+				]),
 			);
 
 		new Setting(containerEl)
-			.setName('自动刷新')
-			.setDesc(
-				`当 ${this.plugin.settings.tasksRootPath} 目录下发生创建、删除、重命名或内容修改时，已打开的任务中心视图会自动刷新。`,
-			);
-
-		new Setting(containerEl).setName('任务创建').setHeading();
+			.setName(t('settings.heading.taskCreation'))
+			.setHeading();
 
 		const templaterTemplatesFolder = getTemplaterTemplatesFolder(this.app);
 		new Setting(containerEl)
-			.setName('任务模板')
-			.setDesc(
-				'可以为四种任务类型分别设置模板，并分别选择使用模板文件或直接输入模板内容。',
-			);
+			.setName(t('settings.taskTemplate.name'))
+			.setDesc(t('settings.taskTemplate.desc'));
 
 		for (const taskType of TASK_TEMPLATE_TYPES) {
 			this.renderTaskTemplateSettings(
@@ -184,9 +199,11 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 		}
 
 		new Setting(containerEl)
-			.setName('日期任务日期格式')
+			.setName(t('settings.dateTaskFormat.name'))
 			.setDesc(
-				`支持 Moment/Day.js 风格格式，例如 ${DEFAULT_DATE_TASK_DATE_FORMAT}、YYYY年MM月DD日。若填写无效格式，会自动回退为默认值。`,
+				t('settings.dateTaskFormat.desc', [
+					DEFAULT_DATE_TASK_DATE_FORMAT,
+				]),
 			)
 			.addText((text) =>
 				text
@@ -198,16 +215,16 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 					}),
 			);
 
-		new Setting(containerEl).setName('项目列表排序').setHeading();
+		new Setting(containerEl)
+			.setName(t('settings.heading.projectSort'))
+			.setHeading();
 
 		new Setting(containerEl)
-			.setName('排序规则')
-			.setDesc(
-				'控制左侧项目列表的排序方式。默认按未完成任务数量从多到少显示。',
-			)
+			.setName(t('settings.projectSort.name'))
+			.setDesc(t('settings.projectSort.desc'))
 			.addDropdown((dropdown) => {
 				for (const [value, label] of Object.entries(
-					PROJECT_LIST_SORT_MODE_OPTIONS,
+					projectSortModeOptions,
 				)) {
 					dropdown.addOption(value, label);
 				}
@@ -224,13 +241,13 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 					});
 			});
 
-		new Setting(containerEl).setName('隐藏项目列表').setHeading();
+		new Setting(containerEl)
+			.setName(t('settings.heading.hiddenProjects'))
+			.setHeading();
 
 		const hiddenProjectsDesc = containerEl.createDiv();
 		hiddenProjectsDesc.addClass('setting-item-description');
-		hiddenProjectsDesc.setText(
-			'勾选后，对应项目会从左侧项目列表中隐藏。修改后立即生效，并会自动保存。',
-		);
+		hiddenProjectsDesc.setText(t('settings.hiddenProjects.desc'));
 
 		const hiddenProjectsContainer = containerEl.createDiv();
 		void this.displayHiddenProjectSettings(hiddenProjectsContainer);
@@ -242,16 +259,19 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 		templaterTemplatesFolder: string | null,
 	): void {
 		const config = this.plugin.settings.taskTemplateConfigs[taskType];
-		const taskTypeLabel = TASK_TYPE_TEMPLATE_LABELS[taskType];
-
-		new Setting(containerEl).setName(`${taskTypeLabel}模板`).setHeading();
+		const taskTypeLabel = getTaskTypeTemplateLabels()[taskType];
+		const sourceModeOptions = getTaskTemplateSourceModeOptions();
 
 		new Setting(containerEl)
-			.setName('模板来源')
-			.setDesc(`为${taskTypeLabel}选择模板来源。`)
+			.setName(t('settings.taskTemplate.heading', [taskTypeLabel]))
+			.setHeading();
+
+		new Setting(containerEl)
+			.setName(t('settings.taskTemplate.source.name'))
+			.setDesc(t('settings.taskTemplate.source.desc', [taskTypeLabel]))
 			.addDropdown((dropdown) => {
 				for (const [value, label] of Object.entries(
-					TASK_TEMPLATE_SOURCE_MODE_OPTIONS,
+					sourceModeOptions,
 				)) {
 					dropdown.addOption(value, label);
 				}
@@ -268,17 +288,24 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 			});
 
 		const fileModeDesc = templaterTemplatesFolder
-			? `该模式支持 Templater，当前 Templater 模板目录：${templaterTemplatesFolder}`
-			: '该模式支持 Templater';
+			? t('settings.taskTemplate.filePath.templater', [
+					templaterTemplatesFolder,
+				])
+			: t('settings.taskTemplate.filePath.templaterGeneric');
 		new Setting(containerEl)
-			.setName('模板文件路径')
+			.setName(t('settings.taskTemplate.filePath.name'))
 			.setDesc(
-				`${fileModeDesc}${config.sourceMode === 'file' ? '' : ' 当前未启用此来源。'}`,
+				t('settings.taskTemplate.filePath.desc', [
+					fileModeDesc,
+					config.sourceMode === 'file'
+						? ''
+						: t('settings.taskTemplate.sourceDisabled'),
+				]),
 			)
 			.addText((text) =>
 				text
 					.setPlaceholder(
-						'0-辅助/IOTO/Templates/Templater/OBIOTO/IOTO-加载器-创建任务.md',
+						t('settings.taskTemplate.filePath.placeholder'),
 					)
 					.setValue(config.templatePath)
 					.onChange(async (value) => {
@@ -289,7 +316,7 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 			)
 			.addButton((button) => {
 				button
-					.setButtonText('选择模板')
+					.setButtonText(t('settings.taskTemplate.selectButton'))
 					.onClick(() => {
 						new ImportModal(
 							this.app,
@@ -310,25 +337,38 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 					});
 			})
 			.addButton((button) => {
-				button.setButtonText('清空').onClick(() => {
-					void (async () => {
-						await this.plugin.updateTaskTemplateConfig(taskType, {
-							templatePath: '',
-						});
-						await this.plugin.saveSettings();
-						this.display();
-					})();
-				});
+				button
+					.setButtonText(t('settings.taskTemplate.clearButton'))
+					.onClick(() => {
+						void (async () => {
+							await this.plugin.updateTaskTemplateConfig(
+								taskType,
+								{
+									templatePath: '',
+								},
+							);
+							await this.plugin.saveSettings();
+							this.display();
+						})();
+					});
 			});
 
 		new Setting(containerEl)
-			.setName('模板内容')
+			.setName(t('settings.taskTemplate.inline.name'))
 			.setDesc(
-				`直接把这里输入的内容写入新文件，不执行 Templater。${config.sourceMode === 'inline' ? '' : ' 当前未启用此来源。'}`,
+				t('settings.taskTemplate.inline.desc', [
+					config.sourceMode === 'inline'
+						? ''
+						: t('settings.taskTemplate.sourceDisabled'),
+				]),
 			)
 			.addTextArea((text) =>
 				text
-					.setPlaceholder(`# ${taskTypeLabel}\n\n在这里输入模板内容`)
+					.setPlaceholder(
+						t('settings.taskTemplate.inline.placeholder', [
+							taskTypeLabel,
+						]),
+					)
 					.setValue(config.inlineContent)
 					.onChange(async (value) => {
 						await this.plugin.updateTaskTemplateConfig(taskType, {
@@ -343,7 +383,7 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 	): Promise<void> {
 		containerEl.empty();
 		containerEl.createDiv({
-			text: '正在加载项目列表...',
+			text: t('settings.hiddenProjects.loading'),
 		});
 
 		const tasksRootPath = this.plugin.settings.tasksRootPath;
@@ -351,16 +391,22 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 		if (projectsResult.status === 'root-missing') {
 			containerEl.empty();
 			new Setting(containerEl)
-				.setName('未找到任务根目录')
-				.setDesc(`请先在 vault 中创建 ${tasksRootPath} 目录。`);
+				.setName(t('settings.hiddenProjects.rootMissingName'))
+				.setDesc(
+					t('settings.hiddenProjects.rootMissingDesc', [
+						tasksRootPath,
+					]),
+				);
 			return;
 		}
 
 		if (projectsResult.projects.length === 0) {
 			containerEl.empty();
 			new Setting(containerEl)
-				.setName('暂无可配置项目')
-				.setDesc(`${tasksRootPath} 下还没有一级项目文件夹。`);
+				.setName(t('settings.hiddenProjects.emptyName'))
+				.setDesc(
+					t('settings.hiddenProjects.emptyDesc', [tasksRootPath]),
+				);
 			return;
 		}
 
@@ -384,8 +430,10 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 			);
 			const description =
 				incompleteCount > 0
-					? `当前有 ${incompleteCount} 个未完成任务`
-					: '当前无未完成任务';
+					? t('settings.hiddenProjects.withIncomplete', [
+							String(incompleteCount),
+						])
+					: t('settings.hiddenProjects.withoutIncomplete');
 
 			new Setting(containerEl)
 				.setName(project.name)

@@ -1,4 +1,5 @@
 import { App, TFolder } from 'obsidian';
+import { t } from '../lang/helpter';
 
 export interface CreateProjectFolderResult {
 	name: string;
@@ -31,12 +32,12 @@ export async function createProjectFolder(
 ): Promise<CreateProjectFolderResult> {
 	const normalizedName = normalizeProjectName(projectName);
 	if (!normalizedName) {
-		throw new Error('项目名称不能为空。');
+		throw new Error(t('error.projectNameEmpty'));
 	}
 
 	const rootFolder = app.vault.getAbstractFileByPath(tasksRootPath);
 	if (!(rootFolder instanceof TFolder)) {
-		throw new Error(`请先创建 ${tasksRootPath} 目录。`);
+		throw new Error(t('error.createProjectRootMissing', [tasksRootPath]));
 	}
 
 	const targetPath = resolveProjectTargetPath(tasksRootPath, normalizedName);
@@ -50,7 +51,7 @@ export async function createProjectFolder(
 	}
 
 	if (existingFile) {
-		throw new Error(`目标路径不可用：${targetPath}`);
+		throw new Error(t('error.targetPathUnavailable', [targetPath]));
 	}
 
 	await app.vault.adapter.mkdir(targetPath);

@@ -29,9 +29,10 @@ import type {
 	TaskListSortMode,
 } from '../settings';
 import {
-	TASK_LIST_GROUP_MODE_OPTIONS,
-	TASK_LIST_SORT_MODE_OPTIONS,
+	getTaskListGroupModeOptions,
+	getTaskListSortModeOptions,
 } from '../settings';
+import { t } from '../lang/helpter';
 import type {
 	ProjectFolderEntry,
 	ProjectListResult,
@@ -46,10 +47,10 @@ import {
 import { validateTaskParentDrop } from './task-drag';
 import {
 	getTaskFilterCounts,
+	getTaskFilterTabs,
 	isTaskFilterTab,
 	matchesTaskFilterTab,
 	type TaskFilterTab,
-	TASK_FILTER_TABS,
 } from './task-filter-tabs';
 import {
 	captureProjectListScrollTop,
@@ -155,7 +156,7 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return '任务中心';
+		return t('view.title');
 	}
 
 	getIcon(): string {
@@ -331,7 +332,7 @@ export class IOTOTasksCenterView extends ItemView {
 		});
 		headerEl.createDiv({
 			cls: 'ioto-tasks-center__section-title',
-			text: '项目列表',
+			text: t('view.projectsPaneTitle'),
 		});
 		const actionsEl = headerEl.createDiv({
 			cls: 'ioto-tasks-center__section-actions',
@@ -350,7 +351,7 @@ export class IOTOTasksCenterView extends ItemView {
 
 		const helperText = this.isProjectsLoading
 			? `正在扫描 ${tasksRootPath} 根目录...`
-			: '选择一个项目后，在右侧查看对应任务文件。';
+			: t('view.projectsPaneDesc');
 		container.createDiv({
 			cls: 'ioto-tasks-center__section-desc',
 			text: helperText,
@@ -366,8 +367,8 @@ export class IOTOTasksCenterView extends ItemView {
 		if (this.isProjectsLoading) {
 			this.renderState(
 				listEl,
-				'正在加载项目',
-				`正在读取 ${tasksRootPath} 下的一级子目录。`,
+				t('view.state.loadingProjectsTitle'),
+				t('view.state.loadingProjectsDesc', [tasksRootPath]),
 				'is-loading',
 			);
 			restoreProjectListScrollTop(listEl, this.projectListScrollTop);
@@ -377,8 +378,8 @@ export class IOTOTasksCenterView extends ItemView {
 		if (this.projectResult.status === 'root-missing') {
 			this.renderState(
 				listEl,
-				'未找到任务根目录',
-				`请先在 vault 中创建 ${tasksRootPath} 目录。`,
+				t('view.state.rootMissingTitle'),
+				t('view.state.rootMissingDesc', [tasksRootPath]),
 				'is-empty',
 			);
 			restoreProjectListScrollTop(listEl, this.projectListScrollTop);
@@ -390,10 +391,12 @@ export class IOTOTasksCenterView extends ItemView {
 				this.projectResult.projects.length > 0;
 			this.renderState(
 				listEl,
-				isFilteredByHiddenProjects ? '当前没有可见项目' : '暂无项目',
 				isFilteredByHiddenProjects
-					? '所有项目都已被隐藏，可在插件设置中随时取消隐藏。'
-					: `${tasksRootPath} 下还没有一级项目文件夹。`,
+					? t('view.state.noVisibleProjectsTitle')
+					: t('view.state.noProjectsTitle'),
+				isFilteredByHiddenProjects
+					? t('view.state.noVisibleProjectsDesc')
+					: t('view.state.noProjectsDesc', [tasksRootPath]),
 				'is-empty',
 			);
 			restoreProjectListScrollTop(listEl, this.projectListScrollTop);
@@ -444,14 +447,16 @@ export class IOTOTasksCenterView extends ItemView {
 		});
 		headerEl.createDiv({
 			cls: 'ioto-tasks-center__section-title',
-			text: '任务列表',
+			text: t('view.tasksPaneTitle'),
 		});
 		const actionsEl = headerEl.createDiv({
 			cls: 'ioto-tasks-center__section-actions',
 		});
 		const addTaskButtonEl = actionsEl.createEl('button', {
 			cls: 'ioto-tasks-center__add-task-button',
-			text: this.isCreatingTask ? '创建中...' : '添加任务',
+			text: this.isCreatingTask
+				? t('view.tasksPane.addTaskCreating')
+				: t('view.tasksPane.addTask'),
 		});
 		addTaskButtonEl.type = 'button';
 		addTaskButtonEl.disabled = !this.canCreateTask();
@@ -477,8 +482,8 @@ export class IOTOTasksCenterView extends ItemView {
 		if (this.projectResult.status === 'root-missing') {
 			this.renderState(
 				listEl,
-				'无法加载任务',
-				`${tasksRootPath} 根目录不存在，因此无法读取任务文件。`,
+				t('view.state.cannotLoadTasksTitle'),
+				t('view.state.cannotLoadTasksDesc', [tasksRootPath]),
 				'is-empty',
 			);
 			return;
@@ -487,8 +492,8 @@ export class IOTOTasksCenterView extends ItemView {
 		if (!this.selectedProject) {
 			this.renderState(
 				listEl,
-				'请选择项目',
-				'左侧存在项目时会自动选中首项，否则请先创建项目目录。',
+				t('view.state.selectProjectTitle'),
+				t('view.state.selectProjectDesc'),
 				'is-empty',
 			);
 			return;
@@ -497,8 +502,11 @@ export class IOTOTasksCenterView extends ItemView {
 		if (this.isTasksLoading) {
 			this.renderState(
 				listEl,
-				'正在加载任务',
-				`正在读取 ${tasksRootPath}/${this.selectedProject} 下的 Markdown 文件。`,
+				t('view.state.loadingTasksTitle'),
+				t('view.state.loadingTasksDesc', [
+					tasksRootPath,
+					this.selectedProject,
+				]),
 				'is-loading',
 			);
 			return;
@@ -507,8 +515,8 @@ export class IOTOTasksCenterView extends ItemView {
 		if (!this.taskResult) {
 			this.renderState(
 				listEl,
-				'暂无任务数据',
-				'等待视图完成首次任务加载。',
+				t('view.state.noTaskDataTitle'),
+				t('view.state.noTaskDataDesc'),
 				'is-empty',
 			);
 			return;
@@ -517,8 +525,10 @@ export class IOTOTasksCenterView extends ItemView {
 		if (this.taskResult.status === 'project-missing') {
 			this.renderState(
 				listEl,
-				'项目目录不存在',
-				`${this.taskResult.projectPath} 当前不可用，视图将在下次刷新时重新校正。`,
+				t('view.state.projectMissingTitle'),
+				t('view.state.projectMissingDesc', [
+					this.taskResult.projectPath,
+				]),
 				'is-empty',
 			);
 			return;
@@ -527,8 +537,8 @@ export class IOTOTasksCenterView extends ItemView {
 		if (this.taskResult.status === 'empty') {
 			this.renderState(
 				listEl,
-				'暂无任务文件',
-				`${this.taskResult.projectPath} 下还没有 Markdown 任务文件。`,
+				t('view.state.emptyProjectTitle'),
+				t('view.state.emptyProjectDesc', [this.taskResult.projectPath]),
 				'is-empty',
 			);
 			return;
@@ -555,7 +565,7 @@ export class IOTOTasksCenterView extends ItemView {
 		if (this.isRemoveUpTaskDropTarget) {
 			removeZoneEl.addClass('is-drop-target');
 		}
-		removeZoneEl.setText('将任务拖到这里可移除父任务');
+		removeZoneEl.setText(t('view.removeParentDropZone'));
 		removeZoneEl.addEventListener('dragover', (event) => {
 			this.handleRemoveUpTaskDragOver(event, removeZoneEl);
 		});
@@ -588,8 +598,10 @@ export class IOTOTasksCenterView extends ItemView {
 				cls: 'ioto-tasks-center__task-group-header',
 			});
 			groupHeaderEl.type = 'button';
-			groupHeaderEl.ariaLabel = `${collapsed ? '展开' : '折叠'}${section.label}分组`;
-			groupHeaderEl.title = `${collapsed ? '展开' : '折叠'}${section.label}分组`;
+			groupHeaderEl.ariaLabel = collapsed
+				? t('view.group.expand', [section.label])
+				: t('view.group.collapse', [section.label]);
+			groupHeaderEl.title = groupHeaderEl.ariaLabel;
 			groupHeaderEl.setAttribute(
 				'aria-expanded',
 				collapsed ? 'false' : 'true',
@@ -761,7 +773,7 @@ export class IOTOTasksCenterView extends ItemView {
 			cls: 'ioto-tasks-center__task-search-input',
 			type: 'search',
 		});
-		searchInputEl.placeholder = '搜索任务文件名';
+		searchInputEl.placeholder = t('view.search.placeholder');
 		searchInputEl.value = this.taskSearchInputValue;
 		searchInputEl.disabled = !this.canSearchTasks();
 		searchInputEl.addEventListener('input', () => {
@@ -782,19 +794,19 @@ export class IOTOTasksCenterView extends ItemView {
 			});
 			clearButtonEl.type = 'button';
 			clearButtonEl.disabled = !this.canSearchTasks();
-			clearButtonEl.ariaLabel = '清空任务搜索';
-			clearButtonEl.title = '清空搜索';
+			clearButtonEl.ariaLabel = t('view.search.clear');
+			clearButtonEl.title = t('view.search.clearShort');
 			clearButtonEl.addEventListener('click', () => {
 				this.clearTaskSearch();
 			});
 		}
 		const searchButtonEl = searchControlsEl.createEl('button', {
 			cls: 'ioto-tasks-center__task-search-button',
-			text: '搜索',
+			text: t('view.search.button'),
 		});
 		searchButtonEl.type = 'button';
 		searchButtonEl.disabled = !this.canSearchTasks();
-		searchButtonEl.ariaLabel = '执行任务搜索';
+		searchButtonEl.ariaLabel = t('view.search.run');
 		searchButtonEl.addEventListener('click', () => {
 			this.applyTaskSearchQuery();
 		});
@@ -996,7 +1008,7 @@ export class IOTOTasksCenterView extends ItemView {
 			this.app.vault.getAbstractFileByPath(draggedTaskPath);
 		if (!(draggedFile instanceof TFile)) {
 			this.clearTaskDragState();
-			new Notice('未找到被拖拽的任务文件。');
+			new Notice(t('view.notice.draggedTaskMissing'));
 			return;
 		}
 
@@ -1012,7 +1024,9 @@ export class IOTOTasksCenterView extends ItemView {
 			}
 		} catch (error) {
 			const message =
-				error instanceof Error ? error.message : '更新 UpTask 失败。';
+				error instanceof Error
+					? error.message
+					: t('view.notice.updateUpTaskFailed');
 			new Notice(message);
 		} finally {
 			this.isUpdatingUpTask = false;
@@ -1094,7 +1108,7 @@ export class IOTOTasksCenterView extends ItemView {
 			this.app.vault.getAbstractFileByPath(draggedTaskPath);
 		if (!(draggedFile instanceof TFile)) {
 			this.clearTaskDragState();
-			new Notice('未找到被拖拽的任务文件。');
+			new Notice(t('view.notice.draggedTaskMissing'));
 			return;
 		}
 
@@ -1108,7 +1122,9 @@ export class IOTOTasksCenterView extends ItemView {
 			}
 		} catch (error) {
 			const message =
-				error instanceof Error ? error.message : '移除 UpTask 失败。';
+				error instanceof Error
+					? error.message
+					: t('view.notice.removeUpTaskFailed');
 			new Notice(message);
 		} finally {
 			this.isUpdatingUpTask = false;
@@ -1119,18 +1135,18 @@ export class IOTOTasksCenterView extends ItemView {
 
 	private getAddTaskButtonLabel(): string {
 		if (this.isCreatingTask) {
-			return '正在创建任务文件';
+			return t('view.tasksPane.addTaskCreating');
 		}
 
 		if (!this.selectedProject) {
-			return '请先选择一个项目';
+			return t('view.tasksPane.addTaskSelectProject');
 		}
 
 		if (this.isProjectsLoading || this.isTasksLoading) {
-			return '任务列表加载完成后才能创建';
+			return t('view.tasksPane.addTaskLoading');
 		}
 
-		return `在 ${this.selectedProject} 项目下添加任务`;
+		return t('view.tasksPane.addTaskReady', [this.selectedProject]);
 	}
 
 	private canCreateProject(): boolean {
@@ -1144,18 +1160,20 @@ export class IOTOTasksCenterView extends ItemView {
 	private getAddProjectButtonLabel(): string {
 		const tasksRootPath = this.getTasksRootPath();
 		if (this.isCreatingProject) {
-			return '正在创建项目';
+			return t('view.projectsPane.addProjectCreating');
 		}
 
 		if (this.isProjectsLoading) {
-			return '项目列表加载完成后才能创建';
+			return t('view.projectsPane.addProjectLoading');
 		}
 
 		if (this.projectResult.status === 'root-missing') {
-			return `请先创建 ${tasksRootPath} 目录`;
+			return t('view.projectsPane.addProjectRootMissing', [
+				tasksRootPath,
+			]);
 		}
 
-		return `在 ${tasksRootPath} 下添加项目`;
+		return t('view.projectsPane.addProjectReady', [tasksRootPath]);
 	}
 
 	private async handleCreateProject(): Promise<void> {
@@ -1165,11 +1183,11 @@ export class IOTOTasksCenterView extends ItemView {
 
 		const projectNameResult = await new TaskNameModal(
 			this.app,
-			'新建项目',
-			'输入项目名称',
+			t('modal.newProject.title'),
+			t('modal.newProject.placeholder'),
 			{
-				descriptionText: '请输入新项目的名称。',
-				confirmButtonText: '创建',
+				descriptionText: t('modal.newProject.desc'),
+				confirmButtonText: t('modal.create'),
 			},
 		).openAndGetValue();
 		if (!projectNameResult) {
@@ -1186,12 +1204,14 @@ export class IOTOTasksCenterView extends ItemView {
 				projectNameResult,
 			);
 			if (!result.created) {
-				new Notice('该项目已存在，已为你选中现有项目。');
+				new Notice(t('view.notice.projectAlreadyExists'));
 			}
 			await this.loadProjects(result.name);
 		} catch (error) {
 			const message =
-				error instanceof Error ? error.message : '创建项目失败。';
+				error instanceof Error
+					? error.message
+					: t('view.notice.createProjectFailed');
 			new Notice(message);
 		} finally {
 			this.isCreatingProject = false;
@@ -1205,7 +1225,7 @@ export class IOTOTasksCenterView extends ItemView {
 		}
 
 		const menu = new Menu();
-		for (const option of TASK_CREATION_OPTIONS) {
+		for (const option of getTaskCreationOptions()) {
 			menu.addItem((item) =>
 				item.setTitle(option.label).onClick(() => {
 					void this.handleCreateTask(option.key);
@@ -1221,7 +1241,7 @@ export class IOTOTasksCenterView extends ItemView {
 			!projectName ||
 			!this.projects.some((project) => project.name === projectName)
 		) {
-			new Notice('当前项目不可用，请重新选择后再试。');
+			new Notice(t('view.notice.currentProjectUnavailable'));
 			return;
 		}
 
@@ -1230,25 +1250,25 @@ export class IOTOTasksCenterView extends ItemView {
 			const taskTypeTexts =
 				type === 'plan'
 					? {
-							title: '新建计划任务',
-							label: '输入计划名称',
+							title: t('modal.newPlanTask.title'),
+							label: t('modal.newPlanTask.placeholder'),
 						}
 					: type === 'topic'
 						? {
-								title: '新建主题任务',
-								label: '输入主题名称',
+								title: t('modal.newTopicTask.title'),
+								label: t('modal.newTopicTask.placeholder'),
 							}
 						: {
-								title: '新建普通任务',
-								label: '输入任务名称',
+								title: t('modal.newNormalTask.title'),
+								label: t('modal.newNormalTask.placeholder'),
 							};
 			const customNameResult = await new TaskNameModal(
 				this.app,
 				taskTypeTexts.title,
 				taskTypeTexts.label,
 				{
-					descriptionText: '请输入新任务文件的名称。',
-					confirmButtonText: '创建',
+					descriptionText: t('modal.newTask.desc'),
+					confirmButtonText: t('modal.create'),
 				},
 			).openAndGetValue();
 			if (!customNameResult) {
@@ -1279,7 +1299,9 @@ export class IOTOTasksCenterView extends ItemView {
 			await this.openFileInPreview(result.file);
 		} catch (error) {
 			const message =
-				error instanceof Error ? error.message : '创建任务文件失败。';
+				error instanceof Error
+					? error.message
+					: t('view.notice.createTaskFailed');
 			new Notice(message);
 		} finally {
 			this.isCreatingTask = false;
@@ -1289,18 +1311,18 @@ export class IOTOTasksCenterView extends ItemView {
 
 	private getProjectSwitcherLabel(): string {
 		if (this.isProjectsLoading) {
-			return '项目加载中...';
+			return t('view.projectSwitcher.loadingProjects');
 		}
 
 		if (this.isTasksLoading) {
-			return '任务加载中...';
+			return t('view.projectSwitcher.loadingTasks');
 		}
 
 		if (!this.selectedProject) {
-			return '切换项目';
+			return t('view.projectSwitcher.default');
 		}
 
-		return `当前项目：${this.selectedProject}`;
+		return t('view.projectSwitcher.current', [this.selectedProject]);
 	}
 
 	private async showProjectSwitcherMenu(event: MouseEvent): Promise<void> {
@@ -1315,7 +1337,9 @@ export class IOTOTasksCenterView extends ItemView {
 				item
 					.setTitle(
 						isCurrentProject
-							? `${project.name}（当前）`
+							? t('view.projectSwitcher.currentSuffix', [
+									project.name,
+								])
 							: project.name,
 					)
 					.onClick(() => {
@@ -1369,6 +1393,7 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private renderTaskTabs(container: HTMLElement): void {
+		const taskFilterTabs = getTaskFilterTabs();
 		const tabBarEl = container.createDiv({
 			cls: 'ioto-tasks-center__tabs-bar',
 		});
@@ -1377,7 +1402,7 @@ export class IOTOTasksCenterView extends ItemView {
 		});
 		const counts = this.getTaskFilterCounts();
 
-		for (const tab of TASK_FILTER_TABS) {
+		for (const tab of taskFilterTabs) {
 			const tabButtonEl = tabListEl.createEl('button', {
 				cls: 'ioto-tasks-center__tab',
 			});
@@ -1412,8 +1437,8 @@ export class IOTOTasksCenterView extends ItemView {
 			cls: 'ioto-tasks-center__tab-settings-button',
 		});
 		settingsButtonEl.type = 'button';
-		settingsButtonEl.ariaLabel = '任务列表呈现设置';
-		settingsButtonEl.title = '任务列表呈现设置';
+		settingsButtonEl.ariaLabel = t('view.taskListSettings');
+		settingsButtonEl.title = t('view.taskListSettings');
 		setIcon(settingsButtonEl, 'sliders-horizontal');
 		settingsButtonEl.addEventListener('click', (event: MouseEvent) => {
 			this.showTaskPresentationMenu(event);
@@ -1476,21 +1501,31 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private getTaskListDescription(): string {
+		const taskListSortModeOptions = getTaskListSortModeOptions();
+		const taskListGroupModeOptions = getTaskListGroupModeOptions();
 		if (!this.selectedProject) {
-			return '当前未选中任何项目';
+			return t('view.description.noneSelected');
 		}
 
 		const sortDescription =
-			TASK_LIST_SORT_MODE_OPTIONS[this.getTaskListSortMode()];
+			taskListSortModeOptions[this.getTaskListSortMode()];
 		const groupMode = this.getTaskListGroupMode();
 		const groupDescription =
 			groupMode === 'none'
 				? ''
-				: `，${TASK_LIST_GROUP_MODE_OPTIONS[groupMode]}`;
+				: t('view.description.groupPrefix', [
+						taskListGroupModeOptions[groupMode],
+					]);
 		const priorityDescription = this.getShowTaskPriority()
-			? '，显示优先级'
+			? t('view.description.priorityVisible')
 			: '';
-		return `当前项目：${this.selectedProject}，共 ${this.tasks.length} 个文件，按${sortDescription}排序${groupDescription}${priorityDescription}`;
+		return t('view.description.currentProject', [
+			this.selectedProject,
+			String(this.tasks.length),
+			sortDescription,
+			groupDescription,
+			priorityDescription,
+		]);
 	}
 
 	private getTaskFilterCounts(): Record<TaskFilterTab, number> {
@@ -1505,18 +1540,20 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private showTaskPresentationMenu(event: MouseEvent): void {
+		const taskListSortModeOptions = getTaskListSortModeOptions();
+		const taskListGroupModeOptions = getTaskListGroupModeOptions();
 		const menu = new Menu();
 		const currentSortMode = this.getTaskListSortMode();
 		const currentGroupMode = this.getTaskListGroupMode();
 		const currentShowTaskPriority = this.getShowTaskPriority();
 
 		for (const sortMode of TASK_LIST_SORT_MODE_ORDER) {
-			const label = TASK_LIST_SORT_MODE_OPTIONS[sortMode];
+			const label = taskListSortModeOptions[sortMode];
 			menu.addItem((item) =>
 				item
 					.setTitle(
 						formatMenuOptionTitle(
-							'排序',
+							t('menu.category.sort'),
 							label,
 							sortMode === currentSortMode,
 						),
@@ -1527,7 +1564,7 @@ export class IOTOTasksCenterView extends ItemView {
 								const message =
 									error instanceof Error
 										? error.message
-										: '更新任务列表排序失败。';
+										: t('view.notice.updateTaskSortFailed');
 								new Notice(message);
 							},
 						);
@@ -1538,12 +1575,12 @@ export class IOTOTasksCenterView extends ItemView {
 		menu.addSeparator();
 
 		for (const groupMode of TASK_LIST_GROUP_MODE_ORDER) {
-			const label = TASK_LIST_GROUP_MODE_OPTIONS[groupMode];
+			const label = taskListGroupModeOptions[groupMode];
 			menu.addItem((item) =>
 				item
 					.setTitle(
 						formatMenuOptionTitle(
-							'分组',
+							t('menu.category.group'),
 							label,
 							groupMode === currentGroupMode,
 						),
@@ -1554,7 +1591,9 @@ export class IOTOTasksCenterView extends ItemView {
 								const message =
 									error instanceof Error
 										? error.message
-										: '更新任务列表分组失败。';
+										: t(
+												'view.notice.updateTaskGroupFailed',
+											);
 								new Notice(message);
 							},
 						);
@@ -1563,12 +1602,12 @@ export class IOTOTasksCenterView extends ItemView {
 		}
 
 		menu.addSeparator();
-		for (const visibilityOption of TASK_PRIORITY_VISIBILITY_OPTIONS) {
+		for (const visibilityOption of getTaskPriorityVisibilityOptions()) {
 			menu.addItem((item) =>
 				item
 					.setTitle(
 						formatMenuOptionTitle(
-							'优先级',
+							t('menu.category.priority'),
 							visibilityOption.label,
 							visibilityOption.show === currentShowTaskPriority,
 						),
@@ -1580,7 +1619,9 @@ export class IOTOTasksCenterView extends ItemView {
 							const message =
 								error instanceof Error
 									? error.message
-									: '更新任务列表优先级显示失败。';
+									: t(
+											'view.notice.updateTaskPriorityDisplayFailed',
+										);
 							new Notice(message);
 						});
 					}),
@@ -1591,13 +1632,14 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private renderTaskFilterEmptyState(container: HTMLElement): void {
+		const taskFilterTabs = getTaskFilterTabs();
 		const tabLabel =
-			TASK_FILTER_TABS.find((tab) => tab.key === this.activeTaskFilterTab)
-				?.label ?? '当前筛选';
+			taskFilterTabs.find((tab) => tab.key === this.activeTaskFilterTab)
+				?.label ?? t('view.label.currentFilter');
 		this.renderState(
 			container,
-			'当前筛选下暂无任务',
-			`${tabLabel} 标签下没有可显示的任务文件。`,
+			t('view.filter.emptyTitle'),
+			t('view.filter.emptyDesc', [tabLabel]),
 			'is-empty',
 		);
 	}
@@ -1606,8 +1648,8 @@ export class IOTOTasksCenterView extends ItemView {
 		const keyword = this.taskSearchQuery.trim();
 		this.renderState(
 			container,
-			'未找到匹配任务',
-			`当前项目下没有文件名匹配“${keyword}”的任务文件。`,
+			t('view.search.emptyTitle'),
+			t('view.search.emptyDesc', [keyword]),
 			'is-empty',
 		);
 	}
@@ -1811,12 +1853,17 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 }
 
-const TASK_CREATION_OPTIONS: Array<{ key: TaskCreationType; label: string }> = [
-	{ key: 'normal', label: '普通任务' },
-	{ key: 'date', label: '日期任务' },
-	{ key: 'topic', label: '主题任务' },
-	{ key: 'plan', label: '计划任务' },
-];
+function getTaskCreationOptions(): Array<{
+	key: TaskCreationType;
+	label: string;
+}> {
+	return [
+		{ key: 'normal', label: t('task.type.normal') },
+		{ key: 'date', label: t('task.type.date') },
+		{ key: 'topic', label: t('task.type.topic') },
+		{ key: 'plan', label: t('task.type.plan') },
+	];
+}
 
 const TASK_LIST_SORT_MODE_ORDER: TaskListSortMode[] = [
 	'created-desc',
@@ -1834,17 +1881,21 @@ const TASK_LIST_GROUP_MODE_ORDER: TaskListGroupMode[] = [
 	'status',
 	'priority',
 ];
-const TASK_PRIORITY_VISIBILITY_OPTIONS = [
-	{ show: true, label: '显示' },
-	{ show: false, label: '不显示' },
-] as const;
+function getTaskPriorityVisibilityOptions() {
+	return [
+		{ show: true, label: t('menu.priority.show') },
+		{ show: false, label: t('menu.priority.hide') },
+	] as const;
+}
 
 function formatMenuOptionTitle(
-	category: '排序' | '分组' | '优先级',
+	category: string,
 	label: string,
 	active: boolean,
 ): string {
-	return active ? `${category}：${label}（当前）` : `${category}：${label}`;
+	return active
+		? `${category}: ${label}${t('menu.currentSuffix')}`
+		: `${category}: ${label}`;
 }
 
 function getTaskPriorityClassName(priority: number): string {
@@ -1916,10 +1967,10 @@ function getTaskDropValidationMessage(
 ): string {
 	switch (reason) {
 		case 'self':
-			return '不能将任务拖拽到自身上。';
+			return t('view.notice.invalidDropSelf');
 		case 'descendant':
-			return '不能把父任务拖到自己的子任务下。';
+			return t('view.notice.invalidDropDescendant');
 		case 'missing':
-			return '拖拽目标已不可用，请重试。';
+			return t('view.notice.invalidDropUnavailable');
 	}
 }

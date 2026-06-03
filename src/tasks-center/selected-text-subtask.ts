@@ -8,6 +8,7 @@ import {
 	type WorkspaceLeaf,
 } from 'obsidian';
 
+import { t } from '../lang/helpter';
 import {
 	buildTaskFileName,
 	createTaskFile,
@@ -52,7 +53,7 @@ export async function convertSelectedTextToSubtask(
 		options;
 	const sourceFile = ctx.file;
 	if (!(sourceFile instanceof TFile)) {
-		throw new Error('当前没有可用的任务文件。');
+		throw new Error(t('error.currentTaskFileUnavailable'));
 	}
 
 	const normalizedSubtaskName = normalizeSelectedSubtaskName(
@@ -62,7 +63,7 @@ export async function convertSelectedTextToSubtask(
 		editor.getSelection(),
 	);
 	if (!normalizedSubtaskName) {
-		throw new Error('选中的文本无法作为子任务名称。');
+		throw new Error(t('error.invalidSubtaskName'));
 	}
 
 	const currentTaskContext = resolveCurrentTaskContext(sourceFile, tasksRootPath);
@@ -93,7 +94,7 @@ export async function convertSelectedTextToSubtask(
 			sourceSelection,
 			editor,
 		);
-		throw new Error('不能把当前任务文件本身转换为它自己的子任务。');
+		throw new Error(t('error.subtaskSelfReference'));
 	}
 
 	await copyProjectPropertyFromSourceToTarget(
@@ -131,13 +132,13 @@ export function resolveCurrentTaskContext(
 	const normalizedTasksRootPath = normalizeVaultPath(tasksRootPath);
 	const normalizedFilePath = normalizeVaultPath(file.path);
 	if (!isPathInsideRoot(normalizedFilePath, normalizedTasksRootPath)) {
-		throw new Error('当前文件不在任务根目录下。');
+		throw new Error(t('error.fileOutsideTasksRoot'));
 	}
 
 	const relativePath = normalizedFilePath.slice(normalizedTasksRootPath.length + 1);
 	const pathSegments = relativePath.split('/').filter(Boolean);
 	if (pathSegments.length < 2) {
-		throw new Error('当前文件不在有效的项目目录中。');
+		throw new Error(t('error.invalidProjectDirectory'));
 	}
 
 	return {

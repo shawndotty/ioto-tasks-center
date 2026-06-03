@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createJiti } from 'jiti';
+import { moment } from 'obsidian';
 
+moment.locale('en');
 const jiti = createJiti(import.meta.url, { moduleCache: false });
 const {
 	buildTaskPresentationSections,
@@ -21,10 +23,10 @@ function createTask(title, options = {}) {
 		priority: options.priority,
 		status: options.status ?? {
 			key: 'todo',
-			label: '待开始',
+			label: 'To do',
 			totalTaskCount: 0,
 			completedTaskCount: 0,
-			summary: '未识别到复选框任务',
+			summary: 'No checkbox tasks detected',
 		},
 		upTaskTitles: options.upTaskTitles ?? [],
 	};
@@ -115,19 +117,19 @@ test('按任务状态分组时按既定顺序输出非空组', () => {
 		createTask('已完成任务', {
 			status: {
 				key: 'completed',
-				label: '已完成',
+				label: 'Completed',
 				totalTaskCount: 1,
 				completedTaskCount: 1,
-				summary: '1/1 项已完成',
+				summary: '1/1 completed',
 			},
 		}),
 		createTask('无任务项任务', {
 			status: {
 				key: 'empty',
-				label: '无任务',
+				label: 'No tasks',
 				totalTaskCount: 0,
 				completedTaskCount: 0,
-				summary: '未识别到复选框任务',
+				summary: 'No checkbox tasks detected',
 			},
 		}),
 		createTask('待开始任务'),
@@ -143,7 +145,7 @@ test('按任务状态分组时按既定顺序输出非空组', () => {
 		groupTasksForPresentation(tasks, 'status').map(
 			(section) => section.label,
 		),
-		['待开始', '已完成', '无任务'],
+		['To do', 'Completed', 'No tasks'],
 	);
 });
 
@@ -153,30 +155,30 @@ test('构建 section 时会先排序再分组，组内顺序正确', () => {
 			ctime: 10,
 			status: {
 				key: 'todo',
-				label: '待开始',
+				label: 'To do',
 				totalTaskCount: 1,
 				completedTaskCount: 0,
-				summary: '1 项待处理',
+				summary: '1 pending',
 			},
 		}),
 		createTask('任务2', {
 			ctime: 30,
 			status: {
 				key: 'todo',
-				label: '待开始',
+				label: 'To do',
 				totalTaskCount: 1,
 				completedTaskCount: 0,
-				summary: '1 项待处理',
+				summary: '1 pending',
 			},
 		}),
 		createTask('任务3', {
 			ctime: 20,
 			status: {
 				key: 'completed',
-				label: '已完成',
+				label: 'Completed',
 				totalTaskCount: 1,
 				completedTaskCount: 1,
-				summary: '1/1 项已完成',
+				summary: '1/1 completed',
 			},
 		}),
 	];
@@ -264,7 +266,7 @@ test('按优先级分组时会生成优先级组和未设置优先级组', () =>
 	);
 	assert.deepEqual(
 		sections.map((section) => section.label),
-		['P0', 'P1', '未设置优先级'],
+		['P0', 'P1', 'Priority not set'],
 	);
 });
 

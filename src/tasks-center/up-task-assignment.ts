@@ -1,11 +1,12 @@
 import type { App, TFile } from 'obsidian';
 
+import { t } from '../lang/helpter';
 import { removeListProperty, upsertListProperty } from './task-creation';
 
 export function buildUpTaskWikilink(taskTitle: string): string {
 	const normalizedTitle = taskTitle.trim();
 	if (!normalizedTitle) {
-		throw new Error('父任务标题不能为空。');
+		throw new Error(t('error.parentTaskTitleEmpty'));
 	}
 
 	return `[[${normalizedTitle}]]`;

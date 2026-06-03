@@ -1,6 +1,8 @@
 import { App, TFile, TFolder } from 'obsidian';
 
 import {
+	buildTaskStatusSummary,
+	getTaskStatusLabel,
 	ProjectFolderEntry,
 	ProjectListResult,
 	TaskFileEntry,
@@ -384,38 +386,54 @@ function buildTaskFileStatus(taskMarkers: string[]): TaskFileStatus {
 	if (totalTaskCount === 0) {
 		return {
 			key: 'empty',
-			label: '无任务',
+			label: getTaskStatusLabel('empty'),
 			totalTaskCount,
 			completedTaskCount,
-			summary: '未识别到复选框任务',
+			summary: buildTaskStatusSummary(
+				'empty',
+				totalTaskCount,
+				completedTaskCount,
+			),
 		};
 	}
 
 	if (completedTaskCount === totalTaskCount) {
 		return {
 			key: 'completed',
-			label: '已完成',
+			label: getTaskStatusLabel('completed'),
 			totalTaskCount,
 			completedTaskCount,
-			summary: `${completedTaskCount}/${totalTaskCount} 项已完成`,
+			summary: buildTaskStatusSummary(
+				'completed',
+				totalTaskCount,
+				completedTaskCount,
+			),
 		};
 	}
 
 	if (completedTaskCount === 0) {
 		return {
 			key: 'todo',
-			label: '待开始',
+			label: getTaskStatusLabel('todo'),
 			totalTaskCount,
 			completedTaskCount,
-			summary: `${totalTaskCount} 项待处理`,
+			summary: buildTaskStatusSummary(
+				'todo',
+				totalTaskCount,
+				completedTaskCount,
+			),
 		};
 	}
 
 	return {
 		key: 'in-progress',
-		label: '进行中',
+		label: getTaskStatusLabel('in-progress'),
 		totalTaskCount,
 		completedTaskCount,
-		summary: `${completedTaskCount}/${totalTaskCount} 项已完成`,
+		summary: buildTaskStatusSummary(
+			'in-progress',
+			totalTaskCount,
+			completedTaskCount,
+		),
 	};
 }

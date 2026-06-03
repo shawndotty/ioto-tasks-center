@@ -1,4 +1,5 @@
 import { ButtonComponent, Modal, TextComponent } from 'obsidian';
+import { t } from '../lang/helpter';
 
 interface TaskNameModalOptions {
 	descriptionText?: string;
@@ -23,8 +24,9 @@ export class TaskNameModal extends Modal {
 		super(app);
 		this.titleText = titleText;
 		this.placeholder = placeholder;
-		this.descriptionText = options.descriptionText ?? '请输入名称。';
-		this.confirmButtonText = options.confirmButtonText ?? '确认';
+		this.descriptionText =
+			options.descriptionText ?? t('modal.defaultDescription');
+		this.confirmButtonText = options.confirmButtonText ?? t('modal.confirm');
 	}
 
 	openAndGetValue(): Promise<string | null> {
@@ -58,7 +60,7 @@ export class TaskNameModal extends Modal {
 		});
 
 		new ButtonComponent(actionsEl)
-			.setButtonText('取消')
+			.setButtonText(t('modal.cancel'))
 			.onClick(() => this.close());
 
 		new ButtonComponent(actionsEl)
