@@ -1,12 +1,24 @@
 .ioto-tasks-center-view {
+	display: flex;
+	flex-direction: column;
 	height: 100%;
+	min-height: 0;
+}
+
+.ioto-tasks-center__shell {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	min-height: 0;
+	gap: 12px;
 }
 
 .ioto-tasks-center {
 	display: grid;
+	flex: 1 1 auto;
 	grid-template-columns: minmax(220px, 28%) minmax(0, 1fr);
 	gap: 16px;
-	height: 100%;
+	min-height: 0;
 	padding: 16px;
 	box-sizing: border-box;
 }
@@ -109,6 +121,40 @@
 
 .ioto-tasks-center__icon-button:disabled {
 	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.ioto-tasks-center__compact-toolbar {
+	flex: 0 0 auto;
+	padding: 16px 16px 0;
+}
+
+.ioto-tasks-center__project-switcher {
+	appearance: none;
+	justify-content: flex-start;
+	width: 100%;
+	padding: 8px 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	font-weight: 600;
+	text-align: left;
+	cursor: pointer;
+	transition:
+		background-color 120ms ease,
+		border-color 120ms ease,
+		color 120ms ease;
+}
+
+.ioto-tasks-center__project-switcher:hover:not(:disabled) {
+	background: var(--background-modifier-hover);
+	border-color: var(--interactive-accent);
+}
+
+.ioto-tasks-center__project-switcher:disabled {
+	opacity: 0.6;
 	cursor: not-allowed;
 }
 
@@ -773,21 +819,43 @@ button:not(.clickable-icon).ioto-tasks-center__task-row:hover {
 	border-style: solid;
 }
 
+.ioto-tasks-center--compact {
+	grid-template-columns: 1fr;
+}
+
+.ioto-tasks-center--compact .ioto-tasks-center__pane--projects {
+	display: none;
+}
+
+.ioto-tasks-center--compact .ioto-tasks-center__pane--tasks {
+	width: 100%;
+}
+
+
+.ioto-tasks-center--compact .ioto-tasks-center__add-task-button {
+	width: 100%;
+}
+
+.ioto-tasks-center--compact .ioto-tasks-center__task-row {
+	gap: 12px;
+}
+
+/* .ioto-tasks-center--compact .ioto-tasks-center__tabs-bar {
+	align-items: stretch;
+	flex-direction: column;
+} */
+
+.ioto-tasks-center--compact .ioto-tasks-center__tabs-settings {
+	align-self: flex-end;
+}
+
 @media (max-width: 900px) {
 	.ioto-tasks-center {
-		grid-template-columns: 1fr;
-	}
-
-	.ioto-tasks-center__task-row {
 		gap: 12px;
+		padding: 12px;
 	}
 
-	.ioto-tasks-center__tabs-bar {
-		align-items: stretch;
-		flex-direction: column;
+	.ioto-tasks-center__compact-toolbar {
+		padding: 12px 12px 0;
 	}
-
-	.ioto-tasks-center__tabs-settings {
-		align-self: flex-end;
 	}
-}

@@ -60,6 +60,7 @@ import { buildTaskPresentationSections } from './task-list-presentation';
 import { filterTasksBySearchQuery } from './task-search';
 
 export const IOTO_TASKS_CENTER_VIEW_TYPE = 'IOTOTasksCenter';
+const COMPACT_LAYOUT_BREAKPOINT = 720;
 interface IOTOTasksCenterViewState {
 	selectedProject?: string;
 	activeTaskFilterTab?: TaskFilterTab;
@@ -95,9 +96,11 @@ export class IOTOTasksCenterView extends ItemView {
 	private isCreatingProject = false;
 	private isCreatingTask = false;
 	private isUpdatingUpTask = false;
+	private isCompactLayout = false;
 	private readonly collapsedTaskGroups = new Set<string>();
 	private projectListScrollTop = 0;
 	private refreshToken = 0;
+	private resizeObserver: ResizeObserver | null = null;
 	private readonly getTasksRootPath: () => string;
 	private readonly getProjectListSortMode: () => ProjectListSortMode;
 	private readonly getTaskListSortMode: () => TaskListSortMode;
@@ -162,10 +165,12 @@ export class IOTOTasksCenterView extends ItemView {
 	async onOpen(): Promise<void> {
 		this.contentEl.empty();
 		this.contentEl.addClass('ioto-tasks-center-view');
+		this.startResizeObserver();
 		await this.refreshFromVaultChange();
 	}
 
 	async onClose(): Promise<void> {
+		this.stopResizeObserver();
 		this.contentEl.empty();
 	}
 
@@ -299,7 +304,15 @@ export class IOTOTasksCenterView extends ItemView {
 		const root = this.contentEl;
 		root.empty();
 
-		const viewEl = root.createDiv({ cls: 'ioto-tasks-center' });
+		const shellEl = root.createDiv({ cls: 'ioto-tasks-center__shell' });
+		if (this.isCompactLayout) {
+			this.renderCompactProjectSwitcher(shellEl);
+		}
+
+		const viewEl = shellEl.createDiv({ cls: 'ioto-tasks-center' });
+		if (this.isCompactLayout) {
+			viewEl.addClass('ioto-tasks-center--compact');
+		}
 		const projectsPane = viewEl.createDiv({
 			cls: 'ioto-tasks-center__pane ioto-tasks-center__pane--projects',
 		});
@@ -706,6 +719,32 @@ export class IOTOTasksCenterView extends ItemView {
 				(project) => project.name === this.selectedProject,
 			),
 		);
+	}
+
+	private canSwitchProjects(): boolean {
+		return (
+			!this.isProjectsLoading &&
+			!this.isTasksLoading &&
+			this.projects.length > 0
+		);
+	}
+
+	private renderCompactProjectSwitcher(container: HTMLElement): void {
+		const toolbarEl = container.createDiv({
+			cls: 'ioto-tasks-center__compact-toolbar',
+		});
+		const buttonLabel = this.getProjectSwitcherLabel();
+		const projectSwitcherEl = toolbarEl.createEl('button', {
+			cls: 'ioto-tasks-center__project-switcher',
+			text: buttonLabel,
+		});
+		projectSwitcherEl.type = 'button';
+		projectSwitcherEl.disabled = !this.canSwitchProjects();
+		projectSwitcherEl.ariaLabel = buttonLabel;
+		projectSwitcherEl.title = buttonLabel;
+		projectSwitcherEl.addEventListener('click', (event: MouseEvent) => {
+			void this.showProjectSwitcherMenu(event);
+		});
 	}
 
 	private renderTaskSearch(container: HTMLElement): void {
@@ -1244,6 +1283,87 @@ export class IOTOTasksCenterView extends ItemView {
 			new Notice(message);
 		} finally {
 			this.isCreatingTask = false;
+			this.render();
+		}
+	}
+
+	private getProjectSwitcherLabel(): string {
+		if (this.isProjectsLoading) {
+			return '项目加载中...';
+		}
+
+		if (this.isTasksLoading) {
+			return '任务加载中...';
+		}
+
+		if (!this.selectedProject) {
+			return '切换项目';
+		}
+
+		return `当前项目：${this.selectedProject}`;
+	}
+
+	private async showProjectSwitcherMenu(event: MouseEvent): Promise<void> {
+		if (!this.canSwitchProjects()) {
+			return;
+		}
+
+		const menu = new Menu();
+		for (const project of this.projects) {
+			const isCurrentProject = project.name === this.selectedProject;
+			menu.addItem((item) =>
+				item
+					.setTitle(
+						isCurrentProject
+							? `${project.name}（当前）`
+							: project.name,
+					)
+					.onClick(() => {
+						if (isCurrentProject) {
+							return;
+						}
+
+						void this.selectProject(project.name);
+					}),
+			);
+		}
+
+		menu.showAtMouseEvent(event);
+	}
+
+	private startResizeObserver(): void {
+		if (this.resizeObserver || typeof ResizeObserver === 'undefined') {
+			this.syncCompactLayout(this.contentEl.clientWidth);
+			return;
+		}
+
+		this.resizeObserver = new ResizeObserver((entries) => {
+			const entry = entries[0];
+			this.syncCompactLayout(
+				entry?.contentRect.width ?? this.contentEl.clientWidth,
+			);
+		});
+		this.resizeObserver.observe(this.contentEl);
+		this.syncCompactLayout(this.contentEl.clientWidth);
+	}
+
+	private stopResizeObserver(): void {
+		this.resizeObserver?.disconnect();
+		this.resizeObserver = null;
+	}
+
+	private syncCompactLayout(width: number): void {
+		if (width <= 0) {
+			return;
+		}
+
+		const nextCompactLayout = width <= COMPACT_LAYOUT_BREAKPOINT;
+		if (this.isCompactLayout === nextCompactLayout) {
+			return;
+		}
+
+		this.isCompactLayout = nextCompactLayout;
+		if (this.contentEl.isConnected) {
 			this.render();
 		}
 	}
