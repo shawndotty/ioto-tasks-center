@@ -25,12 +25,17 @@ import {
 	IOTO_TASKS_CENTER_VIEW_TYPE,
 	IOTOTasksCenterView,
 } from './views/iotoTasksCenterView';
+import { IOTO_TASKS_CENTER_TASK_HOVER_SOURCE_ID } from './views/task-hover-preview';
 
 export default class IOTOTasksCenter extends Plugin {
 	settings!: IOTOTasksCenterSettings;
 
 	async onload() {
 		await this.loadSettings();
+		this.registerHoverLinkSource(IOTO_TASKS_CENTER_TASK_HOVER_SOURCE_ID, {
+			display: 'IOTO Tasks Center',
+			defaultMod: true,
+		});
 		this.registerView(
 			IOTO_TASKS_CENTER_VIEW_TYPE,
 			(leaf) =>

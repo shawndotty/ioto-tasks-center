@@ -1,5 +1,6 @@
 import {
 	FileView,
+	type HoverPopover,
 	ItemView,
 	Menu,
 	Notice,
@@ -63,6 +64,10 @@ import {
 	restoreProjectListScrollTop,
 } from './project-list-scroll';
 import { buildVisibleTaskHierarchy } from './task-hierarchy';
+import {
+	buildTaskHoverPreviewPayload,
+	shouldTriggerTaskHoverPreview,
+} from './task-hover-preview';
 import { buildTaskPresentationSections } from './task-list-presentation';
 import { filterTasksBySearchQuery } from './task-search';
 
@@ -93,6 +98,10 @@ export class IOTOTasksCenterView extends ItemView {
 	private isRemoveUpTaskDropTarget = false;
 	private previewLeaf: WorkspaceLeaf | null = null;
 	private readonly lastOpenedTaskByProject = new Map<string, string>();
+	private readonly hoverPreviewParent: { hoverPopover: HoverPopover | null } =
+		{
+			hoverPopover: null,
+		};
 	private projectResult: ProjectListResult = {
 		status: 'success',
 		projects: [],
@@ -709,6 +718,9 @@ export class IOTOTasksCenterView extends ItemView {
 			rowEl.addEventListener('click', () => {
 				void this.openTaskFile(task);
 			});
+			rowEl.addEventListener('mouseover', (event: MouseEvent) => {
+				this.triggerTaskHoverPreview(event, task, rowEl);
+			});
 			rowEl.addEventListener('contextmenu', (event: MouseEvent) => {
 				event.preventDefault();
 				event.stopPropagation();
@@ -730,6 +742,26 @@ export class IOTOTasksCenterView extends ItemView {
 				this.clearTaskDragState();
 			});
 		}
+	}
+
+	private triggerTaskHoverPreview(
+		event: MouseEvent,
+		task: TaskFileEntry,
+		rowEl: HTMLButtonElement,
+	): void {
+		if (!shouldTriggerTaskHoverPreview(event, rowEl)) {
+			return;
+		}
+
+		this.app.workspace.trigger(
+			'hover-link',
+			buildTaskHoverPreviewPayload({
+				event,
+				rowEl,
+				taskPath: task.path,
+				hoverParent: this.hoverPreviewParent,
+			}),
+		);
 	}
 
 	private canCreateTask(): boolean {
