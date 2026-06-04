@@ -410,10 +410,14 @@ async function applyTemplateFileToFile(
 				targetLeaf,
 				file,
 				commandId,
-				sourceLeaf,
 			);
 			if (executed) {
-				await waitForFileContentChange(app, file, initialContent);
+				await waitForFileContentToStabilize(app, file, initialContent);
+			}
+			if (sourceLeaf) {
+				app.workspace.setActiveLeaf(sourceLeaf, { focus: false });
+			}
+			if (executed) {
 				return true;
 			}
 		}
@@ -430,7 +434,6 @@ async function executeTemplaterTemplate(
 	targetLeaf: WorkspaceLeaf,
 	file: TFile,
 	commandId: string,
-	sourceLeaf?: WorkspaceLeaf | null,
 ): Promise<boolean> {
 	await targetLeaf.openFile(file, { active: true });
 	app.workspace.setActiveLeaf(targetLeaf, { focus: true });
@@ -447,10 +450,6 @@ async function executeTemplaterTemplate(
 		return result !== false;
 	} catch {
 		return false;
-	} finally {
-		if (sourceLeaf) {
-			app.workspace.setActiveLeaf(sourceLeaf, { focus: false });
-		}
 	}
 }
 
@@ -559,18 +558,29 @@ async function applyTaskPropertiesToFile(
 	}
 }
 
-async function waitForFileContentChange(
+export async function waitForFileContentToStabilize(
 	app: App,
 	file: TFile,
 	initialContent: string,
 ): Promise<void> {
-	const maxAttempts = 20;
+	const maxAttempts = 40;
 	const delayMs = 50;
+	const stableReadCountRequired = 3;
+	let lastContent = initialContent;
+	let hasChanged = false;
+	let stableReadCount = 0;
 
 	for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
 		const currentContent = await app.vault.read(file);
-		if (currentContent !== initialContent) {
-			return;
+		if (currentContent !== lastContent) {
+			lastContent = currentContent;
+			hasChanged = currentContent !== initialContent || hasChanged;
+			stableReadCount = hasChanged ? 1 : 0;
+		} else if (hasChanged) {
+			stableReadCount += 1;
+			if (stableReadCount >= stableReadCountRequired) {
+				return;
+			}
 		}
 
 		await delay(delayMs);

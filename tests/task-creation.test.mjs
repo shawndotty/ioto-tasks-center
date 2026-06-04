@@ -21,6 +21,7 @@ const {
 	upsertListProperty,
 	upsertListPropertyValues,
 	upsertProjectProperty,
+	waitForFileContentToStabilize,
 } = await jiti.import('../src/tasks-center/task-creation.ts');
 const {
 	mergeTaskTemplateConfig,
@@ -276,6 +277,31 @@ test('缺少 command_handler 时不会报错，而是保留降级路径', async 
 	assert.equal(saveSettingsCallCount, 1);
 });
 
+test('等待 Templater 内容稳定后才继续，避免多次写入时抢先插入 frontmatter', async () => {
+	const contents = ['', '第一次渲染', '最终渲染', '最终渲染', '最终渲染'];
+	let readCount = 0;
+	const originalWindow = globalThis.window;
+	const app = {
+		vault: {
+			read: async () => {
+				const index = Math.min(readCount, contents.length - 1);
+				readCount += 1;
+				return contents[index];
+			},
+		},
+	};
+	globalThis.window = {
+		setTimeout,
+	};
+
+	try {
+		await waitForFileContentToStabilize(app, {}, '');
+		assert.equal(readCount, contents.length);
+	} finally {
+		globalThis.window = originalWindow;
+	}
+});
+
 test('inline 模式会解析为直接写入的模板内容', () => {
 	const resolved = resolveTaskTemplateSource({
 		sourceMode: 'inline',
@@ -456,7 +482,7 @@ test('普通正文内容在插入 Project 属性后仍会保留', () => {
 
 	assert.equal(
 		content,
-		'---\nProject:\n  - "项目A"\n---\n\n# 标题\n\n正文内容',
+		'---\nProject:\n  - "项目A"\n---\n# 标题\n\n正文内容',
 	);
 });
 
@@ -530,7 +556,7 @@ test('普通任务会保留 Project 属性且不需要项目名前缀文件名',
 
 	assert.equal(
 		content,
-		'---\nProject:\n  - "项目A"\n---\n\n# 标题\n\n正文内容',
+		'---\nProject:\n  - "项目A"\n---\n# 标题\n\n正文内容',
 	);
 });
 
