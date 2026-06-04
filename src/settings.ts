@@ -245,11 +245,8 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName(t('settings.heading.hiddenProjects'))
+			.setDesc(t('settings.hiddenProjects.desc'))
 			.setHeading();
-
-		const hiddenProjectsDesc = containerEl.createDiv();
-		hiddenProjectsDesc.addClass('setting-item-description');
-		hiddenProjectsDesc.setText(t('settings.hiddenProjects.desc'));
 
 		const hiddenProjectsContainer = containerEl.createDiv();
 		void this.displayHiddenProjectSettings(hiddenProjectsContainer);
