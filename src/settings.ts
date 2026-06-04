@@ -154,7 +154,7 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.tasksRootPath)
 					.onChange(async (value) => {
 						await this.plugin.updateTasksRootPath(value);
-						this.display();
+						// this.display();
 					}),
 			);
 
@@ -211,7 +211,6 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.dateTaskDateFormat)
 					.onChange(async (value) => {
 						await this.plugin.updateDateTaskDateFormat(value);
-						this.display();
 					}),
 			);
 
@@ -237,7 +236,7 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 						}
 
 						await this.plugin.updateProjectListSortMode(value);
-						this.display();
+						// this.display();
 					});
 			});
 
@@ -283,7 +282,7 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 					await this.plugin.updateTaskTemplateConfig(taskType, {
 						sourceMode,
 					});
-					this.display();
+					// this.display();
 				});
 			});
 
@@ -329,7 +328,7 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 										},
 									);
 									await this.plugin.saveSettings();
-									this.display();
+									// this.display();
 								})();
 							},
 							[templaterTemplatesFolder || ''],
@@ -348,7 +347,7 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 								},
 							);
 							await this.plugin.saveSettings();
-							this.display();
+							// this.display();
 						})();
 					});
 			});

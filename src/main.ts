@@ -82,7 +82,9 @@ export default class IOTOTasksCenter extends Plugin {
 						const message =
 							error instanceof Error
 								? error.message
-								: t('notice.convertSelectedTextToSubtaskFailed');
+								: t(
+										'notice.convertSelectedTextToSubtaskFailed',
+									);
 						new Notice(message);
 					});
 				}
@@ -218,6 +220,7 @@ export default class IOTOTasksCenter extends Plugin {
 
 	async updateDateTaskDateFormat(format: string): Promise<void> {
 		const nextFormat = normalizeDateTaskDateFormat(format);
+
 		if (this.settings.dateTaskDateFormat === nextFormat) {
 			return;
 		}

@@ -560,9 +560,20 @@ export function resolveValidDateTaskDateFormat(format: string): string {
 	return normalizeDateTaskDateFormat(format);
 }
 
+export function normalizeDateTaskFileNameSegment(input: string): string {
+	return input
+		.trim()
+		.replace(/[\\/:*?"<>|]+/g, '-')
+		.replace(/-+/g, '-')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.replace(/^-+|-+$/g, '');
+}
+
 function formatDate(date: Date, dateTaskDateFormat: string): string {
 	const validFormat = resolveValidDateTaskDateFormat(dateTaskDateFormat);
-	return formatDateByPattern(date, validFormat);
+	const formattedDate = formatDateByPattern(date, validFormat);
+	return normalizeDateTaskFileNameSegment(formattedDate);
 }
 
 function normalizeVaultPath(path: string): string {

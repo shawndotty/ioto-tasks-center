@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createJiti } from 'jiti';
-import { moment } from 'obsidian';
+import moment from 'moment';
 
 moment.locale('en');
 const jiti = createJiti(import.meta.url, { moduleCache: false });
@@ -12,6 +12,7 @@ const {
 	buildProjectPropertyFrontmatter,
 	extractListPropertyValuesFromContent,
 	getTemplaterCommandId,
+	normalizeDateTaskFileNameSegment,
 	normalizeCustomTaskName,
 	removeListProperty,
 	resolveValidDateTaskDateFormat,
@@ -50,6 +51,39 @@ test('自定义日期格式会生成对应的日期任务文件名', () => {
 	assert.equal(fileName, '项目A-2026年05月30日.md');
 });
 
+test('支持 [] 语法与中文字符混排的日期格式', () => {
+	const fileName = buildTaskFileName(
+		'项目A',
+		'date',
+		FIXED_LOCAL_DATE,
+		'[截止] YYYY-MM-DD',
+	);
+
+	assert.equal(fileName, '项目A-截止 2026-05-30.md');
+});
+
+test('时间格式中的非法文件名字符会被替换为 -', () => {
+	const fileName = buildTaskFileName(
+		'项目A',
+		'date',
+		FIXED_LOCAL_DATE,
+		'YYYY-MM-DD HH:mm',
+	);
+
+	assert.equal(fileName, '项目A-2026-05-30 12-00.md');
+});
+
+test('日期格式中的路径分隔符会被替换为 -', () => {
+	const fileName = buildTaskFileName(
+		'项目A',
+		'date',
+		FIXED_LOCAL_DATE,
+		'YYYY/MM/DD',
+	);
+
+	assert.equal(fileName, '项目A-2026-05-30.md');
+});
+
 test('plan 任务命名符合 项目名-Plan-名称.md 规则', () => {
 	const fileName = buildTaskFileName(
 		'项目A',
@@ -62,7 +96,7 @@ test('plan 任务命名符合 项目名-Plan-名称.md 规则', () => {
 	assert.equal(fileName, '项目A-Plan-阶段一.md');
 });
 
-test('topic 任务命名符合 项目名-Topic-名称.md 规则', () => {
+test('topic 任务命名符合 项目名-Subject-名称.md 规则', () => {
 	const fileName = buildTaskFileName(
 		'项目A',
 		'topic',
@@ -71,7 +105,7 @@ test('topic 任务命名符合 项目名-Topic-名称.md 规则', () => {
 		'发布复盘',
 	);
 
-	assert.equal(fileName, '项目A-Topic-发布复盘.md');
+	assert.equal(fileName, '项目A-Subject-发布复盘.md');
 });
 
 test('普通任务命名符合 用户输入名称.md 规则', () => {
@@ -128,11 +162,19 @@ test('空白日期格式会回退到默认值', () => {
 	assert.equal(resolveValidDateTaskDateFormat('   '), 'YYYY-MM-DD');
 });
 
-test('无效日期格式会回退到默认值', () => {
+test('非空日期格式会按原样保留', () => {
 	assert.equal(
 		resolveValidDateTaskDateFormat('[invalid-format]'),
-		'YYYY-MM-DD',
+		'[invalid-format]',
 	);
+});
+
+test('日期文件名片段归一化会替换非法字符并折叠分隔符', () => {
+	assert.equal(
+		normalizeDateTaskFileNameSegment(' 2026/05/30 12:00 '),
+		'2026-05-30 12-00',
+	);
+	assert.equal(normalizeDateTaskFileNameSegment('////'), '');
 });
 
 test('任务名称归一化会折叠空白并替换非法字符', () => {
@@ -279,11 +321,10 @@ test('通用 List 属性 frontmatter 会按属性名和值生成', () => {
 });
 
 test('多值 List 属性 frontmatter 会为每个值生成列表项', () => {
-	assert.deepEqual(buildListPropertyFrontmatterLines('Project', ['项目A', '项目B']), [
-		'Project:',
-		'  - "项目A"',
-		'  - "项目B"',
-	]);
+	assert.deepEqual(
+		buildListPropertyFrontmatterLines('Project', ['项目A', '项目B']),
+		['Project:', '  - "项目A"', '  - "项目B"'],
+	);
 });
 
 test('空内容会自动插入 Project 属性 frontmatter', () => {

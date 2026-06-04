@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createJiti } from 'jiti';
-import { moment } from 'obsidian';
+import moment from 'moment';
 
 moment.locale('en');
 const jiti = createJiti(import.meta.url, { moduleCache: false });

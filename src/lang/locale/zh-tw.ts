@@ -141,7 +141,7 @@ const zhTW = {
 		'可以為四種任務類型分別設定模板，並分別選擇使用模板檔案或直接輸入模板內容。',
 	'settings.dateTaskFormat.name': '日期任務日期格式',
 	'settings.dateTaskFormat.desc':
-		'支援 Moment/Day.js 風格格式，例如 {0}、YYYY年MM月DD日。若填寫無效格式，會自動回退為預設值。',
+		'支援 Moment/Day.js 風格格式，例如 {0}、YYYY[年]M[月]D[日]、HH:mm。僅空白輸入會回退為預設值；若格式化結果包含檔名非法字元，會自動替換為 -。',
 	'settings.heading.projectSort': '專案列表排序',
 	'settings.projectSort.name': '排序規則',
 	'settings.projectSort.desc':

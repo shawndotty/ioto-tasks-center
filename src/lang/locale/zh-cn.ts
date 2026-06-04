@@ -141,7 +141,7 @@ const zhCN = {
 		'可以为四种任务类型分别设置模板，并分别选择使用模板文件或直接输入模板内容。',
 	'settings.dateTaskFormat.name': '日期任务日期格式',
 	'settings.dateTaskFormat.desc':
-		'支持 Moment/Day.js 风格格式，例如 {0}、YYYY年MM月DD日。若填写无效格式，会自动回退为默认值。',
+		'支持 Moment/Day.js 风格格式，例如 {0}、YYYY[年]M[月]D[日]、HH:mm。仅空白输入会回退为默认值；若格式化结果包含文件名非法字符，会自动替换为 -。',
 	'settings.heading.projectSort': '项目列表排序',
 	'settings.projectSort.name': '排序规则',
 	'settings.projectSort.desc':

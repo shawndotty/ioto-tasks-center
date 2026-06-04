@@ -151,7 +151,7 @@ const en = {
 		'Configure templates for the four task types independently, using either a template file or inline content.',
 	'settings.dateTaskFormat.name': 'Date task date format',
 	'settings.dateTaskFormat.desc':
-		'Supports Moment/Day.js patterns such as {0} or YYYY-MM-DD. Invalid input falls back to the default.',
+		'Supports Moment/Day.js patterns such as {0}, YYYY[year]M[month]D[day], and HH:mm. Only blank input falls back to the default, and filename-illegal characters in the output are replaced with -.',
 	'settings.heading.projectSort': 'Project list sorting',
 	'settings.projectSort.name': 'Sorting rule',
 	'settings.projectSort.desc':

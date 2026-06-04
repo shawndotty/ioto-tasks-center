@@ -1,6 +1,7 @@
 // Solution inspired by obsidian-kanban and optimized for robustness and clarity.
 
-import { moment } from 'obsidian';
+/* eslint-disable no-restricted-imports, import/no-extraneous-dependencies */
+import moment from 'moment';
 import en from './locale/en';
 import zhCN from './locale/zh-cn';
 import zhTW from './locale/zh-tw';
@@ -18,12 +19,36 @@ const localeMap: Record<string, Partial<LocaleDictionary>> = {
 let cachedLocale: LocaleDictionary | null = null;
 let cachedLang: string | null = null;
 
+function getConfiguredObsidianLanguage(): string | null {
+	try {
+		const storedLanguage = window.localStorage.getItem('language');
+		if (storedLanguage && storedLanguage.trim().length > 0) {
+			return storedLanguage;
+		}
+	} catch {
+		// Ignore storage access failures and continue to other fallbacks.
+	}
+
+	try {
+		const htmlLanguage = document.documentElement.lang;
+		if (htmlLanguage && htmlLanguage.trim().length > 0) {
+			return htmlLanguage;
+		}
+	} catch {
+		// Ignore DOM access failures and continue to moment locale fallback.
+	}
+
+	return null;
+}
+
 /**
  * Determines the current language from plugin settings or Obsidian's locale.
  */
 export function getCurrentLang(): string {
 	try {
-		return resolveLocaleKey(moment.locale());
+		return resolveLocaleKey(
+			getConfiguredObsidianLanguage() ?? moment.locale(),
+		);
 	} catch (e) {
 		console.error(
 			"Failed to get language setting, falling back to 'en'",

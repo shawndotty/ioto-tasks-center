@@ -4,6 +4,7 @@ import { createJiti } from 'jiti';
 
 const jiti = createJiti(import.meta.url, { moduleCache: false });
 const {
+	getCurrentLang,
 	resolveLocaleKey,
 	translate,
 } = await jiti.import('../src/lang/helpter.ts');
@@ -37,4 +38,27 @@ test('translate supports placeholder interpolation', () => {
 		translate('en', 'view.projectSwitcher.current', ['Project A']),
 		'Current project: Project A',
 	);
+});
+
+test('getCurrentLang prefers the language configured by Obsidian', () => {
+	const originalWindow = globalThis.window;
+	const originalDocument = globalThis.document;
+
+	globalThis.window = {
+		localStorage: {
+			getItem: (key) => (key === 'language' ? 'zh' : null),
+		},
+	};
+	globalThis.document = {
+		documentElement: {
+			lang: 'en',
+		},
+	};
+
+	try {
+		assert.equal(getCurrentLang(), 'zh-cn');
+	} finally {
+		globalThis.window = originalWindow;
+		globalThis.document = originalDocument;
+	}
 });
