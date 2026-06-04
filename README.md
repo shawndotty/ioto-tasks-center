@@ -1,107 +1,101 @@
-# Obsidian Sample Plugin
+# IOTO Tasks Center
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+简体中文: [README.zh-CN.md](README.zh-CN.md)
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+Manage Markdown task files by project in Obsidian. This plugin provides a dedicated “Tasks center” view with project navigation, task list filtering/search/sort/grouping, and lightweight task-file metadata (UpTask/Priority/Project).
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
+## Overview
 
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open modal (simple)" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and outputs a Notice on click.
-- Registers a global interval which logs 'setInterval' to the console.
+IOTO Tasks Center treats the first-level folders under your configured “tasks root” directory as **projects**, and shows the Markdown files inside each project as **task files**.
 
-## First time developing plugins?
+Default tasks root path: `3-任务`
 
-Quick starting guide for new plugin devs:
+## Key features
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `src/main.ts` to `main.js`.
-- Make changes to `src/main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+- Projects pane: lists projects (folders) under the tasks root, with sorting and hide controls
+- Tasks pane: lists task files (Markdown files) in the selected project
+- Filter tabs: Today / Incomplete / Completed / All
+- Search: filters by task file name (within the current project)
+- Sorting: created/updated time, name, priority
+- Grouping: none / by status / by priority (with collapsible groups)
+- Task status summary: counts checkbox tasks in the file and shows a summary (e.g., completed/total)
+- Priority: set/clear `Priority` (0–9) for a task file and use it in sort/group
+- UpTask hierarchy: drag & drop to set a parent task via `UpTask`; drag to the “remove parent task” zone to clear it
+- Hover preview: hover task rows to preview without leaving the view
+- Convert selected text to subtask: turns selected text in a task file into a new subtask file and replaces the selection with a wikilink
+- Task creation with templates: create task files with optional templates (Templater file mode or inline content), per task type
 
-## Releasing new releases
+## How it organizes files
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+- Tasks root path (vault-relative): defaults to `3-任务`
+- Projects: first-level folders under the tasks root
+- Task files: Markdown files directly under a project folder (only the first level is listed)
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+Example structure:
 
-## Adding your plugin to the community plugin list
-
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
-
-## How to use
-
-- Clone this repo.
-- Make sure your NodeJS is at least v18 (`node --version`).
-- `npm i` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
-
-## Task List Search
-
-- The task center task list supports searching by task file name.
-- Search only applies to the currently selected project's task list.
-- Search works together with the `今天`、`未完成`、`已完成`、`全部` tabs.
-- Search only filters the current result set and does not change the original task order.
-- The `今天` tab shows tasks in the current project whose creation date is today.
-
-## UpTask Drag And Drop
-
-- In the task center, drag one task row onto another task row to set the target task as the parent task.
-- This interaction automatically writes the target task's wikilink into the dragged task's `UpTask` property.
-- After the drop succeeds, the task list reloads immediately and updates the hierarchy display without reloading Obsidian.
-- If you drag a task to the “remove parent task” drop zone, the task's `UpTask` property will be removed and the task will return to the top level.
-
-## Manually installing the plugin
-
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
-
-## Improve code quality with eslint
-
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code.
-- This project already has eslint preconfigured, you can invoke a check by running`npm run lint`
-- Together with a custom eslint [plugin](https://github.com/obsidianmd/eslint-plugin) for Obsidan specific code guidelines.
-- A GitHub action is preconfigured to automatically lint every commit on all branches.
-
-## Funding URL
-
-You can include funding URLs where people who use your plugin can financially support it.
-
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
-
-```json
-{
-	"fundingUrl": "https://buymeacoffee.com"
-}
+```text
+3-任务/
+  项目A/
+    需求梳理.md
+    项目A-2026-06-04.md
+  项目B/
+    发布复盘.md
 ```
 
-If you have multiple URLs, you can also do:
+## Frontmatter fields
 
-```json
-{
-	"fundingUrl": {
-		"Buy Me a Coffee": "https://buymeacoffee.com",
-		"GitHub Sponsor": "https://github.com/sponsors",
-		"Patreon": "https://www.patreon.com/"
-	}
-}
+This plugin reads/writes a small set of frontmatter fields:
+
+- `Project`: list of project names (written as a YAML list)
+- `UpTask`: list; stores a parent task wikilink like `[[Parent task]]`
+- `Priority`: scalar number (0–9)
+- `Subject`: list; used by “subject task” type
+- `Plan`: list; used by “plan task” type
+
+## Commands
+
+- Open tasks center view
+- Convert selected text to subtask
+  - Works only when the current file is inside the configured tasks root.
+  - The subtask is created in the same project and directory as the current task file.
+  - The new subtask inherits `Project` and gets `UpTask` pointing to the current file.
+
+## Settings
+
+- Tasks root path: where projects are discovered
+- View entry: open the tasks center view from settings
+- Task templates
+  - Configure templates per task type: date / plan / subject / normal
+  - Template source: template file (optionally via Templater) or inline content
+- Date task date format: controls the filename segment for date tasks (Moment/Day.js style patterns)
+- Project list sorting: by incomplete task count (default) or by name
+- Hidden projects: hide selected projects from the project list
+- Task list presentation
+  - Sort mode, group mode, and whether to show priority
+
+## Installation
+
+- Community plugins: (if published) install from **Settings → Community plugins**.
+- Manual install:
+  - Copy `main.js`, `manifest.json`, and `styles.css` (if present) into:
+    - `<Vault>/.obsidian/plugins/ioto-tasks-center/`
+  - Reload Obsidian and enable the plugin in **Settings → Community plugins**.
+
+## Development
+
+```bash
+npm install
+npm run dev
 ```
 
-## API Documentation
+Other scripts:
 
-See https://docs.obsidian.md
+```bash
+npm run build
+npm test
+npm run lint
+```
+
+## License
+
+0-BSD
