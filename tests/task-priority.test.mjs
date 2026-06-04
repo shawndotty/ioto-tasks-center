@@ -8,6 +8,12 @@ const {
 	parsePriorityFrontmatterValue,
 	resolvePriorityFromSources,
 } = await jiti.import('../src/tasks-center/data.ts');
+const {
+	clearTaskFilePriority,
+	isTaskPriorityValue,
+	setTaskFilePriority,
+	TASK_PRIORITY_VALUES,
+} = await jiti.import('../src/tasks-center/task-priority.ts');
 
 test('Priority 整数值可正常解析', () => {
 	assert.equal(parsePriorityFrontmatterValue(0), 0);
@@ -62,3 +68,65 @@ test('缺少内容时会回退到 metadata cache Priority', () => {
 		4,
 	);
 });
+
+test('TASK_PRIORITY_VALUES 仅包含 P0 到 P9', () => {
+	assert.deepEqual(TASK_PRIORITY_VALUES, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+	assert.equal(isTaskPriorityValue(0), true);
+	assert.equal(isTaskPriorityValue(9), true);
+	assert.equal(isTaskPriorityValue(10), false);
+	assert.equal(isTaskPriorityValue(-1), false);
+});
+
+test('设置 Priority 时会创建属性且保留其他 frontmatter', async () => {
+	const app = createPriorityApp(
+		'---\nProject:\n  - "项目A"\nSubject:\n  - "发布复盘"\n---\n# 任务\n',
+	);
+
+	await setTaskFilePriority(app, { path: '3-任务/项目A/任务.md' }, 3);
+
+	assert.equal(
+		app.state.content,
+		'---\nProject:\n  - "项目A"\nSubject:\n  - "发布复盘"\nPriority: 3\n---\n# 任务\n',
+	);
+});
+
+test('设置 Priority 时会覆盖原有值', async () => {
+	const app = createPriorityApp(
+		'---\nProject:\n  - "项目A"\nPriority: 7\n---\n# 任务\n',
+	);
+
+	await setTaskFilePriority(app, { path: '3-任务/项目A/任务.md' }, 1);
+
+	assert.equal(
+		app.state.content,
+		'---\nProject:\n  - "项目A"\nPriority: 1\n---\n# 任务\n',
+	);
+});
+
+test('取消 Priority 时会移除该属性且保留其他 frontmatter', async () => {
+	const app = createPriorityApp(
+		'---\nProject:\n  - "项目A"\nPriority: 5\nUpTask:\n  - "父任务"\n---\n# 任务\n',
+	);
+
+	await clearTaskFilePriority(app, { path: '3-任务/项目A/任务.md' });
+
+	assert.equal(
+		app.state.content,
+		'---\nProject:\n  - "项目A"\nUpTask:\n  - "父任务"\n---\n# 任务\n',
+	);
+});
+
+function createPriorityApp(initialContent) {
+	const state = {
+		content: initialContent,
+	};
+	return {
+		state,
+		vault: {
+			read: async () => state.content,
+			modify: async (_file, nextContent) => {
+				state.content = nextContent;
+			},
+		},
+	};
+}

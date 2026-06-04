@@ -52,6 +52,9 @@ const en = {
 	'view.search.clearShort': 'Clear search',
 	'view.search.button': 'Search',
 	'view.search.run': 'Run task search',
+	'view.taskPriorityMenu.clear': 'Clear priority',
+	'view.taskPriorityMenu.set': 'Set to {0}',
+	'view.taskPriorityMenu.currentSuffix': ' (current)',
 	'view.projectSwitcher.loadingProjects': 'Loading projects...',
 	'view.projectSwitcher.loadingTasks': 'Loading tasks...',
 	'view.projectSwitcher.default': 'Switch project',
@@ -83,6 +86,9 @@ const en = {
 	'view.notice.updateTaskGroupFailed': 'Failed to update task list grouping.',
 	'view.notice.updateTaskPriorityDisplayFailed':
 		'Failed to update task priority visibility.',
+	'view.notice.taskFileUnavailable': 'The task file is unavailable.',
+	'view.notice.updateTaskPriorityFailed': 'Failed to update task priority.',
+	'view.notice.clearTaskPriorityFailed': 'Failed to clear task priority.',
 	'view.notice.invalidDropSelf': 'A task cannot be dragged onto itself.',
 	'view.notice.invalidDropDescendant':
 		'A parent task cannot be dragged under its own child task.',

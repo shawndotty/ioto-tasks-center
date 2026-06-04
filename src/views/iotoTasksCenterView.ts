@@ -16,6 +16,12 @@ import {
 } from '../tasks-center/project-sort';
 import { createTaskFile } from '../tasks-center/task-creation';
 import {
+	clearTaskFilePriority,
+	setTaskFilePriority,
+	TASK_PRIORITY_VALUES,
+	type TaskPriorityValue,
+} from '../tasks-center/task-priority';
+import {
 	assignUpTaskToFile,
 	removeUpTaskFromFile,
 } from '../tasks-center/up-task-assignment';
@@ -702,6 +708,11 @@ export class IOTOTasksCenterView extends ItemView {
 
 			rowEl.addEventListener('click', () => {
 				void this.openTaskFile(task);
+			});
+			rowEl.addEventListener('contextmenu', (event: MouseEvent) => {
+				event.preventDefault();
+				event.stopPropagation();
+				this.showTaskPriorityMenu(event, task);
 			});
 			rowEl.addEventListener('dragstart', (event: DragEvent) => {
 				this.handleTaskDragStart(event, task, rowEl);
@@ -1631,6 +1642,36 @@ export class IOTOTasksCenterView extends ItemView {
 		menu.showAtMouseEvent(event);
 	}
 
+	private showTaskPriorityMenu(event: MouseEvent, task: TaskFileEntry): void {
+		const menu = new Menu();
+
+		if (typeof task.priority === 'number') {
+			menu.addItem((item) =>
+				item.setTitle(t('view.taskPriorityMenu.clear')).onClick(() => {
+					void this.clearTaskPriority(task);
+				}),
+			);
+			menu.addSeparator();
+		}
+
+		for (const priority of TASK_PRIORITY_VALUES) {
+			menu.addItem((item) =>
+				item
+					.setTitle(
+						formatPriorityMenuTitle(
+							priority,
+							task.priority === priority,
+						),
+					)
+					.onClick(() => {
+						void this.updateTaskPriority(task, priority);
+					}),
+			);
+		}
+
+		menu.showAtMouseEvent(event);
+	}
+
 	private renderTaskFilterEmptyState(container: HTMLElement): void {
 		const taskFilterTabs = getTaskFilterTabs();
 		const tabLabel =
@@ -1736,6 +1777,57 @@ export class IOTOTasksCenterView extends ItemView {
 		}
 
 		await this.openFileInPreview(file);
+	}
+
+	private async updateTaskPriority(
+		task: TaskFileEntry,
+		priority: TaskPriorityValue,
+	): Promise<void> {
+		const file = this.app.vault.getAbstractFileByPath(task.path);
+		if (!(file instanceof TFile)) {
+			new Notice(t('view.notice.taskFileUnavailable'));
+			return;
+		}
+
+		try {
+			await setTaskFilePriority(this.app, file, priority);
+			await this.refreshCurrentProjectTasks();
+		} catch (error) {
+			const message =
+				error instanceof Error
+					? error.message
+					: t('view.notice.updateTaskPriorityFailed');
+			new Notice(message);
+		}
+	}
+
+	private async clearTaskPriority(task: TaskFileEntry): Promise<void> {
+		const file = this.app.vault.getAbstractFileByPath(task.path);
+		if (!(file instanceof TFile)) {
+			new Notice(t('view.notice.taskFileUnavailable'));
+			return;
+		}
+
+		try {
+			await clearTaskFilePriority(this.app, file);
+			await this.refreshCurrentProjectTasks();
+		} catch (error) {
+			const message =
+				error instanceof Error
+					? error.message
+					: t('view.notice.clearTaskPriorityFailed');
+			new Notice(message);
+		}
+	}
+
+	private async refreshCurrentProjectTasks(): Promise<void> {
+		if (!this.selectedProject) {
+			return;
+		}
+
+		this.isTasksLoading = true;
+		this.render();
+		await this.loadTasks(this.selectedProject);
 	}
 
 	private async openFileInPreview(file: TFile): Promise<void> {
@@ -1897,6 +1989,13 @@ function getTaskPriorityVisibilityOptions() {
 		{ show: true, label: t('menu.priority.show') },
 		{ show: false, label: t('menu.priority.hide') },
 	] as const;
+}
+
+function formatPriorityMenuTitle(priority: number, active: boolean): string {
+	const label = `P${priority}`;
+	return active
+		? `${label}${t('view.taskPriorityMenu.currentSuffix')}`
+		: label;
 }
 
 function formatMenuOptionTitle(
