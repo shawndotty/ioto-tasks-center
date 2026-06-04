@@ -40,3 +40,9 @@ export function buildTaskHoverPreviewPayload(options: {
 		sourcePath: options.taskPath,
 	};
 }
+
+export function hasActiveTaskHoverPopover(hoverParent: {
+	hoverPopover: HoverPopover | null;
+}): boolean {
+	return Boolean(hoverParent.hoverPopover?.hoverEl.isConnected);
+}

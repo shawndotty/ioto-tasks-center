@@ -6,6 +6,7 @@ const jiti = createJiti(import.meta.url, { moduleCache: false });
 const {
 	IOTO_TASKS_CENTER_TASK_HOVER_SOURCE_ID,
 	buildTaskHoverPreviewPayload,
+	hasActiveTaskHoverPopover,
 	shouldTriggerTaskHoverPreview,
 } = await jiti.import('../src/views/task-hover-preview.ts');
 
@@ -57,4 +58,28 @@ test('鼠标从任务行外部进入时，会触发 hover 预览', () => {
 	);
 
 	assert.equal(result, true);
+});
+
+test('当 hover popover 仍挂载在 DOM 上时，应视为活跃状态', () => {
+	const result = hasActiveTaskHoverPopover({
+		hoverPopover: {
+			hoverEl: {
+				isConnected: true,
+			},
+		},
+	});
+
+	assert.equal(result, true);
+});
+
+test('当 hover popover 已卸载时，不应继续延迟刷新', () => {
+	const result = hasActiveTaskHoverPopover({
+		hoverPopover: {
+			hoverEl: {
+				isConnected: false,
+			},
+		},
+	});
+
+	assert.equal(result, false);
 });

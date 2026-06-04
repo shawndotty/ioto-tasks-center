@@ -66,6 +66,7 @@ import {
 import { buildVisibleTaskHierarchy } from './task-hierarchy';
 import {
 	buildTaskHoverPreviewPayload,
+	hasActiveTaskHoverPopover,
 	shouldTriggerTaskHoverPreview,
 } from './task-hover-preview';
 import { buildTaskPresentationSections } from './task-list-presentation';
@@ -73,6 +74,7 @@ import { filterTasksBySearchQuery } from './task-search';
 
 export const IOTO_TASKS_CENTER_VIEW_TYPE = 'IOTOTasksCenter';
 const COMPACT_LAYOUT_BREAKPOINT = 720;
+const HOVER_PREVIEW_REFRESH_RETRY_MS = 150;
 interface IOTOTasksCenterViewState {
 	selectedProject?: string;
 	activeTaskFilterTab?: TaskFilterTab;
@@ -102,6 +104,8 @@ export class IOTOTasksCenterView extends ItemView {
 		{
 			hoverPopover: null,
 		};
+	private pendingVaultRefresh = false;
+	private deferredVaultRefreshTimer: number | null = null;
 	private projectResult: ProjectListResult = {
 		status: 'success',
 		projects: [],
@@ -187,6 +191,10 @@ export class IOTOTasksCenterView extends ItemView {
 
 	async onClose(): Promise<void> {
 		this.stopResizeObserver();
+		if (this.deferredVaultRefreshTimer !== null) {
+			window.clearTimeout(this.deferredVaultRefreshTimer);
+			this.deferredVaultRefreshTimer = null;
+		}
 		this.contentEl.empty();
 	}
 
@@ -217,6 +225,18 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	async refreshFromVaultChange(): Promise<void> {
+		if (this.shouldDeferVaultRefresh()) {
+			this.pendingVaultRefresh = true;
+			this.scheduleDeferredVaultRefresh();
+			return;
+		}
+
+		this.pendingVaultRefresh = false;
+		if (this.deferredVaultRefreshTimer !== null) {
+			window.clearTimeout(this.deferredVaultRefreshTimer);
+			this.deferredVaultRefreshTimer = null;
+		}
+
 		const previousSelection = this.selectedProject;
 		await this.loadProjects(previousSelection);
 	}
@@ -762,6 +782,40 @@ export class IOTOTasksCenterView extends ItemView {
 				hoverParent: this.hoverPreviewParent,
 			}),
 		);
+	}
+
+	private shouldDeferVaultRefresh(): boolean {
+		return hasActiveTaskHoverPopover(this.hoverPreviewParent);
+	}
+
+	private scheduleDeferredVaultRefresh(): void {
+		if (this.deferredVaultRefreshTimer !== null) {
+			return;
+		}
+
+		this.deferredVaultRefreshTimer = window.setTimeout(() => {
+			this.deferredVaultRefreshTimer = null;
+			if (!this.pendingVaultRefresh) {
+				return;
+			}
+
+			if (this.shouldDeferVaultRefresh()) {
+				this.scheduleDeferredVaultRefresh();
+				return;
+			}
+
+			void this.refreshAfterDeferredHoverPreview();
+		}, HOVER_PREVIEW_REFRESH_RETRY_MS);
+	}
+
+	private async refreshAfterDeferredHoverPreview(): Promise<void> {
+		this.pendingVaultRefresh = false;
+		if (this.selectedProject) {
+			await this.refreshCurrentProjectTasks();
+			return;
+		}
+
+		await this.refreshFromVaultChange();
 	}
 
 	private canCreateTask(): boolean {
