@@ -10,6 +10,7 @@ const {
 	buildListPropertyFrontmatterLines,
 	buildListPropertyFrontmatter,
 	buildProjectPropertyFrontmatter,
+	ensureTemplateCommandEnabled,
 	extractListPropertyValuesFromContent,
 	getTemplaterCommandId,
 	normalizeDateTaskFileNameSegment,
@@ -202,6 +203,77 @@ test('Templater 命令 ID 生成规则正确', () => {
 		commandId,
 		'templater-obsidian:0-辅助/IOTO/Templates/任务模板.md',
 	);
+});
+
+test('首次启用 Templater 模板时会即时注册命令，无需重启', async () => {
+	const templatePath = '0-辅助/IOTO/Templates/任务模板.md';
+	const commandId = getTemplaterCommandId(templatePath);
+	const commands = {};
+	let saveSettingsCallCount = 0;
+	let addTemplateHotkeyCallCount = 0;
+	const templaterPlugin = {
+		settings: {
+			enabled_templates_hotkeys: [],
+		},
+		save_settings: async () => {
+			saveSettingsCallCount += 1;
+		},
+		command_handler: {
+			add_template_hotkey: async (_previousPath, nextPath) => {
+				addTemplateHotkeyCallCount += 1;
+				commands[getTemplaterCommandId(nextPath)] = {
+					id: getTemplaterCommandId(nextPath),
+				};
+			},
+		},
+	};
+	const app = {
+		commands: { commands },
+		plugins: {
+			plugins: {
+				'templater-obsidian': templaterPlugin,
+			},
+		},
+	};
+
+	const result = await ensureTemplateCommandEnabled(app, templatePath);
+
+	assert.equal(result, commandId);
+	assert.deepEqual(templaterPlugin.settings.enabled_templates_hotkeys, [
+		templatePath,
+	]);
+	assert.equal(saveSettingsCallCount, 1);
+	assert.equal(addTemplateHotkeyCallCount, 1);
+	assert.deepEqual(commands[commandId], { id: commandId });
+});
+
+test('缺少 command_handler 时不会报错，而是保留降级路径', async () => {
+	const templatePath = '0-辅助/IOTO/Templates/任务模板.md';
+	let saveSettingsCallCount = 0;
+	const templaterPlugin = {
+		settings: {
+			enabled_templates_hotkeys: [],
+		},
+		save_settings: async () => {
+			saveSettingsCallCount += 1;
+		},
+	};
+	const app = {
+		commands: { commands: {} },
+		plugins: {
+			plugins: {
+				'templater-obsidian': templaterPlugin,
+			},
+		},
+	};
+
+	const result = await ensureTemplateCommandEnabled(app, templatePath);
+
+	assert.equal(result, null);
+	assert.deepEqual(templaterPlugin.settings.enabled_templates_hotkeys, [
+		templatePath,
+	]);
+	assert.equal(saveSettingsCallCount, 1);
 });
 
 test('inline 模式会解析为直接写入的模板内容', () => {

@@ -36,6 +36,12 @@ interface TemplaterPlugin {
 		[key: string]: unknown;
 	};
 	save_settings: () => Promise<void>;
+	command_handler?: {
+		add_template_hotkey?: (
+			previousPath: string | null,
+			nextPath: string,
+		) => void | Promise<void>;
+	};
 }
 
 interface CommandRegistryLike {
@@ -448,7 +454,7 @@ async function executeTemplaterTemplate(
 	}
 }
 
-async function ensureTemplateCommandEnabled(
+export async function ensureTemplateCommandEnabled(
 	app: App,
 	templatePath: string,
 ): Promise<string | null> {
@@ -458,6 +464,15 @@ async function ensureTemplateCommandEnabled(
 	}
 
 	const normalizedTemplatePath = normalizeVaultPath(templatePath);
+	if (!normalizedTemplatePath) {
+		return null;
+	}
+
+	const commandId = getTemplaterCommandId(normalizedTemplatePath);
+	if (hasRegisteredCommand(app, commandId)) {
+		return commandId;
+	}
+
 	const enabledTemplateHotkeys = Array.isArray(
 		templater.settings.enabled_templates_hotkeys,
 	)
@@ -472,10 +487,22 @@ async function ensureTemplateCommandEnabled(
 		await templater.save_settings();
 	}
 
-	const commandId = getTemplaterCommandId(normalizedTemplatePath);
+	if (hasRegisteredCommand(app, commandId)) {
+		return commandId;
+	}
+
+	await templater.command_handler?.add_template_hotkey?.(
+		null,
+		normalizedTemplatePath,
+	);
+
+	return hasRegisteredCommand(app, commandId) ? commandId : null;
+}
+
+function hasRegisteredCommand(app: App, commandId: string): boolean {
 	const commands = (app as App & { commands?: CommandRegistryLike }).commands
 		?.commands;
-	return commands && commandId in commands ? commandId : null;
+	return Boolean(commands && commandId in commands);
 }
 
 function getTemplateFile(app: App, templatePath: string): TFile | null {
