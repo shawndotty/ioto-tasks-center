@@ -79,7 +79,7 @@ test('不在任务根目录下的文件会被拒绝', () => {
 
 	assert.throws(
 		() => resolveCurrentTaskContext(file, '3-任务'),
-		/当前文件不在任务根目录下/,
+		/当前文件不在任务根目录下|not inside the tasks root/i,
 	);
 });
 

@@ -608,6 +608,16 @@ test('可以从 frontmatter 中提取标量属性并转为单值列表', () => {
 	);
 });
 
+test('可以从 frontmatter 中提取 inline array 属性并转为多值列表', () => {
+	assert.deepEqual(
+		extractListPropertyValuesFromContent(
+			'---\nProject: ["项目A", "项目B"]\n---\n\n正文内容',
+			'Project',
+		),
+		['项目A', '项目B'],
+	);
+});
+
 test('缺失属性时提取结果为空数组', () => {
 	assert.deepEqual(
 		extractListPropertyValuesFromContent(

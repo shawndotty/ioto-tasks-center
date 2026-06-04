@@ -208,7 +208,17 @@ export function extractListPropertyValuesFromContent(
 			continue;
 		}
 
-		const inlineValue = normalizeFrontmatterScalarValue(match[1] ?? '');
+		const rawInlineValue = match[1] ?? '';
+		const inlineArrayValues =
+			parseFrontmatterInlineArrayValues(rawInlineValue) ??
+			parseFrontmatterInlineArrayValues(
+				normalizeFrontmatterScalarValue(rawInlineValue),
+			);
+		if (inlineArrayValues) {
+			return normalizeListPropertyValues(inlineArrayValues);
+		}
+
+		const inlineValue = normalizeFrontmatterScalarValue(rawInlineValue);
 		if (inlineValue) {
 			return [inlineValue];
 		}
@@ -636,6 +646,67 @@ function normalizeListPropertyValues(values: string[]): string[] {
 	}
 
 	return normalizedValues;
+}
+
+function parseFrontmatterInlineArrayValues(value: string): string[] | null {
+	const trimmedValue = value.trim();
+	if (!trimmedValue.startsWith('[') || !trimmedValue.endsWith(']')) {
+		return null;
+	}
+
+	try {
+		const parsed = JSON.parse(trimmedValue) as unknown;
+		if (Array.isArray(parsed)) {
+			return parsed
+				.map((item) =>
+					typeof item === 'string'
+						? item
+						: item == null
+							? ''
+							: String(item),
+				)
+				.map((item) => normalizeFrontmatterScalarValue(item))
+				.filter((item) => item.length > 0);
+		}
+	} catch {}
+
+	const inner = trimmedValue.slice(1, -1);
+	const values: string[] = [];
+	let current = '';
+	let inSingleQuote = false;
+	let inDoubleQuote = false;
+
+	for (let index = 0; index < inner.length; index += 1) {
+		const char = inner[index] ?? '';
+		if (char === "'" && !inDoubleQuote) {
+			inSingleQuote = !inSingleQuote;
+			current += char;
+			continue;
+		}
+		if (char === '"' && !inSingleQuote) {
+			inDoubleQuote = !inDoubleQuote;
+			current += char;
+			continue;
+		}
+
+		if (char === ',' && !inSingleQuote && !inDoubleQuote) {
+			const normalized = normalizeFrontmatterScalarValue(current);
+			if (normalized) {
+				values.push(normalized);
+			}
+			current = '';
+			continue;
+		}
+
+		current += char;
+	}
+
+	const lastNormalized = normalizeFrontmatterScalarValue(current);
+	if (lastNormalized) {
+		values.push(lastNormalized);
+	}
+
+	return values;
 }
 
 function normalizeFrontmatterScalarValue(value: string): string {
