@@ -168,7 +168,7 @@ export function upsertListPropertyValues(
 			return `---\n${propertyBlock}\n---\n`;
 		}
 
-		return `---\n${propertyBlock}\n---\n\n${content}`;
+		return `---\n${propertyBlock}\n---\n${content}`;
 	}
 
 	const existingFrontmatterBody = frontmatterMatch[1] ?? '';
