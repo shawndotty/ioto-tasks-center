@@ -42,14 +42,14 @@ test('translate supports placeholder interpolation', () => {
 
 test('getCurrentLang prefers the language configured by Obsidian', () => {
 	const originalWindow = globalThis.window;
-	const originalDocument = globalThis.document;
+	const originalActiveDocument = globalThis.activeDocument;
 
 	globalThis.window = {
 		localStorage: {
 			getItem: (key) => (key === 'language' ? 'zh' : null),
 		},
 	};
-	globalThis.document = {
+	globalThis.activeDocument = {
 		documentElement: {
 			lang: 'en',
 		},
@@ -59,6 +59,6 @@ test('getCurrentLang prefers the language configured by Obsidian', () => {
 		assert.equal(getCurrentLang(), 'zh-cn');
 	} finally {
 		globalThis.window = originalWindow;
-		globalThis.document = originalDocument;
+		globalThis.activeDocument = originalActiveDocument;
 	}
 });

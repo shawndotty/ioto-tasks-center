@@ -191,8 +191,11 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 			.setDesc(t('settings.taskTemplate.desc'));
 
 		for (const taskType of TASK_TEMPLATE_TYPES) {
+			const taskTypeContainer = containerEl.createDiv({
+				cls: 'ioto-tasks-center__task-template-settings',
+			});
 			this.renderTaskTemplateSettings(
-				containerEl,
+				taskTypeContainer,
 				taskType,
 				templaterTemplatesFolder,
 			);
@@ -257,6 +260,8 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 		taskType: TaskCreationType,
 		templaterTemplatesFolder: string | null,
 	): void {
+		containerEl.empty();
+
 		const config = this.plugin.settings.taskTemplateConfigs[taskType];
 		const taskTypeLabel = getTaskTypeTemplateLabels()[taskType];
 		const sourceModeOptions = getTaskTemplateSourceModeOptions();
@@ -282,7 +287,11 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 					await this.plugin.updateTaskTemplateConfig(taskType, {
 						sourceMode,
 					});
-					// this.display();
+					this.renderTaskTemplateSettings(
+						containerEl,
+						taskType,
+						templaterTemplatesFolder,
+					);
 				});
 			});
 
@@ -303,9 +312,9 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 			)
 			.addText((text) =>
 				text
-					.setPlaceholder(
-						t('settings.taskTemplate.filePath.placeholder'),
-					)
+					// .setPlaceholder(
+					// 	t('settings.taskTemplate.filePath.placeholder'),
+					// )
 					.setValue(config.templatePath)
 					.onChange(async (value) => {
 						await this.plugin.updateTaskTemplateConfig(taskType, {
@@ -327,8 +336,11 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 											templatePath: file.path,
 										},
 									);
-									await this.plugin.saveSettings();
-									// this.display();
+									this.renderTaskTemplateSettings(
+										containerEl,
+										taskType,
+										templaterTemplatesFolder,
+									);
 								})();
 							},
 							[templaterTemplatesFolder || ''],
@@ -346,8 +358,11 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 									templatePath: '',
 								},
 							);
-							await this.plugin.saveSettings();
-							// this.display();
+							this.renderTaskTemplateSettings(
+								containerEl,
+								taskType,
+								templaterTemplatesFolder,
+							);
 						})();
 					});
 			});

@@ -21,6 +21,7 @@ let cachedLang: string | null = null;
 
 function getConfiguredObsidianLanguage(): string | null {
 	try {
+		// eslint-disable-next-line obsidianmd/prefer-get-language
 		const storedLanguage = window.localStorage.getItem('language');
 		if (storedLanguage && storedLanguage.trim().length > 0) {
 			return storedLanguage;
@@ -30,7 +31,7 @@ function getConfiguredObsidianLanguage(): string | null {
 	}
 
 	try {
-		const htmlLanguage = document.documentElement.lang;
+		const htmlLanguage = activeDocument.documentElement.lang;
 		if (htmlLanguage && htmlLanguage.trim().length > 0) {
 			return htmlLanguage;
 		}
