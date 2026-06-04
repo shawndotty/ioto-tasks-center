@@ -3,9 +3,9 @@
 	"name": "IOTO Tasks Center",
 	"version": "1.0.0",
 	"minAppVersion": "1.0.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"description": "Manage your task files in Obsidian.",
+	"author": "Johnny Learns",
+	"authorUrl": "https://github.com/shawndotty",
+	"fundingUrl": "https://github.com/shawndotty",
 	"isDesktopOnly": false
 }
