@@ -1726,6 +1726,7 @@ export class IOTOTasksCenterView extends ItemView {
 				previewedFilePath,
 			})
 		) {
+			this.activatePreviewLeaf();
 			return;
 		}
 
@@ -1777,6 +1778,16 @@ export class IOTOTasksCenterView extends ItemView {
 
 		const view = this.previewLeaf.view;
 		return view instanceof FileView && view.file ? view.file.path : null;
+	}
+
+	private activatePreviewLeaf(): void {
+		if (!this.previewLeaf || !this.isLeafAvailable(this.previewLeaf)) {
+			return;
+		}
+
+		this.app.workspace.setActiveLeaf(this.previewLeaf, {
+			focus: true,
+		});
 	}
 
 	private ensurePreviewLeaf(): WorkspaceLeaf {
