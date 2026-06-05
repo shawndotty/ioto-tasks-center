@@ -1,6 +1,6 @@
 {
 	"name": "ioto-tasks-center",
-	"version": "1.0.0",
+	"version": "2.0.8",
 	"description": "IOTO Tasks Center",
 	"main": "main.js",
 	"type": "module",
