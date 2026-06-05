@@ -613,7 +613,7 @@ button:not(.clickable-icon).ioto-tasks-center__task-row:hover {
 	transform: translateY(1px);
 }
 
-.ioto-tasks-center__task-row.is-active {
+button:not(.clickable-icon).ioto-tasks-center__task-row.is-active {
 	background: color-mix(
 		in srgb,
 		var(--interactive-accent) 12%,
