@@ -20,6 +20,7 @@ import {
 	TaskListGroupMode,
 	TaskListSortMode,
 	normalizeConfiguredTasksRootPath,
+	normalizeEnabledTaskCreationTypes,
 } from './settings';
 import {
 	IOTO_TASKS_CENTER_VIEW_TYPE,
@@ -47,6 +48,7 @@ export default class IOTOTasksCenter extends Plugin {
 					() => this.settings.taskListGroupMode,
 					() => this.settings.showTaskPriority,
 					() => this.settings.hiddenProjectNames,
+					() => this.settings.enabledTaskCreationTypes,
 					(sortMode) => this.updateTaskListSortMode(sortMode),
 					(groupMode) => this.updateTaskListGroupMode(groupMode),
 					(show) => this.updateShowTaskPriority(show),
@@ -114,6 +116,10 @@ export default class IOTOTasksCenter extends Plugin {
 			loadedData?.taskTemplateConfigs,
 			loadedData?.taskTemplatePath,
 		);
+		this.settings.enabledTaskCreationTypes =
+			normalizeEnabledTaskCreationTypes(
+				loadedData?.enabledTaskCreationTypes,
+			);
 		this.settings.dateTaskDateFormat = normalizeDateTaskDateFormat(
 			this.settings.dateTaskDateFormat,
 		);
@@ -231,6 +237,21 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.dateTaskDateFormat = nextFormat;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateEnabledTaskCreationTypes(
+		types: TaskCreationType[],
+	): Promise<void> {
+		const nextTypes = normalizeEnabledTaskCreationTypes(types);
+		if (
+			areStringArraysEqual(this.settings.enabledTaskCreationTypes, nextTypes)
+		) {
+			return;
+		}
+
+		this.settings.enabledTaskCreationTypes = nextTypes;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}

@@ -152,6 +152,10 @@ const en = {
 	'settings.autoRefresh.desc':
 		'When files under {0} are created, deleted, renamed, or modified, open tasks center views refresh automatically.',
 	'settings.heading.taskCreation': 'Task creation',
+	'settings.enabledTaskTypes.name': 'Enabled task types',
+	'settings.enabledTaskTypes.desc':
+		'Choose which task types are available when creating tasks.',
+	'settings.enabledTaskTypes.atLeastOne': 'Enable at least one task type.',
 	'settings.taskTemplate.name': 'Task templates',
 	'settings.taskTemplate.desc':
 		'Configure templates for the four task types independently, using either a template file or inline content.',

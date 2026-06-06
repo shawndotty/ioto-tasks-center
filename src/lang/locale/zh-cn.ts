@@ -142,6 +142,10 @@ const zhCN = {
 	'settings.autoRefresh.desc':
 		'当 {0} 目录下发生创建、删除、重命名或内容修改时，已打开的任务中心视图会自动刷新。',
 	'settings.heading.taskCreation': '任务创建',
+	'settings.enabledTaskTypes.name': '可创建的任务类型',
+	'settings.enabledTaskTypes.desc':
+		'选择在创建任务时可用的任务类型，至少启用一种。',
+	'settings.enabledTaskTypes.atLeastOne': '至少需要启用一种任务类型。',
 	'settings.taskTemplate.name': '任务模板',
 	'settings.taskTemplate.desc':
 		'可以为四种任务类型分别设置模板，并分别选择使用模板文件或直接输入模板内容。',

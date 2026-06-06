@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, TFile } from 'obsidian';
+import { App, Notice, PluginSettingTab, Setting, TFile } from 'obsidian';
 import { t } from './lang/helpter';
 import IOTOTasksCenter from './main';
 import { listProjectFolders, listProjectTaskFiles } from './tasks-center/data';
@@ -10,6 +10,7 @@ import {
 	type TaskTemplateConfigMap,
 	type TaskTemplateSourceMode,
 } from './tasks-center/task-template-config';
+import { ENABLED_TASK_CREATION_TYPE_ORDER } from './tasks-center/enabled-task-creation-types';
 import type { ProjectFolderEntry } from './tasks-center/types';
 import {
 	DEFAULT_TASKS_ROOT_PATH,
@@ -36,6 +37,7 @@ export interface IOTOTasksCenterSettings {
 	taskListGroupMode: TaskListGroupMode;
 	showTaskPriority: boolean;
 	hiddenProjectNames: string[];
+	enabledTaskCreationTypes: TaskCreationType[];
 	taskTemplateConfigs: TaskTemplateConfigMap;
 	dateTaskDateFormat: string;
 }
@@ -47,9 +49,12 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	taskListGroupMode: 'none',
 	showTaskPriority: false,
 	hiddenProjectNames: [],
+	enabledTaskCreationTypes: [...ENABLED_TASK_CREATION_TYPE_ORDER],
 	taskTemplateConfigs: createDefaultTaskTemplateConfigMap(),
 	dateTaskDateFormat: DEFAULT_DATE_TASK_DATE_FORMAT,
 };
+
+export { normalizeEnabledTaskCreationTypes } from './tasks-center/enabled-task-creation-types';
 
 export function getProjectListSortModeOptions(): Record<
 	ProjectListSortMode,
@@ -184,6 +189,46 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName(t('settings.heading.taskCreation'))
 			.setHeading();
+
+		new Setting(containerEl)
+			.setName(t('settings.enabledTaskTypes.name'))
+			.setDesc(t('settings.enabledTaskTypes.desc'));
+
+		const enabledTaskTypes = new Set<TaskCreationType>(
+			this.plugin.settings.enabledTaskCreationTypes,
+		);
+		const taskTypeLabels = getTaskTypeTemplateLabels();
+		for (const taskType of ENABLED_TASK_CREATION_TYPE_ORDER) {
+			new Setting(containerEl)
+				.setName(taskTypeLabels[taskType])
+				.addToggle((toggle) =>
+					toggle
+						.setValue(enabledTaskTypes.has(taskType))
+						.onChange(async (value) => {
+							if (
+								!value &&
+								enabledTaskTypes.has(taskType) &&
+								enabledTaskTypes.size === 1
+							) {
+								toggle.setValue(true);
+								new Notice(
+									t('settings.enabledTaskTypes.atLeastOne'),
+								);
+								return;
+							}
+
+							if (value) {
+								enabledTaskTypes.add(taskType);
+							} else {
+								enabledTaskTypes.delete(taskType);
+							}
+
+							await this.plugin.updateEnabledTaskCreationTypes([
+								...enabledTaskTypes,
+							]);
+						}),
+				);
+		}
 
 		const templaterTemplatesFolder = getTemplaterTemplatesFolder(this.app);
 		new Setting(containerEl)

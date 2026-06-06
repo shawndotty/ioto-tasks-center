@@ -127,6 +127,7 @@ export class IOTOTasksCenterView extends ItemView {
 	private readonly getTaskListGroupMode: () => TaskListGroupMode;
 	private readonly getShowTaskPriority: () => boolean;
 	private readonly getHiddenProjectNames: () => string[];
+	private readonly getEnabledTaskCreationTypes: () => TaskCreationType[];
 	private readonly updateTaskListSortMode: (
 		sortMode: TaskListSortMode,
 	) => Promise<void>;
@@ -147,6 +148,7 @@ export class IOTOTasksCenterView extends ItemView {
 		getTaskListGroupMode: () => TaskListGroupMode,
 		getShowTaskPriority: () => boolean,
 		getHiddenProjectNames: () => string[],
+		getEnabledTaskCreationTypes: () => TaskCreationType[],
 		updateTaskListSortMode: (sortMode: TaskListSortMode) => Promise<void>,
 		updateTaskListGroupMode: (
 			groupMode: TaskListGroupMode,
@@ -163,6 +165,7 @@ export class IOTOTasksCenterView extends ItemView {
 		this.getTaskListGroupMode = getTaskListGroupMode;
 		this.getShowTaskPriority = getShowTaskPriority;
 		this.getHiddenProjectNames = getHiddenProjectNames;
+		this.getEnabledTaskCreationTypes = getEnabledTaskCreationTypes;
 		this.updateTaskListSortMode = updateTaskListSortMode;
 		this.updateTaskListGroupMode = updateTaskListGroupMode;
 		this.updateShowTaskPriority = updateShowTaskPriority;
@@ -1321,8 +1324,27 @@ export class IOTOTasksCenterView extends ItemView {
 			return;
 		}
 
+		const enabledTypes = this.getEnabledTaskCreationTypes();
+		const normalizedEnabledTypes =
+			enabledTypes.length > 0
+				? enabledTypes
+				: getTaskCreationOptions().map((option) => option.key);
+		if (normalizedEnabledTypes.length === 1) {
+			const onlyType = normalizedEnabledTypes[0];
+			if (!onlyType) {
+				return;
+			}
+			void this.handleCreateTask(onlyType);
+			return;
+		}
+
 		const menu = new Menu();
-		for (const option of getTaskCreationOptions()) {
+		const menuOptions = getTaskCreationOptions().filter((option) =>
+			normalizedEnabledTypes.includes(option.key),
+		);
+		const resolvedMenuOptions =
+			menuOptions.length > 0 ? menuOptions : getTaskCreationOptions();
+		for (const option of resolvedMenuOptions) {
 			menu.addItem((item) =>
 				item.setTitle(option.label).onClick(() => {
 					void this.handleCreateTask(option.key);

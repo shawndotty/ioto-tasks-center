@@ -142,6 +142,10 @@ const zhTW = {
 	'settings.autoRefresh.desc':
 		'當 {0} 目錄下發生建立、刪除、重新命名或內容修改時，已打開的任務中心視圖會自動重新整理。',
 	'settings.heading.taskCreation': '任務建立',
+	'settings.enabledTaskTypes.name': '可建立的任務類型',
+	'settings.enabledTaskTypes.desc':
+		'選擇在建立任務時可用的任務類型，至少啟用一種。',
+	'settings.enabledTaskTypes.atLeastOne': '至少需要啟用一種任務類型。',
 	'settings.taskTemplate.name': '任務模板',
 	'settings.taskTemplate.desc':
 		'可以為四種任務類型分別設定模板，並分別選擇使用模板檔案或直接輸入模板內容。',
