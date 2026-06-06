@@ -1032,7 +1032,6 @@ button:not(.clickable-icon).ioto-tasks-center__task-row.is-active {
 	flex-direction: column;
 	min-width: 720px;
 	border: 1px solid var(--background-modifier-border);
-	border-radius: 12px;
 	overflow: hidden;
 	background: var(--background-primary);
 }
@@ -1077,6 +1076,7 @@ button:not(.clickable-icon).ioto-tasks-center__task-row.is-active {
 .ioto-project-center__row--header .ioto-project-center__cell {
 	font-weight: 700;
 	color: var(--text-muted);
+	border-radius: 0;
 }
 
 .ioto-project-center__header-cell {
