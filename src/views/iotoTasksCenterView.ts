@@ -127,6 +127,7 @@ export class IOTOTasksCenterView extends ItemView {
 	private isUpdatingUpTask = false;
 	private isCompactLayout = false;
 	private readonly collapsedTaskGroups = new Set<string>();
+	private readonly collapsedProjectGroups = new Set<string>();
 	private projectListScrollTop = 0;
 	private refreshToken = 0;
 	private resizeObserver: ResizeObserver | null = null;
@@ -490,22 +491,75 @@ export class IOTOTasksCenterView extends ItemView {
 			sortMode,
 			groupMode,
 		);
+		this.syncCollapsedProjectGroups(sections);
 
 		for (const section of sections) {
+			const groupKey = section.groupKey;
+			const groupLabel =
+				groupKey.length > 0
+					? groupKey
+					: t('project.group.uncategorized');
+			const groupEl = listEl.createDiv({
+				cls: 'ioto-tasks-center__project-group',
+			});
+
+			const collapsed =
+				groupMode === 'category' &&
+				this.isProjectGroupCollapsed(groupKey);
+			groupEl.toggleClass('is-collapsed', collapsed);
+			groupEl.toggleClass('is-expanded', !collapsed);
+
+			const groupBodyId = buildProjectGroupBodyId(groupKey);
+			let groupBodyEl: HTMLElement;
 			if (groupMode === 'category') {
-				listEl.createDiv({
+				const groupHeaderEl = groupEl.createEl('button', {
 					cls: 'ioto-tasks-center__project-group-header',
-					text:
-						section.groupKey.length > 0
-							? section.groupKey
-							: t('project.group.uncategorized'),
+				});
+				groupHeaderEl.type = 'button';
+				groupHeaderEl.ariaLabel = collapsed
+					? t('view.group.expand', [groupLabel])
+					: t('view.group.collapse', [groupLabel]);
+				groupHeaderEl.title = groupHeaderEl.ariaLabel;
+				groupHeaderEl.setAttribute(
+					'aria-expanded',
+					collapsed ? 'false' : 'true',
+				);
+				groupHeaderEl.setAttribute('aria-controls', groupBodyId);
+
+				const iconEl = groupHeaderEl.createSpan({
+					cls: 'ioto-tasks-center__project-group-header-icon',
+				});
+				setIcon(iconEl, 'chevron-right');
+				groupHeaderEl.createSpan({
+					cls: 'ioto-tasks-center__project-group-header-label',
+					text: groupLabel,
+				});
+				groupHeaderEl.createSpan({
+					cls: 'ioto-tasks-center__project-group-header-count',
+					text: `${section.projects.length}`,
+				});
+				groupHeaderEl.addEventListener('click', () => {
+					this.toggleProjectGroupCollapsed(groupKey);
+				});
+
+				groupBodyEl = groupEl.createDiv({
+					cls: 'ioto-tasks-center__project-group-body',
+				});
+				groupBodyEl.id = groupBodyId;
+				groupBodyEl.toggleClass('is-hidden', collapsed);
+				if (collapsed) {
+					continue;
+				}
+			} else {
+				groupBodyEl = groupEl.createDiv({
+					cls: 'ioto-tasks-center__project-group-body',
 				});
 			}
 
 			for (const project of section.projects) {
 				const incompleteCount =
 					this.projectIncompleteCounts.get(project.name) ?? 0;
-				const itemEl = listEl.createEl('button', {
+				const itemEl = groupBodyEl.createEl('button', {
 					cls: 'ioto-tasks-center__project-item',
 				});
 				itemEl.type = 'button';
@@ -1650,11 +1704,25 @@ export class IOTOTasksCenterView extends ItemView {
 		return this.collapsedTaskGroups.has(sectionKey);
 	}
 
+	private isProjectGroupCollapsed(groupKey: string): boolean {
+		return this.collapsedProjectGroups.has(groupKey);
+	}
+
 	private toggleTaskGroupCollapsed(sectionKey: string): void {
 		if (this.collapsedTaskGroups.has(sectionKey)) {
 			this.collapsedTaskGroups.delete(sectionKey);
 		} else {
 			this.collapsedTaskGroups.add(sectionKey);
+		}
+
+		this.render();
+	}
+
+	private toggleProjectGroupCollapsed(groupKey: string): void {
+		if (this.collapsedProjectGroups.has(groupKey)) {
+			this.collapsedProjectGroups.delete(groupKey);
+		} else {
+			this.collapsedProjectGroups.add(groupKey);
 		}
 
 		this.render();
@@ -1677,6 +1745,23 @@ export class IOTOTasksCenterView extends ItemView {
 		for (const key of [...this.collapsedTaskGroups]) {
 			if (!validKeys.has(key)) {
 				this.collapsedTaskGroups.delete(key);
+			}
+		}
+	}
+
+	private syncCollapsedProjectGroups(
+		sections: Array<{ groupKey: string }>,
+	): void {
+		const groupMode = this.getProjectListGroupMode();
+		if (groupMode === 'none') {
+			this.collapsedProjectGroups.clear();
+			return;
+		}
+
+		const validKeys = new Set(sections.map((section) => section.groupKey));
+		for (const key of [...this.collapsedProjectGroups]) {
+			if (!validKeys.has(key)) {
+				this.collapsedProjectGroups.delete(key);
 			}
 		}
 	}
@@ -2227,6 +2312,14 @@ function getTaskCreationOptions(): Array<{
 		{ key: 'topic', label: t('task.type.topic') },
 		{ key: 'plan', label: t('task.type.plan') },
 	];
+}
+
+function buildProjectGroupBodyId(groupKey: string): string {
+	const safeKey = encodeURIComponent(groupKey || 'uncategorized').replace(
+		/%/g,
+		'_',
+	);
+	return `ioto-tasks-center-project-group-${safeKey}`;
 }
 
 const PROJECT_LIST_SORT_MODE_ORDER: ProjectListSortMode[] = [
