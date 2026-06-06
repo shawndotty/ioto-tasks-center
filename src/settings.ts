@@ -1,9 +1,7 @@
 import { App, Notice, PluginSettingTab, Setting, TFile } from 'obsidian';
 import { t } from './lang/helpter';
 import IOTOTasksCenter from './main';
-import { listProjectFolders, listProjectTaskFiles } from './tasks-center/data';
 import { DEFAULT_DATE_TASK_DATE_FORMAT } from './tasks-center/date-task-format';
-import { sortProjectEntries } from './tasks-center/project-sort';
 import {
 	createDefaultTaskTemplateConfigMap,
 	type TaskCreationType,
@@ -11,7 +9,6 @@ import {
 	type TaskTemplateSourceMode,
 } from './tasks-center/task-template-config';
 import { ENABLED_TASK_CREATION_TYPE_ORDER } from './tasks-center/enabled-task-creation-types';
-import type { ProjectFolderEntry } from './tasks-center/types';
 import {
 	DEFAULT_TASKS_ROOT_PATH,
 	normalizeTasksRootPath,
@@ -37,6 +34,7 @@ export interface IOTOTasksCenterSettings {
 	taskListGroupMode: TaskListGroupMode;
 	showTaskPriority: boolean;
 	hiddenProjectNames: string[];
+	projectCategoryOptions: string[];
 	enabledTaskCreationTypes: TaskCreationType[];
 	taskTemplateConfigs: TaskTemplateConfigMap;
 	dateTaskDateFormat: string;
@@ -49,6 +47,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	taskListGroupMode: 'none',
 	showTaskPriority: false,
 	hiddenProjectNames: [],
+	projectCategoryOptions: [],
 	enabledTaskCreationTypes: [...ENABLED_TASK_CREATION_TYPE_ORDER],
 	taskTemplateConfigs: createDefaultTaskTemplateConfigMap(),
 	dateTaskDateFormat: DEFAULT_DATE_TASK_DATE_FORMAT,
@@ -175,6 +174,17 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
+			.setName(t('settings.projectCenterEntry.name'))
+			.setDesc(t('settings.projectCenterEntry.desc'))
+			.addButton((button) =>
+				button
+					.setButtonText(t('settings.projectCenterEntry.button'))
+					.onClick(async () => {
+						await this.plugin.activateIOTOProjectCenterView();
+					}),
+			);
+
+		new Setting(containerEl)
 			.setName(t('settings.taskListBehavior.name'))
 			.setDesc(t('settings.taskListBehavior.desc'));
 
@@ -287,14 +297,6 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 						// this.display();
 					});
 			});
-
-		new Setting(containerEl)
-			.setName(t('settings.heading.hiddenProjects'))
-			.setDesc(t('settings.hiddenProjects.desc'))
-			.setHeading();
-
-		const hiddenProjectsContainer = containerEl.createDiv();
-		void this.displayHiddenProjectSettings(hiddenProjectsContainer);
 	}
 
 	private renderTaskTemplateSettings(
@@ -433,101 +435,6 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 					}),
 			);
 	}
-
-	private async displayHiddenProjectSettings(
-		containerEl: HTMLElement,
-	): Promise<void> {
-		containerEl.empty();
-		containerEl.createDiv({
-			text: t('settings.hiddenProjects.loading'),
-		});
-
-		const tasksRootPath = this.plugin.settings.tasksRootPath;
-		const projectsResult = listProjectFolders(this.app, tasksRootPath);
-		if (projectsResult.status === 'root-missing') {
-			containerEl.empty();
-			new Setting(containerEl)
-				.setName(t('settings.hiddenProjects.rootMissingName'))
-				.setDesc(
-					t('settings.hiddenProjects.rootMissingDesc', [
-						tasksRootPath,
-					]),
-				);
-			return;
-		}
-
-		if (projectsResult.projects.length === 0) {
-			containerEl.empty();
-			new Setting(containerEl)
-				.setName(t('settings.hiddenProjects.emptyName'))
-				.setDesc(
-					t('settings.hiddenProjects.emptyDesc', [tasksRootPath]),
-				);
-			return;
-		}
-
-		const incompleteCounts = await buildProjectIncompleteCounts(
-			this.app,
-			tasksRootPath,
-			projectsResult.projects,
-		);
-		const allProjects = sortProjectEntries(
-			projectsResult.projects,
-			incompleteCounts,
-			this.plugin.settings.projectListSortMode,
-		);
-
-		containerEl.empty();
-
-		for (const project of allProjects) {
-			const incompleteCount = incompleteCounts.get(project.name) ?? 0;
-			const hidden = this.plugin.settings.hiddenProjectNames.includes(
-				project.name,
-			);
-			const description =
-				incompleteCount > 0
-					? t('settings.hiddenProjects.withIncomplete', [
-							String(incompleteCount),
-						])
-					: t('settings.hiddenProjects.withoutIncomplete');
-
-			new Setting(containerEl)
-				.setName(project.name)
-				.setDesc(description)
-				.addToggle((toggle) =>
-					toggle.setValue(hidden).onChange(async (value) => {
-						await this.plugin.setProjectHidden(project.name, value);
-						await this.displayHiddenProjectSettings(containerEl);
-					}),
-				);
-		}
-	}
-}
-
-async function buildProjectIncompleteCounts(
-	app: App,
-	tasksRootPath: string,
-	projects: ProjectFolderEntry[],
-): Promise<Map<string, number>> {
-	const entries = await Promise.all(
-		projects.map(async (project) => {
-			const result = await listProjectTaskFiles(
-				app,
-				tasksRootPath,
-				project.name,
-			);
-			const incompleteCount = result.tasks.filter((task) =>
-				isIncompleteTaskStatus(task.status.key),
-			).length;
-			return [project.name, incompleteCount] as const;
-		}),
-	);
-
-	return new Map(entries);
-}
-
-function isIncompleteTaskStatus(statusKey: string): boolean {
-	return statusKey === 'todo' || statusKey === 'in-progress';
 }
 
 function getTemplaterTemplatesFolder(app: App): string | null {
@@ -549,6 +456,28 @@ function getTemplaterTemplatesFolder(app: App): string | null {
 
 export function normalizeConfiguredTasksRootPath(path: string): string {
 	return normalizeTasksRootPath(path);
+}
+
+export function normalizeProjectCategoryOptions(input: unknown): string[] {
+	if (!Array.isArray(input)) {
+		return [];
+	}
+
+	const set = new Set<string>();
+	for (const item of input) {
+		if (typeof item !== 'string') {
+			continue;
+		}
+
+		const normalized = item.trim();
+		if (normalized) {
+			set.add(normalized);
+		}
+	}
+
+	return [...set].sort((left, right) =>
+		left.localeCompare(right, undefined, { numeric: true }),
+	);
 }
 
 export function isTaskTemplateSourceMode(

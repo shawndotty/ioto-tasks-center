@@ -9,10 +9,18 @@ import {
 	TaskFileListResult,
 	TaskFileStatus,
 } from './types';
+import { PROJECT_METADATA_FILE_NAME } from './project-metadata';
 
 const OBSIDIAN_COMMENT_BLOCK_PATTERN = /%%[\s\S]*?%%/g;
 const HTML_COMMENT_BLOCK_PATTERN = /<!--[\s\S]*?-->/g;
 const TASK_LINE_PATTERN = /^\s*(?:[-*+]|\d+\.)\s+\[([ xX])\](.*)$/;
+
+export function isProjectTaskMarkdownFileName(fileName: string): boolean {
+	return (
+		fileName.toLowerCase().endsWith('.md') &&
+		fileName !== PROJECT_METADATA_FILE_NAME
+	);
+}
 
 export function getTasksRootFolder(
 	app: App,
@@ -79,7 +87,7 @@ export async function listProjectTaskFiles(
 
 	const markdownFiles = projectFolder.children.filter(
 		(child): child is TFile =>
-			child instanceof TFile && child.extension.toLowerCase() === 'md',
+			child instanceof TFile && isProjectTaskMarkdownFileName(child.name),
 	);
 	const tasks: TaskFileEntry[] = (
 		await Promise.all(

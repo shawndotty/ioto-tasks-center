@@ -5,6 +5,7 @@ import {
 	formatDateByPattern,
 	normalizeDateTaskDateFormat,
 } from './date-task-format';
+import { PROJECT_METADATA_FILE_NAME } from './project-metadata';
 import {
 	resolveTaskTemplateSource,
 	type TaskCreationType,
@@ -66,6 +67,9 @@ export function buildTaskFileName(
 	}
 
 	if (type === 'normal') {
+		if (`${normalizedName}.md` === PROJECT_METADATA_FILE_NAME) {
+			throw new Error(t('error.taskNameReservedProjectMeta'));
+		}
 		return `${normalizedName}.md`;
 	}
 

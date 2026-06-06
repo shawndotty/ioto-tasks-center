@@ -21,11 +21,16 @@ import {
 	TaskListSortMode,
 	normalizeConfiguredTasksRootPath,
 	normalizeEnabledTaskCreationTypes,
+	normalizeProjectCategoryOptions,
 } from './settings';
 import {
 	IOTO_TASKS_CENTER_VIEW_TYPE,
 	IOTOTasksCenterView,
 } from './views/iotoTasksCenterView';
+import {
+	IOTO_PROJECT_CENTER_VIEW_TYPE,
+	IOTOProjectCenterView,
+} from './views/iotoProjectCenterView';
 import { IOTO_TASKS_CENTER_TASK_HOVER_SOURCE_ID } from './views/task-hover-preview';
 
 export default class IOTOTasksCenter extends Plugin {
@@ -56,11 +61,29 @@ export default class IOTOTasksCenter extends Plugin {
 					() => this.settings.dateTaskDateFormat,
 				),
 		);
+		this.registerView(
+			IOTO_PROJECT_CENTER_VIEW_TYPE,
+			(leaf) =>
+				new IOTOProjectCenterView(
+					leaf,
+					() => this.settings.tasksRootPath,
+					() => this.settings.hiddenProjectNames,
+					(projectName, hidden) =>
+						this.setProjectHidden(projectName, hidden),
+					() => this.settings.projectCategoryOptions,
+					(category) => this.addProjectCategoryOption(category),
+				),
+		);
 
 		this.addCommand({
 			id: 'open-tasks-center-view',
 			name: t('command.openTasksCenterView'),
 			callback: () => this.activateIOTOTasksCenterView(),
+		});
+		this.addCommand({
+			id: 'open-project-center-view',
+			name: t('command.openProjectCenterView'),
+			callback: () => this.activateIOTOProjectCenterView(),
 		});
 
 		this.addCommand({
@@ -122,6 +145,9 @@ export default class IOTOTasksCenter extends Plugin {
 			);
 		this.settings.dateTaskDateFormat = normalizeDateTaskDateFormat(
 			this.settings.dateTaskDateFormat,
+		);
+		this.settings.projectCategoryOptions = normalizeProjectCategoryOptions(
+			loadedData?.projectCategoryOptions,
 		);
 	}
 
@@ -246,12 +272,40 @@ export default class IOTOTasksCenter extends Plugin {
 	): Promise<void> {
 		const nextTypes = normalizeEnabledTaskCreationTypes(types);
 		if (
-			areStringArraysEqual(this.settings.enabledTaskCreationTypes, nextTypes)
+			areStringArraysEqual(
+				this.settings.enabledTaskCreationTypes,
+				nextTypes,
+			)
 		) {
 			return;
 		}
 
 		this.settings.enabledTaskCreationTypes = nextTypes;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async addProjectCategoryOption(category: string): Promise<void> {
+		const normalized = category.trim();
+		if (!normalized) {
+			return;
+		}
+
+		const categorySet = new Set(this.settings.projectCategoryOptions);
+		categorySet.add(normalized);
+		const nextCategories = [...categorySet].sort((left, right) =>
+			left.localeCompare(right, undefined, { numeric: true }),
+		);
+		if (
+			areStringArraysEqual(
+				this.settings.projectCategoryOptions,
+				nextCategories,
+			)
+		) {
+			return;
+		}
+
+		this.settings.projectCategoryOptions = nextCategories;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}
@@ -287,9 +341,24 @@ export default class IOTOTasksCenter extends Plugin {
 		});
 	}
 
+	async activateIOTOProjectCenterView(): Promise<void> {
+		const leaf = this.getOrCreateIOTOProjectCenterLeaf();
+		await leaf.setViewState({
+			type: IOTO_PROJECT_CENTER_VIEW_TYPE,
+			active: true,
+		});
+	}
+
 	private getOrCreateIOTOTasksCenterLeaf(): WorkspaceLeaf {
 		const existingLeaf = this.app.workspace.getLeavesOfType(
 			IOTO_TASKS_CENTER_VIEW_TYPE,
+		)[0];
+		return existingLeaf ?? this.app.workspace.getLeaf(true);
+	}
+
+	private getOrCreateIOTOProjectCenterLeaf(): WorkspaceLeaf {
+		const existingLeaf = this.app.workspace.getLeavesOfType(
+			IOTO_PROJECT_CENTER_VIEW_TYPE,
 		)[0];
 		return existingLeaf ?? this.app.workspace.getLeaf(true);
 	}
@@ -302,25 +371,45 @@ export default class IOTOTasksCenter extends Plugin {
 			return;
 		}
 
-		const leaves = this.app.workspace.getLeavesOfType(
+		await this.refreshOpenViews();
+	}
+
+	private applySettingsToOpenViews(): void {
+		for (const leaf of this.app.workspace.getLeavesOfType(
 			IOTO_TASKS_CENTER_VIEW_TYPE,
-		);
-		for (const leaf of leaves) {
+		)) {
+			const view = leaf.view;
+			if (view instanceof IOTOTasksCenterView) {
+				void view.handleSettingsChange();
+			}
+		}
+
+		for (const leaf of this.app.workspace.getLeavesOfType(
+			IOTO_PROJECT_CENTER_VIEW_TYPE,
+		)) {
+			const view = leaf.view;
+			if (view instanceof IOTOProjectCenterView) {
+				void view.handleSettingsChange();
+			}
+		}
+	}
+
+	private async refreshOpenViews(): Promise<void> {
+		for (const leaf of this.app.workspace.getLeavesOfType(
+			IOTO_TASKS_CENTER_VIEW_TYPE,
+		)) {
 			const view = leaf.view;
 			if (view instanceof IOTOTasksCenterView) {
 				await view.refreshFromVaultChange();
 			}
 		}
-	}
 
-	private applySettingsToOpenViews(): void {
-		const leaves = this.app.workspace.getLeavesOfType(
-			IOTO_TASKS_CENTER_VIEW_TYPE,
-		);
-		for (const leaf of leaves) {
+		for (const leaf of this.app.workspace.getLeavesOfType(
+			IOTO_PROJECT_CENTER_VIEW_TYPE,
+		)) {
 			const view = leaf.view;
-			if (view instanceof IOTOTasksCenterView) {
-				void view.handleSettingsChange();
+			if (view instanceof IOTOProjectCenterView) {
+				await view.refreshFromVaultChange();
 			}
 		}
 	}

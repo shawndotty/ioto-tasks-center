@@ -1,6 +1,33 @@
 const en = {
 	'command.openTasksCenterView': 'Open tasks center view',
+	'command.openProjectCenterView': 'Open project center view',
 	'command.convertSelectedTextToSubtask': 'Convert selected text to subtask',
+	'projectCenter.title': 'Project center',
+	'projectCenter.action.refresh': 'Refresh',
+	'projectCenter.columns.projectName': 'Project',
+	'projectCenter.columns.category': 'Category',
+	'projectCenter.columns.startDate': 'Start date',
+	'projectCenter.columns.dueDate': 'Due date',
+	'projectCenter.columns.taskCount': 'Tasks',
+	'projectCenter.columns.archived': 'Archived',
+	'projectCenter.category.empty': 'Unassigned',
+	'projectCenter.category.addNew': 'Add category…',
+	'projectCenter.category.addTitle': 'New category',
+	'projectCenter.category.addPlaceholder': 'Enter category name',
+	'projectCenter.category.addDesc': 'Enter a category name.',
+	'projectCenter.state.loadingTitle': 'Loading projects',
+	'projectCenter.state.loadingDesc':
+		'Scanning first-level folders under {0}.',
+	'projectCenter.state.rootMissingTitle': 'Tasks root not found',
+	'projectCenter.state.rootMissingDesc':
+		'Create the {0} folder in your vault first.',
+	'projectCenter.state.emptyTitle': 'No projects yet',
+	'projectCenter.state.emptyDesc':
+		'There are no first-level project folders under {0}.',
+	'projectCenter.notice.updateArchivedFailed':
+		'Failed to update archived status.',
+	'projectCenter.notice.updateMetadataFailed':
+		'Failed to update project metadata.',
 	'view.title': 'Tasks center',
 	'view.projectsPaneTitle': 'Projects',
 	'view.tasksPaneTitle': 'Tasks',
@@ -145,6 +172,10 @@ const en = {
 	'settings.viewEntry.desc':
 		'Open the tasks center from the command palette, or directly from here.',
 	'settings.viewEntry.button': 'Open tasks center',
+	'settings.projectCenterEntry.name': 'Project center',
+	'settings.projectCenterEntry.desc':
+		'Open the project center to manage projects, categories, dates, and archived status.',
+	'settings.projectCenterEntry.button': 'Open project center',
 	'settings.taskListBehavior.name': 'Task list behavior',
 	'settings.taskListBehavior.desc':
 		'Only first-level Markdown files in the current project are shown on the right. Clicking a task opens it in the pinned pane on the right side of the tasks center.',
@@ -204,6 +235,8 @@ const en = {
 		'Failed to convert the selected text to a subtask.',
 	'error.projectNameEmpty': 'Project name cannot be empty.',
 	'error.taskNameEmpty': 'Task name cannot be empty.',
+	'error.taskNameReservedProjectMeta':
+		'This task name is reserved for project metadata (_project.md).',
 	'error.createProjectRootMissing': 'Create the {0} folder first.',
 	'error.targetPathUnavailable': 'Target path is unavailable: {0}',
 	'error.currentTaskFileUnavailable':
