@@ -672,7 +672,9 @@ function parseFrontmatterInlineArrayValues(value: string): string[] | null {
 				.map((item) => normalizeFrontmatterScalarValue(item))
 				.filter((item) => item.length > 0);
 		}
-	} catch {}
+	} catch (error) {
+		void error;
+	}
 
 	const inner = trimmedValue.slice(1, -1);
 	const values: string[] = [];

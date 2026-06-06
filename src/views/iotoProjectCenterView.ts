@@ -17,6 +17,12 @@ import {
 	type ProjectCenterSortDirection,
 	type ProjectCenterSortKey,
 } from './project-center-sort';
+import { filterProjectCenterRowsByQuery } from './project-center-search';
+import {
+	captureProjectCenterScrollPosition,
+	restoreProjectCenterScrollPosition,
+	type ScrollPosition,
+} from './project-center-scroll';
 
 export const IOTO_PROJECT_CENTER_VIEW_TYPE = 'IOTOProjectCenter';
 
@@ -39,6 +45,11 @@ export class IOTOProjectCenterView extends ItemView {
 	private isCreatingProject = false;
 	private sortKey: ProjectCenterSortKey = 'projectName';
 	private sortDirection: ProjectCenterSortDirection = 'asc';
+	private contentScroll: ScrollPosition = { scrollTop: 0, scrollLeft: 0 };
+	private isProjectSearchVisible = false;
+	private projectSearchInputValue = '';
+	private projectSearchQuery = '';
+	private shouldFocusProjectSearch = false;
 	private readonly getTasksRootPath: () => string;
 	private readonly getHiddenProjectNames: () => string[];
 	private readonly setProjectHidden: (
@@ -167,10 +178,17 @@ export class IOTOProjectCenterView extends ItemView {
 
 	private render(): void {
 		const root = this.contentEl;
+		this.contentScroll = captureProjectCenterScrollPosition(
+			root,
+			this.contentScroll,
+		);
 		root.empty();
 
 		const headerEl = root.createDiv({ cls: 'ioto-project-center__header' });
-		const titleEl = headerEl.createDiv({
+		const headerLeftEl = headerEl.createDiv({
+			cls: 'ioto-project-center__header-left',
+		});
+		const titleEl = headerLeftEl.createDiv({
 			cls: 'ioto-project-center__title',
 			text: t('projectCenter.title'),
 		});
@@ -179,6 +197,81 @@ export class IOTOProjectCenterView extends ItemView {
 		const actionsEl = headerEl.createDiv({
 			cls: 'ioto-project-center__actions',
 		});
+		if (this.isProjectSearchVisible) {
+			const searchControlsEl = actionsEl.createDiv({
+				cls: 'ioto-project-center__search-controls',
+			});
+			const searchInputWrapperEl = searchControlsEl.createDiv({
+				cls: 'ioto-project-center__search-input-wrapper',
+			});
+			const searchInputEl = searchInputWrapperEl.createEl('input', {
+				cls: 'ioto-project-center__search-input',
+				type: 'search',
+			});
+			searchInputEl.placeholder = t('projectCenter.search.placeholder');
+			searchInputEl.value = this.projectSearchInputValue;
+			searchInputEl.addEventListener('input', () => {
+				this.projectSearchInputValue = searchInputEl.value;
+			});
+			searchInputEl.addEventListener('keydown', (event) => {
+				if (event.key !== 'Enter') {
+					return;
+				}
+
+				event.preventDefault();
+				this.applyProjectSearchQuery();
+			});
+
+			if (this.projectSearchInputValue || this.projectSearchQuery) {
+				const clearButtonEl = searchInputWrapperEl.createEl('button', {
+					cls: 'ioto-project-center__search-clear-button',
+					text: 'X',
+				});
+				clearButtonEl.type = 'button';
+				clearButtonEl.ariaLabel = t('projectCenter.search.clear');
+				clearButtonEl.title = t('projectCenter.search.clearShort');
+				clearButtonEl.addEventListener('click', () => {
+					this.clearProjectSearch();
+				});
+			}
+
+			const searchButtonEl = searchControlsEl.createEl('button', {
+				cls: 'ioto-project-center__search-button',
+				text: t('projectCenter.search.button'),
+			});
+			searchButtonEl.type = 'button';
+			searchButtonEl.ariaLabel = t('projectCenter.search.button');
+			searchButtonEl.addEventListener('click', () => {
+				this.applyProjectSearchQuery();
+			});
+
+			if (this.shouldFocusProjectSearch) {
+				this.shouldFocusProjectSearch = false;
+				if (typeof window !== 'undefined' && window.requestAnimationFrame) {
+					window.requestAnimationFrame(() => {
+						searchInputEl.focus();
+					});
+				} else {
+					searchInputEl.focus();
+				}
+			}
+		}
+
+		const searchToggleButtonEl = actionsEl.createEl('button', {
+			cls: 'ioto-project-center__icon-button',
+		});
+		searchToggleButtonEl.type = 'button';
+		searchToggleButtonEl.ariaLabel = t('projectCenter.action.search');
+		searchToggleButtonEl.title = t('projectCenter.action.search');
+		setIcon(searchToggleButtonEl, 'search');
+		searchToggleButtonEl.addEventListener('click', () => {
+			this.isProjectSearchVisible = !this.isProjectSearchVisible;
+			if (this.isProjectSearchVisible) {
+				this.shouldFocusProjectSearch = true;
+			}
+			this.render();
+		});
+
 		const refreshButtonEl = actionsEl.createEl('button', {
 			cls: 'ioto-project-center__icon-button',
 		});
@@ -214,6 +307,7 @@ export class IOTOProjectCenterView extends ItemView {
 				t('projectCenter.state.loadingDesc', [this.getTasksRootPath()]),
 				'is-loading',
 			);
+			restoreProjectCenterScrollPosition(contentEl, this.contentScroll);
 			return;
 		}
 
@@ -226,20 +320,39 @@ export class IOTOProjectCenterView extends ItemView {
 				]),
 				'is-empty',
 			);
+			restoreProjectCenterScrollPosition(contentEl, this.contentScroll);
 			return;
 		}
 
-		if (this.rows.length === 0) {
+		const filteredRows = filterProjectCenterRowsByQuery(
+			this.rows,
+			this.projectSearchQuery,
+		);
+		if (filteredRows.length === 0) {
+			const keyword = this.projectSearchQuery.trim();
+			if (keyword) {
+				this.renderState(
+					contentEl,
+					t('projectCenter.search.emptyTitle'),
+					t('projectCenter.search.emptyDesc', [keyword]),
+					'is-empty',
+				);
+				restoreProjectCenterScrollPosition(contentEl, this.contentScroll);
+				return;
+			}
+
 			this.renderState(
 				contentEl,
 				t('projectCenter.state.emptyTitle'),
 				t('projectCenter.state.emptyDesc', [this.getTasksRootPath()]),
 				'is-empty',
 			);
+			restoreProjectCenterScrollPosition(contentEl, this.contentScroll);
 			return;
 		}
 
-		this.renderTable(contentEl);
+		this.renderTable(contentEl, filteredRows);
+		restoreProjectCenterScrollPosition(contentEl, this.contentScroll);
 	}
 
 	private canCreateProject(): boolean {
@@ -293,7 +406,7 @@ export class IOTOProjectCenterView extends ItemView {
 		}
 	}
 
-	private renderTable(container: HTMLElement): void {
+	private renderTable(container: HTMLElement, rows: ProjectCenterRow[]): void {
 		const tableEl = container.createDiv({
 			cls: 'ioto-project-center__table',
 		});
@@ -332,7 +445,7 @@ export class IOTOProjectCenterView extends ItemView {
 		);
 
 		for (const row of sortProjectCenterRows(
-			this.rows,
+			rows,
 			this.sortKey,
 			this.sortDirection,
 		)) {
@@ -346,6 +459,26 @@ export class IOTOProjectCenterView extends ItemView {
 			this.renderTaskCountCell(rowEl, row);
 			this.renderArchivedCell(rowEl, row);
 		}
+	}
+
+	private applyProjectSearchQuery(): void {
+		const nextQuery = this.projectSearchInputValue;
+		if (nextQuery === this.projectSearchQuery) {
+			return;
+		}
+
+		this.projectSearchQuery = nextQuery;
+		this.render();
+	}
+
+	private clearProjectSearch(): void {
+		if (!this.projectSearchInputValue && !this.projectSearchQuery) {
+			return;
+		}
+
+		this.projectSearchInputValue = '';
+		this.projectSearchQuery = '';
+		this.render();
 	}
 
 	private createHeaderCell(

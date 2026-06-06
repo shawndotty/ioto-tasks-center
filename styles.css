@@ -979,6 +979,13 @@ button:not(.clickable-icon).ioto-tasks-center__task-row.is-active {
 	border-bottom: 1px solid var(--background-modifier-border);
 }
 
+.ioto-project-center__header-left {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-width: 0;
+}
+
 .ioto-project-center__title {
 	font-size: var(--font-ui-large);
 	font-weight: 700;
@@ -988,6 +995,98 @@ button:not(.clickable-icon).ioto-tasks-center__task-row.is-active {
 	display: flex;
 	align-items: center;
 	gap: 8px;
+}
+
+.ioto-project-center__search-controls {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.ioto-project-center__search-input-wrapper {
+	position: relative;
+	flex: 0 1 auto;
+	min-width: 0;
+}
+
+.ioto-project-center__search-input {
+	width: min(240px, 30vw);
+	padding: 8px 12px;
+	padding-right: 36px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	transition:
+		border-color 120ms ease,
+		box-shadow 120ms ease,
+		background-color 120ms ease;
+}
+
+.ioto-project-center__search-input::placeholder {
+	color: var(--text-faint);
+}
+
+.ioto-project-center__search-input:hover {
+	border-color: var(--interactive-accent);
+}
+
+.ioto-project-center__search-input:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px
+		color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+}
+
+.ioto-project-center__search-clear-button {
+	position: absolute;
+	top: 50%;
+	right: 8px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	padding: 0;
+	border: 0;
+	border-radius: 999px;
+	background: var(--background-modifier-hover);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-weight: 700;
+	line-height: 1;
+	transform: translateY(-50%);
+	cursor: pointer;
+	transition:
+		background-color 120ms ease,
+		color 120ms ease;
+}
+
+.ioto-project-center__search-clear-button:hover {
+	background: var(--background-modifier-border);
+	color: var(--text-normal);
+}
+
+.ioto-project-center__search-button {
+	flex: 0 0 auto;
+	padding: 8px 14px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	font-weight: 600;
+	cursor: pointer;
+	transition:
+		background-color 120ms ease,
+		border-color 120ms ease,
+		color 120ms ease;
+}
+
+.ioto-project-center__search-button:hover {
+	border-color: var(--interactive-accent);
+	background: var(--background-modifier-hover);
 }
 
 .ioto-project-center__icon-button {
