@@ -75,12 +75,6 @@ export async function readProjectMetadata(
 	app: App,
 	file: TFile,
 ): Promise<ProjectMetadata> {
-	const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
-	const cached = readProjectMetadataFromFrontmatter(frontmatter);
-	if (cached) {
-		return cached;
-	}
-
 	const content = await app.vault.cachedRead(file);
 	return readProjectMetadataFromContent(content);
 }
