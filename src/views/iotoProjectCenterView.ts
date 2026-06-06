@@ -10,7 +10,13 @@ import {
 	updateProjectMetadata,
 	type ProjectMetadata,
 } from '../tasks-center/project-metadata';
+import { createProjectFolder } from '../tasks-center/project-creation';
 import { TaskNameModal } from '../ui/taskNameModal';
+import {
+	sortProjectCenterRows,
+	type ProjectCenterSortDirection,
+	type ProjectCenterSortKey,
+} from './project-center-sort';
 
 export const IOTO_PROJECT_CENTER_VIEW_TYPE = 'IOTOProjectCenter';
 
@@ -22,9 +28,17 @@ interface ProjectCenterRow {
 	metadata: ProjectMetadata;
 }
 
+interface IOTOProjectCenterViewState {
+	sortKey?: ProjectCenterSortKey;
+	sortDirection?: ProjectCenterSortDirection;
+}
+
 export class IOTOProjectCenterView extends ItemView {
 	private rows: ProjectCenterRow[] = [];
 	private status: 'idle' | 'loading' | 'root-missing' = 'idle';
+	private isCreatingProject = false;
+	private sortKey: ProjectCenterSortKey = 'projectName';
+	private sortDirection: ProjectCenterSortDirection = 'asc';
 	private readonly getTasksRootPath: () => string;
 	private readonly getHiddenProjectNames: () => string[];
 	private readonly setProjectHidden: (
@@ -77,6 +91,20 @@ export class IOTOProjectCenterView extends ItemView {
 
 	async onClose(): Promise<void> {
 		this.contentEl.empty();
+	}
+
+	getState(): Record<string, unknown> {
+		return {
+			sortKey: this.sortKey,
+			sortDirection: this.sortDirection,
+		};
+	}
+
+	async setState(state: unknown): Promise<void> {
+		const viewState = parseViewState(state);
+		this.sortKey = viewState.sortKey ?? 'projectName';
+		this.sortDirection = viewState.sortDirection ?? 'asc';
+		await this.refreshFromVaultChange();
 	}
 
 	async handleSettingsChange(): Promise<void> {
@@ -162,6 +190,20 @@ export class IOTOProjectCenterView extends ItemView {
 			void this.refreshFromVaultChange();
 		});
 
+		const createProjectButtonEl = actionsEl.createEl('button', {
+			cls: 'ioto-project-center__icon-button',
+		});
+		createProjectButtonEl.type = 'button';
+		createProjectButtonEl.disabled = !this.canCreateProject();
+		createProjectButtonEl.ariaLabel = t(
+			'projectCenter.action.createProject',
+		);
+		createProjectButtonEl.title = t('projectCenter.action.createProject');
+		setIcon(createProjectButtonEl, 'plus');
+		createProjectButtonEl.addEventListener('click', () => {
+			void this.handleCreateProject();
+		});
+
 		const contentEl = root.createDiv({
 			cls: 'ioto-project-center__content',
 		});
@@ -198,6 +240,57 @@ export class IOTOProjectCenterView extends ItemView {
 		}
 
 		this.renderTable(contentEl);
+	}
+
+	private canCreateProject(): boolean {
+		return (
+			this.status === 'idle' &&
+			!this.isCreatingProject &&
+			this.getTasksRootPath().trim().length > 0
+		);
+	}
+
+	private async handleCreateProject(): Promise<void> {
+		if (!this.canCreateProject()) {
+			return;
+		}
+
+		const projectNameResult = await new TaskNameModal(
+			this.app,
+			t('modal.newProject.title'),
+			t('modal.newProject.placeholder'),
+			{
+				descriptionText: t('modal.newProject.desc'),
+				confirmButtonText: t('modal.create'),
+			},
+		).openAndGetValue();
+		if (!projectNameResult) {
+			return;
+		}
+
+		this.isCreatingProject = true;
+		this.render();
+
+		try {
+			const result = await createProjectFolder(
+				this.app,
+				this.getTasksRootPath(),
+				projectNameResult,
+			);
+			if (!result.created) {
+				new Notice(t('view.notice.projectAlreadyExists'));
+			}
+			await this.refreshFromVaultChange();
+		} catch (error) {
+			const message =
+				error instanceof Error
+					? error.message
+					: t('projectCenter.notice.createProjectFailed');
+			new Notice(message);
+		} finally {
+			this.isCreatingProject = false;
+			this.render();
+		}
 	}
 
 	private renderTable(container: HTMLElement): void {
@@ -238,7 +331,11 @@ export class IOTOProjectCenterView extends ItemView {
 			t('projectCenter.columns.archived'),
 		);
 
-		for (const row of this.rows) {
+		for (const row of sortProjectCenterRows(
+			this.rows,
+			this.sortKey,
+			this.sortDirection,
+		)) {
 			const rowEl = tableEl.createDiv({
 				cls: 'ioto-project-center__row ioto-project-center__row--data',
 			});
@@ -253,13 +350,40 @@ export class IOTOProjectCenterView extends ItemView {
 
 	private createHeaderCell(
 		rowEl: HTMLElement,
-		key: string,
+		key: ProjectCenterSortKey,
 		label: string,
 	): void {
-		rowEl.createDiv({
-			cls: `ioto-project-center__cell ioto-project-center__cell--${key}`,
+		const cellEl = rowEl.createEl('button', {
+			cls: `ioto-project-center__cell ioto-project-center__cell--${key} ioto-project-center__header-cell`,
+		});
+		cellEl.type = 'button';
+		cellEl.createSpan({
+			cls: 'ioto-project-center__header-label',
 			text: label,
 		});
+
+		if (this.sortKey === key) {
+			cellEl.createSpan({
+				cls: 'ioto-project-center__sort-indicator',
+				text: this.sortDirection === 'asc' ? '▲' : '▼',
+			});
+		}
+
+		cellEl.addEventListener('click', () => {
+			this.handleSortClick(key);
+		});
+	}
+
+	private handleSortClick(key: ProjectCenterSortKey): void {
+		if (this.sortKey !== key) {
+			this.sortKey = key;
+			this.sortDirection = 'asc';
+			this.render();
+			return;
+		}
+
+		this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+		this.render();
 	}
 
 	private renderProjectNameCell(rowEl: HTMLElement, row: ProjectCenterRow) {
@@ -450,6 +574,41 @@ export class IOTOProjectCenterView extends ItemView {
 			text: description,
 		});
 	}
+}
+
+function parseViewState(state: unknown): IOTOProjectCenterViewState {
+	if (!state || typeof state !== 'object') {
+		return {};
+	}
+
+	const candidate = state as Record<string, unknown>;
+	const sortKey = isProjectCenterSortKey(candidate.sortKey)
+		? candidate.sortKey
+		: undefined;
+	const sortDirection = isProjectCenterSortDirection(candidate.sortDirection)
+		? candidate.sortDirection
+		: undefined;
+	return {
+		sortKey,
+		sortDirection,
+	};
+}
+
+function isProjectCenterSortKey(value: unknown): value is ProjectCenterSortKey {
+	return (
+		value === 'projectName' ||
+		value === 'category' ||
+		value === 'startDate' ||
+		value === 'dueDate' ||
+		value === 'taskCount' ||
+		value === 'archived'
+	);
+}
+
+function isProjectCenterSortDirection(
+	value: unknown,
+): value is ProjectCenterSortDirection {
+	return value === 'asc' || value === 'desc';
 }
 
 function collectCategoryOptions(

@@ -4,6 +4,7 @@ const en = {
 	'command.convertSelectedTextToSubtask': 'Convert selected text to subtask',
 	'projectCenter.title': 'Project center',
 	'projectCenter.action.refresh': 'Refresh',
+	'projectCenter.action.createProject': 'Create project',
 	'projectCenter.columns.projectName': 'Project',
 	'projectCenter.columns.category': 'Category',
 	'projectCenter.columns.startDate': 'Start date',
@@ -28,6 +29,7 @@ const en = {
 		'Failed to update archived status.',
 	'projectCenter.notice.updateMetadataFailed':
 		'Failed to update project metadata.',
+	'projectCenter.notice.createProjectFailed': 'Failed to create project.',
 	'view.title': 'Tasks center',
 	'view.projectsPaneTitle': 'Projects',
 	'view.tasksPaneTitle': 'Tasks',
