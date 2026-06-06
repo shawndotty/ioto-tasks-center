@@ -16,12 +16,15 @@ import {
 	DEFAULT_SETTINGS,
 	IOTOTasksCenterSettingTab,
 	IOTOTasksCenterSettings,
+	ProjectListGroupMode,
 	ProjectListSortMode,
 	TaskListGroupMode,
 	TaskListSortMode,
 	normalizeConfiguredTasksRootPath,
 	normalizeEnabledTaskCreationTypes,
 	normalizeProjectCategoryOptions,
+	normalizeProjectListGroupMode,
+	normalizeProjectListSortMode,
 } from './settings';
 import {
 	IOTO_TASKS_CENTER_VIEW_TYPE,
@@ -49,11 +52,14 @@ export default class IOTOTasksCenter extends Plugin {
 					leaf,
 					() => this.settings.tasksRootPath,
 					() => this.settings.projectListSortMode,
+					() => this.settings.projectListGroupMode,
 					() => this.settings.taskListSortMode,
 					() => this.settings.taskListGroupMode,
 					() => this.settings.showTaskPriority,
 					() => this.settings.hiddenProjectNames,
 					() => this.settings.enabledTaskCreationTypes,
+					(sortMode) => this.updateProjectListSortMode(sortMode),
+					(groupMode) => this.updateProjectListGroupMode(groupMode),
 					(sortMode) => this.updateTaskListSortMode(sortMode),
 					(groupMode) => this.updateTaskListGroupMode(groupMode),
 					(show) => this.updateShowTaskPriority(show),
@@ -139,6 +145,12 @@ export default class IOTOTasksCenter extends Plugin {
 			loadedData?.taskTemplateConfigs,
 			loadedData?.taskTemplatePath,
 		);
+		this.settings.projectListSortMode = normalizeProjectListSortMode(
+			loadedData?.projectListSortMode,
+		);
+		this.settings.projectListGroupMode = normalizeProjectListGroupMode(
+			loadedData?.projectListGroupMode,
+		);
 		this.settings.enabledTaskCreationTypes =
 			normalizeEnabledTaskCreationTypes(
 				loadedData?.enabledTaskCreationTypes,
@@ -163,6 +175,18 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.projectListSortMode = sortMode;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateProjectListGroupMode(
+		groupMode: ProjectListGroupMode,
+	): Promise<void> {
+		if (this.settings.projectListGroupMode === groupMode) {
+			return;
+		}
+
+		this.settings.projectListGroupMode = groupMode;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}

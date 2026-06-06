@@ -15,7 +15,12 @@ import {
 } from './tasks-center/types';
 import { ImportModal } from './modals/ImportModal';
 
-export type ProjectListSortMode = 'incomplete-count' | 'name';
+export type ProjectListSortMode =
+	| 'incomplete-count'
+	| 'incomplete-count-asc'
+	| 'name'
+	| 'name-desc';
+export type ProjectListGroupMode = 'none' | 'category';
 export type TaskListSortMode =
 	| 'created-desc'
 	| 'created-asc'
@@ -30,6 +35,7 @@ export type TaskListGroupMode = 'none' | 'status' | 'priority';
 export interface IOTOTasksCenterSettings {
 	tasksRootPath: string;
 	projectListSortMode: ProjectListSortMode;
+	projectListGroupMode: ProjectListGroupMode;
 	taskListSortMode: TaskListSortMode;
 	taskListGroupMode: TaskListGroupMode;
 	showTaskPriority: boolean;
@@ -43,6 +49,7 @@ export interface IOTOTasksCenterSettings {
 export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	tasksRootPath: DEFAULT_TASKS_ROOT_PATH,
 	projectListSortMode: 'incomplete-count',
+	projectListGroupMode: 'none',
 	taskListSortMode: 'created-desc',
 	taskListGroupMode: 'none',
 	showTaskPriority: false,
@@ -60,8 +67,20 @@ export function getProjectListSortModeOptions(): Record<
 	string
 > {
 	return {
-		'incomplete-count': t('task.sort.incompleteCount'),
-		name: t('task.sort.projectName'),
+		'incomplete-count': t('project.sort.incompleteCountDesc'),
+		'incomplete-count-asc': t('project.sort.incompleteCountAsc'),
+		name: t('project.sort.projectNameAsc'),
+		'name-desc': t('project.sort.projectNameDesc'),
+	};
+}
+
+export function getProjectListGroupModeOptions(): Record<
+	ProjectListGroupMode,
+	string
+> {
+	return {
+		none: t('project.group.none'),
+		category: t('project.group.category'),
 	};
 }
 
@@ -92,7 +111,18 @@ export function getTaskListGroupModeOptions(): Record<
 export function isProjectListSortMode(
 	value: string,
 ): value is ProjectListSortMode {
-	return value === 'incomplete-count' || value === 'name';
+	return (
+		value === 'incomplete-count' ||
+		value === 'incomplete-count-asc' ||
+		value === 'name' ||
+		value === 'name-desc'
+	);
+}
+
+export function isProjectListGroupMode(
+	value: string,
+): value is ProjectListGroupMode {
+	return value === 'none' || value === 'category';
 }
 
 export function isTaskListSortMode(value: string): value is TaskListSortMode {
@@ -456,6 +486,22 @@ function getTemplaterTemplatesFolder(app: App): string | null {
 
 export function normalizeConfiguredTasksRootPath(path: string): string {
 	return normalizeTasksRootPath(path);
+}
+
+export function normalizeProjectListSortMode(
+	input: unknown,
+): ProjectListSortMode {
+	return typeof input === 'string' && isProjectListSortMode(input)
+		? input
+		: DEFAULT_SETTINGS.projectListSortMode;
+}
+
+export function normalizeProjectListGroupMode(
+	input: unknown,
+): ProjectListGroupMode {
+	return typeof input === 'string' && isProjectListGroupMode(input)
+		? input
+		: DEFAULT_SETTINGS.projectListGroupMode;
 }
 
 export function normalizeProjectCategoryOptions(input: unknown): string[] {

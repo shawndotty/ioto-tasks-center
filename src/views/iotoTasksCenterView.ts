@@ -15,6 +15,10 @@ import {
 	filterHiddenProjectEntries,
 	sortProjectEntries,
 } from '../tasks-center/project-sort';
+import {
+	getProjectMetadataFile,
+	readProjectMetadataFromFrontmatter,
+} from '../tasks-center/project-metadata';
 import { createTaskFile } from '../tasks-center/task-creation';
 import {
 	clearTaskFilePriority,
@@ -31,11 +35,14 @@ import type {
 	TaskTemplateConfig,
 } from '../tasks-center/task-template-config';
 import type {
+	ProjectListGroupMode,
 	ProjectListSortMode,
 	TaskListGroupMode,
 	TaskListSortMode,
 } from '../settings';
 import {
+	getProjectListGroupModeOptions,
+	getProjectListSortModeOptions,
 	getTaskListGroupModeOptions,
 	getTaskListSortModeOptions,
 } from '../settings';
@@ -59,6 +66,7 @@ import {
 	matchesTaskFilterTab,
 	type TaskFilterTab,
 } from './task-filter-tabs';
+import { buildProjectListSections } from './project-list-group';
 import {
 	captureProjectListScrollTop,
 	restoreProjectListScrollTop,
@@ -87,6 +95,7 @@ interface IOTOTasksCenterViewState {
 export class IOTOTasksCenterView extends ItemView {
 	private projects: ProjectFolderEntry[] = [];
 	private projectIncompleteCounts = new Map<string, number>();
+	private projectCategoryByName = new Map<string, string>();
 	private selectedProject: string | null = null;
 	private tasks: TaskFileEntry[] = [];
 	private activeTaskFilterTab: TaskFilterTab = 'today';
@@ -123,11 +132,18 @@ export class IOTOTasksCenterView extends ItemView {
 	private resizeObserver: ResizeObserver | null = null;
 	private readonly getTasksRootPath: () => string;
 	private readonly getProjectListSortMode: () => ProjectListSortMode;
+	private readonly getProjectListGroupMode: () => ProjectListGroupMode;
 	private readonly getTaskListSortMode: () => TaskListSortMode;
 	private readonly getTaskListGroupMode: () => TaskListGroupMode;
 	private readonly getShowTaskPriority: () => boolean;
 	private readonly getHiddenProjectNames: () => string[];
 	private readonly getEnabledTaskCreationTypes: () => TaskCreationType[];
+	private readonly updateProjectListSortMode: (
+		sortMode: ProjectListSortMode,
+	) => Promise<void>;
+	private readonly updateProjectListGroupMode: (
+		groupMode: ProjectListGroupMode,
+	) => Promise<void>;
 	private readonly updateTaskListSortMode: (
 		sortMode: TaskListSortMode,
 	) => Promise<void>;
@@ -144,11 +160,18 @@ export class IOTOTasksCenterView extends ItemView {
 		leaf: WorkspaceLeaf,
 		getTasksRootPath: () => string,
 		getProjectListSortMode: () => ProjectListSortMode,
+		getProjectListGroupMode: () => ProjectListGroupMode,
 		getTaskListSortMode: () => TaskListSortMode,
 		getTaskListGroupMode: () => TaskListGroupMode,
 		getShowTaskPriority: () => boolean,
 		getHiddenProjectNames: () => string[],
 		getEnabledTaskCreationTypes: () => TaskCreationType[],
+		updateProjectListSortMode: (
+			sortMode: ProjectListSortMode,
+		) => Promise<void>,
+		updateProjectListGroupMode: (
+			groupMode: ProjectListGroupMode,
+		) => Promise<void>,
 		updateTaskListSortMode: (sortMode: TaskListSortMode) => Promise<void>,
 		updateTaskListGroupMode: (
 			groupMode: TaskListGroupMode,
@@ -161,11 +184,14 @@ export class IOTOTasksCenterView extends ItemView {
 		this.navigation = true;
 		this.getTasksRootPath = getTasksRootPath;
 		this.getProjectListSortMode = getProjectListSortMode;
+		this.getProjectListGroupMode = getProjectListGroupMode;
 		this.getTaskListSortMode = getTaskListSortMode;
 		this.getTaskListGroupMode = getTaskListGroupMode;
 		this.getShowTaskPriority = getShowTaskPriority;
 		this.getHiddenProjectNames = getHiddenProjectNames;
 		this.getEnabledTaskCreationTypes = getEnabledTaskCreationTypes;
+		this.updateProjectListSortMode = updateProjectListSortMode;
+		this.updateProjectListGroupMode = updateProjectListGroupMode;
 		this.updateTaskListSortMode = updateTaskListSortMode;
 		this.updateTaskListGroupMode = updateTaskListGroupMode;
 		this.updateShowTaskPriority = updateShowTaskPriority;
@@ -269,6 +295,9 @@ export class IOTOTasksCenterView extends ItemView {
 			result.projects,
 		);
 		this.applyProjectSorting();
+		this.projectCategoryByName = this.buildProjectCategoryByName(
+			this.projects,
+		);
 		this.isProjectsLoading = false;
 
 		if (result.status !== 'success' || this.projects.length === 0) {
@@ -375,6 +404,17 @@ export class IOTOTasksCenterView extends ItemView {
 		const actionsEl = headerEl.createDiv({
 			cls: 'ioto-tasks-center__section-actions',
 		});
+		const projectSettingsButtonEl = actionsEl.createEl('button', {
+			cls: 'ioto-tasks-center__icon-button',
+		});
+		projectSettingsButtonEl.type = 'button';
+		projectSettingsButtonEl.disabled = this.isProjectsLoading;
+		projectSettingsButtonEl.ariaLabel = t('view.projectListSettings');
+		projectSettingsButtonEl.title = t('view.projectListSettings');
+		setIcon(projectSettingsButtonEl, 'sliders-horizontal');
+		projectSettingsButtonEl.addEventListener('click', (event) => {
+			this.showProjectPresentationMenu(event);
+		});
 		const addProjectButtonEl = actionsEl.createEl('button', {
 			cls: 'ioto-tasks-center__icon-button',
 			text: '+',
@@ -441,38 +481,60 @@ export class IOTOTasksCenterView extends ItemView {
 			return;
 		}
 
-		for (const project of this.projects) {
-			const incompleteCount =
-				this.projectIncompleteCounts.get(project.name) ?? 0;
-			const itemEl = listEl.createEl('button', {
-				cls: 'ioto-tasks-center__project-item',
-			});
-			itemEl.type = 'button';
-			itemEl.createSpan({
-				cls: 'ioto-tasks-center__project-name',
-				text: project.name,
-			});
-			if (incompleteCount > 0) {
-				itemEl.createSpan({
-					cls: 'ioto-tasks-center__project-count',
-					text: `${incompleteCount}`,
+		const groupMode = this.getProjectListGroupMode();
+		const sortMode = this.getProjectListSortMode();
+		const sections = buildProjectListSections(
+			this.projects,
+			this.projectIncompleteCounts,
+			this.projectCategoryByName,
+			sortMode,
+			groupMode,
+		);
+
+		for (const section of sections) {
+			if (groupMode === 'category') {
+				listEl.createDiv({
+					cls: 'ioto-tasks-center__project-group-header',
+					text:
+						section.groupKey.length > 0
+							? section.groupKey
+							: t('project.group.uncategorized'),
 				});
 			}
 
-			if (project.name === this.selectedProject) {
-				itemEl.addClass('is-selected');
-			}
-
-			itemEl.addEventListener('click', () => {
-				if (
-					project.name === this.selectedProject ||
-					this.isTasksLoading
-				) {
-					return;
+			for (const project of section.projects) {
+				const incompleteCount =
+					this.projectIncompleteCounts.get(project.name) ?? 0;
+				const itemEl = listEl.createEl('button', {
+					cls: 'ioto-tasks-center__project-item',
+				});
+				itemEl.type = 'button';
+				itemEl.createSpan({
+					cls: 'ioto-tasks-center__project-name',
+					text: project.name,
+				});
+				if (incompleteCount > 0) {
+					itemEl.createSpan({
+						cls: 'ioto-tasks-center__project-count',
+						text: `${incompleteCount}`,
+					});
 				}
 
-				void this.selectProject(project.name);
-			});
+				if (project.name === this.selectedProject) {
+					itemEl.addClass('is-selected');
+				}
+
+				itemEl.addEventListener('click', () => {
+					if (
+						project.name === this.selectedProject ||
+						this.isTasksLoading
+					) {
+						return;
+					}
+
+					void this.selectProject(project.name);
+				});
+			}
 		}
 
 		restoreProjectListScrollTop(listEl, this.projectListScrollTop);
@@ -1658,6 +1720,72 @@ export class IOTOTasksCenterView extends ItemView {
 		return matchesTaskFilterTab(task, tab);
 	}
 
+	private showProjectPresentationMenu(event: MouseEvent): void {
+		const projectListSortModeOptions = getProjectListSortModeOptions();
+		const projectListGroupModeOptions = getProjectListGroupModeOptions();
+		const menu = new Menu();
+		const currentSortMode = this.getProjectListSortMode();
+		const currentGroupMode = this.getProjectListGroupMode();
+
+		for (const sortMode of PROJECT_LIST_SORT_MODE_ORDER) {
+			const label = projectListSortModeOptions[sortMode];
+			menu.addItem((item) =>
+				item
+					.setTitle(
+						formatMenuOptionTitle(
+							t('menu.category.sort'),
+							label,
+							sortMode === currentSortMode,
+						),
+					)
+					.onClick(() => {
+						void this.updateProjectListSortMode(sortMode).catch(
+							(error: unknown) => {
+								const message =
+									error instanceof Error
+										? error.message
+										: t(
+												'view.notice.updateProjectSortFailed',
+											);
+								new Notice(message);
+							},
+						);
+					}),
+			);
+		}
+
+		menu.addSeparator();
+
+		for (const groupMode of PROJECT_LIST_GROUP_MODE_ORDER) {
+			const label = projectListGroupModeOptions[groupMode];
+			menu.addItem((item) =>
+				item
+					.setTitle(
+						formatMenuOptionTitle(
+							t('menu.category.group'),
+							label,
+							groupMode === currentGroupMode,
+						),
+					)
+					.onClick(() => {
+						void this.updateProjectListGroupMode(groupMode).catch(
+							(error: unknown) => {
+								const message =
+									error instanceof Error
+										? error.message
+										: t(
+												'view.notice.updateProjectGroupFailed',
+											);
+								new Notice(message);
+							},
+						);
+					}),
+			);
+		}
+
+		menu.showAtMouseEvent(event);
+	}
+
 	private showTaskPresentationMenu(event: MouseEvent): void {
 		const taskListSortModeOptions = getTaskListSortModeOptions();
 		const taskListGroupModeOptions = getTaskListGroupModeOptions();
@@ -1820,6 +1948,31 @@ export class IOTOTasksCenterView extends ItemView {
 				return [project.name, incompleteCount] as const;
 			}),
 		);
+
+		return new Map(entries);
+	}
+
+	private buildProjectCategoryByName(
+		projects: ProjectFolderEntry[],
+	): Map<string, string> {
+		const tasksRootPath = this.getTasksRootPath();
+		const entries = projects.map((project) => {
+			const file = getProjectMetadataFile(
+				this.app,
+				tasksRootPath,
+				project.name,
+			);
+			if (!file) {
+				return [project.name, ''] as const;
+			}
+
+			const frontmatter =
+				this.app.metadataCache.getFileCache(file)?.frontmatter;
+			const metadata = readProjectMetadataFromFrontmatter(frontmatter);
+			const category =
+				typeof metadata?.category === 'string' ? metadata.category : '';
+			return [project.name, category] as const;
+		});
 
 		return new Map(entries);
 	}
@@ -2075,6 +2228,18 @@ function getTaskCreationOptions(): Array<{
 		{ key: 'plan', label: t('task.type.plan') },
 	];
 }
+
+const PROJECT_LIST_SORT_MODE_ORDER: ProjectListSortMode[] = [
+	'incomplete-count',
+	'incomplete-count-asc',
+	'name',
+	'name-desc',
+];
+
+const PROJECT_LIST_GROUP_MODE_ORDER: ProjectListGroupMode[] = [
+	'none',
+	'category',
+];
 
 const TASK_LIST_SORT_MODE_ORDER: TaskListSortMode[] = [
 	'created-desc',

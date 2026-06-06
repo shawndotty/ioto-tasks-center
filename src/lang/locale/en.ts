@@ -35,6 +35,7 @@ const en = {
 	'view.tasksPaneTitle': 'Tasks',
 	'view.projectsPaneDesc':
 		'Select a project to view its task files on the right.',
+	'view.projectListSettings': 'Project list settings',
 	'view.tasksPane.addTask': 'Add task',
 	'view.tasksPane.addTaskCreating': 'Creating...',
 	'view.tasksPane.addTaskReady': 'Add task in {0}',
@@ -113,6 +114,10 @@ const en = {
 	'view.notice.createTaskFailed': 'Failed to create task file.',
 	'view.notice.updateTaskSortFailed': 'Failed to update task list sorting.',
 	'view.notice.updateTaskGroupFailed': 'Failed to update task list grouping.',
+	'view.notice.updateProjectSortFailed':
+		'Failed to update project list sorting.',
+	'view.notice.updateProjectGroupFailed':
+		'Failed to update project list grouping.',
 	'view.notice.updateTaskPriorityDisplayFailed':
 		'Failed to update task priority visibility.',
 	'view.notice.taskFileUnavailable': 'The task file is unavailable.',
@@ -130,6 +135,9 @@ const en = {
 	'menu.currentSuffix': ' (current)',
 	'menu.priority.show': 'Show',
 	'menu.priority.hide': 'Hide',
+	'project.group.none': 'No grouping',
+	'project.group.category': 'Group by category',
+	'project.group.uncategorized': 'Uncategorized',
 	'task.filter.today': 'Today',
 	'task.filter.incomplete': 'Incomplete',
 	'task.filter.completed': 'Completed',
@@ -143,6 +151,10 @@ const en = {
 	'task.status.summary.todo': '{0} pending',
 	'task.sort.incompleteCount': 'By incomplete task count',
 	'task.sort.projectName': 'By project name',
+	'project.sort.incompleteCountDesc': 'Incomplete (high to low)',
+	'project.sort.incompleteCountAsc': 'Incomplete (low to high)',
+	'project.sort.projectNameAsc': 'Project name (A to Z)',
+	'project.sort.projectNameDesc': 'Project name (Z to A)',
 	'task.sort.createdDesc': 'Created time (new to old)',
 	'task.sort.createdAsc': 'Created time (old to new)',
 	'task.sort.updatedDesc': 'Updated time (new to old)',

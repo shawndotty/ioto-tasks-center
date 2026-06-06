@@ -12,16 +12,25 @@ export function sortProjectEntries(
 	sortMode: ProjectListSortMode,
 ): ProjectFolderEntry[] {
 	return [...projects].sort((left, right) => {
-		if (sortMode === 'incomplete-count') {
-			const countDifference =
+		if (
+			sortMode === 'incomplete-count' ||
+			sortMode === 'incomplete-count-asc'
+		) {
+			const difference =
 				(incompleteCounts.get(right.name) ?? 0) -
 				(incompleteCounts.get(left.name) ?? 0);
+			const countDifference =
+				sortMode === 'incomplete-count' ? difference : -difference;
 			if (countDifference !== 0) {
 				return countDifference;
 			}
 		}
 
-		return PROJECT_NAME_COLLATOR.compare(left.name, right.name);
+		const nameDifference = PROJECT_NAME_COLLATOR.compare(
+			left.name,
+			right.name,
+		);
+		return sortMode === 'name-desc' ? -nameDifference : nameDifference;
 	});
 }
 
