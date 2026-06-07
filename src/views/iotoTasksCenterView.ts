@@ -958,7 +958,7 @@ export class IOTOTasksCenterView extends ItemView {
 							text: String(counts.input),
 						});
 						badgeEl.dataset.outlinkCategory = 'input';
-						badgeEl.ariaLabel = label;
+						// badgeEl.ariaLabel = label;
 						this.bindTaskOutlinkPopover(
 							badgeEl,
 							task.path,
@@ -974,7 +974,7 @@ export class IOTOTasksCenterView extends ItemView {
 							text: String(counts.output),
 						});
 						badgeEl.dataset.outlinkCategory = 'output';
-						badgeEl.ariaLabel = label;
+						// badgeEl.ariaLabel = label;
 						this.bindTaskOutlinkPopover(
 							badgeEl,
 							task.path,
@@ -990,7 +990,7 @@ export class IOTOTasksCenterView extends ItemView {
 							text: String(counts.outcome),
 						});
 						badgeEl.dataset.outlinkCategory = 'outcome';
-						badgeEl.ariaLabel = label;
+						// badgeEl.ariaLabel = label;
 						this.bindTaskOutlinkPopover(
 							badgeEl,
 							task.path,
