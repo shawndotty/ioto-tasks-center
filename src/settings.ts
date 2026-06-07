@@ -14,6 +14,7 @@ import {
 	normalizeTasksRootPath,
 } from './tasks-center/types';
 import { ImportModal } from './modals/ImportModal';
+import { TabbedSettings } from './ui/tabbed-settings';
 
 export type ProjectListSortMode =
 	| 'incomplete-count'
@@ -179,154 +180,166 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 			.setName(t('settings.heading.main'))
 			.setHeading();
 
-		new Setting(containerEl)
-			.setName(t('settings.tasksRootPath.name'))
-			.setDesc(t('settings.tasksRootPath.desc'))
-			.addText((text) =>
-				text
-					.setPlaceholder(DEFAULT_TASKS_ROOT_PATH)
-					.setValue(this.plugin.settings.tasksRootPath)
-					.onChange(async (value) => {
-						await this.plugin.updateTasksRootPath(value);
-						// this.display();
-					}),
-			);
+		const tabbedSettings = new TabbedSettings(containerEl);
 
-		new Setting(containerEl)
-			.setName(t('settings.viewEntry.name'))
-			.setDesc(t('settings.viewEntry.desc'))
-			.addButton((button) =>
-				button
-					.setButtonText(t('settings.viewEntry.button'))
-					.onClick(async () => {
-						await this.plugin.activateIOTOTasksCenterView();
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName(t('settings.projectCenterEntry.name'))
-			.setDesc(t('settings.projectCenterEntry.desc'))
-			.addButton((button) =>
-				button
-					.setButtonText(t('settings.projectCenterEntry.button'))
-					.onClick(async () => {
-						await this.plugin.activateIOTOProjectCenterView();
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName(t('settings.taskListBehavior.name'))
-			.setDesc(t('settings.taskListBehavior.desc'));
-
-		new Setting(containerEl)
-			.setName(t('settings.autoRefresh.name'))
-			.setDesc(
-				t('settings.autoRefresh.desc', [
-					this.plugin.settings.tasksRootPath,
-				]),
-			);
-
-		new Setting(containerEl)
-			.setName(t('settings.heading.taskCreation'))
-			.setHeading();
-
-		new Setting(containerEl)
-			.setName(t('settings.enabledTaskTypes.name'))
-			.setDesc(t('settings.enabledTaskTypes.desc'));
-
-		const enabledTaskTypes = new Set<TaskCreationType>(
-			this.plugin.settings.enabledTaskCreationTypes,
-		);
-		const taskTypeLabels = getTaskTypeTemplateLabels();
-		for (const taskType of ENABLED_TASK_CREATION_TYPE_ORDER) {
+		tabbedSettings.addTab('Basic', (containerEl) => {
 			new Setting(containerEl)
-				.setName(taskTypeLabels[taskType])
-				.addToggle((toggle) =>
-					toggle
-						.setValue(enabledTaskTypes.has(taskType))
+				.setName(t('settings.tasksRootPath.name'))
+				.setDesc(t('settings.tasksRootPath.desc'))
+				.addText((text) =>
+					text
+						.setPlaceholder(DEFAULT_TASKS_ROOT_PATH)
+						.setValue(this.plugin.settings.tasksRootPath)
 						.onChange(async (value) => {
-							if (
-								!value &&
-								enabledTaskTypes.has(taskType) &&
-								enabledTaskTypes.size === 1
-							) {
-								toggle.setValue(true);
-								new Notice(
-									t('settings.enabledTaskTypes.atLeastOne'),
-								);
+							await this.plugin.updateTasksRootPath(value);
+							// this.display();
+						}),
+				);
+
+			new Setting(containerEl)
+				.setName(t('settings.viewEntry.name'))
+				.setDesc(t('settings.viewEntry.desc'))
+				.addButton((button) =>
+					button
+						.setButtonText(t('settings.viewEntry.button'))
+						.onClick(async () => {
+							await this.plugin.activateIOTOTasksCenterView();
+						}),
+				);
+
+			new Setting(containerEl)
+				.setName(t('settings.projectCenterEntry.name'))
+				.setDesc(t('settings.projectCenterEntry.desc'))
+				.addButton((button) =>
+					button
+						.setButtonText(t('settings.projectCenterEntry.button'))
+						.onClick(async () => {
+							await this.plugin.activateIOTOProjectCenterView();
+						}),
+				);
+
+			new Setting(containerEl)
+				.setName(t('settings.taskListBehavior.name'))
+				.setDesc(t('settings.taskListBehavior.desc'));
+
+			new Setting(containerEl)
+				.setName(t('settings.autoRefresh.name'))
+				.setDesc(
+					t('settings.autoRefresh.desc', [
+						this.plugin.settings.tasksRootPath,
+					]),
+				);
+
+			new Setting(containerEl)
+				.setName(t('settings.dateTaskFormat.name'))
+				.setDesc(
+					t('settings.dateTaskFormat.desc', [
+						DEFAULT_DATE_TASK_DATE_FORMAT,
+					]),
+				)
+				.addText((text) =>
+					text
+						.setPlaceholder(DEFAULT_DATE_TASK_DATE_FORMAT)
+						.setValue(this.plugin.settings.dateTaskDateFormat)
+						.onChange(async (value) => {
+							await this.plugin.updateDateTaskDateFormat(value);
+						}),
+				);
+
+			new Setting(containerEl)
+				.setName(t('settings.heading.projectSort'))
+				.setHeading();
+
+			new Setting(containerEl)
+				.setName(t('settings.projectSort.name'))
+				.setDesc(t('settings.projectSort.desc'))
+				.addDropdown((dropdown) => {
+					for (const [value, label] of Object.entries(
+						projectSortModeOptions,
+					)) {
+						dropdown.addOption(value, label);
+					}
+
+					dropdown
+						.setValue(this.plugin.settings.projectListSortMode)
+						.onChange(async (value) => {
+							if (!isProjectListSortMode(value)) {
 								return;
 							}
 
-							if (value) {
-								enabledTaskTypes.add(taskType);
-							} else {
-								enabledTaskTypes.delete(taskType);
-							}
+							await this.plugin.updateProjectListSortMode(value);
+							// this.display();
+						});
+				});
+		});
 
-							await this.plugin.updateEnabledTaskCreationTypes([
-								...enabledTaskTypes,
-							]);
-						}),
+		tabbedSettings.addTab('Task Creation', (containerEl) => {
+			new Setting(containerEl)
+				.setName(t('settings.heading.taskCreation'))
+				.setHeading();
+
+			new Setting(containerEl)
+				.setName(t('settings.enabledTaskTypes.name'))
+				.setDesc(t('settings.enabledTaskTypes.desc'));
+
+			const enabledTaskTypes = new Set<TaskCreationType>(
+				this.plugin.settings.enabledTaskCreationTypes,
+			);
+			const taskTypeLabels = getTaskTypeTemplateLabels();
+			for (const taskType of ENABLED_TASK_CREATION_TYPE_ORDER) {
+				new Setting(containerEl)
+					.setName(taskTypeLabels[taskType])
+					.addToggle((toggle) =>
+						toggle
+							.setValue(enabledTaskTypes.has(taskType))
+							.onChange(async (value) => {
+								if (
+									!value &&
+									enabledTaskTypes.has(taskType) &&
+									enabledTaskTypes.size === 1
+								) {
+									toggle.setValue(true);
+									new Notice(
+										t(
+											'settings.enabledTaskTypes.atLeastOne',
+										),
+									);
+									return;
+								}
+
+								if (value) {
+									enabledTaskTypes.add(taskType);
+								} else {
+									enabledTaskTypes.delete(taskType);
+								}
+
+								await this.plugin.updateEnabledTaskCreationTypes(
+									[...enabledTaskTypes],
+								);
+							}),
+					);
+			}
+		});
+
+		tabbedSettings.addTab('Task Templates', (containerEl) => {
+			const templaterTemplatesFolder = getTemplaterTemplatesFolder(
+				this.app,
+			);
+			new Setting(containerEl)
+				.setName(t('settings.taskTemplate.name'))
+				.setDesc(t('settings.taskTemplate.desc'));
+
+			for (const taskType of TASK_TEMPLATE_TYPES) {
+				const taskTypeContainer = containerEl.createDiv({
+					cls: 'ioto-tasks-center__task-template-settings',
+				});
+				this.renderTaskTemplateSettings(
+					taskTypeContainer,
+					taskType,
+					templaterTemplatesFolder,
 				);
-		}
-
-		const templaterTemplatesFolder = getTemplaterTemplatesFolder(this.app);
-		new Setting(containerEl)
-			.setName(t('settings.taskTemplate.name'))
-			.setDesc(t('settings.taskTemplate.desc'));
-
-		for (const taskType of TASK_TEMPLATE_TYPES) {
-			const taskTypeContainer = containerEl.createDiv({
-				cls: 'ioto-tasks-center__task-template-settings',
-			});
-			this.renderTaskTemplateSettings(
-				taskTypeContainer,
-				taskType,
-				templaterTemplatesFolder,
-			);
-		}
-
-		new Setting(containerEl)
-			.setName(t('settings.dateTaskFormat.name'))
-			.setDesc(
-				t('settings.dateTaskFormat.desc', [
-					DEFAULT_DATE_TASK_DATE_FORMAT,
-				]),
-			)
-			.addText((text) =>
-				text
-					.setPlaceholder(DEFAULT_DATE_TASK_DATE_FORMAT)
-					.setValue(this.plugin.settings.dateTaskDateFormat)
-					.onChange(async (value) => {
-						await this.plugin.updateDateTaskDateFormat(value);
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName(t('settings.heading.projectSort'))
-			.setHeading();
-
-		new Setting(containerEl)
-			.setName(t('settings.projectSort.name'))
-			.setDesc(t('settings.projectSort.desc'))
-			.addDropdown((dropdown) => {
-				for (const [value, label] of Object.entries(
-					projectSortModeOptions,
-				)) {
-					dropdown.addOption(value, label);
-				}
-
-				dropdown
-					.setValue(this.plugin.settings.projectListSortMode)
-					.onChange(async (value) => {
-						if (!isProjectListSortMode(value)) {
-							return;
-						}
-
-						await this.plugin.updateProjectListSortMode(value);
-						// this.display();
-					});
-			});
+			}
+		});
 	}
 
 	private renderTaskTemplateSettings(
