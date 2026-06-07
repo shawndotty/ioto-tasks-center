@@ -203,9 +203,9 @@ const en = {
 	'settings.outputRootPath.name': 'Output notes root path',
 	'settings.outputRootPath.desc':
 		'Enter a vault-relative path used as the root folder for output notes.',
-	'settings.resultRootPath.name': 'Result notes root path',
-	'settings.resultRootPath.desc':
-		'Enter a vault-relative path used as the root folder for result notes.',
+	'settings.outcomeRootPath.name': 'Outcome notes root path',
+	'settings.outcomeRootPath.desc':
+		'Enter a vault-relative path used as the root folder for outcome notes.',
 	'settings.viewEntry.name': 'View entry',
 	'settings.viewEntry.desc':
 		'Open the tasks center from the command palette, or directly from here.',

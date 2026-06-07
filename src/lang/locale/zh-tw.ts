@@ -186,8 +186,8 @@ const zhTW = {
 	'settings.outputRootPath.name': '輸出筆記根目錄',
 	'settings.outputRootPath.desc':
 		'填寫一個 vault 相對路徑，用於輸出筆記的存放目錄。',
-	'settings.resultRootPath.name': '成果筆記根目錄',
-	'settings.resultRootPath.desc':
+	'settings.outcomeRootPath.name': '成果筆記根目錄',
+	'settings.outcomeRootPath.desc':
 		'填寫一個 vault 相對路徑，用於成果筆記的存放目錄。',
 	'settings.viewEntry.name': '視圖入口',
 	'settings.viewEntry.desc':

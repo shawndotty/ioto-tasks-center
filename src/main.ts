@@ -21,8 +21,8 @@ import {
 	TaskListGroupMode,
 	TaskListSortMode,
 	normalizeConfiguredInputRootPath,
+	normalizeConfiguredOutcomeRootPath,
 	normalizeConfiguredOutputRootPath,
-	normalizeConfiguredResultRootPath,
 	normalizeConfiguredTasksRootPath,
 	normalizeEnabledTaskCreationTypes,
 	normalizeProjectCategoryOptions,
@@ -138,7 +138,10 @@ export default class IOTOTasksCenter extends Plugin {
 
 	async loadSettings() {
 		const loadedData = (await this.loadData()) as
-			| (Partial<IOTOTasksCenterSettings> & { taskTemplatePath?: string })
+			| (Partial<IOTOTasksCenterSettings> & {
+					taskTemplatePath?: string;
+					resultRootPath?: string;
+			  })
 			| null;
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData ?? {});
 		this.settings.tasksRootPath = normalizeConfiguredTasksRootPath(
@@ -150,8 +153,15 @@ export default class IOTOTasksCenter extends Plugin {
 		this.settings.outputRootPath = normalizeConfiguredOutputRootPath(
 			this.settings.outputRootPath,
 		);
-		this.settings.resultRootPath = normalizeConfiguredResultRootPath(
-			this.settings.resultRootPath,
+		if (
+			loadedData &&
+			!('outcomeRootPath' in loadedData) &&
+			typeof loadedData.resultRootPath === 'string'
+		) {
+			this.settings.outcomeRootPath = loadedData.resultRootPath;
+		}
+		this.settings.outcomeRootPath = normalizeConfiguredOutcomeRootPath(
+			this.settings.outcomeRootPath,
 		);
 		this.settings.taskTemplateConfigs = normalizeTaskTemplateConfigMap(
 			loadedData?.taskTemplateConfigs,
@@ -266,13 +276,13 @@ export default class IOTOTasksCenter extends Plugin {
 		this.applySettingsToOpenViews();
 	}
 
-	async updateResultRootPath(path: string): Promise<void> {
-		const nextPath = normalizeConfiguredResultRootPath(path);
-		if (this.settings.resultRootPath === nextPath) {
+	async updateOutcomeRootPath(path: string): Promise<void> {
+		const nextPath = normalizeConfiguredOutcomeRootPath(path);
+		if (this.settings.outcomeRootPath === nextPath) {
 			return;
 		}
 
-		this.settings.resultRootPath = nextPath;
+		this.settings.outcomeRootPath = nextPath;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}

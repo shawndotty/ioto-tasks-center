@@ -186,8 +186,8 @@ const zhCN = {
 	'settings.outputRootPath.name': '输出笔记根目录',
 	'settings.outputRootPath.desc':
 		'填写一个 vault 相对路径，用于输出笔记的存放目录。',
-	'settings.resultRootPath.name': '成果笔记根目录',
-	'settings.resultRootPath.desc':
+	'settings.outcomeRootPath.name': '成果笔记根目录',
+	'settings.outcomeRootPath.desc':
 		'填写一个 vault 相对路径，用于成果笔记的存放目录。',
 	'settings.viewEntry.name': '视图入口',
 	'settings.viewEntry.desc':

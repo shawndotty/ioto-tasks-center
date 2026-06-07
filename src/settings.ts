@@ -12,11 +12,11 @@ import { ENABLED_TASK_CREATION_TYPE_ORDER } from './tasks-center/enabled-task-cr
 import {
 	DEFAULT_INPUT_ROOT_PATH,
 	DEFAULT_OUTPUT_ROOT_PATH,
-	DEFAULT_RESULT_ROOT_PATH,
+	DEFAULT_OUTCOME_ROOT_PATH,
 	DEFAULT_TASKS_ROOT_PATH,
 	normalizeInputRootPath,
+	normalizeOutcomeRootPath,
 	normalizeOutputRootPath,
-	normalizeResultRootPath,
 	normalizeTasksRootPath,
 } from './tasks-center/types';
 import { ImportModal } from './modals/ImportModal';
@@ -43,7 +43,7 @@ export interface IOTOTasksCenterSettings {
 	tasksRootPath: string;
 	inputRootPath: string;
 	outputRootPath: string;
-	resultRootPath: string;
+	outcomeRootPath: string;
 	projectListSortMode: ProjectListSortMode;
 	projectListGroupMode: ProjectListGroupMode;
 	taskListSortMode: TaskListSortMode;
@@ -60,7 +60,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	tasksRootPath: DEFAULT_TASKS_ROOT_PATH,
 	inputRootPath: DEFAULT_INPUT_ROOT_PATH,
 	outputRootPath: DEFAULT_OUTPUT_ROOT_PATH,
-	resultRootPath: DEFAULT_RESULT_ROOT_PATH,
+	outcomeRootPath: DEFAULT_OUTCOME_ROOT_PATH,
 	projectListSortMode: 'incomplete-count',
 	projectListGroupMode: 'none',
 	taskListSortMode: 'created-desc',
@@ -233,14 +233,14 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 				);
 
 			new Setting(containerEl)
-				.setName(t('settings.resultRootPath.name'))
-				.setDesc(t('settings.resultRootPath.desc'))
+				.setName(t('settings.outcomeRootPath.name'))
+				.setDesc(t('settings.outcomeRootPath.desc'))
 				.addText((text) =>
 					text
-						.setPlaceholder(DEFAULT_RESULT_ROOT_PATH)
-						.setValue(this.plugin.settings.resultRootPath)
+						.setPlaceholder(DEFAULT_OUTCOME_ROOT_PATH)
+						.setValue(this.plugin.settings.outcomeRootPath)
 						.onChange(async (value) => {
-							await this.plugin.updateResultRootPath(value);
+							await this.plugin.updateOutcomeRootPath(value);
 						}),
 				);
 
@@ -560,8 +560,8 @@ export function normalizeConfiguredOutputRootPath(path: string): string {
 	return normalizeOutputRootPath(path);
 }
 
-export function normalizeConfiguredResultRootPath(path: string): string {
-	return normalizeResultRootPath(path);
+export function normalizeConfiguredOutcomeRootPath(path: string): string {
+	return normalizeOutcomeRootPath(path);
 }
 
 export function normalizeProjectListSortMode(
