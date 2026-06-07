@@ -127,6 +127,8 @@ export class IOTOTasksCenterView extends ItemView {
 			hoverPopover: null,
 		};
 	private outlinkPopover: TaskOutlinkPopover | null = null;
+	private readonly pendingOutlinkBadgeUpdates = new Set<string>();
+	private outlinkBadgeUpdateTimer: number | null = null;
 	private pendingVaultRefresh = false;
 	private deferredVaultRefreshTimer: number | null = null;
 	private projectResult: ProjectListResult = {
@@ -253,6 +255,19 @@ export class IOTOTasksCenterView extends ItemView {
 		this.outlinkPopover = new TaskOutlinkPopover(
 			this.contentEl.ownerDocument,
 		);
+		this.registerEvent(
+			this.app.metadataCache.on('changed', (file) => {
+				if (!this.getShowTaskOutlinkCounts()) {
+					return;
+				}
+
+				if (!this.tasks.some((task) => task.path === file.path)) {
+					return;
+				}
+
+				this.queueOutlinkBadgeUpdate(file.path);
+			}),
+		);
 		this.startResizeObserver();
 		await this.refreshFromVaultChange();
 	}
@@ -260,6 +275,11 @@ export class IOTOTasksCenterView extends ItemView {
 	async onClose(): Promise<void> {
 		this.outlinkPopover?.destroy();
 		this.outlinkPopover = null;
+		if (this.outlinkBadgeUpdateTimer !== null) {
+			window.clearTimeout(this.outlinkBadgeUpdateTimer);
+			this.outlinkBadgeUpdateTimer = null;
+		}
+		this.pendingOutlinkBadgeUpdates.clear();
 		this.stopResizeObserver();
 		if (this.deferredVaultRefreshTimer !== null) {
 			window.clearTimeout(this.deferredVaultRefreshTimer);
@@ -906,6 +926,7 @@ export class IOTOTasksCenterView extends ItemView {
 							cls: 'ioto-tasks-center__task-outlink-count',
 							text: String(counts.input),
 						});
+						badgeEl.dataset.outlinkCategory = 'input';
 						badgeEl.ariaLabel = label;
 						badgeEl.title = label;
 						this.bindTaskOutlinkPopover(
@@ -922,6 +943,7 @@ export class IOTOTasksCenterView extends ItemView {
 							cls: 'ioto-tasks-center__task-outlink-count',
 							text: String(counts.output),
 						});
+						badgeEl.dataset.outlinkCategory = 'output';
 						badgeEl.ariaLabel = label;
 						badgeEl.title = label;
 						this.bindTaskOutlinkPopover(
@@ -938,6 +960,7 @@ export class IOTOTasksCenterView extends ItemView {
 							cls: 'ioto-tasks-center__task-outlink-count',
 							text: String(counts.outcome),
 						});
+						badgeEl.dataset.outlinkCategory = 'outcome';
 						badgeEl.ariaLabel = label;
 						badgeEl.title = label;
 						this.bindTaskOutlinkPopover(
@@ -1078,6 +1101,91 @@ export class IOTOTasksCenterView extends ItemView {
 			active: true,
 		});
 		this.previewLeaf = leaf;
+	}
+
+	private queueOutlinkBadgeUpdate(taskPath: string): void {
+		this.pendingOutlinkBadgeUpdates.add(taskPath);
+		if (this.outlinkBadgeUpdateTimer !== null) {
+			return;
+		}
+
+		this.outlinkBadgeUpdateTimer = window.setTimeout(() => {
+			this.outlinkBadgeUpdateTimer = null;
+			const paths = [...this.pendingOutlinkBadgeUpdates];
+			this.pendingOutlinkBadgeUpdates.clear();
+			for (const path of paths) {
+				this.updateTaskOutlinkBadges(path);
+			}
+		}, 250);
+	}
+
+	private updateTaskOutlinkBadges(taskPath: string): void {
+		if (!this.getShowTaskOutlinkCounts()) {
+			return;
+		}
+
+		const rowEl = this.findTaskRowEl(taskPath);
+		if (!rowEl) {
+			return;
+		}
+
+		const resolvedLinks = this.app.metadataCache.resolvedLinks?.[taskPath];
+		const counts = countTaskOutlinksByRootPaths(resolvedLinks, {
+			inputRootPath: this.getInputRootPath(),
+			outputRootPath: this.getOutputRootPath(),
+			outcomeRootPath: this.getOutcomeRootPath(),
+		});
+		this.updateTaskOutlinkBadge(rowEl, 'input', counts.input);
+		this.updateTaskOutlinkBadge(rowEl, 'output', counts.output);
+		this.updateTaskOutlinkBadge(rowEl, 'outcome', counts.outcome);
+	}
+
+	private updateTaskOutlinkBadge(
+		rowEl: HTMLElement,
+		category: TaskOutlinkCategory,
+		value: number,
+	): void {
+		const badgeEl = rowEl.querySelector<HTMLElement>(
+			`.ioto-tasks-center__task-outlink-count[data-outlink-category="${category}"]`,
+		);
+		if (!badgeEl) {
+			return;
+		}
+
+		badgeEl.textContent = String(value);
+		const label = this.getTaskOutlinkBadgeLabel(category, value);
+		badgeEl.ariaLabel = label;
+		badgeEl.title = label;
+	}
+
+	private getTaskOutlinkBadgeLabel(
+		category: TaskOutlinkCategory,
+		value: number,
+	): string {
+		switch (category) {
+			case 'input':
+				return t('task.outlinks.input', [String(value)]);
+			case 'output':
+				return t('task.outlinks.output', [String(value)]);
+			case 'outcome':
+				return t('task.outlinks.outcome', [String(value)]);
+		}
+	}
+
+	private findTaskRowEl(taskPath: string): HTMLButtonElement | null {
+		const escaped = this.escapeCssSelector(taskPath);
+		const rowEl = this.contentEl.querySelector(
+			`button.ioto-tasks-center__task-row[data-task-path="${escaped}"]`,
+		);
+		return rowEl instanceof HTMLButtonElement ? rowEl : null;
+	}
+
+	private escapeCssSelector(value: string): string {
+		if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+			return CSS.escape(value);
+		}
+
+		return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 	}
 
 	private triggerTaskHoverPreview(
