@@ -169,6 +169,9 @@ const zhCN = {
 	'modal.confirm': '确认',
 	'modal.cancel': '取消',
 	'settings.heading.main': '任务中心',
+	'settings.tabs.basic': '基础',
+	'settings.tabs.taskTypes': '任务类型',
+	'settings.tabs.taskTemplates': '任务模板',
 	'settings.tasksRootPath.name': '任务根目录',
 	'settings.tasksRootPath.desc':
 		'填写一个 vault 相对路径。任务中心会将该目录的一级子文件夹识别为项目列表。',

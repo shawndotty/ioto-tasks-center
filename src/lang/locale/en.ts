@@ -186,6 +186,9 @@ const en = {
 	'modal.confirm': 'Confirm',
 	'modal.cancel': 'Cancel',
 	'settings.heading.main': 'Tasks center',
+	'settings.tabs.basic': 'Basic',
+	'settings.tabs.taskTypes': 'Task Types',
+	'settings.tabs.taskTemplates': 'Task Templates',
 	'settings.tasksRootPath.name': 'Tasks root path',
 	'settings.tasksRootPath.desc':
 		'Enter a vault-relative path. First-level folders under this directory are treated as projects.',

@@ -182,7 +182,7 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 
 		const tabbedSettings = new TabbedSettings(containerEl);
 
-		tabbedSettings.addTab('Basic', (containerEl) => {
+		tabbedSettings.addTab(t('settings.tabs.basic'), (containerEl) => {
 			new Setting(containerEl)
 				.setName(t('settings.tasksRootPath.name'))
 				.setDesc(t('settings.tasksRootPath.desc'))
@@ -273,7 +273,7 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 				});
 		});
 
-		tabbedSettings.addTab('Task Creation', (containerEl) => {
+		tabbedSettings.addTab(t('settings.tabs.taskTypes'), (containerEl) => {
 			new Setting(containerEl)
 				.setName(t('settings.heading.taskCreation'))
 				.setHeading();
@@ -321,25 +321,28 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 			}
 		});
 
-		tabbedSettings.addTab('Task Templates', (containerEl) => {
-			const templaterTemplatesFolder = getTemplaterTemplatesFolder(
-				this.app,
-			);
-			new Setting(containerEl)
-				.setName(t('settings.taskTemplate.name'))
-				.setDesc(t('settings.taskTemplate.desc'));
-
-			for (const taskType of TASK_TEMPLATE_TYPES) {
-				const taskTypeContainer = containerEl.createDiv({
-					cls: 'ioto-tasks-center__task-template-settings',
-				});
-				this.renderTaskTemplateSettings(
-					taskTypeContainer,
-					taskType,
-					templaterTemplatesFolder,
+		tabbedSettings.addTab(
+			t('settings.tabs.taskTemplates'),
+			(containerEl) => {
+				const templaterTemplatesFolder = getTemplaterTemplatesFolder(
+					this.app,
 				);
-			}
-		});
+				new Setting(containerEl)
+					.setName(t('settings.taskTemplate.name'))
+					.setDesc(t('settings.taskTemplate.desc'));
+
+				for (const taskType of TASK_TEMPLATE_TYPES) {
+					const taskTypeContainer = containerEl.createDiv({
+						cls: 'ioto-tasks-center__task-template-settings',
+					});
+					this.renderTaskTemplateSettings(
+						taskTypeContainer,
+						taskType,
+						templaterTemplatesFolder,
+					);
+				}
+			},
+		);
 	}
 
 	private renderTaskTemplateSettings(

@@ -169,6 +169,9 @@ const zhTW = {
 	'modal.confirm': '確認',
 	'modal.cancel': '取消',
 	'settings.heading.main': '任務中心',
+	'settings.tabs.basic': '基礎',
+	'settings.tabs.taskTypes': '任務類型',
+	'settings.tabs.taskTemplates': '任務模板',
 	'settings.tasksRootPath.name': '任務根目錄',
 	'settings.tasksRootPath.desc':
 		'填寫一個 vault 相對路徑。任務中心會將該目錄的一級子資料夾識別為專案列表。',
