@@ -149,6 +149,7 @@ const en = {
 	'task.filter.incomplete': 'Incomplete',
 	'task.filter.completed': 'Completed',
 	'task.filter.all': 'All',
+	'task.filter.core': 'Core',
 	'task.status.todo': 'To do',
 	'task.status.inProgress': 'In progress',
 	'task.status.completed': 'Completed',

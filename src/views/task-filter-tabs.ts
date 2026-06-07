@@ -1,7 +1,12 @@
 import { t } from '../lang/helpter';
 import type { TaskFileEntry } from '../tasks-center/types';
 
-export type TaskFilterTab = 'today' | 'incomplete' | 'completed' | 'all';
+export type TaskFilterTab =
+	| 'today'
+	| 'incomplete'
+	| 'completed'
+	| 'all'
+	| 'core';
 
 export function getTaskFilterTabs(): Array<{
 	key: TaskFilterTab;
@@ -12,6 +17,7 @@ export function getTaskFilterTabs(): Array<{
 		{ key: 'incomplete', label: t('task.filter.incomplete') },
 		{ key: 'completed', label: t('task.filter.completed') },
 		{ key: 'all', label: t('task.filter.all') },
+		{ key: 'core', label: t('task.filter.core') },
 	];
 }
 
@@ -20,7 +26,8 @@ export function isTaskFilterTab(value: unknown): value is TaskFilterTab {
 		value === 'today' ||
 		value === 'incomplete' ||
 		value === 'completed' ||
-		value === 'all'
+		value === 'all' ||
+		value === 'core'
 	);
 }
 
@@ -38,6 +45,8 @@ export function getTaskFilterCounts(
 			matchesTaskFilterTab(task, 'completed', now),
 		).length,
 		all: tasks.length,
+		core: tasks.filter((task) => matchesTaskFilterTab(task, 'core', now))
+			.length,
 	};
 }
 
@@ -56,6 +65,10 @@ export function matchesTaskFilterTab(
 
 	if (tab === 'completed') {
 		return task.status.key === 'completed';
+	}
+
+	if (tab === 'core') {
+		return task.starred;
 	}
 
 	return isIncompleteTaskStatus(task.status.key);

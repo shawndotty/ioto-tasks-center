@@ -27,6 +27,7 @@ export interface TaskFileEntry {
 	mtime: number;
 	ctime: number;
 	size: number;
+	starred: boolean;
 	priority?: number;
 	status: TaskFileStatus;
 	upTaskTitles: string[];

@@ -132,6 +132,7 @@ const zhTW = {
 	'task.filter.incomplete': '未完成',
 	'task.filter.completed': '已完成',
 	'task.filter.all': '全部',
+	'task.filter.core': '核心任務',
 	'task.status.todo': '待開始',
 	'task.status.inProgress': '進行中',
 	'task.status.completed': '已完成',

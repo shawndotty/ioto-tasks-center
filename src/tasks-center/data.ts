@@ -99,6 +99,7 @@ export async function listProjectTaskFiles(
 				mtime: file.stat.mtime,
 				ctime: file.stat.ctime,
 				size: file.stat.size,
+				starred: await getTaskFileStarred(app, file),
 				priority: await getTaskFilePriority(app, file),
 				status: await getTaskFileStatus(app, file),
 				upTaskTitles: await getUpTaskTitles(app, file),
@@ -158,6 +159,20 @@ async function getTaskFilePriority(
 	} catch {
 		const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
 		return parsePriorityFrontmatterValue(frontmatter?.Priority);
+	}
+}
+
+async function getTaskFileStarred(app: App, file: TFile): Promise<boolean> {
+	try {
+		const content = await app.vault.cachedRead(file);
+		return resolveStarredFromSources({
+			content,
+			metadataValue:
+				app.metadataCache.getFileCache(file)?.frontmatter?.Starred,
+		});
+	} catch {
+		const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
+		return parseStarredFrontmatterValue(frontmatter?.Starred);
 	}
 }
 
@@ -227,6 +242,34 @@ export function resolvePriorityFromSources(options: {
 export function getPriorityFromContent(content: string): number | undefined {
 	const priorityValue = extractPriorityFrontmatterValue(content);
 	return parsePriorityFrontmatterValue(priorityValue);
+}
+
+export function parseStarredFrontmatterValue(value: unknown): boolean {
+	if (typeof value === 'boolean') {
+		return value;
+	}
+
+	if (typeof value !== 'string') {
+		return false;
+	}
+
+	return stripMatchingQuotes(value.trim()).toLowerCase() === 'true';
+}
+
+export function resolveStarredFromSources(options: {
+	content?: string | null;
+	metadataValue?: unknown;
+}): boolean {
+	if (typeof options.content === 'string') {
+		return getStarredFromContent(options.content);
+	}
+
+	return parseStarredFrontmatterValue(options.metadataValue);
+}
+
+export function getStarredFromContent(content: string): boolean {
+	const starredValue = extractStarredFrontmatterValue(content);
+	return parseStarredFrontmatterValue(starredValue);
 }
 
 function normalizeUpTaskTitle(value: string): string {
@@ -299,6 +342,25 @@ function extractPriorityFrontmatterValue(content: string): string | undefined {
 
 	for (const line of frontmatterBody.split(/\r?\n/)) {
 		const match = line.match(/^\s*Priority:\s*(.*)$/);
+		if (!match) {
+			continue;
+		}
+
+		const value = stripMatchingQuotes((match[1] ?? '').trim());
+		return value || undefined;
+	}
+
+	return undefined;
+}
+
+function extractStarredFrontmatterValue(content: string): string | undefined {
+	const frontmatterBody = extractFrontmatterBody(content);
+	if (!frontmatterBody) {
+		return undefined;
+	}
+
+	for (const line of frontmatterBody.split(/\r?\n/)) {
+		const match = line.match(/^\s*Starred:\s*(.*)$/);
 		if (!match) {
 			continue;
 		}

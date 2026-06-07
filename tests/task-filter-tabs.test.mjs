@@ -19,6 +19,7 @@ function createTask(title, options = {}) {
 		mtime: options.mtime ?? 0,
 		ctime: options.ctime ?? 0,
 		size: options.size ?? 0,
+		starred: options.starred ?? false,
 		status: options.status ?? {
 			key: 'todo',
 			label: '待开始',
@@ -34,6 +35,10 @@ const TODAY = new Date(2026, 4, 30, 10, 0, 0);
 
 test('today 是合法的任务筛选 tab', () => {
 	assert.equal(isTaskFilterTab('today'), true);
+});
+
+test('core 是合法的任务筛选 tab', () => {
+	assert.equal(isTaskFilterTab('core'), true);
 });
 
 test('今天创建的任务会匹配 today tab', () => {
@@ -54,6 +59,20 @@ test('非今天创建的任务不会匹配 today tab', () => {
 	assert.equal(matchesTaskFilterTab(task, 'today', TODAY), false);
 });
 
+test('Starred 为 true 的任务会匹配 core tab', () => {
+	const task = createTask('核心任务', {
+		starred: true,
+	});
+
+	assert.equal(matchesTaskFilterTab(task, 'core', TODAY), true);
+});
+
+test('Starred 为 false 的任务不会匹配 core tab', () => {
+	const task = createTask('普通任务');
+
+	assert.equal(matchesTaskFilterTab(task, 'core', TODAY), false);
+});
+
 test('today tab 计数只统计今天创建的任务', () => {
 	const tasks = [
 		createTask('今天任务A', {
@@ -71,6 +90,7 @@ test('today tab 计数只统计今天创建的任务', () => {
 		}),
 		createTask('昨天任务', {
 			ctime: new Date(2026, 4, 29, 12, 0, 0).getTime(),
+			starred: true,
 		}),
 	];
 
@@ -79,5 +99,6 @@ test('today tab 计数只统计今天创建的任务', () => {
 		incomplete: 2,
 		completed: 1,
 		all: 3,
+		core: 1,
 	});
 });
