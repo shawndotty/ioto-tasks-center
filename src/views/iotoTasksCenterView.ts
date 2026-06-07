@@ -20,7 +20,10 @@ import {
 	readProjectMetadataFromFrontmatter,
 } from '../tasks-center/project-metadata';
 import { createTaskFile } from '../tasks-center/task-creation';
-import { countTaskOutlinksByRootPaths } from '../tasks-center/task-outlink-counts';
+import {
+	countTaskOutlinksByRootPaths,
+	groupTaskOutlinksByRootPaths,
+} from '../tasks-center/task-outlink-counts';
 import {
 	clearTaskFilePriority,
 	setTaskFilePriority,
@@ -58,6 +61,11 @@ import type {
 	TaskFileEntry,
 	TaskFileListResult,
 } from '../tasks-center/types';
+import {
+	TaskOutlinkPopover,
+	type TaskOutlinkCategory,
+	type TaskOutlinkPopoverItem,
+} from '../ui/task-outlink-popover';
 import { TaskNameModal } from '../ui/taskNameModal';
 import {
 	resolveActiveTaskPath,
@@ -118,6 +126,7 @@ export class IOTOTasksCenterView extends ItemView {
 		{
 			hoverPopover: null,
 		};
+	private outlinkPopover: TaskOutlinkPopover | null = null;
 	private pendingVaultRefresh = false;
 	private deferredVaultRefreshTimer: number | null = null;
 	private projectResult: ProjectListResult = {
@@ -241,11 +250,16 @@ export class IOTOTasksCenterView extends ItemView {
 	async onOpen(): Promise<void> {
 		this.contentEl.empty();
 		this.contentEl.addClass('ioto-tasks-center-view');
+		this.outlinkPopover = new TaskOutlinkPopover(
+			this.contentEl.ownerDocument,
+		);
 		this.startResizeObserver();
 		await this.refreshFromVaultChange();
 	}
 
 	async onClose(): Promise<void> {
+		this.outlinkPopover?.destroy();
+		this.outlinkPopover = null;
 		this.stopResizeObserver();
 		if (this.deferredVaultRefreshTimer !== null) {
 			window.clearTimeout(this.deferredVaultRefreshTimer);
@@ -281,6 +295,7 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	async refreshFromVaultChange(): Promise<void> {
+		this.outlinkPopover?.close();
 		if (this.shouldDeferVaultRefresh()) {
 			this.pendingVaultRefresh = true;
 			this.scheduleDeferredVaultRefresh();
@@ -392,6 +407,7 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private render(): void {
+		this.outlinkPopover?.close();
 		this.projectListScrollTop = captureProjectListScrollTop(
 			this.contentEl,
 			this.projectListScrollTop,
@@ -892,6 +908,11 @@ export class IOTOTasksCenterView extends ItemView {
 						});
 						badgeEl.ariaLabel = label;
 						badgeEl.title = label;
+						this.bindTaskOutlinkPopover(
+							badgeEl,
+							task.path,
+							'input',
+						);
 					}
 					if (showOutput) {
 						const label = t('task.outlinks.output', [
@@ -903,6 +924,11 @@ export class IOTOTasksCenterView extends ItemView {
 						});
 						badgeEl.ariaLabel = label;
 						badgeEl.title = label;
+						this.bindTaskOutlinkPopover(
+							badgeEl,
+							task.path,
+							'output',
+						);
 					}
 					if (showOutcome) {
 						const label = t('task.outlinks.outcome', [
@@ -914,6 +940,11 @@ export class IOTOTasksCenterView extends ItemView {
 						});
 						badgeEl.ariaLabel = label;
 						badgeEl.title = label;
+						this.bindTaskOutlinkPopover(
+							badgeEl,
+							task.path,
+							'outcome',
+						);
 					}
 				}
 			}
@@ -937,6 +968,14 @@ export class IOTOTasksCenterView extends ItemView {
 				void this.openTaskFile(task);
 			});
 			rowEl.addEventListener('mouseover', (event: MouseEvent) => {
+				const target = event.target;
+				if (
+					target instanceof HTMLElement &&
+					target.closest('.ioto-tasks-center__task-outlink-count')
+				) {
+					return;
+				}
+
 				this.triggerTaskHoverPreview(event, task, rowEl);
 			});
 			rowEl.addEventListener('contextmenu', (event: MouseEvent) => {
@@ -960,6 +999,85 @@ export class IOTOTasksCenterView extends ItemView {
 				this.clearTaskDragState();
 			});
 		}
+	}
+
+	private bindTaskOutlinkPopover(
+		badgeEl: HTMLElement,
+		taskPath: string,
+		category: TaskOutlinkCategory,
+	): void {
+		const popover = this.outlinkPopover;
+		if (!popover) {
+			return;
+		}
+
+		badgeEl.addEventListener('mouseenter', (event) => {
+			event.stopPropagation();
+			const items = this.getTaskOutlinkPopoverItems(taskPath, category);
+			popover.open({
+				anchorEl: badgeEl,
+				categoryTitle: this.getTaskOutlinkPopoverTitle(category),
+				emptyText: t('task.outlinks.popover.empty'),
+				items,
+				onItemClick: (file) => {
+					void this.openOutlinkFileInPreview(file);
+				},
+			});
+		});
+		badgeEl.addEventListener('mouseleave', (event) => {
+			event.stopPropagation();
+			popover.scheduleClose();
+		});
+	}
+
+	private getTaskOutlinkPopoverTitle(category: TaskOutlinkCategory): string {
+		switch (category) {
+			case 'input':
+				return t('task.outlinks.popover.title.input');
+			case 'output':
+				return t('task.outlinks.popover.title.output');
+			case 'outcome':
+				return t('task.outlinks.popover.title.outcome');
+		}
+	}
+
+	private getTaskOutlinkPopoverItems(
+		taskPath: string,
+		category: TaskOutlinkCategory,
+	): TaskOutlinkPopoverItem[] {
+		const resolvedLinks = this.app.metadataCache.resolvedLinks?.[taskPath];
+		const targets = groupTaskOutlinksByRootPaths(resolvedLinks, {
+			inputRootPath: this.getInputRootPath(),
+			outputRootPath: this.getOutputRootPath(),
+			outcomeRootPath: this.getOutcomeRootPath(),
+		});
+		const paths = targets[category];
+
+		const items: TaskOutlinkPopoverItem[] = [];
+		for (const path of paths) {
+			const file = this.app.vault.getAbstractFileByPath(path);
+			if (!(file instanceof TFile)) {
+				continue;
+			}
+
+			items.push({
+				path,
+				title: file.basename,
+				file,
+			});
+		}
+
+		return items.sort((left, right) =>
+			left.title.localeCompare(right.title, undefined, { numeric: true }),
+		);
+	}
+
+	private async openOutlinkFileInPreview(file: TFile): Promise<void> {
+		const leaf = this.ensurePreviewLeaf();
+		await leaf.openFile(file, {
+			active: true,
+		});
+		this.previewLeaf = leaf;
 	}
 
 	private triggerTaskHoverPreview(

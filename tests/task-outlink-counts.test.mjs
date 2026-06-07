@@ -3,7 +3,8 @@ import test from 'node:test';
 import { createJiti } from 'jiti';
 
 const jiti = createJiti(import.meta.url, { moduleCache: false });
-const { countTaskOutlinksByRootPaths } = await jiti.import(
+const { countTaskOutlinksByRootPaths, groupTaskOutlinksByRootPaths } =
+	await jiti.import(
 	'../src/tasks-center/task-outlink-counts.ts',
 );
 
@@ -52,3 +53,23 @@ test('空链接映射返回全 0', () => {
 	);
 });
 
+test('分组后的目标列表会按路径稳定排序', () => {
+	const resolvedLinks = {
+		'1-输入/10.md': 1,
+		'1-输入/2.md': 1,
+		'1-输入/1.md': 1,
+	};
+
+	assert.deepEqual(
+		groupTaskOutlinksByRootPaths(resolvedLinks, {
+			inputRootPath: '1-输入',
+			outputRootPath: '2-输出',
+			outcomeRootPath: '4-成果',
+		}),
+		{
+			input: ['1-输入/1.md', '1-输入/2.md', '1-输入/10.md'],
+			output: [],
+			outcome: [],
+		},
+	);
+});
