@@ -445,7 +445,7 @@ button:not(.clickable-icon).ioto-tasks-center__task-group-header {
 
 .ioto-tasks-center__task-group-header {
 	position: sticky;
-	top: 0;
+	top: var(--ioto-task-sticky-top, 0px);
 	z-index: 1;
 	display: flex;
 	align-items: center;
@@ -771,7 +771,15 @@ button:not(.clickable-icon).ioto-tasks-center__task-row.is-active {
 	color: var(--text-normal);
 }
 
+.ioto-tasks-center__task-list.has-remove-up-task-drop-zone {
+	--ioto-task-sticky-top: 54px;
+}
+
 .ioto-tasks-center__remove-up-task-drop-zone {
+	display: none;
+	position: sticky;
+	top: 0;
+	z-index: 2;
 	margin-bottom: 10px;
 	padding: 10px 12px;
 	border: 1px dashed var(--background-modifier-border);
@@ -785,6 +793,11 @@ button:not(.clickable-icon).ioto-tasks-center__task-row.is-active {
 		border-color 120ms ease,
 		color 120ms ease,
 		box-shadow 120ms ease;
+}
+
+.ioto-tasks-center__task-list.has-remove-up-task-drop-zone
+	.ioto-tasks-center__remove-up-task-drop-zone {
+	display: block;
 }
 
 .ioto-tasks-center__remove-up-task-drop-zone.is-drop-target {

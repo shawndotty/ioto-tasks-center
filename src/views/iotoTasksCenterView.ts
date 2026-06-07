@@ -84,6 +84,11 @@ import {
 	captureProjectListScrollTop,
 	restoreProjectListScrollTop,
 } from './project-list-scroll';
+import {
+	captureTaskListScrollTop,
+	restoreTaskListScrollTop,
+	TASK_LIST_SELECTOR,
+} from './task-list-scroll';
 import { buildVisibleTaskHierarchy } from './task-hierarchy';
 import {
 	buildTaskHoverPreviewPayload,
@@ -145,6 +150,7 @@ export class IOTOTasksCenterView extends ItemView {
 	private readonly collapsedTaskGroups = new Set<string>();
 	private readonly collapsedProjectGroups = new Set<string>();
 	private projectListScrollTop = 0;
+	private taskListScrollTop = 0;
 	private refreshToken = 0;
 	private resizeObserver: ResizeObserver | null = null;
 	private readonly getTasksRootPath: () => string;
@@ -393,6 +399,7 @@ export class IOTOTasksCenterView extends ItemView {
 
 	private async selectProject(projectName: string): Promise<void> {
 		this.selectedProject = projectName;
+		this.taskListScrollTop = 0;
 		this.isTasksLoading = true;
 		this.render();
 		await this.loadTasks(projectName);
@@ -431,6 +438,10 @@ export class IOTOTasksCenterView extends ItemView {
 		this.projectListScrollTop = captureProjectListScrollTop(
 			this.contentEl,
 			this.projectListScrollTop,
+		);
+		this.taskListScrollTop = captureTaskListScrollTop(
+			this.contentEl,
+			this.taskListScrollTop,
 		);
 		const root = this.contentEl;
 		root.empty();
@@ -694,6 +705,13 @@ export class IOTOTasksCenterView extends ItemView {
 		const listEl = container.createDiv({
 			cls: 'ioto-tasks-center__task-list',
 		});
+		listEl.addEventListener('scroll', () => {
+			this.taskListScrollTop = listEl.scrollTop;
+		});
+		listEl.toggleClass(
+			'has-remove-up-task-drop-zone',
+			Boolean(this.draggingTaskPath),
+		);
 
 		if (this.projectResult.status === 'root-missing') {
 			this.renderState(
@@ -702,6 +720,7 @@ export class IOTOTasksCenterView extends ItemView {
 				t('view.state.cannotLoadTasksDesc', [tasksRootPath]),
 				'is-empty',
 			);
+			restoreTaskListScrollTop(listEl, this.taskListScrollTop);
 			return;
 		}
 
@@ -712,6 +731,7 @@ export class IOTOTasksCenterView extends ItemView {
 				t('view.state.selectProjectDesc'),
 				'is-empty',
 			);
+			restoreTaskListScrollTop(listEl, this.taskListScrollTop);
 			return;
 		}
 
@@ -725,6 +745,7 @@ export class IOTOTasksCenterView extends ItemView {
 				]),
 				'is-loading',
 			);
+			restoreTaskListScrollTop(listEl, this.taskListScrollTop);
 			return;
 		}
 
@@ -735,6 +756,7 @@ export class IOTOTasksCenterView extends ItemView {
 				t('view.state.noTaskDataDesc'),
 				'is-empty',
 			);
+			restoreTaskListScrollTop(listEl, this.taskListScrollTop);
 			return;
 		}
 
@@ -747,6 +769,7 @@ export class IOTOTasksCenterView extends ItemView {
 				]),
 				'is-empty',
 			);
+			restoreTaskListScrollTop(listEl, this.taskListScrollTop);
 			return;
 		}
 
@@ -757,6 +780,7 @@ export class IOTOTasksCenterView extends ItemView {
 				t('view.state.emptyProjectDesc', [this.taskResult.projectPath]),
 				'is-empty',
 			);
+			restoreTaskListScrollTop(listEl, this.taskListScrollTop);
 			return;
 		}
 
@@ -765,10 +789,12 @@ export class IOTOTasksCenterView extends ItemView {
 		if (visibleTasks.length === 0) {
 			if (tabVisibleTasks.length === 0) {
 				this.renderTaskFilterEmptyState(listEl);
+				restoreTaskListScrollTop(listEl, this.taskListScrollTop);
 				return;
 			}
 
 			this.renderTaskSearchEmptyState(listEl);
+			restoreTaskListScrollTop(listEl, this.taskListScrollTop);
 			return;
 		}
 		const presentationSections =
@@ -854,6 +880,8 @@ export class IOTOTasksCenterView extends ItemView {
 				activeTaskPath,
 			);
 		}
+
+		restoreTaskListScrollTop(listEl, this.taskListScrollTop);
 	}
 
 	private renderTaskRows(
@@ -1376,6 +1404,9 @@ export class IOTOTasksCenterView extends ItemView {
 		this.dropTargetTaskPath = null;
 		this.invalidDropTargetTaskPath = null;
 		this.isRemoveUpTaskDropTarget = false;
+		this.contentEl
+			.querySelector(TASK_LIST_SELECTOR)
+			?.addClass('has-remove-up-task-drop-zone');
 		rowEl.addClass('is-dragging');
 		if (event.dataTransfer) {
 			event.dataTransfer.effectAllowed = 'move';
@@ -1495,6 +1526,9 @@ export class IOTOTasksCenterView extends ItemView {
 		this.contentEl
 			.querySelector('.ioto-tasks-center__remove-up-task-drop-zone')
 			?.removeClass('is-drop-target');
+		this.contentEl
+			.querySelector(TASK_LIST_SELECTOR)
+			?.removeClass('has-remove-up-task-drop-zone');
 
 		this.draggingTaskPath = null;
 		this.dropTargetTaskPath = null;
