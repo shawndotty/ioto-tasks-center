@@ -179,6 +179,9 @@ const en = {
 	'task.group.status': 'Group by status',
 	'task.group.priority': 'Group by priority',
 	'task.group.priorityUnset': 'Priority not set',
+	'task.outlinks.input': 'Input outlinks: {0}',
+	'task.outlinks.output': 'Output outlinks: {0}',
+	'task.outlinks.outcome': 'Outcome outlinks: {0}',
 	'task.template.source.file': 'Use template file',
 	'task.template.source.inline': 'Enter template content directly',
 	'task.type.date': 'Date task',
@@ -231,6 +234,19 @@ const en = {
 	'settings.dateTaskFormat.name': 'Date task date format',
 	'settings.dateTaskFormat.desc':
 		'Supports Moment/Day.js patterns such as {0}, YYYY[year]M[month]D[day], and HH:mm. Only blank input falls back to the default, and filename-illegal characters in the output are replaced with -.',
+	'settings.heading.taskOutlinks': 'Task outlink counters',
+	'settings.taskOutlinks.show.name': 'Show task outlink counters',
+	'settings.taskOutlinks.show.desc':
+		'Display counts of outgoing links from each task note, grouped by input/output/outcome roots.',
+	'settings.taskOutlinks.input.name': 'Show input outlinks count',
+	'settings.taskOutlinks.input.desc':
+		'Show how many unique outgoing links target notes under the input notes root path.',
+	'settings.taskOutlinks.output.name': 'Show output outlinks count',
+	'settings.taskOutlinks.output.desc':
+		'Show how many unique outgoing links target notes under the output notes root path.',
+	'settings.taskOutlinks.outcome.name': 'Show outcome outlinks count',
+	'settings.taskOutlinks.outcome.desc':
+		'Show how many unique outgoing links target notes under the outcome notes root path.',
 	'settings.heading.projectSort': 'Project list sorting',
 	'settings.projectSort.name': 'Sorting rule',
 	'settings.projectSort.desc':

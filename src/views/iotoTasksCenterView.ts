@@ -20,6 +20,7 @@ import {
 	readProjectMetadataFromFrontmatter,
 } from '../tasks-center/project-metadata';
 import { createTaskFile } from '../tasks-center/task-creation';
+import { countTaskOutlinksByRootPaths } from '../tasks-center/task-outlink-counts';
 import {
 	clearTaskFilePriority,
 	setTaskFilePriority,
@@ -141,6 +142,13 @@ export class IOTOTasksCenterView extends ItemView {
 	private readonly getTaskListSortMode: () => TaskListSortMode;
 	private readonly getTaskListGroupMode: () => TaskListGroupMode;
 	private readonly getShowTaskPriority: () => boolean;
+	private readonly getInputRootPath: () => string;
+	private readonly getOutputRootPath: () => string;
+	private readonly getOutcomeRootPath: () => string;
+	private readonly getShowTaskOutlinkCounts: () => boolean;
+	private readonly getShowTaskInputOutlinkCount: () => boolean;
+	private readonly getShowTaskOutputOutlinkCount: () => boolean;
+	private readonly getShowTaskOutcomeOutlinkCount: () => boolean;
 	private readonly getHiddenProjectNames: () => string[];
 	private readonly getEnabledTaskCreationTypes: () => TaskCreationType[];
 	private readonly updateProjectListSortMode: (
@@ -169,6 +177,13 @@ export class IOTOTasksCenterView extends ItemView {
 		getTaskListSortMode: () => TaskListSortMode,
 		getTaskListGroupMode: () => TaskListGroupMode,
 		getShowTaskPriority: () => boolean,
+		getInputRootPath: () => string,
+		getOutputRootPath: () => string,
+		getOutcomeRootPath: () => string,
+		getShowTaskOutlinkCounts: () => boolean,
+		getShowTaskInputOutlinkCount: () => boolean,
+		getShowTaskOutputOutlinkCount: () => boolean,
+		getShowTaskOutcomeOutlinkCount: () => boolean,
 		getHiddenProjectNames: () => string[],
 		getEnabledTaskCreationTypes: () => TaskCreationType[],
 		updateProjectListSortMode: (
@@ -193,6 +208,13 @@ export class IOTOTasksCenterView extends ItemView {
 		this.getTaskListSortMode = getTaskListSortMode;
 		this.getTaskListGroupMode = getTaskListGroupMode;
 		this.getShowTaskPriority = getShowTaskPriority;
+		this.getInputRootPath = getInputRootPath;
+		this.getOutputRootPath = getOutputRootPath;
+		this.getOutcomeRootPath = getOutcomeRootPath;
+		this.getShowTaskOutlinkCounts = getShowTaskOutlinkCounts;
+		this.getShowTaskInputOutlinkCount = getShowTaskInputOutlinkCount;
+		this.getShowTaskOutputOutlinkCount = getShowTaskOutputOutlinkCount;
+		this.getShowTaskOutcomeOutlinkCount = getShowTaskOutcomeOutlinkCount;
 		this.getHiddenProjectNames = getHiddenProjectNames;
 		this.getEnabledTaskCreationTypes = getEnabledTaskCreationTypes;
 		this.updateProjectListSortMode = updateProjectListSortMode;
@@ -838,10 +860,63 @@ export class IOTOTasksCenterView extends ItemView {
 				rowEl.addClass('is-drop-invalid');
 			}
 
-			rowEl.createDiv({
+			const titleEl = rowEl.createDiv({
 				cls: 'ioto-tasks-center__task-title',
+			});
+			titleEl.createSpan({
+				cls: 'ioto-tasks-center__task-title-text',
 				text: task.title,
 			});
+			if (this.getShowTaskOutlinkCounts()) {
+				const showInput = this.getShowTaskInputOutlinkCount();
+				const showOutput = this.getShowTaskOutputOutlinkCount();
+				const showOutcome = this.getShowTaskOutcomeOutlinkCount();
+				if (showInput || showOutput || showOutcome) {
+					const resolvedLinks =
+						this.app.metadataCache.resolvedLinks?.[task.path];
+					const counts = countTaskOutlinksByRootPaths(resolvedLinks, {
+						inputRootPath: this.getInputRootPath(),
+						outputRootPath: this.getOutputRootPath(),
+						outcomeRootPath: this.getOutcomeRootPath(),
+					});
+					const countersEl = titleEl.createSpan({
+						cls: 'ioto-tasks-center__task-outlink-counts',
+					});
+					if (showInput) {
+						const label = t('task.outlinks.input', [
+							String(counts.input),
+						]);
+						const badgeEl = countersEl.createSpan({
+							cls: 'ioto-tasks-center__task-outlink-count',
+							text: String(counts.input),
+						});
+						badgeEl.ariaLabel = label;
+						badgeEl.title = label;
+					}
+					if (showOutput) {
+						const label = t('task.outlinks.output', [
+							String(counts.output),
+						]);
+						const badgeEl = countersEl.createSpan({
+							cls: 'ioto-tasks-center__task-outlink-count',
+							text: String(counts.output),
+						});
+						badgeEl.ariaLabel = label;
+						badgeEl.title = label;
+					}
+					if (showOutcome) {
+						const label = t('task.outlinks.outcome', [
+							String(counts.outcome),
+						]);
+						const badgeEl = countersEl.createSpan({
+							cls: 'ioto-tasks-center__task-outlink-count',
+							text: String(counts.outcome),
+						});
+						badgeEl.ariaLabel = label;
+						badgeEl.title = label;
+					}
+				}
+			}
 			if (
 				this.getShowTaskPriority() &&
 				typeof task.priority === 'number'

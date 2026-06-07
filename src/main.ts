@@ -59,6 +59,13 @@ export default class IOTOTasksCenter extends Plugin {
 					() => this.settings.taskListSortMode,
 					() => this.settings.taskListGroupMode,
 					() => this.settings.showTaskPriority,
+					() => this.settings.inputRootPath,
+					() => this.settings.outputRootPath,
+					() => this.settings.outcomeRootPath,
+					() => this.settings.showTaskOutlinkCounts,
+					() => this.settings.showTaskInputOutlinkCount,
+					() => this.settings.showTaskOutputOutlinkCount,
+					() => this.settings.showTaskOutcomeOutlinkCount,
 					() => this.settings.hiddenProjectNames,
 					() => this.settings.enabledTaskCreationTypes,
 					(sortMode) => this.updateProjectListSortMode(sortMode),
@@ -239,6 +246,46 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.showTaskPriority = show;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateShowTaskOutlinkCounts(show: boolean): Promise<void> {
+		if (this.settings.showTaskOutlinkCounts === show) {
+			return;
+		}
+
+		this.settings.showTaskOutlinkCounts = show;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateShowTaskInputOutlinkCount(show: boolean): Promise<void> {
+		if (this.settings.showTaskInputOutlinkCount === show) {
+			return;
+		}
+
+		this.settings.showTaskInputOutlinkCount = show;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateShowTaskOutputOutlinkCount(show: boolean): Promise<void> {
+		if (this.settings.showTaskOutputOutlinkCount === show) {
+			return;
+		}
+
+		this.settings.showTaskOutputOutlinkCount = show;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateShowTaskOutcomeOutlinkCount(show: boolean): Promise<void> {
+		if (this.settings.showTaskOutcomeOutlinkCount === show) {
+			return;
+		}
+
+		this.settings.showTaskOutcomeOutlinkCount = show;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}

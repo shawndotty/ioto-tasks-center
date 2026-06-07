@@ -49,6 +49,10 @@ export interface IOTOTasksCenterSettings {
 	taskListSortMode: TaskListSortMode;
 	taskListGroupMode: TaskListGroupMode;
 	showTaskPriority: boolean;
+	showTaskOutlinkCounts: boolean;
+	showTaskInputOutlinkCount: boolean;
+	showTaskOutputOutlinkCount: boolean;
+	showTaskOutcomeOutlinkCount: boolean;
 	hiddenProjectNames: string[];
 	projectCategoryOptions: string[];
 	enabledTaskCreationTypes: TaskCreationType[];
@@ -66,6 +70,10 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	taskListSortMode: 'created-desc',
 	taskListGroupMode: 'none',
 	showTaskPriority: false,
+	showTaskOutlinkCounts: false,
+	showTaskInputOutlinkCount: true,
+	showTaskOutputOutlinkCount: true,
+	showTaskOutcomeOutlinkCount: true,
 	hiddenProjectNames: [],
 	projectCategoryOptions: [],
 	enabledTaskCreationTypes: [...ENABLED_TASK_CREATION_TYPE_ORDER],
@@ -291,6 +299,68 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 						.setValue(this.plugin.settings.dateTaskDateFormat)
 						.onChange(async (value) => {
 							await this.plugin.updateDateTaskDateFormat(value);
+						}),
+				);
+
+			new Setting(containerEl)
+				.setName(t('settings.heading.taskOutlinks'))
+				.setHeading();
+
+			new Setting(containerEl)
+				.setName(t('settings.taskOutlinks.show.name'))
+				.setDesc(t('settings.taskOutlinks.show.desc'))
+				.addToggle((toggle) =>
+					toggle
+						.setValue(this.plugin.settings.showTaskOutlinkCounts)
+						.onChange(async (value) => {
+							await this.plugin.updateShowTaskOutlinkCounts(
+								value,
+							);
+						}),
+				);
+
+			new Setting(containerEl)
+				.setName(t('settings.taskOutlinks.input.name'))
+				.setDesc(t('settings.taskOutlinks.input.desc'))
+				.addToggle((toggle) =>
+					toggle
+						.setValue(
+							this.plugin.settings.showTaskInputOutlinkCount,
+						)
+						.onChange(async (value) => {
+							await this.plugin.updateShowTaskInputOutlinkCount(
+								value,
+							);
+						}),
+				);
+
+			new Setting(containerEl)
+				.setName(t('settings.taskOutlinks.output.name'))
+				.setDesc(t('settings.taskOutlinks.output.desc'))
+				.addToggle((toggle) =>
+					toggle
+						.setValue(
+							this.plugin.settings.showTaskOutputOutlinkCount,
+						)
+						.onChange(async (value) => {
+							await this.plugin.updateShowTaskOutputOutlinkCount(
+								value,
+							);
+						}),
+				);
+
+			new Setting(containerEl)
+				.setName(t('settings.taskOutlinks.outcome.name'))
+				.setDesc(t('settings.taskOutlinks.outcome.desc'))
+				.addToggle((toggle) =>
+					toggle
+						.setValue(
+							this.plugin.settings.showTaskOutcomeOutlinkCount,
+						)
+						.onChange(async (value) => {
+							await this.plugin.updateShowTaskOutcomeOutlinkCount(
+								value,
+							);
 						}),
 				);
 

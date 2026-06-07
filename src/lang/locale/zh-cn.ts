@@ -162,6 +162,9 @@ const zhCN = {
 	'task.group.status': '按任务状态分组',
 	'task.group.priority': '按优先级分组',
 	'task.group.priorityUnset': '未设置优先级',
+	'task.outlinks.input': '输入出链：{0}',
+	'task.outlinks.output': '输出出链：{0}',
+	'task.outlinks.outcome': '成果出链：{0}',
 	'task.template.source.file': '使用模板文件',
 	'task.template.source.inline': '直接输入模板内容',
 	'task.type.date': '日期任务',
@@ -214,6 +217,19 @@ const zhCN = {
 	'settings.dateTaskFormat.name': '日期任务日期格式',
 	'settings.dateTaskFormat.desc':
 		'支持 Moment/Day.js 风格格式，例如 {0}、YYYY[年]M[月]D[日]、HH:mm。仅空白输入会回退为默认值；若格式化结果包含文件名非法字符，会自动替换为 -。',
+	'settings.heading.taskOutlinks': '任务出链计数',
+	'settings.taskOutlinks.show.name': '显示任务出链计数',
+	'settings.taskOutlinks.show.desc':
+		'在任务列表中显示每个任务笔记的出链数量，并按输入/输出/成果根目录分类统计。',
+	'settings.taskOutlinks.input.name': '显示输入出链数量',
+	'settings.taskOutlinks.input.desc':
+		'显示指向输入笔记根目录下的（去重后的）出链数量。',
+	'settings.taskOutlinks.output.name': '显示输出出链数量',
+	'settings.taskOutlinks.output.desc':
+		'显示指向输出笔记根目录下的（去重后的）出链数量。',
+	'settings.taskOutlinks.outcome.name': '显示成果出链数量',
+	'settings.taskOutlinks.outcome.desc':
+		'显示指向成果笔记根目录下的（去重后的）出链数量。',
 	'settings.heading.projectSort': '项目列表排序',
 	'settings.projectSort.name': '排序规则',
 	'settings.projectSort.desc':

@@ -162,6 +162,9 @@ const zhTW = {
 	'task.group.status': '按任務狀態分組',
 	'task.group.priority': '按優先級分組',
 	'task.group.priorityUnset': '未設定優先級',
+	'task.outlinks.input': '輸入出鏈：{0}',
+	'task.outlinks.output': '輸出出鏈：{0}',
+	'task.outlinks.outcome': '成果出鏈：{0}',
 	'task.template.source.file': '使用模板檔案',
 	'task.template.source.inline': '直接輸入模板內容',
 	'task.type.date': '日期任務',
@@ -214,6 +217,19 @@ const zhTW = {
 	'settings.dateTaskFormat.name': '日期任務日期格式',
 	'settings.dateTaskFormat.desc':
 		'支援 Moment/Day.js 風格格式，例如 {0}、YYYY[年]M[月]D[日]、HH:mm。僅空白輸入會回退為預設值；若格式化結果包含檔名非法字元，會自動替換為 -。',
+	'settings.heading.taskOutlinks': '任務出鏈計數',
+	'settings.taskOutlinks.show.name': '顯示任務出鏈計數',
+	'settings.taskOutlinks.show.desc':
+		'在任務列表中顯示每個任務筆記的出鏈數量，並按輸入/輸出/成果根目錄分類統計。',
+	'settings.taskOutlinks.input.name': '顯示輸入出鏈數量',
+	'settings.taskOutlinks.input.desc':
+		'顯示指向輸入筆記根目錄下的（去重後）出鏈數量。',
+	'settings.taskOutlinks.output.name': '顯示輸出出鏈數量',
+	'settings.taskOutlinks.output.desc':
+		'顯示指向輸出筆記根目錄下的（去重後）出鏈數量。',
+	'settings.taskOutlinks.outcome.name': '顯示成果出鏈數量',
+	'settings.taskOutlinks.outcome.desc':
+		'顯示指向成果筆記根目錄下的（去重後）出鏈數量。',
 	'settings.heading.projectSort': '專案列表排序',
 	'settings.projectSort.name': '排序規則',
 	'settings.projectSort.desc':
