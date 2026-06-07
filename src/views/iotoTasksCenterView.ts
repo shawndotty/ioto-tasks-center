@@ -801,7 +801,10 @@ export class IOTOTasksCenterView extends ItemView {
 			this.getTaskPresentationSections(visibleTasks);
 		this.syncCollapsedTaskGroups(presentationSections);
 		const activeTaskPath = this.getActiveTaskPath();
-		const removeZoneEl = listEl.createDiv({
+		const removeZoneWrapperEl = listEl.createDiv({
+			cls: 'ioto-tasks-center__remove-up-task-drop-zone-wrapper',
+		});
+		const removeZoneEl = removeZoneWrapperEl.createDiv({
 			cls: 'ioto-tasks-center__remove-up-task-drop-zone',
 		});
 		if (this.isRemoveUpTaskDropTarget) {
