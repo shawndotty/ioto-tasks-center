@@ -1,8 +1,14 @@
 import { t } from '../lang/helpter';
 
 export const DEFAULT_TASKS_ROOT_PATH = '3-任务';
+export const DEFAULT_INPUT_ROOT_PATH = '1-输入';
+export const DEFAULT_OUTPUT_ROOT_PATH = '2-输出';
+export const DEFAULT_RESULT_ROOT_PATH = '4-成果';
 
-export function normalizeTasksRootPath(input: string): string {
+export function normalizeVaultRelativePath(
+	input: string,
+	fallback: string,
+): string {
 	const normalized = input
 		.trim()
 		.replace(/\\/g, '/')
@@ -11,7 +17,23 @@ export function normalizeTasksRootPath(input: string): string {
 		.replace(/^\/+/, '')
 		.replace(/\/+$/g, '');
 
-	return normalized.length > 0 ? normalized : DEFAULT_TASKS_ROOT_PATH;
+	return normalized.length > 0 ? normalized : fallback;
+}
+
+export function normalizeTasksRootPath(input: string): string {
+	return normalizeVaultRelativePath(input, DEFAULT_TASKS_ROOT_PATH);
+}
+
+export function normalizeInputRootPath(input: string): string {
+	return normalizeVaultRelativePath(input, DEFAULT_INPUT_ROOT_PATH);
+}
+
+export function normalizeOutputRootPath(input: string): string {
+	return normalizeVaultRelativePath(input, DEFAULT_OUTPUT_ROOT_PATH);
+}
+
+export function normalizeResultRootPath(input: string): string {
+	return normalizeVaultRelativePath(input, DEFAULT_RESULT_ROOT_PATH);
 }
 
 export interface ProjectFolderEntry {

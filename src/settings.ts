@@ -10,7 +10,13 @@ import {
 } from './tasks-center/task-template-config';
 import { ENABLED_TASK_CREATION_TYPE_ORDER } from './tasks-center/enabled-task-creation-types';
 import {
+	DEFAULT_INPUT_ROOT_PATH,
+	DEFAULT_OUTPUT_ROOT_PATH,
+	DEFAULT_RESULT_ROOT_PATH,
 	DEFAULT_TASKS_ROOT_PATH,
+	normalizeInputRootPath,
+	normalizeOutputRootPath,
+	normalizeResultRootPath,
 	normalizeTasksRootPath,
 } from './tasks-center/types';
 import { ImportModal } from './modals/ImportModal';
@@ -35,6 +41,9 @@ export type TaskListGroupMode = 'none' | 'status' | 'priority';
 
 export interface IOTOTasksCenterSettings {
 	tasksRootPath: string;
+	inputRootPath: string;
+	outputRootPath: string;
+	resultRootPath: string;
 	projectListSortMode: ProjectListSortMode;
 	projectListGroupMode: ProjectListGroupMode;
 	taskListSortMode: TaskListSortMode;
@@ -49,6 +58,9 @@ export interface IOTOTasksCenterSettings {
 
 export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	tasksRootPath: DEFAULT_TASKS_ROOT_PATH,
+	inputRootPath: DEFAULT_INPUT_ROOT_PATH,
+	outputRootPath: DEFAULT_OUTPUT_ROOT_PATH,
+	resultRootPath: DEFAULT_RESULT_ROOT_PATH,
 	projectListSortMode: 'incomplete-count',
 	projectListGroupMode: 'none',
 	taskListSortMode: 'created-desc',
@@ -193,6 +205,42 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 						.onChange(async (value) => {
 							await this.plugin.updateTasksRootPath(value);
 							// this.display();
+						}),
+				);
+
+			new Setting(containerEl)
+				.setName(t('settings.inputRootPath.name'))
+				.setDesc(t('settings.inputRootPath.desc'))
+				.addText((text) =>
+					text
+						.setPlaceholder(DEFAULT_INPUT_ROOT_PATH)
+						.setValue(this.plugin.settings.inputRootPath)
+						.onChange(async (value) => {
+							await this.plugin.updateInputRootPath(value);
+						}),
+				);
+
+			new Setting(containerEl)
+				.setName(t('settings.outputRootPath.name'))
+				.setDesc(t('settings.outputRootPath.desc'))
+				.addText((text) =>
+					text
+						.setPlaceholder(DEFAULT_OUTPUT_ROOT_PATH)
+						.setValue(this.plugin.settings.outputRootPath)
+						.onChange(async (value) => {
+							await this.plugin.updateOutputRootPath(value);
+						}),
+				);
+
+			new Setting(containerEl)
+				.setName(t('settings.resultRootPath.name'))
+				.setDesc(t('settings.resultRootPath.desc'))
+				.addText((text) =>
+					text
+						.setPlaceholder(DEFAULT_RESULT_ROOT_PATH)
+						.setValue(this.plugin.settings.resultRootPath)
+						.onChange(async (value) => {
+							await this.plugin.updateResultRootPath(value);
 						}),
 				);
 
@@ -502,6 +550,18 @@ function getTemplaterTemplatesFolder(app: App): string | null {
 
 export function normalizeConfiguredTasksRootPath(path: string): string {
 	return normalizeTasksRootPath(path);
+}
+
+export function normalizeConfiguredInputRootPath(path: string): string {
+	return normalizeInputRootPath(path);
+}
+
+export function normalizeConfiguredOutputRootPath(path: string): string {
+	return normalizeOutputRootPath(path);
+}
+
+export function normalizeConfiguredResultRootPath(path: string): string {
+	return normalizeResultRootPath(path);
 }
 
 export function normalizeProjectListSortMode(

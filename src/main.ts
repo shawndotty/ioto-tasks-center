@@ -20,6 +20,9 @@ import {
 	ProjectListSortMode,
 	TaskListGroupMode,
 	TaskListSortMode,
+	normalizeConfiguredInputRootPath,
+	normalizeConfiguredOutputRootPath,
+	normalizeConfiguredResultRootPath,
 	normalizeConfiguredTasksRootPath,
 	normalizeEnabledTaskCreationTypes,
 	normalizeProjectCategoryOptions,
@@ -141,6 +144,15 @@ export default class IOTOTasksCenter extends Plugin {
 		this.settings.tasksRootPath = normalizeConfiguredTasksRootPath(
 			this.settings.tasksRootPath,
 		);
+		this.settings.inputRootPath = normalizeConfiguredInputRootPath(
+			this.settings.inputRootPath,
+		);
+		this.settings.outputRootPath = normalizeConfiguredOutputRootPath(
+			this.settings.outputRootPath,
+		);
+		this.settings.resultRootPath = normalizeConfiguredResultRootPath(
+			this.settings.resultRootPath,
+		);
 		this.settings.taskTemplateConfigs = normalizeTaskTemplateConfigMap(
 			loadedData?.taskTemplateConfigs,
 			loadedData?.taskTemplatePath,
@@ -228,6 +240,39 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.tasksRootPath = nextPath;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateInputRootPath(path: string): Promise<void> {
+		const nextPath = normalizeConfiguredInputRootPath(path);
+		if (this.settings.inputRootPath === nextPath) {
+			return;
+		}
+
+		this.settings.inputRootPath = nextPath;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateOutputRootPath(path: string): Promise<void> {
+		const nextPath = normalizeConfiguredOutputRootPath(path);
+		if (this.settings.outputRootPath === nextPath) {
+			return;
+		}
+
+		this.settings.outputRootPath = nextPath;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateResultRootPath(path: string): Promise<void> {
+		const nextPath = normalizeConfiguredResultRootPath(path);
+		if (this.settings.resultRootPath === nextPath) {
+			return;
+		}
+
+		this.settings.resultRootPath = nextPath;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}

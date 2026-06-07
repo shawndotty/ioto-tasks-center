@@ -197,6 +197,15 @@ const en = {
 	'settings.tasksRootPath.name': 'Tasks root path',
 	'settings.tasksRootPath.desc':
 		'Enter a vault-relative path. First-level folders under this directory are treated as projects.',
+	'settings.inputRootPath.name': 'Input notes root path',
+	'settings.inputRootPath.desc':
+		'Enter a vault-relative path used as the root folder for input notes.',
+	'settings.outputRootPath.name': 'Output notes root path',
+	'settings.outputRootPath.desc':
+		'Enter a vault-relative path used as the root folder for output notes.',
+	'settings.resultRootPath.name': 'Result notes root path',
+	'settings.resultRootPath.desc':
+		'Enter a vault-relative path used as the root folder for result notes.',
 	'settings.viewEntry.name': 'View entry',
 	'settings.viewEntry.desc':
 		'Open the tasks center from the command palette, or directly from here.',

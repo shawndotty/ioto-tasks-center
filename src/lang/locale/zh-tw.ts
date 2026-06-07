@@ -180,6 +180,15 @@ const zhTW = {
 	'settings.tasksRootPath.name': '任務根目錄',
 	'settings.tasksRootPath.desc':
 		'填寫一個 vault 相對路徑。任務中心會將該目錄的一級子資料夾識別為專案列表。',
+	'settings.inputRootPath.name': '輸入筆記根目錄',
+	'settings.inputRootPath.desc':
+		'填寫一個 vault 相對路徑，用於輸入筆記的存放目錄。',
+	'settings.outputRootPath.name': '輸出筆記根目錄',
+	'settings.outputRootPath.desc':
+		'填寫一個 vault 相對路徑，用於輸出筆記的存放目錄。',
+	'settings.resultRootPath.name': '成果筆記根目錄',
+	'settings.resultRootPath.desc':
+		'填寫一個 vault 相對路徑，用於成果筆記的存放目錄。',
 	'settings.viewEntry.name': '視圖入口',
 	'settings.viewEntry.desc':
 		'可透過命令面板執行「打開任務中心視圖」，也可以在這裡直接打開任務中心。',

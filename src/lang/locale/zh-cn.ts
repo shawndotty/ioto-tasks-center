@@ -180,6 +180,15 @@ const zhCN = {
 	'settings.tasksRootPath.name': '任务根目录',
 	'settings.tasksRootPath.desc':
 		'填写一个 vault 相对路径。任务中心会将该目录的一级子文件夹识别为项目列表。',
+	'settings.inputRootPath.name': '输入笔记根目录',
+	'settings.inputRootPath.desc':
+		'填写一个 vault 相对路径，用于输入笔记的存放目录。',
+	'settings.outputRootPath.name': '输出笔记根目录',
+	'settings.outputRootPath.desc':
+		'填写一个 vault 相对路径，用于输出笔记的存放目录。',
+	'settings.resultRootPath.name': '成果笔记根目录',
+	'settings.resultRootPath.desc':
+		'填写一个 vault 相对路径，用于成果笔记的存放目录。',
 	'settings.viewEntry.name': '视图入口',
 	'settings.viewEntry.desc':
 		'可通过命令面板执行“打开任务中心视图”，也可以在这里直接打开任务中心。',
