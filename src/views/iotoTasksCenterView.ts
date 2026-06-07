@@ -27,6 +27,10 @@ import {
 	type TaskPriorityValue,
 } from '../tasks-center/task-priority';
 import {
+	clearTaskFileStarred,
+	setTaskFileStarred,
+} from '../tasks-center/task-starred';
+import {
 	assignUpTaskToFile,
 	removeUpTaskFromFile,
 } from '../tasks-center/up-task-assignment';
@@ -1966,6 +1970,24 @@ export class IOTOTasksCenterView extends ItemView {
 	private showTaskPriorityMenu(event: MouseEvent, task: TaskFileEntry): void {
 		const menu = new Menu();
 
+		menu.addItem((item) =>
+			item
+				.setTitle(
+					task.starred
+						? t('view.taskCoreMenu.clear')
+						: t('view.taskCoreMenu.set'),
+				)
+				.onClick(() => {
+					if (task.starred) {
+						void this.clearTaskStarred(task);
+						return;
+					}
+
+					void this.updateTaskStarred(task);
+				}),
+		);
+		menu.addSeparator();
+
 		if (typeof task.priority === 'number') {
 			menu.addItem((item) =>
 				item.setTitle(t('view.taskPriorityMenu.clear')).onClick(() => {
@@ -2162,6 +2184,44 @@ export class IOTOTasksCenterView extends ItemView {
 				error instanceof Error
 					? error.message
 					: t('view.notice.clearTaskPriorityFailed');
+			new Notice(message);
+		}
+	}
+
+	private async updateTaskStarred(task: TaskFileEntry): Promise<void> {
+		const file = this.app.vault.getAbstractFileByPath(task.path);
+		if (!(file instanceof TFile)) {
+			new Notice(t('view.notice.taskFileUnavailable'));
+			return;
+		}
+
+		try {
+			await setTaskFileStarred(this.app, file);
+			await this.refreshCurrentProjectTasks();
+		} catch (error) {
+			const message =
+				error instanceof Error
+					? error.message
+					: t('view.notice.updateTaskCoreFailed');
+			new Notice(message);
+		}
+	}
+
+	private async clearTaskStarred(task: TaskFileEntry): Promise<void> {
+		const file = this.app.vault.getAbstractFileByPath(task.path);
+		if (!(file instanceof TFile)) {
+			new Notice(t('view.notice.taskFileUnavailable'));
+			return;
+		}
+
+		try {
+			await clearTaskFileStarred(this.app, file);
+			await this.refreshCurrentProjectTasks();
+		} catch (error) {
+			const message =
+				error instanceof Error
+					? error.message
+					: t('view.notice.clearTaskCoreFailed');
 			new Notice(message);
 		}
 	}

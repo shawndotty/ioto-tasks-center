@@ -79,6 +79,8 @@ const zhTW = {
 	'view.search.clearShort': '清空搜尋',
 	'view.search.button': '搜尋',
 	'view.search.run': '執行任務搜尋',
+	'view.taskCoreMenu.set': '標記為核心任務',
+	'view.taskCoreMenu.clear': '取消核心任務標記',
 	'view.taskPriorityMenu.clear': '取消優先級',
 	'view.taskPriorityMenu.set': '設定為 {0}',
 	'view.taskPriorityMenu.currentSuffix': '（目前）',
@@ -113,6 +115,8 @@ const zhTW = {
 	'view.notice.updateTaskPriorityDisplayFailed':
 		'更新任務列表優先級顯示失敗。',
 	'view.notice.taskFileUnavailable': '目前任務檔案不可用。',
+	'view.notice.updateTaskCoreFailed': '更新核心任務標記失敗。',
+	'view.notice.clearTaskCoreFailed': '取消核心任務標記失敗。',
 	'view.notice.updateTaskPriorityFailed': '更新任務優先級失敗。',
 	'view.notice.clearTaskPriorityFailed': '取消任務優先級失敗。',
 	'view.notice.invalidDropSelf': '不能將任務拖曳到自身上。',

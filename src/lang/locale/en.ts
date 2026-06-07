@@ -89,6 +89,8 @@ const en = {
 	'view.search.clearShort': 'Clear search',
 	'view.search.button': 'Search',
 	'view.search.run': 'Run task search',
+	'view.taskCoreMenu.set': 'Mark as core task',
+	'view.taskCoreMenu.clear': 'Clear core task mark',
 	'view.taskPriorityMenu.clear': 'Clear priority',
 	'view.taskPriorityMenu.set': 'Set to {0}',
 	'view.taskPriorityMenu.currentSuffix': ' (current)',
@@ -128,6 +130,8 @@ const en = {
 	'view.notice.updateTaskPriorityDisplayFailed':
 		'Failed to update task priority visibility.',
 	'view.notice.taskFileUnavailable': 'The task file is unavailable.',
+	'view.notice.updateTaskCoreFailed': 'Failed to update core task mark.',
+	'view.notice.clearTaskCoreFailed': 'Failed to clear core task mark.',
 	'view.notice.updateTaskPriorityFailed': 'Failed to update task priority.',
 	'view.notice.clearTaskPriorityFailed': 'Failed to clear task priority.',
 	'view.notice.invalidDropSelf': 'A task cannot be dragged onto itself.',

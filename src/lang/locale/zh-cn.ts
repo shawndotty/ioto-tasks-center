@@ -79,6 +79,8 @@ const zhCN = {
 	'view.search.clearShort': '清空搜索',
 	'view.search.button': '搜索',
 	'view.search.run': '执行任务搜索',
+	'view.taskCoreMenu.set': '标记为核心任务',
+	'view.taskCoreMenu.clear': '取消核心任务标记',
 	'view.taskPriorityMenu.clear': '取消优先级',
 	'view.taskPriorityMenu.set': '设置为 {0}',
 	'view.taskPriorityMenu.currentSuffix': '（当前）',
@@ -113,6 +115,8 @@ const zhCN = {
 	'view.notice.updateTaskPriorityDisplayFailed':
 		'更新任务列表优先级显示失败。',
 	'view.notice.taskFileUnavailable': '当前任务文件不可用。',
+	'view.notice.updateTaskCoreFailed': '更新核心任务标记失败。',
+	'view.notice.clearTaskCoreFailed': '取消核心任务标记失败。',
 	'view.notice.updateTaskPriorityFailed': '更新任务优先级失败。',
 	'view.notice.clearTaskPriorityFailed': '取消任务优先级失败。',
 	'view.notice.invalidDropSelf': '不能将任务拖拽到自身上。',
