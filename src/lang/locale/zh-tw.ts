@@ -75,6 +75,7 @@ const zhTW = {
 	'view.group.expand': '展開{0}分組',
 	'view.group.collapse': '摺疊{0}分組',
 	'view.search.placeholder': '搜尋任務檔名',
+	'view.search.toggle': '搜尋任務',
 	'view.search.clear': '清空任務搜尋',
 	'view.search.clearShort': '清空搜尋',
 	'view.search.button': '搜尋',

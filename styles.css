@@ -302,6 +302,17 @@ button:not(.clickable-icon).ioto-tasks-center__tab-settings-button {
 	margin-top: 8px;
 }
 
+.ioto-tasks-center__task-search-popover {
+	position: fixed;
+	z-index: 9999;
+	width: min(420px, calc(100vw - 16px));
+	padding: 10px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 12px;
+	background: var(--background-primary);
+	box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+}
+
 .ioto-tasks-center__task-search {
 	margin-bottom: 12px;
 }

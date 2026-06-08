@@ -75,6 +75,7 @@ const zhCN = {
 	'view.group.expand': '展开{0}分组',
 	'view.group.collapse': '折叠{0}分组',
 	'view.search.placeholder': '搜索任务文件名',
+	'view.search.toggle': '搜索任务',
 	'view.search.clear': '清空任务搜索',
 	'view.search.clearShort': '清空搜索',
 	'view.search.button': '搜索',

@@ -85,6 +85,7 @@ const en = {
 	'view.group.expand': 'Expand {0} group',
 	'view.group.collapse': 'Collapse {0} group',
 	'view.search.placeholder': 'Search task file names',
+	'view.search.toggle': 'Search tasks',
 	'view.search.clear': 'Clear task search',
 	'view.search.clearShort': 'Clear search',
 	'view.search.button': 'Search',

@@ -66,6 +66,7 @@ import {
 	type TaskOutlinkCategory,
 	type TaskOutlinkPopoverItem,
 } from '../ui/task-outlink-popover';
+import { TaskSearchPopover } from '../ui/task-search-popover';
 import { TaskNameModal } from '../ui/taskNameModal';
 import {
 	resolveActiveTaskPath,
@@ -119,6 +120,8 @@ export class IOTOTasksCenterView extends ItemView {
 	private activeTaskFilterTab: TaskFilterTab = 'today';
 	private taskSearchQuery = '';
 	private taskSearchInputValue = '';
+	private isTaskSearchPopoverOpen = false;
+	private shouldFocusTaskSearchPopover = false;
 	private openedTaskPath: string | null = null;
 	private openingTaskPath: string | null = null;
 	private draggingTaskPath: string | null = null;
@@ -132,6 +135,7 @@ export class IOTOTasksCenterView extends ItemView {
 			hoverPopover: null,
 		};
 	private outlinkPopover: TaskOutlinkPopover | null = null;
+	private taskSearchPopover: TaskSearchPopover | null = null;
 	private readonly pendingOutlinkBadgeUpdates = new Set<string>();
 	private outlinkBadgeUpdateTimer: number | null = null;
 	private pendingVaultRefresh = false;
@@ -262,6 +266,9 @@ export class IOTOTasksCenterView extends ItemView {
 			this.contentEl.ownerDocument,
 			this.app.workspace,
 		);
+		this.taskSearchPopover = new TaskSearchPopover(
+			this.contentEl.ownerDocument,
+		);
 		this.registerEvent(
 			this.app.metadataCache.on('changed', (file) => {
 				if (!this.getShowTaskOutlinkCounts()) {
@@ -282,6 +289,10 @@ export class IOTOTasksCenterView extends ItemView {
 	async onClose(): Promise<void> {
 		this.outlinkPopover?.destroy();
 		this.outlinkPopover = null;
+		this.taskSearchPopover?.destroy();
+		this.taskSearchPopover = null;
+		this.isTaskSearchPopoverOpen = false;
+		this.shouldFocusTaskSearchPopover = false;
 		if (this.outlinkBadgeUpdateTimer !== null) {
 			window.clearTimeout(this.outlinkBadgeUpdateTimer);
 			this.outlinkBadgeUpdateTimer = null;
@@ -680,6 +691,27 @@ export class IOTOTasksCenterView extends ItemView {
 		const actionsEl = headerEl.createDiv({
 			cls: 'ioto-tasks-center__section-actions',
 		});
+		const shouldShowSearchIcon = this.shouldShowTaskSearchIcon();
+		let searchToggleButtonEl: HTMLButtonElement | null = null;
+		if (shouldShowSearchIcon) {
+			searchToggleButtonEl = actionsEl.createEl('button', {
+				cls: 'ioto-tasks-center__icon-button',
+			});
+			searchToggleButtonEl.type = 'button';
+			searchToggleButtonEl.ariaLabel = t('view.search.toggle');
+			searchToggleButtonEl.title = t('view.search.toggle');
+			setIcon(searchToggleButtonEl, 'search');
+			searchToggleButtonEl.addEventListener('click', (event) => {
+				const anchorEl = event.currentTarget;
+				if (!(anchorEl instanceof HTMLElement)) {
+					return;
+				}
+
+				this.toggleTaskSearchPopover(anchorEl);
+			});
+		} else {
+			this.closeTaskSearchPopover();
+		}
 		const addTaskButtonEl = actionsEl.createEl('button', {
 			cls: 'ioto-tasks-center__add-task-button',
 			text: this.isCreatingTask
@@ -700,7 +732,11 @@ export class IOTOTasksCenterView extends ItemView {
 			text: currentProjectText,
 		});
 
-		this.renderTaskSearch(container);
+		if (shouldShowSearchIcon && this.isTaskSearchPopoverOpen) {
+			if (searchToggleButtonEl) {
+				this.openTaskSearchPopover(searchToggleButtonEl, false);
+			}
+		}
 		this.renderTaskTabs(container);
 
 		const listEl = container.createDiv({
@@ -1371,6 +1407,78 @@ export class IOTOTasksCenterView extends ItemView {
 		);
 	}
 
+	private shouldShowTaskSearchIcon(): boolean {
+		return Boolean(
+			this.selectedProject &&
+			this.taskResult &&
+			this.taskResult.status === 'success' &&
+			this.tasks.length > 0,
+		);
+	}
+
+	private toggleTaskSearchPopover(anchorEl: HTMLElement): void {
+		if (this.isTaskSearchPopoverOpen) {
+			this.closeTaskSearchPopover();
+			return;
+		}
+
+		this.isTaskSearchPopoverOpen = true;
+		this.shouldFocusTaskSearchPopover = true;
+		this.openTaskSearchPopover(anchorEl, true);
+	}
+
+	private openTaskSearchPopover(
+		anchorEl: HTMLElement,
+		forceFocus: boolean,
+	): void {
+		const popover = this.taskSearchPopover;
+		if (!popover) {
+			return;
+		}
+
+		if (!this.shouldShowTaskSearchIcon()) {
+			this.closeTaskSearchPopover();
+			return;
+		}
+
+		const shouldFocus = forceFocus || this.shouldFocusTaskSearchPopover;
+		this.shouldFocusTaskSearchPopover = false;
+
+		popover.open({
+			anchorEl,
+			placeholder: t('view.search.placeholder'),
+			value: this.taskSearchInputValue,
+			canSearch: this.canSearchTasks(),
+			showClear: Boolean(
+				this.taskSearchInputValue || this.taskSearchQuery,
+			),
+			searchButtonText: t('view.search.button'),
+			searchButtonAriaLabel: t('view.search.run'),
+			clearButtonAriaLabel: t('view.search.clear'),
+			clearButtonTitle: t('view.search.clearShort'),
+			onChange: (value) => {
+				this.taskSearchInputValue = value;
+			},
+			onApply: () => {
+				this.applyTaskSearchQuery();
+			},
+			onClear: () => {
+				this.clearTaskSearch();
+			},
+			onClose: () => {
+				this.isTaskSearchPopoverOpen = false;
+				this.shouldFocusTaskSearchPopover = false;
+			},
+			shouldFocus,
+		});
+	}
+
+	private closeTaskSearchPopover(): void {
+		this.taskSearchPopover?.close();
+		this.isTaskSearchPopoverOpen = false;
+		this.shouldFocusTaskSearchPopover = false;
+	}
+
 	private applyTaskSearchQuery(): void {
 		const nextQuery = this.taskSearchInputValue;
 		if (nextQuery === this.taskSearchQuery) {
@@ -1378,6 +1486,9 @@ export class IOTOTasksCenterView extends ItemView {
 		}
 
 		this.taskSearchQuery = nextQuery;
+		if (this.isTaskSearchPopoverOpen) {
+			this.shouldFocusTaskSearchPopover = true;
+		}
 		this.render();
 	}
 
@@ -1388,6 +1499,9 @@ export class IOTOTasksCenterView extends ItemView {
 
 		this.taskSearchInputValue = '';
 		this.taskSearchQuery = '';
+		if (this.isTaskSearchPopoverOpen) {
+			this.shouldFocusTaskSearchPopover = true;
+		}
 		this.render();
 	}
 
