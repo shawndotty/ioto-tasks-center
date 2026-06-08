@@ -136,6 +136,10 @@ export class TaskOutlinkPopover {
 				return;
 			}
 
+			if (this.hoverParent.hoverPopover?.hoverEl?.contains(target)) {
+				return;
+			}
+
 			this.close();
 		};
 		this.doc.addEventListener(
@@ -149,6 +153,15 @@ export class TaskOutlinkPopover {
 		this.cancelClose();
 		this.closeTimer = window.setTimeout(() => {
 			this.closeTimer = null;
+			const hoverElConnected = Boolean(
+				this.hoverParent.hoverPopover?.hoverEl?.isConnected,
+			);
+
+			if (hoverElConnected) {
+				this.scheduleClose(delayMs);
+				return;
+			}
+
 			this.close();
 		}, delayMs);
 	}
