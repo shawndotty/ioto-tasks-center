@@ -260,6 +260,7 @@ export class IOTOTasksCenterView extends ItemView {
 		this.contentEl.addClass('ioto-tasks-center-view');
 		this.outlinkPopover = new TaskOutlinkPopover(
 			this.contentEl.ownerDocument,
+			this.app.workspace,
 		);
 		this.registerEvent(
 			this.app.metadataCache.on('changed', (file) => {
@@ -958,7 +959,7 @@ export class IOTOTasksCenterView extends ItemView {
 							text: String(counts.input),
 						});
 						badgeEl.dataset.outlinkCategory = 'input';
-						// badgeEl.ariaLabel = label;
+						badgeEl.ariaLabel = label;
 						this.bindTaskOutlinkPopover(
 							badgeEl,
 							task.path,
@@ -974,7 +975,7 @@ export class IOTOTasksCenterView extends ItemView {
 							text: String(counts.output),
 						});
 						badgeEl.dataset.outlinkCategory = 'output';
-						// badgeEl.ariaLabel = label;
+						badgeEl.ariaLabel = label;
 						this.bindTaskOutlinkPopover(
 							badgeEl,
 							task.path,
@@ -990,7 +991,7 @@ export class IOTOTasksCenterView extends ItemView {
 							text: String(counts.outcome),
 						});
 						badgeEl.dataset.outlinkCategory = 'outcome';
-						// badgeEl.ariaLabel = label;
+						badgeEl.ariaLabel = label;
 						this.bindTaskOutlinkPopover(
 							badgeEl,
 							task.path,

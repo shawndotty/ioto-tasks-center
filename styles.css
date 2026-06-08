@@ -883,7 +883,7 @@ button:not(.clickable-icon).ioto-tasks-center__task-row.is-active {
 
 .ioto-tasks-center__outlink-popover {
 	position: fixed;
-	z-index: 9999;
+	z-index: 1;
 	width: 260px;
 	max-width: calc(100vw - 16px);
 	max-height: min(320px, calc(100vh - 16px));

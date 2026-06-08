@@ -1,6 +1,9 @@
-import { TFile } from 'obsidian';
+import { TFile, type HoverPopover, type Workspace } from 'obsidian';
 
 export type TaskOutlinkCategory = 'input' | 'output' | 'outcome';
+
+export const IOTO_TASKS_CENTER_OUTLINK_HOVER_SOURCE_ID =
+	'ioto-tasks-center-outlink-popover';
 
 export interface TaskOutlinkPopoverItem {
 	path: string;
@@ -18,18 +21,32 @@ export interface TaskOutlinkPopoverOpenOptions {
 
 export class TaskOutlinkPopover {
 	private readonly doc: Document;
+	private readonly workspace: Workspace;
+	private readonly hoverParent: { hoverPopover: HoverPopover | null } = {
+		hoverPopover: null,
+	};
 	private containerEl: HTMLDivElement | null = null;
 	private closeTimer: number | null = null;
 	private outsideMouseDownHandler: ((event: MouseEvent) => void) | null =
 		null;
+	private keyDownHandler: ((event: KeyboardEvent) => void) | null = null;
+	private hoveredItem: {
+		path: string;
+		targetEl: HTMLElement;
+		lastEvent: MouseEvent;
+	} | null = null;
+	private lastPreviewPath: string | null = null;
 
-	constructor(doc: Document) {
+	constructor(doc: Document, workspace: Workspace) {
 		this.doc = doc;
+		this.workspace = workspace;
 	}
 
 	open(options: TaskOutlinkPopoverOpenOptions): void {
 		this.close();
 		this.cancelClose();
+		this.hoveredItem = null;
+		this.lastPreviewPath = null;
 
 		const containerEl = this.doc.createElement('div');
 		containerEl.className = 'ioto-tasks-center__outlink-popover';
@@ -55,6 +72,23 @@ export class TaskOutlinkPopover {
 					text: item.title,
 				});
 				buttonEl.type = 'button';
+				buttonEl.addEventListener('mouseenter', (event) => {
+					if (!event.instanceOf(MouseEvent)) {
+						return;
+					}
+					this.handleItemHover(event, item.path, buttonEl);
+				});
+				buttonEl.addEventListener('mousemove', (event) => {
+					if (!event.instanceOf(MouseEvent)) {
+						return;
+					}
+					this.handleItemHover(event, item.path, buttonEl);
+				});
+				buttonEl.addEventListener('mouseleave', () => {
+					if (this.hoveredItem?.targetEl === buttonEl) {
+						this.hoveredItem = null;
+					}
+				});
 				buttonEl.addEventListener('click', () => {
 					this.close();
 					options.onItemClick(item.file);
@@ -73,6 +107,24 @@ export class TaskOutlinkPopover {
 		this.containerEl = containerEl;
 
 		this.positionAtAnchor(options.anchorEl);
+
+		this.keyDownHandler = (event: KeyboardEvent) => {
+			const hoveredItem = this.hoveredItem;
+			if (!hoveredItem) {
+				return;
+			}
+
+			if (!event.ctrlKey && !event.metaKey) {
+				return;
+			}
+
+			this.triggerHoverLinkPreview(
+				hoveredItem.lastEvent,
+				hoveredItem.path,
+				hoveredItem.targetEl,
+			);
+		};
+		this.doc.addEventListener('keydown', this.keyDownHandler, true);
 
 		this.outsideMouseDownHandler = (event: MouseEvent) => {
 			const target = event.target;
@@ -112,6 +164,10 @@ export class TaskOutlinkPopover {
 
 	close(): void {
 		this.cancelClose();
+		if (this.keyDownHandler) {
+			this.doc.removeEventListener('keydown', this.keyDownHandler, true);
+			this.keyDownHandler = null;
+		}
 		if (this.outsideMouseDownHandler) {
 			this.doc.removeEventListener(
 				'mousedown',
@@ -123,6 +179,8 @@ export class TaskOutlinkPopover {
 
 		this.containerEl?.remove();
 		this.containerEl = null;
+		this.hoveredItem = null;
+		this.lastPreviewPath = null;
 	}
 
 	destroy(): void {
@@ -160,5 +218,46 @@ export class TaskOutlinkPopover {
 
 		containerEl.style.left = `${left}px`;
 		containerEl.style.top = `${top}px`;
+	}
+
+	private handleItemHover(
+		event: MouseEvent,
+		path: string,
+		targetEl: HTMLElement,
+	): void {
+		this.hoveredItem = {
+			path,
+			targetEl,
+			lastEvent: event,
+		};
+
+		if (!event.ctrlKey && !event.metaKey) {
+			return;
+		}
+
+		this.triggerHoverLinkPreview(event, path, targetEl);
+	}
+
+	private triggerHoverLinkPreview(
+		event: MouseEvent,
+		path: string,
+		targetEl: HTMLElement,
+	): void {
+		if (
+			this.lastPreviewPath === path &&
+			this.hoverParent.hoverPopover?.hoverEl.isConnected
+		) {
+			return;
+		}
+
+		this.lastPreviewPath = path;
+		this.workspace.trigger('hover-link', {
+			event,
+			source: IOTO_TASKS_CENTER_OUTLINK_HOVER_SOURCE_ID,
+			hoverParent: this.hoverParent,
+			targetEl,
+			linktext: path,
+			sourcePath: path,
+		});
 	}
 }
