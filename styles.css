@@ -910,7 +910,7 @@ button:not(.clickable-icon).ioto-tasks-center__task-row.is-active {
 .ioto-tasks-center__outlink-popover-list {
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: 0px;
 }
 
 button:not(.clickable-icon).ioto-tasks-center__outlink-popover-item {
@@ -923,9 +923,10 @@ button:not(.clickable-icon).ioto-tasks-center__outlink-popover-item {
 	display: flex;
 	justify-content: flex-start;
 	width: 100%;
-	padding: 6px 8px;
+	padding: 3px 8px;
 	border: 0;
 	border-radius: 10px;
+	/* border: 1px solid var(--background-modifier-border); */
 	background: transparent;
 	color: var(--text-normal);
 	font-size: var(--font-ui-small);
