@@ -713,7 +713,7 @@ button:not(.clickable-icon).ioto-tasks-center__task-group-header {
 	padding-top: 20px;
 	padding-right: 14px;
 	padding-bottom: 20px;
-	padding-left: calc(14px + (var(--ioto-task-indent-level, 0) * 20px));
+	padding-left: calc(14px + (var(--ioto-task-indent-level, 0) * 40px));
 	border: 0;
 	border-bottom: 1px solid var(--background-modifier-border);
 	border-radius: 0;
@@ -858,6 +858,27 @@ button:not(.clickable-icon).ioto-tasks-center__task-row.is-active {
 	font-weight: 600;
 	color: var(--text-normal);
 	line-height: 1.4;
+}
+
+.ioto-tasks-center__subtask-toggle-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+	width: 16px;
+	height: 16px;
+	color: var(--text-faint);
+	transition:
+		transform 120ms ease,
+		color 120ms ease;
+}
+
+.ioto-tasks-center__subtask-toggle-icon.is-expanded {
+	transform: rotate(90deg);
+}
+
+.ioto-tasks-center__subtask-toggle-icon:hover {
+	color: var(--text-muted);
 }
 
 .ioto-tasks-center__task-title-text {

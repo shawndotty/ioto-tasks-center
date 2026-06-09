@@ -74,6 +74,8 @@ const zhTW = {
 	'view.removeParentDropZone': '將任務拖到這裡可移除父任務',
 	'view.group.expand': '展開{0}分組',
 	'view.group.collapse': '摺疊{0}分組',
+	'view.subtasks.collapse': '摺疊子任務',
+	'view.subtasks.expand': '展開子任務',
 	'view.search.placeholder': '搜尋任務檔名',
 	'view.search.toggle': '搜尋任務',
 	'view.search.clear': '清空任務搜尋',

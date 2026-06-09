@@ -84,6 +84,8 @@ const en = {
 	'view.removeParentDropZone': 'Drag a task here to remove its parent task',
 	'view.group.expand': 'Expand {0} group',
 	'view.group.collapse': 'Collapse {0} group',
+	'view.subtasks.collapse': 'Collapse subtasks',
+	'view.subtasks.expand': 'Expand subtasks',
 	'view.search.placeholder': 'Search task file names',
 	'view.search.toggle': 'Search tasks',
 	'view.search.clear': 'Clear task search',

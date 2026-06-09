@@ -153,6 +153,7 @@ export class IOTOTasksCenterView extends ItemView {
 	private isCompactLayout = false;
 	private readonly collapsedTaskGroups = new Set<string>();
 	private readonly collapsedProjectGroups = new Set<string>();
+	private readonly collapsedSubtaskParents = new Set<string>();
 	private projectListScrollTop = 0;
 	private taskListScrollTop = 0;
 	private refreshToken = 0;
@@ -412,6 +413,7 @@ export class IOTOTasksCenterView extends ItemView {
 	private async selectProject(projectName: string): Promise<void> {
 		this.selectedProject = projectName;
 		this.taskListScrollTop = 0;
+		this.collapsedSubtaskParents.clear();
 		this.isTasksLoading = true;
 		this.render();
 		await this.loadTasks(projectName);
@@ -929,7 +931,32 @@ export class IOTOTasksCenterView extends ItemView {
 		tasks: TaskFileEntry[],
 		activeTaskPath: string | null,
 	): void {
-		for (const task of tasks) {
+		const collapsedIndentStack: number[] = [];
+		for (let i = 0; i < tasks.length; i++) {
+			const task = tasks[i];
+			if (!task) {
+				continue;
+			}
+			const indentLevel = task.indentLevel ?? 0;
+			while (collapsedIndentStack.length > 0) {
+				const topIndent =
+					collapsedIndentStack[collapsedIndentStack.length - 1];
+				if (topIndent === undefined || indentLevel > topIndent) {
+					break;
+				}
+				collapsedIndentStack.pop();
+			}
+
+			if (collapsedIndentStack.length > 0) {
+				continue;
+			}
+
+			const nextIndentLevel = tasks[i + 1]?.indentLevel ?? 0;
+			const hasChildren = nextIndentLevel > indentLevel;
+			const subtasksCollapsed = hasChildren
+				? this.isSubtasksCollapsed(task.path)
+				: false;
+
 			const rowEl = container.createEl('button', {
 				cls: 'ioto-tasks-center__task-row',
 			});
@@ -938,9 +965,9 @@ export class IOTOTasksCenterView extends ItemView {
 			rowEl.dataset.taskPath = task.path;
 			rowEl.style.setProperty(
 				'--ioto-task-indent-level',
-				`${task.indentLevel ?? 0}`,
+				`${indentLevel}`,
 			);
-			if ((task.indentLevel ?? 0) > 0) {
+			if (indentLevel > 0) {
 				rowEl.addClass('is-subtask');
 			}
 
@@ -967,6 +994,21 @@ export class IOTOTasksCenterView extends ItemView {
 			const titleEl = rowEl.createDiv({
 				cls: 'ioto-tasks-center__task-title',
 			});
+			if (hasChildren) {
+				const toggleEl = titleEl.createSpan({
+					cls: 'ioto-tasks-center__subtask-toggle-icon',
+				});
+				toggleEl.toggleClass('is-expanded', !subtasksCollapsed);
+				toggleEl.ariaLabel = subtasksCollapsed
+					? t('view.subtasks.expand')
+					: t('view.subtasks.collapse');
+				setIcon(toggleEl, 'chevron-right');
+				toggleEl.addEventListener('click', (event: MouseEvent) => {
+					event.preventDefault();
+					event.stopPropagation();
+					this.toggleSubtasksCollapsed(task.path);
+				});
+			}
 			titleEl.createSpan({
 				cls: 'ioto-tasks-center__task-title-text',
 				text: task.title,
@@ -1086,6 +1128,10 @@ export class IOTOTasksCenterView extends ItemView {
 			rowEl.addEventListener('dragend', () => {
 				this.clearTaskDragState();
 			});
+
+			if (hasChildren && subtasksCollapsed) {
+				collapsedIndentStack.push(indentLevel);
+			}
 		}
 	}
 
@@ -2177,6 +2223,20 @@ export class IOTOTasksCenterView extends ItemView {
 			this.collapsedProjectGroups.delete(groupKey);
 		} else {
 			this.collapsedProjectGroups.add(groupKey);
+		}
+
+		this.render();
+	}
+
+	private isSubtasksCollapsed(taskPath: string): boolean {
+		return this.collapsedSubtaskParents.has(taskPath);
+	}
+
+	private toggleSubtasksCollapsed(taskPath: string): void {
+		if (this.collapsedSubtaskParents.has(taskPath)) {
+			this.collapsedSubtaskParents.delete(taskPath);
+		} else {
+			this.collapsedSubtaskParents.add(taskPath);
 		}
 
 		this.render();
