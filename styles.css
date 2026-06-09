@@ -450,7 +450,7 @@ button:not(.clickable-icon).ioto-tasks-center__tab-settings-button {
 }
 
 button:not(.clickable-icon).ioto-tasks-center__task-group-header {
-	background: transparent;
+	background: var(--background-secondary);
 	/* box-shadow: none; */
 }
 
