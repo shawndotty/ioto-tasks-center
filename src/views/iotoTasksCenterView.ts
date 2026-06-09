@@ -696,6 +696,29 @@ export class IOTOTasksCenterView extends ItemView {
 		const shouldShowSearchIcon = this.shouldShowTaskSearchIcon();
 		let searchToggleButtonEl: HTMLButtonElement | null = null;
 		if (shouldShowSearchIcon) {
+			const keyword = this.taskSearchQuery.trim();
+			if (!this.isTaskSearchPopoverOpen && keyword) {
+				const hintEl = actionsEl.createDiv({
+					cls: 'ioto-tasks-center__task-search-hint',
+				});
+				hintEl.createSpan({
+					cls: 'ioto-tasks-center__task-search-hint-text',
+					text: keyword,
+				});
+				const hintClearButtonEl = hintEl.createEl('button', {
+					cls: 'ioto-tasks-center__task-search-hint-clear',
+					text: 'X',
+				});
+				hintClearButtonEl.type = 'button';
+				hintClearButtonEl.ariaLabel = t('view.search.clear');
+				hintClearButtonEl.title = t('view.search.clearShort');
+				hintClearButtonEl.addEventListener('click', (event) => {
+					event.preventDefault();
+					event.stopPropagation();
+					this.clearTaskSearch();
+				});
+			}
+
 			searchToggleButtonEl = actionsEl.createEl('button', {
 				cls: 'ioto-tasks-center__icon-button',
 			});
@@ -1465,11 +1488,15 @@ export class IOTOTasksCenterView extends ItemView {
 	private toggleTaskSearchPopover(anchorEl: HTMLElement): void {
 		if (this.isTaskSearchPopoverOpen) {
 			this.closeTaskSearchPopover();
+			this.render();
 			return;
 		}
 
 		this.isTaskSearchPopoverOpen = true;
 		this.shouldFocusTaskSearchPopover = true;
+		this.contentEl
+			.querySelector('.ioto-tasks-center__task-search-hint')
+			?.remove();
 		this.openTaskSearchPopover(anchorEl, true);
 	}
 
@@ -1514,6 +1541,7 @@ export class IOTOTasksCenterView extends ItemView {
 			onClose: () => {
 				this.isTaskSearchPopoverOpen = false;
 				this.shouldFocusTaskSearchPopover = false;
+				this.render();
 			},
 			shouldFocus,
 		});
