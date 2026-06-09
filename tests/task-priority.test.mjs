@@ -40,10 +40,7 @@ test('非法 Priority 值会返回 undefined', () => {
 });
 
 test('可从 frontmatter 内容中解析 Priority', () => {
-	assert.equal(
-		getPriorityFromContent(`---\nPriority: 2\n---\n# 任务\n`),
-		2,
-	);
+	assert.equal(getPriorityFromContent(`---\nPriority: 2\n---\n# 任务\n`), 2);
 	assert.equal(
 		getPriorityFromContent(`---\nPriority: "3"\n---\n# 任务\n`),
 		3,
@@ -69,11 +66,11 @@ test('缺少内容时会回退到 metadata cache Priority', () => {
 	);
 });
 
-test('TASK_PRIORITY_VALUES 仅包含 P0 到 P9', () => {
-	assert.deepEqual(TASK_PRIORITY_VALUES, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+test('TASK_PRIORITY_VALUES 仅包含 P0 到 P3', () => {
+	assert.deepEqual(TASK_PRIORITY_VALUES, [0, 1, 2, 3]);
 	assert.equal(isTaskPriorityValue(0), true);
-	assert.equal(isTaskPriorityValue(9), true);
-	assert.equal(isTaskPriorityValue(10), false);
+	assert.equal(isTaskPriorityValue(3), true);
+	assert.equal(isTaskPriorityValue(4), false);
 	assert.equal(isTaskPriorityValue(-1), false);
 });
 

@@ -97,6 +97,7 @@ const en = {
 	'view.taskPriorityMenu.clear': 'Clear priority',
 	'view.taskPriorityMenu.set': 'Set to {0}',
 	'view.taskPriorityMenu.currentSuffix': ' (current)',
+	'view.taskMenu.delete': 'Delete task',
 	'view.projectSwitcher.loadingProjects': 'Loading projects...',
 	'view.projectSwitcher.loadingTasks': 'Loading tasks...',
 	'view.projectSwitcher.default': 'Switch project',
@@ -137,6 +138,7 @@ const en = {
 	'view.notice.clearTaskCoreFailed': 'Failed to clear core task mark.',
 	'view.notice.updateTaskPriorityFailed': 'Failed to update task priority.',
 	'view.notice.clearTaskPriorityFailed': 'Failed to clear task priority.',
+	'view.notice.deleteTaskFailed': 'Failed to delete task.',
 	'view.notice.invalidDropSelf': 'A task cannot be dragged onto itself.',
 	'view.notice.invalidDropDescendant':
 		'A parent task cannot be dragged under its own child task.',
@@ -198,6 +200,10 @@ const en = {
 	'task.type.fileName.plan': 'Plan',
 	'task.type.fileName.topic': 'Subject',
 	'modal.defaultDescription': 'Please enter a name.',
+	'modal.deleteTask.title': 'Delete task',
+	'modal.deleteTask.desc':
+		'Move "{0}" to the trash? This action can be restored from the trash.',
+	'modal.deleteTask.confirm': 'Delete',
 	'modal.confirm': 'Confirm',
 	'modal.cancel': 'Cancel',
 	'settings.heading.main': 'Tasks center',

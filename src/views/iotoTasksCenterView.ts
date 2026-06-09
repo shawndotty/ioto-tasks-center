@@ -30,6 +30,7 @@ import {
 	TASK_PRIORITY_VALUES,
 	type TaskPriorityValue,
 } from '../tasks-center/task-priority';
+import { trashTaskFile } from '../tasks-center/task-deletion';
 import {
 	clearTaskFileStarred,
 	setTaskFileStarred,
@@ -66,6 +67,7 @@ import {
 	type TaskOutlinkCategory,
 	type TaskOutlinkPopoverItem,
 } from '../ui/task-outlink-popover';
+import { ConfirmModal } from '../ui/confirmModal';
 import { TaskSearchPopover } from '../ui/task-search-popover';
 import { TaskNameModal } from '../ui/taskNameModal';
 import {
@@ -2550,6 +2552,13 @@ export class IOTOTasksCenterView extends ItemView {
 			);
 		}
 
+		menu.addSeparator();
+		menu.addItem((item) =>
+			item.setTitle(t('view.taskMenu.delete')).onClick(() => {
+				void this.confirmAndDeleteTask(task);
+			}),
+		);
+
 		menu.showAtMouseEvent(event);
 	}
 
@@ -2760,6 +2769,38 @@ export class IOTOTasksCenterView extends ItemView {
 				error instanceof Error
 					? error.message
 					: t('view.notice.clearTaskCoreFailed');
+			new Notice(message);
+		}
+	}
+
+	private async confirmAndDeleteTask(task: TaskFileEntry): Promise<void> {
+		const file = this.app.vault.getAbstractFileByPath(task.path);
+		if (!(file instanceof TFile)) {
+			new Notice(t('view.notice.taskFileUnavailable'));
+			return;
+		}
+
+		const confirmed = await new ConfirmModal(
+			this.app,
+			t('modal.deleteTask.title'),
+			{
+				descriptionText: t('modal.deleteTask.desc', [task.title]),
+				confirmButtonText: t('modal.deleteTask.confirm'),
+				cancelButtonText: t('modal.cancel'),
+			},
+		).openAndConfirm();
+		if (!confirmed) {
+			return;
+		}
+
+		try {
+			await trashTaskFile(this.app, file);
+			await this.refreshFromVaultChange();
+		} catch (error) {
+			const message =
+				error instanceof Error
+					? error.message
+					: t('view.notice.deleteTaskFailed');
 			new Notice(message);
 		}
 	}
