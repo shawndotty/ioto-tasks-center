@@ -40,7 +40,7 @@
 
 - 新增专用业务模块，避免把 Priority 写回逻辑继续堆在 `iotoTasksCenterView.ts` 或 `task-creation.ts` 中。
 - 提供如下 API：
-  - `const TASK_PRIORITY_VALUES = [0,1,2,3,4,5,6,7,8,9] as const`
+  - `const TASK_PRIORITY_VALUES = [0,1,2,3] as const`
   - `export type TaskPriorityValue = (typeof TASK_PRIORITY_VALUES)[number]`
   - `export function isTaskPriorityValue(value: number): value is TaskPriorityValue`
   - `export async function setTaskFilePriority(app: App, file: TFile, priority: TaskPriorityValue): Promise<void>`
