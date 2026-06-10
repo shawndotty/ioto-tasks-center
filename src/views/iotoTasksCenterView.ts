@@ -393,7 +393,12 @@ export class IOTOTasksCenterView extends ItemView {
 		}
 
 		const nextProject = this.resolveSelectedProject(preferredProject);
-		await this.selectProject(nextProject);
+		const shouldPreserveTaskListState =
+			nextProject === this.selectedProject;
+		await this.selectProject(nextProject, {
+			resetTaskListScroll: !shouldPreserveTaskListState,
+			resetCollapsedSubtasks: !shouldPreserveTaskListState,
+		});
 	}
 
 	private resolveSelectedProject(preferredProject?: string | null): string {
@@ -412,10 +417,22 @@ export class IOTOTasksCenterView extends ItemView {
 		return fallbackProject.name;
 	}
 
-	private async selectProject(projectName: string): Promise<void> {
+	private async selectProject(
+		projectName: string,
+		options: {
+			resetTaskListScroll?: boolean;
+			resetCollapsedSubtasks?: boolean;
+		} = {},
+	): Promise<void> {
+		const { resetTaskListScroll = true, resetCollapsedSubtasks = true } =
+			options;
 		this.selectedProject = projectName;
-		this.taskListScrollTop = 0;
-		this.collapsedSubtaskParents.clear();
+		if (resetTaskListScroll) {
+			this.taskListScrollTop = 0;
+		}
+		if (resetCollapsedSubtasks) {
+			this.collapsedSubtaskParents.clear();
+		}
 		this.isTasksLoading = true;
 		this.render();
 		await this.loadTasks(projectName);

@@ -29,6 +29,21 @@ test('可以从旧任务列表容器中读取 scrollTop', () => {
 	assert.equal(scrollTop, 340);
 });
 
+test('当任务列表不可滚动且位于顶部时，会保留 fallback', () => {
+	const scrollTop = captureTaskListScrollTop(
+		{
+			querySelector: () => ({
+				scrollTop: 0,
+				scrollHeight: 480,
+				clientHeight: 480,
+			}),
+		},
+		320,
+	);
+
+	assert.equal(scrollTop, 320);
+});
+
 test('可以把缓存的 scrollTop 恢复到新任务列表容器', () => {
 	const nextListEl = {
 		scrollTop: 0,
@@ -38,4 +53,3 @@ test('可以把缓存的 scrollTop 恢复到新任务列表容器', () => {
 
 	assert.equal(nextListEl.scrollTop, 412);
 });
-

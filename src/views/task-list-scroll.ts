@@ -2,6 +2,8 @@ export const TASK_LIST_SELECTOR = '.ioto-tasks-center__task-list';
 
 interface ScrollableElementLike {
 	scrollTop: number;
+	scrollHeight?: number;
+	clientHeight?: number;
 }
 
 interface QueryableContainerLike {
@@ -13,7 +15,20 @@ export function captureTaskListScrollTop(
 	fallbackScrollTop = 0,
 ): number {
 	const listEl = getTaskListElement(container);
-	return listEl ? listEl.scrollTop : fallbackScrollTop;
+	if (!listEl) {
+		return fallbackScrollTop;
+	}
+
+	if (
+		typeof listEl.scrollHeight === 'number' &&
+		typeof listEl.clientHeight === 'number' &&
+		listEl.scrollHeight <= listEl.clientHeight + 1 &&
+		listEl.scrollTop === 0
+	) {
+		return fallbackScrollTop;
+	}
+
+	return listEl.scrollTop;
 }
 
 export function restoreTaskListScrollTop(
@@ -62,4 +77,3 @@ function isScrollableElement(value: unknown): value is ScrollableElementLike {
 		typeof value.scrollTop === 'number'
 	);
 }
-
