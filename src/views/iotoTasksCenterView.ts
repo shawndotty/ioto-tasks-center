@@ -2652,26 +2652,6 @@ export class IOTOTasksCenterView extends ItemView {
 				: getTaskCreationOptions().map((option) => option.key);
 
 		menu.addItem((item) =>
-			item.setTitle(t('view.taskMenu.addSubtask')).onClick(() => {
-				if (normalizedEnabledTypes.length === 1) {
-					const onlyType = normalizedEnabledTypes[0];
-					if (!onlyType) {
-						return;
-					}
-					void this.handleCreateSubtask(task, onlyType);
-					return;
-				}
-
-				this.showTaskSubtaskTypeMenu(
-					event,
-					task,
-					normalizedEnabledTypes,
-				);
-			}),
-		);
-		menu.addSeparator();
-
-		menu.addItem((item) =>
 			item
 				.setTitle(
 					task.starred
@@ -2687,6 +2667,59 @@ export class IOTOTasksCenterView extends ItemView {
 					void this.updateTaskStarred(task);
 				}),
 		);
+		menu.addSeparator();
+
+		menu.addItem((item) => {
+			item.setTitle(t('view.taskMenu.addSubtask'));
+
+			if (normalizedEnabledTypes.length === 1) {
+				const onlyType = normalizedEnabledTypes[0];
+				if (!onlyType) {
+					return;
+				}
+				item.onClick(() => {
+					void this.handleCreateSubtask(task, onlyType);
+				});
+				return;
+			}
+
+			if (typeof item.setSubmenu !== 'function') {
+				item.onClick(() => {
+					this.showTaskSubtaskTypeMenu(
+						event,
+						task,
+						normalizedEnabledTypes,
+					);
+				});
+				return;
+			}
+
+			try {
+				const subMenu = item.setSubmenu();
+				const menuOptions = getTaskCreationOptions().filter((option) =>
+					normalizedEnabledTypes.includes(option.key),
+				);
+				const resolvedMenuOptions =
+					menuOptions.length > 0
+						? menuOptions
+						: getTaskCreationOptions();
+				for (const option of resolvedMenuOptions) {
+					subMenu.addItem((subItem) =>
+						subItem.setTitle(option.label).onClick(() => {
+							void this.handleCreateSubtask(task, option.key);
+						}),
+					);
+				}
+			} catch {
+				item.onClick(() => {
+					this.showTaskSubtaskTypeMenu(
+						event,
+						task,
+						normalizedEnabledTypes,
+					);
+				});
+			}
+		});
 		menu.addSeparator();
 
 		if (typeof task.priority === 'number') {
