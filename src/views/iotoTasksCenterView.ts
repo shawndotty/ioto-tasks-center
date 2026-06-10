@@ -100,6 +100,7 @@ import {
 } from './task-hover-preview';
 import { buildTaskPresentationSections } from './task-list-presentation';
 import { filterTasksBySearchQuery } from './task-search';
+import { resolveCurrentTaskContext } from '../tasks-center/selected-text-subtask';
 
 export const IOTO_TASKS_CENTER_VIEW_TYPE = 'IOTOTasksCenter';
 const COMPACT_LAYOUT_BREAKPOINT = 720;
@@ -142,6 +143,7 @@ export class IOTOTasksCenterView extends ItemView {
 	private outlinkBadgeUpdateTimer: number | null = null;
 	private pendingVaultRefresh = false;
 	private deferredVaultRefreshTimer: number | null = null;
+	private deferVaultRefreshForSubtaskCreation = false;
 	private projectResult: ProjectListResult = {
 		status: 'success',
 		projects: [],
@@ -1370,7 +1372,10 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private shouldDeferVaultRefresh(): boolean {
-		return hasActiveTaskHoverPopover(this.hoverPreviewParent);
+		return (
+			hasActiveTaskHoverPopover(this.hoverPreviewParent) ||
+			this.deferVaultRefreshForSubtaskCreation
+		);
 	}
 
 	private scheduleDeferredVaultRefresh(): void {
@@ -2099,6 +2104,112 @@ export class IOTOTasksCenterView extends ItemView {
 		}
 	}
 
+	private async handleCreateSubtask(
+		parentTask: TaskFileEntry,
+		type: TaskCreationType,
+	): Promise<void> {
+		const parentFile = this.app.vault.getAbstractFileByPath(
+			parentTask.path,
+		);
+		if (!(parentFile instanceof TFile)) {
+			new Notice(t('view.notice.taskFileUnavailable'));
+			return;
+		}
+
+		const currentTaskContext = resolveCurrentTaskContext(
+			parentFile,
+			this.getTasksRootPath(),
+		);
+
+		let customName: string | undefined;
+		if (type !== 'date') {
+			const taskTypeTexts =
+				type === 'plan'
+					? {
+							title: t('modal.newPlanSubtask.title'),
+							label: t('modal.newPlanSubtask.placeholder'),
+						}
+					: type === 'topic'
+						? {
+								title: t('modal.newTopicSubtask.title'),
+								label: t('modal.newTopicSubtask.placeholder'),
+							}
+						: {
+								title: t('modal.newNormalSubtask.title'),
+								label: t('modal.newNormalSubtask.placeholder'),
+							};
+			const customNameResult = await new TaskNameModal(
+				this.app,
+				taskTypeTexts.title,
+				taskTypeTexts.label,
+				{
+					descriptionText: t('modal.newSubtask.desc'),
+					confirmButtonText: t('modal.create'),
+				},
+			).openAndGetValue();
+			if (!customNameResult) {
+				return;
+			}
+			customName = customNameResult;
+		}
+
+		this.isCreatingTask = true;
+		this.deferVaultRefreshForSubtaskCreation = true;
+		this.render();
+
+		try {
+			const previewLeaf = this.ensurePreviewLeaf();
+			const result = await createTaskFile({
+				app: this.app,
+				tasksRootPath: this.getTasksRootPath(),
+				projectName: currentTaskContext.projectName,
+				type,
+				customName,
+				targetDirectoryPath: currentTaskContext.currentDirectoryPath,
+				templateConfig: this.getTaskTemplateConfig(type),
+				dateTaskDateFormat: this.getDateTaskDateFormat(),
+				targetLeaf: previewLeaf,
+				sourceLeaf: this.leaf,
+			});
+			await assignUpTaskToFile(
+				this.app,
+				result.file,
+				currentTaskContext.parentTaskTitle,
+			);
+			this.previewLeaf = previewLeaf;
+			this.lastOpenedTaskByProject.set(
+				currentTaskContext.projectName,
+				result.file.path,
+			);
+			this.deferVaultRefreshForSubtaskCreation = false;
+			this.clearDeferredVaultRefreshState();
+			await this.refreshFromVaultChange();
+			await this.openFileInPreview(result.file);
+		} catch (error) {
+			const message =
+				error instanceof Error
+					? error.message
+					: t('view.notice.createSubtaskFailed');
+			new Notice(message);
+		} finally {
+			this.deferVaultRefreshForSubtaskCreation = false;
+			if (this.pendingVaultRefresh) {
+				this.clearDeferredVaultRefreshState();
+				await this.refreshFromVaultChange();
+			}
+			this.isCreatingTask = false;
+			this.render();
+		}
+	}
+
+	private clearDeferredVaultRefreshState(): void {
+		this.pendingVaultRefresh = false;
+		if (this.deferredVaultRefreshTimer !== null) {
+			window.clearTimeout(this.deferredVaultRefreshTimer);
+			this.deferredVaultRefreshTimer = null;
+		}
+	}
+
 	private getProjectSwitcherLabel(): string {
 		if (this.isProjectsLoading) {
 			return t('view.projectSwitcher.loadingProjects');
@@ -2534,6 +2645,31 @@ export class IOTOTasksCenterView extends ItemView {
 
 	private showTaskPriorityMenu(event: MouseEvent, task: TaskFileEntry): void {
 		const menu = new Menu();
+		const enabledTypes = this.getEnabledTaskCreationTypes();
+		const normalizedEnabledTypes =
+			enabledTypes.length > 0
+				? enabledTypes
+				: getTaskCreationOptions().map((option) => option.key);
+
+		menu.addItem((item) =>
+			item.setTitle(t('view.taskMenu.addSubtask')).onClick(() => {
+				if (normalizedEnabledTypes.length === 1) {
+					const onlyType = normalizedEnabledTypes[0];
+					if (!onlyType) {
+						return;
+					}
+					void this.handleCreateSubtask(task, onlyType);
+					return;
+				}
+
+				this.showTaskSubtaskTypeMenu(
+					event,
+					task,
+					normalizedEnabledTypes,
+				);
+			}),
+		);
+		menu.addSeparator();
 
 		menu.addItem((item) =>
 			item
@@ -2585,6 +2721,31 @@ export class IOTOTasksCenterView extends ItemView {
 		);
 
 		menu.showAtMouseEvent(event);
+	}
+
+	private showTaskSubtaskTypeMenu(
+		event: MouseEvent,
+		parentTask: TaskFileEntry,
+		enabledTypes: TaskCreationType[],
+	): void {
+		const menu = new Menu();
+		const menuOptions = getTaskCreationOptions().filter((option) =>
+			enabledTypes.includes(option.key),
+		);
+		const resolvedMenuOptions =
+			menuOptions.length > 0 ? menuOptions : getTaskCreationOptions();
+		for (const option of resolvedMenuOptions) {
+			menu.addItem((item) =>
+				item.setTitle(option.label).onClick(() => {
+					void this.handleCreateSubtask(parentTask, option.key);
+				}),
+			);
+		}
+
+		menu.showAtPosition({
+			x: event.clientX + 12,
+			y: event.clientY,
+		});
 	}
 
 	private renderTaskFilterEmptyState(container: HTMLElement): void {

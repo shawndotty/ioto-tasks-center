@@ -98,6 +98,7 @@ const en = {
 	'view.taskPriorityMenu.clear': 'Clear priority',
 	'view.taskPriorityMenu.set': 'Set to {0}',
 	'view.taskPriorityMenu.currentSuffix': ' (current)',
+	'view.taskMenu.addSubtask': 'Add subtask',
 	'view.taskMenu.delete': 'Delete task',
 	'view.projectSwitcher.loadingProjects': 'Loading projects...',
 	'view.projectSwitcher.loadingTasks': 'Loading tasks...',
@@ -126,6 +127,7 @@ const en = {
 	'view.notice.currentProjectUnavailable':
 		'The current project is unavailable. Please choose another project and try again.',
 	'view.notice.createTaskFailed': 'Failed to create task file.',
+	'view.notice.createSubtaskFailed': 'Failed to create subtask.',
 	'view.notice.updateTaskSortFailed': 'Failed to update task list sorting.',
 	'view.notice.updateTaskGroupFailed': 'Failed to update task list grouping.',
 	'view.notice.updateProjectSortFailed':
@@ -201,6 +203,13 @@ const en = {
 	'task.type.fileName.plan': 'Plan',
 	'task.type.fileName.topic': 'Subject',
 	'modal.defaultDescription': 'Please enter a name.',
+	'modal.newSubtask.desc': 'Enter the subtask name.',
+	'modal.newNormalSubtask.title': 'New normal subtask',
+	'modal.newNormalSubtask.placeholder': 'Subtask name',
+	'modal.newTopicSubtask.title': 'New subject subtask',
+	'modal.newTopicSubtask.placeholder': 'Subtask name',
+	'modal.newPlanSubtask.title': 'New plan subtask',
+	'modal.newPlanSubtask.placeholder': 'Subtask name',
 	'modal.deleteTask.title': 'Delete task',
 	'modal.deleteTask.desc':
 		'Move "{0}" to the trash? This action can be restored from the trash.',
