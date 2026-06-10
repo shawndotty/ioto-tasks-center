@@ -94,6 +94,7 @@ const en = {
 	'view.search.run': 'Run task search',
 	'view.taskCoreMenu.set': 'Mark as core task',
 	'view.taskCoreMenu.clear': 'Clear core task mark',
+	'view.taskCoreBadge.label': 'Core task',
 	'view.taskPriorityMenu.clear': 'Clear priority',
 	'view.taskPriorityMenu.set': 'Set to {0}',
 	'view.taskPriorityMenu.currentSuffix': ' (current)',

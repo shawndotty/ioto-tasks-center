@@ -84,6 +84,7 @@ const zhTW = {
 	'view.search.run': '執行任務搜尋',
 	'view.taskCoreMenu.set': '標記為核心任務',
 	'view.taskCoreMenu.clear': '取消核心任務標記',
+	'view.taskCoreBadge.label': '核心任務',
 	'view.taskPriorityMenu.clear': '取消優先級',
 	'view.taskPriorityMenu.set': '設定為 {0}',
 	'view.taskPriorityMenu.currentSuffix': '（目前）',
@@ -184,7 +185,8 @@ const zhTW = {
 	'task.type.fileName.topic': '主題',
 	'modal.defaultDescription': '請輸入名稱。',
 	'modal.deleteTask.title': '刪除任務',
-	'modal.deleteTask.desc': '確認將「{0}」移到回收站嗎？之後仍可從回收站還原。',
+	'modal.deleteTask.desc':
+		'確認將「{0}」移到回收站嗎？之後仍可從回收站還原。',
 	'modal.deleteTask.confirm': '刪除',
 	'modal.confirm': '確認',
 	'modal.cancel': '取消',

@@ -84,6 +84,7 @@ const zhCN = {
 	'view.search.run': '执行任务搜索',
 	'view.taskCoreMenu.set': '标记为核心任务',
 	'view.taskCoreMenu.clear': '取消核心任务标记',
+	'view.taskCoreBadge.label': '核心任务',
 	'view.taskPriorityMenu.clear': '取消优先级',
 	'view.taskPriorityMenu.set': '设置为 {0}',
 	'view.taskPriorityMenu.currentSuffix': '（当前）',

@@ -1130,6 +1130,14 @@ export class IOTOTasksCenterView extends ItemView {
 				});
 				priorityEl.ariaLabel = `优先级：P${task.priority}`;
 			}
+			if (task.starred) {
+				const coreBadgeEl = rowEl.createSpan({
+					cls: 'ioto-tasks-center__task-core-badge',
+					text: '⭐',
+				});
+				coreBadgeEl.ariaLabel = t('view.taskCoreBadge.label');
+				coreBadgeEl.title = t('view.taskCoreBadge.label');
+			}
 			const statusEl = rowEl.createSpan({
 				cls: `ioto-tasks-center__task-status ioto-tasks-center__task-status--${task.status.key}`,
 				text: task.status.label,
