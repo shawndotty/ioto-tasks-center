@@ -965,11 +965,14 @@ button:not(.clickable-icon).ioto-tasks-center__task-row.is-active {
 	max-width: calc(100vw - 16px);
 	max-height: min(320px, calc(100vh - 16px));
 	padding: 10px;
+	padding-right: 14px;
+	box-sizing: border-box;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 12px;
 	background: var(--background-primary);
 	box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
-	overflow: auto;
+	overflow-x: hidden;
+	overflow-y: auto;
 }
 
 .ioto-tasks-center__outlink-popover-title {
@@ -988,6 +991,7 @@ button:not(.clickable-icon).ioto-tasks-center__task-row.is-active {
 	display: flex;
 	flex-direction: column;
 	gap: 0px;
+	padding-right: 4px;
 }
 
 button:not(.clickable-icon).ioto-tasks-center__outlink-popover-item {
@@ -1000,6 +1004,7 @@ button:not(.clickable-icon).ioto-tasks-center__outlink-popover-item {
 	display: flex;
 	justify-content: flex-start;
 	width: 100%;
+	box-sizing: border-box;
 	padding: 3px 8px;
 	border: 0;
 	border-radius: 10px;
@@ -1008,6 +1013,9 @@ button:not(.clickable-icon).ioto-tasks-center__outlink-popover-item {
 	color: var(--text-normal);
 	font-size: var(--font-ui-small);
 	text-align: left;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 	cursor: pointer;
 }
 
@@ -1024,11 +1032,14 @@ button:not(.clickable-icon).ioto-tasks-center__outlink-popover-item {
 	max-width: calc(100vw - 16px);
 	max-height: min(320px, calc(100vh - 16px));
 	padding: 10px;
+	padding-right: 14px;
+	box-sizing: border-box;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 12px;
 	background: var(--background-primary);
 	box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
-	overflow: auto;
+	overflow-x: hidden;
+	overflow-y: auto;
 }
 
 .ioto-tasks-center__status-checklist-popover-title {
@@ -1047,6 +1058,7 @@ button:not(.clickable-icon).ioto-tasks-center__outlink-popover-item {
 	display: flex;
 	flex-direction: column;
 	gap: 0px;
+	padding-right: 4px;
 }
 
 button:not(.clickable-icon).ioto-tasks-center__status-checklist-popover-item {
@@ -1059,6 +1071,7 @@ button:not(.clickable-icon).ioto-tasks-center__status-checklist-popover-item {
 	display: flex;
 	justify-content: flex-start;
 	width: 100%;
+	box-sizing: border-box;
 	padding: 3px 8px;
 	border: 0;
 	border-radius: 10px;
@@ -1066,6 +1079,9 @@ button:not(.clickable-icon).ioto-tasks-center__status-checklist-popover-item {
 	color: var(--text-normal);
 	font-size: var(--font-ui-small);
 	text-align: left;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 	cursor: pointer;
 }
 

@@ -21,7 +21,11 @@ export function truncateChecklistPreview(
 		return text;
 	}
 
-	return `${text.slice(0, maxLength)}...`;
+	if (maxLength <= 3) {
+		return '.'.repeat(Math.max(0, maxLength));
+	}
+
+	return `${text.slice(0, maxLength - 3)}...`;
 }
 
 export class TaskStatusChecklistPopover {
