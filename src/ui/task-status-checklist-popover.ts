@@ -13,19 +13,45 @@ export interface TaskStatusChecklistPopoverOpenOptions {
 	onItemClick: (item: TaskStatusChecklistPopoverItem) => void;
 }
 
+function getChecklistPreviewCharWidth(char: string): number {
+	return /[\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe10-\ufe19\ufe30-\ufe6f\uff00-\uff60\uffe0-\uffe6]/u.test(
+		char,
+	)
+		? 2
+		: 1;
+}
+
 export function truncateChecklistPreview(
 	text: string,
-	maxLength = 20,
+	maxDisplayWidth = 40,
 ): string {
-	if (text.length <= maxLength) {
+	let textDisplayWidth = 0;
+	for (const char of text) {
+		textDisplayWidth += getChecklistPreviewCharWidth(char);
+	}
+
+	if (textDisplayWidth <= maxDisplayWidth) {
 		return text;
 	}
 
-	if (maxLength <= 3) {
-		return '.'.repeat(Math.max(0, maxLength));
+	if (maxDisplayWidth <= 3) {
+		return '.'.repeat(Math.max(0, maxDisplayWidth));
 	}
 
-	return `${text.slice(0, maxLength - 3)}...`;
+	const ellipsisWidth = 3;
+	const availableWidth = maxDisplayWidth - ellipsisWidth;
+	let currentWidth = 0;
+	let truncated = '';
+	for (const char of text) {
+		const charWidth = getChecklistPreviewCharWidth(char);
+		if (currentWidth + charWidth > availableWidth) {
+			break;
+		}
+		truncated += char;
+		currentWidth += charWidth;
+	}
+
+	return `${truncated}...`;
 }
 
 export class TaskStatusChecklistPopover {

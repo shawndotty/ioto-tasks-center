@@ -1275,7 +1275,7 @@ export class IOTOTasksCenterView extends ItemView {
 		const items = (await getIncompleteChecklistItems(this.app, file)).map(
 			(item): TaskStatusChecklistPopoverItem => ({
 				...item,
-				displayText: truncateChecklistPreview(item.text, 20),
+				displayText: truncateChecklistPreview(item.text),
 			}),
 		);
 		popover.open({
