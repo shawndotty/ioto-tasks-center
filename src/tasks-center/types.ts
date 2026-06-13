@@ -64,6 +64,14 @@ export interface TaskFileStatus {
 	summary: string;
 }
 
+export interface IncompleteChecklistItem {
+	text: string;
+	line: number;
+	lineText: string;
+	selectionStartCh: number;
+	selectionEndCh: number;
+}
+
 export type TaskFileStatusKey = 'todo' | 'in-progress' | 'completed' | 'empty';
 
 export function getTaskStatusLabel(statusKey: TaskFileStatusKey): string {

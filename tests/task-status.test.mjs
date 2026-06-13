@@ -3,9 +3,8 @@ import test from 'node:test';
 import { createJiti } from 'jiti';
 
 const jiti = createJiti(import.meta.url, { moduleCache: false });
-const { getTaskFileStatusFromContent } = await jiti.import(
-	'../src/tasks-center/data.ts',
-);
+const { getTaskFileStatusFromContent, getIncompleteChecklistItemsFromContent } =
+	await jiti.import('../src/tasks-center/data.ts');
 
 test('正常含未完成任务的列表会判定为待开始', () => {
 	const status = getTaskFileStatusFromContent(`
@@ -77,4 +76,56 @@ test('仅含注释的空列表会判定为无任务项', () => {
 	assert.equal(status.key, 'empty');
 	assert.equal(status.totalTaskCount, 0);
 	assert.equal(status.completedTaskCount, 0);
+});
+
+test('可以提取未完成 checklist，并返回行号与选区', () => {
+	const items = getIncompleteChecklistItemsFromContent(`
+- [ ] 第一项任务
+- [x] 已完成任务
+  - [ ] 第二项任务
+`);
+
+	assert.deepEqual(
+		items.map((item) => ({
+			text: item.text,
+			line: item.line,
+			start: item.selectionStartCh,
+			end: item.selectionEndCh,
+		})),
+		[
+			{
+				text: '第一项任务',
+				line: 1,
+				start: 6,
+				end: 11,
+			},
+			{
+				text: '第二项任务',
+				line: 3,
+				start: 8,
+				end: 13,
+			},
+		],
+	);
+});
+
+test('注释块和空白 checklist 不会进入未完成列表', () => {
+	const items = getIncompleteChecklistItemsFromContent(`
+%%
+- [ ] 注释里的任务
+%%
+
+<!--
+- [ ] HTML 注释里的任务
+-->
+
+- [ ]    
+- [ ] 有效任务
+`);
+
+	assert.deepEqual(
+		items.map((item) => item.text),
+		['有效任务'],
+	);
+	assert.equal(items[0]?.line, 10);
 });

@@ -2,6 +2,7 @@ import {
 	FileView,
 	type HoverPopover,
 	ItemView,
+	MarkdownView,
 	Menu,
 	Notice,
 	setIcon,
@@ -9,7 +10,11 @@ import {
 	WorkspaceLeaf,
 } from 'obsidian';
 
-import { listProjectFolders, listProjectTaskFiles } from '../tasks-center/data';
+import {
+	getIncompleteChecklistItems,
+	listProjectFolders,
+	listProjectTaskFiles,
+} from '../tasks-center/data';
 import { createProjectFolder } from '../tasks-center/project-creation';
 import {
 	filterHiddenProjectEntries,
@@ -57,6 +62,7 @@ import {
 } from '../settings';
 import { t } from '../lang/helpter';
 import type {
+	IncompleteChecklistItem,
 	ProjectFolderEntry,
 	ProjectListResult,
 	TaskFileEntry,
@@ -67,6 +73,11 @@ import {
 	type TaskOutlinkCategory,
 	type TaskOutlinkPopoverItem,
 } from '../ui/task-outlink-popover';
+import {
+	TaskStatusChecklistPopover,
+	type TaskStatusChecklistPopoverItem,
+	truncateChecklistPreview,
+} from '../ui/task-status-checklist-popover';
 import { ConfirmModal } from '../ui/confirmModal';
 import { TaskSearchPopover } from '../ui/task-search-popover';
 import { TaskNameModal } from '../ui/taskNameModal';
@@ -138,6 +149,8 @@ export class IOTOTasksCenterView extends ItemView {
 			hoverPopover: null,
 		};
 	private outlinkPopover: TaskOutlinkPopover | null = null;
+	private taskStatusChecklistPopover: TaskStatusChecklistPopover | null =
+		null;
 	private taskSearchPopover: TaskSearchPopover | null = null;
 	private readonly pendingOutlinkBadgeUpdates = new Set<string>();
 	private outlinkBadgeUpdateTimer: number | null = null;
@@ -271,6 +284,9 @@ export class IOTOTasksCenterView extends ItemView {
 			this.contentEl.ownerDocument,
 			this.app.workspace,
 		);
+		this.taskStatusChecklistPopover = new TaskStatusChecklistPopover(
+			this.contentEl.ownerDocument,
+		);
 		this.taskSearchPopover = new TaskSearchPopover(
 			this.contentEl.ownerDocument,
 		);
@@ -294,6 +310,8 @@ export class IOTOTasksCenterView extends ItemView {
 	async onClose(): Promise<void> {
 		this.outlinkPopover?.destroy();
 		this.outlinkPopover = null;
+		this.taskStatusChecklistPopover?.destroy();
+		this.taskStatusChecklistPopover = null;
 		this.taskSearchPopover?.destroy();
 		this.taskSearchPopover = null;
 		this.isTaskSearchPopoverOpen = false;
@@ -339,6 +357,7 @@ export class IOTOTasksCenterView extends ItemView {
 
 	async refreshFromVaultChange(): Promise<void> {
 		this.outlinkPopover?.close();
+		this.taskStatusChecklistPopover?.close();
 		if (this.shouldDeferVaultRefresh()) {
 			this.pendingVaultRefresh = true;
 			this.scheduleDeferredVaultRefresh();
@@ -470,6 +489,7 @@ export class IOTOTasksCenterView extends ItemView {
 
 	private render(): void {
 		this.outlinkPopover?.close();
+		this.taskStatusChecklistPopover?.close();
 		this.projectListScrollTop = captureProjectListScrollTop(
 			this.contentEl,
 			this.projectListScrollTop,
@@ -1145,6 +1165,12 @@ export class IOTOTasksCenterView extends ItemView {
 				text: task.status.label,
 			});
 			statusEl.ariaLabel = `任务状态：${task.status.label}`;
+			if (
+				task.status.key === 'todo' ||
+				task.status.key === 'in-progress'
+			) {
+				this.bindTaskStatusChecklistPopover(statusEl, task);
+			}
 
 			rowEl.addEventListener('click', () => {
 				void this.openTaskFile(task);
@@ -1153,7 +1179,8 @@ export class IOTOTasksCenterView extends ItemView {
 				const target = event.target;
 				if (
 					target instanceof HTMLElement &&
-					target.closest('.ioto-tasks-center__task-outlink-count')
+					(target.closest('.ioto-tasks-center__task-outlink-count') ||
+						target.closest('.ioto-tasks-center__task-status'))
 				) {
 					return;
 				}
@@ -1214,6 +1241,65 @@ export class IOTOTasksCenterView extends ItemView {
 			event.stopPropagation();
 			popover.scheduleClose();
 		});
+	}
+
+	private bindTaskStatusChecklistPopover(
+		badgeEl: HTMLElement,
+		task: TaskFileEntry,
+	): void {
+		const popover = this.taskStatusChecklistPopover;
+		if (!popover) {
+			return;
+		}
+
+		badgeEl.addEventListener('mouseenter', (event) => {
+			event.stopPropagation();
+			void this.openTaskStatusChecklistPopover(badgeEl, task, popover);
+		});
+		badgeEl.addEventListener('mouseleave', (event) => {
+			event.stopPropagation();
+			popover.scheduleClose();
+		});
+	}
+
+	private async openTaskStatusChecklistPopover(
+		badgeEl: HTMLElement,
+		task: TaskFileEntry,
+		popover: TaskStatusChecklistPopover,
+	): Promise<void> {
+		const file = this.app.vault.getAbstractFileByPath(task.path);
+		if (!(file instanceof TFile)) {
+			return;
+		}
+
+		const items = (await getIncompleteChecklistItems(this.app, file)).map(
+			(item): TaskStatusChecklistPopoverItem => ({
+				...item,
+				displayText: truncateChecklistPreview(item.text, 20),
+			}),
+		);
+		popover.open({
+			anchorEl: badgeEl,
+			title: this.getTaskStatusChecklistPopoverTitle(task.status.key),
+			emptyText: t('task.status.popover.empty'),
+			items,
+			onItemClick: (item) => {
+				void this.openTaskFileAtChecklist(task.path, item);
+			},
+		});
+	}
+
+	private getTaskStatusChecklistPopoverTitle(
+		statusKey: TaskFileEntry['status']['key'],
+	): string {
+		switch (statusKey) {
+			case 'todo':
+				return t('task.status.popover.todoTitle');
+			case 'in-progress':
+				return t('task.status.popover.inProgressTitle');
+			default:
+				return t('task.status.popover.empty');
+		}
 	}
 
 	private getTaskOutlinkPopoverTitle(category: TaskOutlinkCategory): string {
@@ -2911,6 +2997,73 @@ export class IOTOTasksCenterView extends ItemView {
 		}
 
 		await this.openFileInPreview(file);
+	}
+
+	private async openTaskFileAtChecklist(
+		taskPath: string,
+		item: IncompleteChecklistItem,
+	): Promise<void> {
+		const file = this.app.vault.getAbstractFileByPath(taskPath);
+		if (!(file instanceof TFile)) {
+			return;
+		}
+
+		this.openingTaskPath = file.path;
+		this.render();
+
+		try {
+			const leaf = this.ensurePreviewLeaf();
+			await leaf.setViewState({
+				type: 'markdown',
+				active: true,
+				state: {
+					file: file.path,
+					mode: 'source',
+				},
+			});
+			this.previewLeaf = leaf;
+			this.openedTaskPath = file.path;
+			if (this.selectedProject) {
+				this.lastOpenedTaskByProject.set(
+					this.selectedProject,
+					file.path,
+				);
+			}
+
+			this.app.workspace.setActiveLeaf(leaf, { focus: true });
+			const view = leaf.view;
+			if (
+				!(view instanceof MarkdownView) ||
+				view.file?.path !== file.path
+			) {
+				return;
+			}
+
+			const editor = view.editor;
+			const lastLine = editor.lastLine();
+			const line = Math.max(0, Math.min(item.line, lastLine));
+			const lineText = editor.getLine(line);
+			const startCh = Math.max(
+				0,
+				Math.min(item.selectionStartCh, lineText.length),
+			);
+			const fallbackEndCh = lineText.trimEnd().length;
+			const endCh = Math.max(
+				startCh,
+				Math.min(
+					Math.max(item.selectionEndCh, fallbackEndCh),
+					lineText.length,
+				),
+			);
+
+			editor.setSelection({ line, ch: startCh }, { line, ch: endCh });
+			editor.focus();
+		} catch {
+			await this.openFileInPreview(file);
+		} finally {
+			this.openingTaskPath = null;
+			this.render();
+		}
 	}
 
 	private async updateTaskPriority(

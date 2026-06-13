@@ -166,6 +166,10 @@ const en = {
 	'task.status.inProgress': 'In progress',
 	'task.status.completed': 'Completed',
 	'task.status.empty': 'No tasks',
+	'task.status.popover.todoTitle': 'Incomplete checklists for to-do tasks',
+	'task.status.popover.inProgressTitle':
+		'Incomplete checklists for in-progress tasks',
+	'task.status.popover.empty': 'No incomplete checklist items.',
 	'task.status.summary.empty': 'No checkbox tasks detected',
 	'task.status.summary.completed': '{0}/{1} completed',
 	'task.status.summary.todo': '{0} pending',

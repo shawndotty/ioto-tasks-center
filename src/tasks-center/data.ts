@@ -3,6 +3,7 @@ import { App, TFile, TFolder } from 'obsidian';
 import {
 	buildTaskStatusSummary,
 	getTaskStatusLabel,
+	IncompleteChecklistItem,
 	ProjectFolderEntry,
 	ProjectListResult,
 	TaskFileEntry,
@@ -11,8 +12,6 @@ import {
 } from './types';
 import { PROJECT_METADATA_FILE_NAME } from './project-metadata';
 
-const OBSIDIAN_COMMENT_BLOCK_PATTERN = /%%[\s\S]*?%%/g;
-const HTML_COMMENT_BLOCK_PATTERN = /<!--[\s\S]*?-->/g;
 const TASK_LINE_PATTERN = /^\s*(?:[-*+]|\d+\.)\s+\[([ xX])\](.*)$/;
 
 export function isProjectTaskMarkdownFileName(fileName: string): boolean {
@@ -422,29 +421,180 @@ function getTaskFileStatusFromMetadataCache(
 }
 
 export function getTaskFileStatusFromContent(content: string): TaskFileStatus {
-	const taskMarkers = collectTaskMarkers(content);
+	const taskMarkers = collectChecklistEntries(content).map(
+		(entry) => entry.marker,
+	);
 	return buildTaskFileStatus(taskMarkers);
 }
 
-function collectTaskMarkers(content: string): string[] {
-	const sanitizedContent = stripIgnoredContent(content);
-	return sanitizedContent
-		.split('\n')
-		.map((line) => line.match(TASK_LINE_PATTERN))
-		.filter((match): match is RegExpMatchArray =>
-			Boolean(match && hasEffectiveTaskContent(match[2] ?? '')),
-		)
-		.map((match) => match[1] ?? ' ');
+export async function getIncompleteChecklistItems(
+	app: App,
+	file: TFile,
+): Promise<IncompleteChecklistItem[]> {
+	try {
+		const content = await app.vault.cachedRead(file);
+		return getIncompleteChecklistItemsFromContent(content);
+	} catch {
+		return [];
+	}
 }
 
-function stripIgnoredContent(content: string): string {
-	return content
-		.replace(OBSIDIAN_COMMENT_BLOCK_PATTERN, '\n')
-		.replace(HTML_COMMENT_BLOCK_PATTERN, '\n');
+export function getIncompleteChecklistItemsFromContent(
+	content: string,
+): IncompleteChecklistItem[] {
+	return collectChecklistEntries(content)
+		.filter((entry) => entry.marker.trim() === '')
+		.map((entry) => ({
+			text: entry.text,
+			line: entry.line,
+			lineText: entry.lineText,
+			selectionStartCh: entry.selectionStartCh,
+			selectionEndCh: entry.selectionEndCh,
+		}));
 }
 
 function hasEffectiveTaskContent(taskContent: string): boolean {
 	return taskContent.trim().length > 0;
+}
+
+interface ParsedChecklistEntry extends IncompleteChecklistItem {
+	marker: string;
+}
+
+function collectChecklistEntries(content: string): ParsedChecklistEntry[] {
+	const lines = content.split(/\r?\n/);
+	const entries: ParsedChecklistEntry[] = [];
+	let inObsidianComment = false;
+	let inHtmlComment = false;
+
+	for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+		const originalLine = lines[lineIndex] ?? '';
+		const line = stripCommentContentFromLine(originalLine, {
+			inObsidianComment,
+			inHtmlComment,
+		});
+		inObsidianComment = line.nextInObsidianComment;
+		inHtmlComment = line.nextInHtmlComment;
+
+		if (line.sanitized.trim().length === 0) {
+			continue;
+		}
+
+		const match = line.sanitized.match(TASK_LINE_PATTERN);
+		if (!match) {
+			continue;
+		}
+
+		const rawTaskContent = match[2] ?? '';
+		if (!hasEffectiveTaskContent(rawTaskContent)) {
+			continue;
+		}
+
+		const trimmedText = rawTaskContent.trim();
+		const leadingWhitespaceLength =
+			rawTaskContent.length - rawTaskContent.trimStart().length;
+		const trailingWhitespaceLength =
+			rawTaskContent.length - rawTaskContent.trimEnd().length;
+		const rawSelectionStart =
+			originalLine.length -
+			rawTaskContent.length +
+			leadingWhitespaceLength;
+		const rawSelectionEnd = originalLine.length - trailingWhitespaceLength;
+
+		entries.push({
+			marker: match[1] ?? ' ',
+			text: trimmedText,
+			line: lineIndex,
+			lineText: originalLine,
+			selectionStartCh: Math.max(0, rawSelectionStart),
+			selectionEndCh: Math.max(
+				Math.max(0, rawSelectionStart),
+				rawSelectionEnd,
+			),
+		});
+	}
+
+	return entries;
+}
+
+function stripCommentContentFromLine(
+	line: string,
+	state: {
+		inObsidianComment: boolean;
+		inHtmlComment: boolean;
+	},
+): {
+	sanitized: string;
+	nextInObsidianComment: boolean;
+	nextInHtmlComment: boolean;
+} {
+	let sanitized = '';
+	let cursor = 0;
+	let nextInObsidianComment = state.inObsidianComment;
+	let nextInHtmlComment = state.inHtmlComment;
+
+	while (cursor < line.length) {
+		if (nextInObsidianComment) {
+			const commentEnd = line.indexOf('%%', cursor);
+			if (commentEnd === -1) {
+				return {
+					sanitized,
+					nextInObsidianComment: true,
+					nextInHtmlComment,
+				};
+			}
+			cursor = commentEnd + 2;
+			nextInObsidianComment = false;
+			continue;
+		}
+
+		if (nextInHtmlComment) {
+			const commentEnd = line.indexOf('-->', cursor);
+			if (commentEnd === -1) {
+				return {
+					sanitized,
+					nextInObsidianComment,
+					nextInHtmlComment: true,
+				};
+			}
+			cursor = commentEnd + 3;
+			nextInHtmlComment = false;
+			continue;
+		}
+
+		const nextObsidianComment = line.indexOf('%%', cursor);
+		const nextHtmlComment = line.indexOf('<!--', cursor);
+		const hasObsidianComment = nextObsidianComment !== -1;
+		const hasHtmlComment = nextHtmlComment !== -1;
+
+		if (!hasObsidianComment && !hasHtmlComment) {
+			sanitized += line.slice(cursor);
+			break;
+		}
+
+		const nextCommentStart =
+			hasObsidianComment && hasHtmlComment
+				? Math.min(nextObsidianComment, nextHtmlComment)
+				: hasObsidianComment
+					? nextObsidianComment
+					: nextHtmlComment;
+
+		sanitized += line.slice(cursor, nextCommentStart);
+		if (nextCommentStart === nextObsidianComment) {
+			cursor = nextCommentStart + 2;
+			nextInObsidianComment = true;
+			continue;
+		}
+
+		cursor = nextCommentStart + 4;
+		nextInHtmlComment = true;
+	}
+
+	return {
+		sanitized,
+		nextInObsidianComment,
+		nextInHtmlComment,
+	};
 }
 
 function buildTaskFileStatus(taskMarkers: string[]): TaskFileStatus {
