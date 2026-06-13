@@ -4,6 +4,7 @@ import { createJiti } from 'jiti';
 
 const jiti = createJiti(import.meta.url, { moduleCache: false });
 const {
+	getTaskFilterTabs,
 	getTaskFilterCounts,
 	isTaskCreatedToday,
 	isTaskFilterTab,
@@ -39,6 +40,13 @@ test('today 是合法的任务筛选 tab', () => {
 
 test('core 是合法的任务筛选 tab', () => {
 	assert.equal(isTaskFilterTab('core'), true);
+});
+
+test('任务筛选 tab 默认顺序以 core 开头', () => {
+	assert.deepEqual(
+		getTaskFilterTabs().map((tab) => tab.key),
+		['core', 'today', 'incomplete', 'completed', 'all'],
+	);
 });
 
 test('今天创建的任务会匹配 today tab', () => {

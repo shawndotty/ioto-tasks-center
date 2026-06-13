@@ -13,11 +13,11 @@ export function getTaskFilterTabs(): Array<{
 	label: string;
 }> {
 	return [
+		{ key: 'core', label: t('task.filter.core') },
 		{ key: 'today', label: t('task.filter.today') },
 		{ key: 'incomplete', label: t('task.filter.incomplete') },
 		{ key: 'completed', label: t('task.filter.completed') },
 		{ key: 'all', label: t('task.filter.all') },
-		{ key: 'core', label: t('task.filter.core') },
 	];
 }
 

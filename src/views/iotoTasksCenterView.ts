@@ -120,7 +120,7 @@ export class IOTOTasksCenterView extends ItemView {
 	private projectCategoryByName = new Map<string, string>();
 	private selectedProject: string | null = null;
 	private tasks: TaskFileEntry[] = [];
-	private activeTaskFilterTab: TaskFilterTab = 'today';
+	private activeTaskFilterTab: TaskFilterTab = 'core';
 	private taskSearchQuery = '';
 	private taskSearchInputValue = '';
 	private isTaskSearchPopoverOpen = false;
@@ -326,7 +326,7 @@ export class IOTOTasksCenterView extends ItemView {
 		const viewState = parseViewState(state);
 		this.selectedProject = viewState.selectedProject ?? null;
 		this.openedTaskPath = viewState.openedTaskPath ?? null;
-		this.activeTaskFilterTab = viewState.activeTaskFilterTab ?? 'today';
+		this.activeTaskFilterTab = viewState.activeTaskFilterTab ?? 'core';
 		this.taskSearchQuery = viewState.taskSearchQuery ?? '';
 		this.taskSearchInputValue =
 			viewState.taskSearchInputValue ?? this.taskSearchQuery;
