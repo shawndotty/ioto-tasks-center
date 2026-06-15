@@ -104,13 +104,19 @@ import {
 	restoreTaskListScrollTop,
 	TASK_LIST_SELECTOR,
 } from './task-list-scroll';
-import { buildVisibleTaskHierarchy } from './task-hierarchy';
+import {
+	buildDirectChildTasksByParentPath,
+	buildVisibleTaskHierarchy,
+} from './task-hierarchy';
 import {
 	buildTaskHoverPreviewPayload,
 	hasActiveTaskHoverPopover,
 	shouldTriggerTaskHoverPreview,
 } from './task-hover-preview';
-import { buildTaskPresentationSections } from './task-list-presentation';
+import {
+	buildTaskPresentationSections,
+	sortTasksForPresentation,
+} from './task-list-presentation';
 import { filterTasksBySearchQuery } from './task-search';
 import { resolveCurrentTaskContext } from '../tasks-center/selected-text-subtask';
 
@@ -185,6 +191,7 @@ export class IOTOTasksCenterView extends ItemView {
 	private readonly getInputRootPath: () => string;
 	private readonly getOutputRootPath: () => string;
 	private readonly getOutcomeRootPath: () => string;
+	private readonly getShowTaskSubtaskCount: () => boolean;
 	private readonly getShowTaskOutlinkCounts: () => boolean;
 	private readonly getShowTaskInputOutlinkCount: () => boolean;
 	private readonly getShowTaskOutputOutlinkCount: () => boolean;
@@ -220,6 +227,7 @@ export class IOTOTasksCenterView extends ItemView {
 		getInputRootPath: () => string,
 		getOutputRootPath: () => string,
 		getOutcomeRootPath: () => string,
+		getShowTaskSubtaskCount: () => boolean,
 		getShowTaskOutlinkCounts: () => boolean,
 		getShowTaskInputOutlinkCount: () => boolean,
 		getShowTaskOutputOutlinkCount: () => boolean,
@@ -251,6 +259,7 @@ export class IOTOTasksCenterView extends ItemView {
 		this.getInputRootPath = getInputRootPath;
 		this.getOutputRootPath = getOutputRootPath;
 		this.getOutcomeRootPath = getOutcomeRootPath;
+		this.getShowTaskSubtaskCount = getShowTaskSubtaskCount;
 		this.getShowTaskOutlinkCounts = getShowTaskOutlinkCounts;
 		this.getShowTaskInputOutlinkCount = getShowTaskInputOutlinkCount;
 		this.getShowTaskOutputOutlinkCount = getShowTaskOutputOutlinkCount;
@@ -925,6 +934,10 @@ export class IOTOTasksCenterView extends ItemView {
 			void this.handleRemoveUpTaskDrop(event, removeZoneEl);
 		});
 
+		const directChildTasksByParentPath = this.getShowTaskSubtaskCount()
+			? this.buildDirectChildTasksForCurrentProject()
+			: null;
+
 		for (const section of presentationSections) {
 			const sectionEl = listEl.createDiv({
 				cls: 'ioto-tasks-center__task-group',
@@ -934,6 +947,7 @@ export class IOTOTasksCenterView extends ItemView {
 					sectionEl,
 					buildVisibleTaskHierarchy(section.tasks),
 					activeTaskPath,
+					directChildTasksByParentPath,
 				);
 				continue;
 			}
@@ -985,6 +999,7 @@ export class IOTOTasksCenterView extends ItemView {
 				groupBodyEl,
 				buildVisibleTaskHierarchy(section.tasks),
 				activeTaskPath,
+				directChildTasksByParentPath,
 			);
 		}
 
@@ -995,6 +1010,10 @@ export class IOTOTasksCenterView extends ItemView {
 		container: HTMLElement,
 		tasks: TaskFileEntry[],
 		activeTaskPath: string | null,
+		directChildTasksByParentPath: ReadonlyMap<
+			string,
+			TaskFileEntry[]
+		> | null,
 	): void {
 		const collapsedIndentStack: number[] = [];
 		for (let i = 0; i < tasks.length; i++) {
@@ -1078,6 +1097,20 @@ export class IOTOTasksCenterView extends ItemView {
 				cls: 'ioto-tasks-center__task-title-text',
 				text: task.title,
 			});
+			if (this.getShowTaskSubtaskCount()) {
+				const childTasks =
+					directChildTasksByParentPath?.get(task.path) ?? [];
+				if (childTasks.length > 0) {
+					const badgeEl = titleEl.createSpan({
+						cls: 'ioto-tasks-center__task-outlink-count ioto-tasks-center__task-subtask-count',
+						text: String(childTasks.length),
+					});
+					badgeEl.ariaLabel = t('task.subtasks.badge', [
+						String(childTasks.length),
+					]);
+					this.bindTaskSubtaskPopover(badgeEl, childTasks);
+				}
+			}
 			if (this.getShowTaskOutlinkCounts()) {
 				const showInput = this.getShowTaskInputOutlinkCount();
 				const showOutput = this.getShowTaskOutputOutlinkCount();
@@ -1213,6 +1246,64 @@ export class IOTOTasksCenterView extends ItemView {
 				collapsedIndentStack.push(indentLevel);
 			}
 		}
+	}
+
+	private buildDirectChildTasksForCurrentProject(): Map<
+		string,
+		TaskFileEntry[]
+	> {
+		const orderedTasks = buildVisibleTaskHierarchy(
+			sortTasksForPresentation(this.tasks, this.getTaskListSortMode()),
+		);
+		return buildDirectChildTasksByParentPath(orderedTasks);
+	}
+
+	private bindTaskSubtaskPopover(
+		badgeEl: HTMLElement,
+		childTasks: TaskFileEntry[],
+	): void {
+		const popover = this.outlinkPopover;
+		if (!popover) {
+			return;
+		}
+
+		badgeEl.addEventListener('mouseenter', (event) => {
+			event.stopPropagation();
+			const items = this.getTaskSubtaskPopoverItems(childTasks);
+			popover.open({
+				anchorEl: badgeEl,
+				categoryTitle: t('task.subtasks.popover.title'),
+				emptyText: t('task.subtasks.popover.empty'),
+				items,
+				onItemClick: (file) => {
+					void this.openFileInPreview(file);
+				},
+			});
+		});
+		badgeEl.addEventListener('mouseleave', (event) => {
+			event.stopPropagation();
+			popover.scheduleClose();
+		});
+	}
+
+	private getTaskSubtaskPopoverItems(
+		childTasks: TaskFileEntry[],
+	): TaskOutlinkPopoverItem[] {
+		const items: TaskOutlinkPopoverItem[] = [];
+		for (const task of childTasks) {
+			const file = this.app.vault.getAbstractFileByPath(task.path);
+			if (!(file instanceof TFile)) {
+				continue;
+			}
+
+			items.push({
+				path: task.path,
+				title: task.title,
+				file,
+			});
+		}
+
+		return items;
 	}
 
 	private bindTaskOutlinkPopover(

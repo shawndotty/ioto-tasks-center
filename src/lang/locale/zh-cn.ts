@@ -180,6 +180,9 @@ const zhCN = {
 	'task.outlinks.popover.title.output': '输出出链',
 	'task.outlinks.popover.title.outcome': '成果出链',
 	'task.outlinks.popover.empty': '暂无出链。',
+	'task.subtasks.badge': '子任务：{0}',
+	'task.subtasks.popover.title': '子任务',
+	'task.subtasks.popover.empty': '暂无子任务。',
 	'task.template.source.file': '使用模板文件',
 	'task.template.source.inline': '直接输入模板内容',
 	'task.type.date': '日期任务',
@@ -255,6 +258,10 @@ const zhCN = {
 	'settings.taskOutlinks.outcome.name': '显示成果出链数量',
 	'settings.taskOutlinks.outcome.desc':
 		'显示指向成果笔记根目录下的（去重后的）出链数量。',
+	'settings.heading.subtasks': '子任务',
+	'settings.subtasks.showCount.name': '显示子任务数量',
+	'settings.subtasks.showCount.desc':
+		'在任务列表中显示每个任务的直接子任务数量，并在悬浮时展示子任务列表。',
 	'settings.heading.projectSort': '项目列表排序',
 	'settings.projectSort.name': '排序规则',
 	'settings.projectSort.desc':

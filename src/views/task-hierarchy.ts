@@ -1,8 +1,8 @@
 import type { TaskFileEntry } from '../tasks-center/types';
 
-export function buildVisibleTaskHierarchy(
+export function buildDirectChildTasksByParentPath(
 	tasks: TaskFileEntry[],
-): TaskFileEntry[] {
+): Map<string, TaskFileEntry[]> {
 	const taskByPath = new Map(tasks.map((task) => [task.path, task] as const));
 	const firstTaskPathByTitle = new Map<string, string>();
 	for (const task of tasks) {
@@ -30,6 +30,14 @@ export function buildVisibleTaskHierarchy(
 		childTasks.push(task);
 		childTasksByParentPath.set(parentPath, childTasks);
 	}
+
+	return childTasksByParentPath;
+}
+
+export function buildVisibleTaskHierarchy(
+	tasks: TaskFileEntry[],
+): TaskFileEntry[] {
+	const childTasksByParentPath = buildDirectChildTasksByParentPath(tasks);
 
 	const visitedTaskPaths = new Set<string>();
 	const orderedTasks: TaskFileEntry[] = [];
@@ -60,6 +68,21 @@ export function buildVisibleTaskHierarchy(
 			appendTask(childTask, indentLevel + 1, nextPathSet);
 		}
 	};
+
+	const taskByPath = new Map(tasks.map((task) => [task.path, task] as const));
+	const firstTaskPathByTitle = new Map<string, string>();
+	for (const task of tasks) {
+		if (!firstTaskPathByTitle.has(task.title)) {
+			firstTaskPathByTitle.set(task.title, task.path);
+		}
+	}
+	const parentPathByTaskPath = new Map<string, string>();
+	for (const task of tasks) {
+		const parentPath = resolveParentPath(task, firstTaskPathByTitle);
+		if (parentPath && parentPath !== task.path && taskByPath.has(parentPath)) {
+			parentPathByTaskPath.set(task.path, parentPath);
+		}
+	}
 
 	for (const task of tasks) {
 		if (!parentPathByTaskPath.has(task.path)) {

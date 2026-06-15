@@ -197,6 +197,9 @@ const en = {
 	'task.outlinks.popover.title.output': 'Output outlinks',
 	'task.outlinks.popover.title.outcome': 'Outcome outlinks',
 	'task.outlinks.popover.empty': 'No outgoing links.',
+	'task.subtasks.badge': 'Subtasks: {0}',
+	'task.subtasks.popover.title': 'Subtasks',
+	'task.subtasks.popover.empty': 'No subtasks.',
 	'task.template.source.file': 'Use template file',
 	'task.template.source.inline': 'Enter template content directly',
 	'task.type.date': 'Date task',
@@ -273,6 +276,10 @@ const en = {
 	'settings.taskOutlinks.outcome.name': 'Show outcome outlinks count',
 	'settings.taskOutlinks.outcome.desc':
 		'Show how many unique outgoing links target notes under the outcome notes root path.',
+	'settings.heading.subtasks': 'Subtasks',
+	'settings.subtasks.showCount.name': 'Show subtask count',
+	'settings.subtasks.showCount.desc':
+		'Show direct subtask counts in the task list and display subtasks in a hover popover.',
 	'settings.heading.projectSort': 'Project list sorting',
 	'settings.projectSort.name': 'Sorting rule',
 	'settings.projectSort.desc':

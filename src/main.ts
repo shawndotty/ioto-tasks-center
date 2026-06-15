@@ -62,6 +62,7 @@ export default class IOTOTasksCenter extends Plugin {
 					() => this.settings.inputRootPath,
 					() => this.settings.outputRootPath,
 					() => this.settings.outcomeRootPath,
+					() => this.settings.showTaskSubtaskCount,
 					() => this.settings.showTaskOutlinkCounts,
 					() => this.settings.showTaskInputOutlinkCount,
 					() => this.settings.showTaskOutputOutlinkCount,
@@ -256,6 +257,16 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.showTaskOutlinkCounts = show;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateShowTaskSubtaskCount(show: boolean): Promise<void> {
+		if (this.settings.showTaskSubtaskCount === show) {
+			return;
+		}
+
+		this.settings.showTaskSubtaskCount = show;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}

@@ -49,6 +49,7 @@ export interface IOTOTasksCenterSettings {
 	taskListSortMode: TaskListSortMode;
 	taskListGroupMode: TaskListGroupMode;
 	showTaskPriority: boolean;
+	showTaskSubtaskCount: boolean;
 	showTaskOutlinkCounts: boolean;
 	showTaskInputOutlinkCount: boolean;
 	showTaskOutputOutlinkCount: boolean;
@@ -70,6 +71,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	taskListSortMode: 'created-desc',
 	taskListGroupMode: 'none',
 	showTaskPriority: false,
+	showTaskSubtaskCount: true,
 	showTaskOutlinkCounts: false,
 	showTaskInputOutlinkCount: true,
 	showTaskOutputOutlinkCount: true,
@@ -361,6 +363,21 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 							await this.plugin.updateShowTaskOutcomeOutlinkCount(
 								value,
 							);
+						}),
+				);
+
+			new Setting(containerEl)
+				.setName(t('settings.heading.subtasks'))
+				.setHeading();
+
+			new Setting(containerEl)
+				.setName(t('settings.subtasks.showCount.name'))
+				.setDesc(t('settings.subtasks.showCount.desc'))
+				.addToggle((toggle) =>
+					toggle
+						.setValue(this.plugin.settings.showTaskSubtaskCount)
+						.onChange(async (value) => {
+							await this.plugin.updateShowTaskSubtaskCount(value);
 						}),
 				);
 

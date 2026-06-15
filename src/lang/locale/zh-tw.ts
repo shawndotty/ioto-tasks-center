@@ -180,6 +180,9 @@ const zhTW = {
 	'task.outlinks.popover.title.output': '輸出出鏈',
 	'task.outlinks.popover.title.outcome': '成果出鏈',
 	'task.outlinks.popover.empty': '暫無出鏈。',
+	'task.subtasks.badge': '子任務：{0}',
+	'task.subtasks.popover.title': '子任務',
+	'task.subtasks.popover.empty': '暫無子任務。',
 	'task.template.source.file': '使用模板檔案',
 	'task.template.source.inline': '直接輸入模板內容',
 	'task.type.date': '日期任務',
@@ -256,6 +259,10 @@ const zhTW = {
 	'settings.taskOutlinks.outcome.name': '顯示成果出鏈數量',
 	'settings.taskOutlinks.outcome.desc':
 		'顯示指向成果筆記根目錄下的（去重後）出鏈數量。',
+	'settings.heading.subtasks': '子任務',
+	'settings.subtasks.showCount.name': '顯示子任務數量',
+	'settings.subtasks.showCount.desc':
+		'在任務列表中顯示每個任務的直接子任務數量，並在懸浮時顯示子任務列表。',
 	'settings.heading.projectSort': '專案列表排序',
 	'settings.projectSort.name': '排序規則',
 	'settings.projectSort.desc':
