@@ -79,6 +79,7 @@ import {
 	truncateChecklistPreview,
 } from '../ui/task-status-checklist-popover';
 import { ConfirmModal } from '../ui/confirmModal';
+import { TaskCreationModal } from '../ui/taskCreationModal';
 import { TaskSearchPopover } from '../ui/task-search-popover';
 import { TaskNameModal } from '../ui/taskNameModal';
 import {
@@ -2127,6 +2128,8 @@ export class IOTOTasksCenterView extends ItemView {
 		}
 
 		let customName: string | undefined;
+		let createdPriority: TaskPriorityValue | null = null;
+		let createdStarred = false;
 		if (type !== 'date') {
 			const taskTypeTexts =
 				type === 'plan'
@@ -2143,7 +2146,7 @@ export class IOTOTasksCenterView extends ItemView {
 								title: t('modal.newNormalTask.title'),
 								label: t('modal.newNormalTask.placeholder'),
 							};
-			const customNameResult = await new TaskNameModal(
+			const modalResult = await new TaskCreationModal(
 				this.app,
 				taskTypeTexts.title,
 				taskTypeTexts.label,
@@ -2152,10 +2155,12 @@ export class IOTOTasksCenterView extends ItemView {
 					confirmButtonText: t('modal.create'),
 				},
 			).openAndGetValue();
-			if (!customNameResult) {
+			if (!modalResult) {
 				return;
 			}
-			customName = customNameResult;
+			customName = modalResult.name ?? undefined;
+			createdPriority = modalResult.priority;
+			createdStarred = modalResult.starred;
 		}
 
 		this.isCreatingTask = true;
@@ -2174,6 +2179,12 @@ export class IOTOTasksCenterView extends ItemView {
 				targetLeaf: previewLeaf,
 				sourceLeaf: this.leaf,
 			});
+			if (type !== 'date') {
+				await this.applyCreatedTaskSettings(result.file, {
+					priority: createdPriority,
+					starred: createdStarred,
+				});
+			}
 			this.previewLeaf = previewLeaf;
 			this.lastOpenedTaskByProject.set(projectName, result.file.path);
 			await this.refreshFromVaultChange();
@@ -2208,6 +2219,8 @@ export class IOTOTasksCenterView extends ItemView {
 		);
 
 		let customName: string | undefined;
+		let createdPriority: TaskPriorityValue | null = null;
+		let createdStarred = false;
 		if (type !== 'date') {
 			const taskTypeTexts =
 				type === 'plan'
@@ -2224,7 +2237,7 @@ export class IOTOTasksCenterView extends ItemView {
 								title: t('modal.newNormalSubtask.title'),
 								label: t('modal.newNormalSubtask.placeholder'),
 							};
-			const customNameResult = await new TaskNameModal(
+			const modalResult = await new TaskCreationModal(
 				this.app,
 				taskTypeTexts.title,
 				taskTypeTexts.label,
@@ -2233,10 +2246,12 @@ export class IOTOTasksCenterView extends ItemView {
 					confirmButtonText: t('modal.create'),
 				},
 			).openAndGetValue();
-			if (!customNameResult) {
+			if (!modalResult) {
 				return;
 			}
-			customName = customNameResult;
+			customName = modalResult.name ?? undefined;
+			createdPriority = modalResult.priority;
+			createdStarred = modalResult.starred;
 		}
 
 		this.isCreatingTask = true;
@@ -2257,6 +2272,12 @@ export class IOTOTasksCenterView extends ItemView {
 				targetLeaf: previewLeaf,
 				sourceLeaf: this.leaf,
 			});
+			if (type !== 'date') {
+				await this.applyCreatedTaskSettings(result.file, {
+					priority: createdPriority,
+					starred: createdStarred,
+				});
+			}
 			await assignUpTaskToFile(
 				this.app,
 				result.file,
@@ -2285,6 +2306,39 @@ export class IOTOTasksCenterView extends ItemView {
 			}
 			this.isCreatingTask = false;
 			this.render();
+		}
+	}
+
+	private async applyCreatedTaskSettings(
+		file: TFile,
+		settings: { priority: TaskPriorityValue | null; starred: boolean },
+	): Promise<void> {
+		try {
+			if (settings.priority === null) {
+				await clearTaskFilePriority(this.app, file);
+			} else {
+				await setTaskFilePriority(this.app, file, settings.priority);
+			}
+		} catch (error) {
+			const message =
+				error instanceof Error
+					? error.message
+					: t('view.notice.updateTaskPriorityFailed');
+			new Notice(message);
+		}
+
+		try {
+			if (settings.starred) {
+				await setTaskFileStarred(this.app, file);
+			} else {
+				await clearTaskFileStarred(this.app, file);
+			}
+		} catch (error) {
+			const message =
+				error instanceof Error
+					? error.message
+					: t('view.notice.updateTaskCoreFailed');
+			new Notice(message);
 		}
 	}
 

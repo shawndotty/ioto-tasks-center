@@ -345,6 +345,7 @@ const en = {
 	'modal.newNormalTask.title': 'New normal task',
 	'modal.newNormalTask.placeholder': 'Enter task name',
 	'modal.newTask.desc': 'Please enter a name for the new task file.',
+	'modal.taskSettings.priority.none': 'None',
 } as const;
 
 export default en;

@@ -315,6 +315,7 @@ const zhTW = {
 	'modal.newNormalTask.title': '新建普通任務',
 	'modal.newNormalTask.placeholder': '輸入任務名稱',
 	'modal.newTask.desc': '請輸入新任務檔案的名稱。',
+	'modal.taskSettings.priority.none': '未設定',
 } as const;
 
 export default zhTW;

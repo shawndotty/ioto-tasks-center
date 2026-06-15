@@ -314,6 +314,7 @@ const zhCN = {
 	'modal.newNormalTask.title': '新建普通任务',
 	'modal.newNormalTask.placeholder': '输入任务名称',
 	'modal.newTask.desc': '请输入新任务文件的名称。',
+	'modal.taskSettings.priority.none': '未设置',
 } as const;
 
 export default zhCN;
