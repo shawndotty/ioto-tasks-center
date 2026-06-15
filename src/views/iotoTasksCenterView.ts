@@ -1123,56 +1123,56 @@ export class IOTOTasksCenterView extends ItemView {
 						outputRootPath: this.getOutputRootPath(),
 						outcomeRootPath: this.getOutcomeRootPath(),
 					});
-					const countersEl = titleEl.createSpan({
-						cls: 'ioto-tasks-center__task-outlink-counts',
-					});
-					if (showInput) {
-						const label = t('task.outlinks.input', [
-							String(counts.input),
-						]);
-						const badgeEl = countersEl.createSpan({
-							cls: 'ioto-tasks-center__task-outlink-count',
-							text: String(counts.input),
+					const badgeEntries: Array<{
+						category: TaskOutlinkCategory;
+						value: number;
+						label: string;
+					}> = [];
+					if (showInput && counts.input > 0) {
+						badgeEntries.push({
+							category: 'input',
+							value: counts.input,
+							label: t('task.outlinks.input', [
+								String(counts.input),
+							]),
 						});
-						badgeEl.dataset.outlinkCategory = 'input';
-						badgeEl.ariaLabel = label;
-						this.bindTaskOutlinkPopover(
-							badgeEl,
-							task.path,
-							'input',
-						);
 					}
-					if (showOutput) {
-						const label = t('task.outlinks.output', [
-							String(counts.output),
-						]);
-						const badgeEl = countersEl.createSpan({
-							cls: 'ioto-tasks-center__task-outlink-count',
-							text: String(counts.output),
+					if (showOutput && counts.output > 0) {
+						badgeEntries.push({
+							category: 'output',
+							value: counts.output,
+							label: t('task.outlinks.output', [
+								String(counts.output),
+							]),
 						});
-						badgeEl.dataset.outlinkCategory = 'output';
-						badgeEl.ariaLabel = label;
-						this.bindTaskOutlinkPopover(
-							badgeEl,
-							task.path,
-							'output',
-						);
 					}
-					if (showOutcome) {
-						const label = t('task.outlinks.outcome', [
-							String(counts.outcome),
-						]);
-						const badgeEl = countersEl.createSpan({
-							cls: 'ioto-tasks-center__task-outlink-count',
-							text: String(counts.outcome),
+					if (showOutcome && counts.outcome > 0) {
+						badgeEntries.push({
+							category: 'outcome',
+							value: counts.outcome,
+							label: t('task.outlinks.outcome', [
+								String(counts.outcome),
+							]),
 						});
-						badgeEl.dataset.outlinkCategory = 'outcome';
-						badgeEl.ariaLabel = label;
-						this.bindTaskOutlinkPopover(
-							badgeEl,
-							task.path,
-							'outcome',
-						);
+					}
+
+					if (badgeEntries.length > 0) {
+						const countersEl = titleEl.createSpan({
+							cls: 'ioto-tasks-center__task-outlink-counts',
+						});
+						for (const entry of badgeEntries) {
+							const badgeEl = countersEl.createSpan({
+								cls: 'ioto-tasks-center__task-outlink-count',
+								text: String(entry.value),
+							});
+							badgeEl.dataset.outlinkCategory = entry.category;
+							badgeEl.ariaLabel = entry.label;
+							this.bindTaskOutlinkPopover(
+								badgeEl,
+								task.path,
+								entry.category,
+							);
+						}
 					}
 				}
 			}
@@ -1470,33 +1470,105 @@ export class IOTOTasksCenterView extends ItemView {
 			return;
 		}
 
+		const titleEl = rowEl.querySelector<HTMLElement>(
+			'.ioto-tasks-center__task-title',
+		);
+		if (!titleEl) {
+			return;
+		}
+
+		const showInput = this.getShowTaskInputOutlinkCount();
+		const showOutput = this.getShowTaskOutputOutlinkCount();
+		const showOutcome = this.getShowTaskOutcomeOutlinkCount();
+
 		const resolvedLinks = this.app.metadataCache.resolvedLinks?.[taskPath];
 		const counts = countTaskOutlinksByRootPaths(resolvedLinks, {
 			inputRootPath: this.getInputRootPath(),
 			outputRootPath: this.getOutputRootPath(),
 			outcomeRootPath: this.getOutcomeRootPath(),
 		});
-		this.updateTaskOutlinkBadge(rowEl, 'input', counts.input);
-		this.updateTaskOutlinkBadge(rowEl, 'output', counts.output);
-		this.updateTaskOutlinkBadge(rowEl, 'outcome', counts.outcome);
+		this.syncTaskOutlinkBadge(
+			titleEl,
+			taskPath,
+			'input',
+			showInput,
+			counts.input,
+		);
+		this.syncTaskOutlinkBadge(
+			titleEl,
+			taskPath,
+			'output',
+			showOutput,
+			counts.output,
+		);
+		this.syncTaskOutlinkBadge(
+			titleEl,
+			taskPath,
+			'outcome',
+			showOutcome,
+			counts.outcome,
+		);
+
+		this.cleanupTaskOutlinkCountsContainer(titleEl);
 	}
 
-	private updateTaskOutlinkBadge(
-		rowEl: HTMLElement,
+	private syncTaskOutlinkBadge(
+		titleEl: HTMLElement,
+		taskPath: string,
 		category: TaskOutlinkCategory,
+		enabled: boolean,
 		value: number,
 	): void {
-		const badgeEl = rowEl.querySelector<HTMLElement>(
+		const badgeEl = titleEl.querySelector<HTMLElement>(
 			`.ioto-tasks-center__task-outlink-count[data-outlink-category="${category}"]`,
 		);
-		if (!badgeEl) {
+
+		if (!enabled || value <= 0) {
+			badgeEl?.remove();
 			return;
 		}
 
-		badgeEl.textContent = String(value);
 		const label = this.getTaskOutlinkBadgeLabel(category, value);
-		badgeEl.ariaLabel = label;
-		badgeEl.removeAttribute('title');
+		if (badgeEl) {
+			badgeEl.textContent = String(value);
+			badgeEl.ariaLabel = label;
+			badgeEl.removeAttribute('title');
+			return;
+		}
+
+		const countersEl =
+			titleEl.querySelector<HTMLElement>(
+				'.ioto-tasks-center__task-outlink-counts',
+			) ??
+			titleEl.createSpan({
+				cls: 'ioto-tasks-center__task-outlink-counts',
+			});
+		const newBadgeEl = countersEl.createSpan({
+			cls: 'ioto-tasks-center__task-outlink-count',
+			text: String(value),
+		});
+		newBadgeEl.dataset.outlinkCategory = category;
+		newBadgeEl.ariaLabel = label;
+		this.bindTaskOutlinkPopover(newBadgeEl, taskPath, category);
+	}
+
+	private cleanupTaskOutlinkCountsContainer(titleEl: HTMLElement): void {
+		const countersEl = titleEl.querySelector<HTMLElement>(
+			'.ioto-tasks-center__task-outlink-counts',
+		);
+		if (!countersEl) {
+			return;
+		}
+
+		if (
+			countersEl.querySelector(
+				'.ioto-tasks-center__task-outlink-count[data-outlink-category]',
+			)
+		) {
+			return;
+		}
+
+		countersEl.remove();
 	}
 
 	private getTaskOutlinkBadgeLabel(
