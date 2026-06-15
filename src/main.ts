@@ -18,6 +18,7 @@ import {
 	IOTOTasksCenterSettings,
 	ProjectListGroupMode,
 	ProjectListSortMode,
+	TaskLinkBadgeBackgroundMode,
 	TaskListGroupMode,
 	TaskListSortMode,
 	normalizeConfiguredInputRootPath,
@@ -25,6 +26,7 @@ import {
 	normalizeConfiguredOutputRootPath,
 	normalizeConfiguredTasksRootPath,
 	normalizeEnabledTaskCreationTypes,
+	normalizeTaskLinkBadgeBackgroundMode,
 	normalizeProjectCategoryOptions,
 	normalizeProjectListGroupMode,
 	normalizeProjectListSortMode,
@@ -63,6 +65,7 @@ export default class IOTOTasksCenter extends Plugin {
 					() => this.settings.outputRootPath,
 					() => this.settings.outcomeRootPath,
 					() => this.settings.showTaskSubtaskCount,
+					() => this.settings.taskLinkBadgeBackgroundMode,
 					() => this.settings.showTaskOutlinkCounts,
 					() => this.settings.showTaskInputOutlinkCount,
 					() => this.settings.showTaskOutputOutlinkCount,
@@ -185,6 +188,10 @@ export default class IOTOTasksCenter extends Plugin {
 			normalizeEnabledTaskCreationTypes(
 				loadedData?.enabledTaskCreationTypes,
 			);
+		this.settings.taskLinkBadgeBackgroundMode =
+			normalizeTaskLinkBadgeBackgroundMode(
+				loadedData?.taskLinkBadgeBackgroundMode,
+			);
 		this.settings.dateTaskDateFormat = normalizeDateTaskDateFormat(
 			this.settings.dateTaskDateFormat,
 		);
@@ -267,6 +274,18 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.showTaskSubtaskCount = show;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateTaskLinkBadgeBackgroundMode(
+		mode: TaskLinkBadgeBackgroundMode,
+	): Promise<void> {
+		if (this.settings.taskLinkBadgeBackgroundMode === mode) {
+			return;
+		}
+
+		this.settings.taskLinkBadgeBackgroundMode = mode;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}

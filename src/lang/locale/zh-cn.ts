@@ -258,6 +258,11 @@ const zhCN = {
 	'settings.taskOutlinks.outcome.name': '显示成果出链数量',
 	'settings.taskOutlinks.outcome.desc':
 		'显示指向成果笔记根目录下的（去重后的）出链数量。',
+	'settings.taskLinkBadges.backgroundMode.name': '任务列表链接 Badge 背景色',
+	'settings.taskLinkBadges.backgroundMode.desc':
+		'设置子任务和任务出链 Badge 使用多彩配色或单色背景。',
+	'settings.taskLinkBadges.backgroundMode.multicolor': '多彩配色',
+	'settings.taskLinkBadges.backgroundMode.monochrome': '单色背景',
 	'settings.heading.subtasks': '子任务',
 	'settings.subtasks.showCount.name': '显示子任务数量',
 	'settings.subtasks.showCount.desc':

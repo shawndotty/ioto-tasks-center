@@ -51,6 +51,7 @@ import type {
 import type {
 	ProjectListGroupMode,
 	ProjectListSortMode,
+	TaskLinkBadgeBackgroundMode,
 	TaskListGroupMode,
 	TaskListSortMode,
 } from '../settings';
@@ -192,6 +193,7 @@ export class IOTOTasksCenterView extends ItemView {
 	private readonly getOutputRootPath: () => string;
 	private readonly getOutcomeRootPath: () => string;
 	private readonly getShowTaskSubtaskCount: () => boolean;
+	private readonly getTaskLinkBadgeBackgroundMode: () => TaskLinkBadgeBackgroundMode;
 	private readonly getShowTaskOutlinkCounts: () => boolean;
 	private readonly getShowTaskInputOutlinkCount: () => boolean;
 	private readonly getShowTaskOutputOutlinkCount: () => boolean;
@@ -228,6 +230,7 @@ export class IOTOTasksCenterView extends ItemView {
 		getOutputRootPath: () => string,
 		getOutcomeRootPath: () => string,
 		getShowTaskSubtaskCount: () => boolean,
+		getTaskLinkBadgeBackgroundMode: () => TaskLinkBadgeBackgroundMode,
 		getShowTaskOutlinkCounts: () => boolean,
 		getShowTaskInputOutlinkCount: () => boolean,
 		getShowTaskOutputOutlinkCount: () => boolean,
@@ -260,6 +263,7 @@ export class IOTOTasksCenterView extends ItemView {
 		this.getOutputRootPath = getOutputRootPath;
 		this.getOutcomeRootPath = getOutcomeRootPath;
 		this.getShowTaskSubtaskCount = getShowTaskSubtaskCount;
+		this.getTaskLinkBadgeBackgroundMode = getTaskLinkBadgeBackgroundMode;
 		this.getShowTaskOutlinkCounts = getShowTaskOutlinkCounts;
 		this.getShowTaskInputOutlinkCount = getShowTaskInputOutlinkCount;
 		this.getShowTaskOutputOutlinkCount = getShowTaskOutputOutlinkCount;
@@ -818,6 +822,14 @@ export class IOTOTasksCenterView extends ItemView {
 		const listEl = container.createDiv({
 			cls: 'ioto-tasks-center__task-list',
 		});
+		listEl.toggleClass(
+			'ioto-tasks-center--task-link-badge-multicolor',
+			this.getTaskLinkBadgeBackgroundMode() === 'multicolor',
+		);
+		listEl.toggleClass(
+			'ioto-tasks-center--task-link-badge-monochrome',
+			this.getTaskLinkBadgeBackgroundMode() === 'monochrome',
+		);
 		listEl.addEventListener('scroll', () => {
 			this.taskListScrollTop = listEl.scrollTop;
 		});

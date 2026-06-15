@@ -259,6 +259,11 @@ const zhTW = {
 	'settings.taskOutlinks.outcome.name': '顯示成果出鏈數量',
 	'settings.taskOutlinks.outcome.desc':
 		'顯示指向成果筆記根目錄下的（去重後）出鏈數量。',
+	'settings.taskLinkBadges.backgroundMode.name': '任務列表連結 Badge 背景色',
+	'settings.taskLinkBadges.backgroundMode.desc':
+		'設定子任務和任務出鏈 Badge 使用多彩配色或單色背景。',
+	'settings.taskLinkBadges.backgroundMode.multicolor': '多彩配色',
+	'settings.taskLinkBadges.backgroundMode.monochrome': '單色背景',
 	'settings.heading.subtasks': '子任務',
 	'settings.subtasks.showCount.name': '顯示子任務數量',
 	'settings.subtasks.showCount.desc':

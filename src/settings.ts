@@ -38,6 +38,7 @@ export type TaskListSortMode =
 	| 'priority-desc'
 	| 'priority-asc';
 export type TaskListGroupMode = 'none' | 'status' | 'priority';
+export type TaskLinkBadgeBackgroundMode = 'multicolor' | 'monochrome';
 
 export interface IOTOTasksCenterSettings {
 	tasksRootPath: string;
@@ -50,6 +51,7 @@ export interface IOTOTasksCenterSettings {
 	taskListGroupMode: TaskListGroupMode;
 	showTaskPriority: boolean;
 	showTaskSubtaskCount: boolean;
+	taskLinkBadgeBackgroundMode: TaskLinkBadgeBackgroundMode;
 	showTaskOutlinkCounts: boolean;
 	showTaskInputOutlinkCount: boolean;
 	showTaskOutputOutlinkCount: boolean;
@@ -72,6 +74,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	taskListGroupMode: 'none',
 	showTaskPriority: false,
 	showTaskSubtaskCount: true,
+	taskLinkBadgeBackgroundMode: 'multicolor',
 	showTaskOutlinkCounts: false,
 	showTaskInputOutlinkCount: true,
 	showTaskOutputOutlinkCount: true,
@@ -131,6 +134,16 @@ export function getTaskListGroupModeOptions(): Record<
 	};
 }
 
+export function getTaskLinkBadgeBackgroundModeOptions(): Record<
+	TaskLinkBadgeBackgroundMode,
+	string
+> {
+	return {
+		multicolor: t('settings.taskLinkBadges.backgroundMode.multicolor'),
+		monochrome: t('settings.taskLinkBadges.backgroundMode.monochrome'),
+	};
+}
+
 export function isProjectListSortMode(
 	value: string,
 ): value is ProjectListSortMode {
@@ -165,6 +178,20 @@ export function isTaskListGroupMode(value: string): value is TaskListGroupMode {
 	return value === 'none' || value === 'status' || value === 'priority';
 }
 
+export function isTaskLinkBadgeBackgroundMode(
+	value: string,
+): value is TaskLinkBadgeBackgroundMode {
+	return value === 'multicolor' || value === 'monochrome';
+}
+
+export function normalizeTaskLinkBadgeBackgroundMode(
+	value: unknown,
+): TaskLinkBadgeBackgroundMode {
+	return typeof value === 'string' && isTaskLinkBadgeBackgroundMode(value)
+		? value
+		: 'multicolor';
+}
+
 export function getTaskTemplateSourceModeOptions(): Record<
 	TaskTemplateSourceMode,
 	string
@@ -195,6 +222,8 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		const projectSortModeOptions = getProjectListSortModeOptions();
+		const taskLinkBadgeBackgroundModeOptions =
+			getTaskLinkBadgeBackgroundModeOptions();
 
 		containerEl.empty();
 
@@ -365,6 +394,31 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 							);
 						}),
 				);
+
+			new Setting(containerEl)
+				.setName(t('settings.taskLinkBadges.backgroundMode.name'))
+				.setDesc(t('settings.taskLinkBadges.backgroundMode.desc'))
+				.addDropdown((dropdown) => {
+					for (const [value, label] of Object.entries(
+						taskLinkBadgeBackgroundModeOptions,
+					)) {
+						dropdown.addOption(value, label);
+					}
+
+					dropdown
+						.setValue(
+							this.plugin.settings.taskLinkBadgeBackgroundMode,
+						)
+						.onChange(async (value) => {
+							if (!isTaskLinkBadgeBackgroundMode(value)) {
+								return;
+							}
+
+							await this.plugin.updateTaskLinkBadgeBackgroundMode(
+								value,
+							);
+						});
+				});
 
 			new Setting(containerEl)
 				.setName(t('settings.heading.subtasks'))

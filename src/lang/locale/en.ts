@@ -276,6 +276,12 @@ const en = {
 	'settings.taskOutlinks.outcome.name': 'Show outcome outlinks count',
 	'settings.taskOutlinks.outcome.desc':
 		'Show how many unique outgoing links target notes under the outcome notes root path.',
+	'settings.taskLinkBadges.backgroundMode.name':
+		'Task list link badge backgrounds',
+	'settings.taskLinkBadges.backgroundMode.desc':
+		'Choose multicolor or monochrome backgrounds for subtask and task outlink badges.',
+	'settings.taskLinkBadges.backgroundMode.multicolor': 'Multicolor',
+	'settings.taskLinkBadges.backgroundMode.monochrome': 'Monochrome',
 	'settings.heading.subtasks': 'Subtasks',
 	'settings.subtasks.showCount.name': 'Show subtask count',
 	'settings.subtasks.showCount.desc':

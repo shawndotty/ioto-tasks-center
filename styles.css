@@ -947,15 +947,43 @@ button:not(.clickable-icon).ioto-tasks-center__task-row.is-active {
 	justify-content: center;
 	padding: 1px 6px;
 	border-radius: 999px;
+	font-size: var(--font-ui-smaller);
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.ioto-tasks-center--task-link-badge-monochrome
+	.ioto-tasks-center__task-outlink-count {
 	background: color-mix(
 		in srgb,
 		var(--interactive-accent) 14%,
 		transparent
 	);
 	color: var(--text-muted);
-	font-size: var(--font-ui-smaller);
-	font-weight: 600;
-	white-space: nowrap;
+}
+
+.ioto-tasks-center--task-link-badge-multicolor
+	.ioto-tasks-center__task-subtask-count {
+	background: #015f0e;
+	color: #fff;
+}
+
+.ioto-tasks-center--task-link-badge-multicolor
+	.ioto-tasks-center__task-outlink-count[data-outlink-category='input'] {
+	background: #015697;
+	color: #fff;
+}
+
+.ioto-tasks-center--task-link-badge-multicolor
+	.ioto-tasks-center__task-outlink-count[data-outlink-category='output'] {
+	background: #874b01;
+	color: #fff;
+}
+
+.ioto-tasks-center--task-link-badge-multicolor
+	.ioto-tasks-center__task-outlink-count[data-outlink-category='outcome'] {
+	background: #7c0389;
+	color: #fff;
 }
 
 .ioto-tasks-center__outlink-popover {
