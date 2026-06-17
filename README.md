@@ -1,100 +1,114 @@
 # IOTO Tasks Center
 
-简体中文: [README.zh-CN.md](README.zh-CN.md)
+Simplified Chinese: [README.zh-CN.md](README.zh-CN.md)
 
-Manage Markdown task files by project in Obsidian. This plugin provides a dedicated “Tasks center” view with project navigation, task list filtering/search/sort/grouping, and lightweight task-file metadata (UpTask/Priority/Project).
+Full guide: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
 
-## Overview
+IOTO Tasks Center is an Obsidian community plugin for managing Markdown task files by project. It gives you a dedicated **Tasks center** for execution and a **Project center** for project metadata, while keeping everything as plain Markdown notes in your vault.
 
-IOTO Tasks Center treats the first-level folders under your configured “tasks root” directory as **projects**, and shows the Markdown files inside each project as **task files**.
+## Version
 
-Default tasks root path: `3-任务`
+- Latest version: `2.1.1`
+- Release date: `2026-06-15`
+- Minimum Obsidian version: `1.1.0`
+- Platform support: desktop and mobile
+- Releases: [GitHub Releases](https://github.com/shawndotty/ioto-tasks-center/releases)
 
-## Key features
+## Why This Plugin
 
-- Projects pane: lists projects (folders) under the tasks root, with sorting and hide controls
-- Tasks pane: lists task files (Markdown files) in the selected project
-- Filter tabs: Today / Incomplete / Completed / All
-- Search: filters by task file name (within the current project)
-- Sorting: created/updated time, name, priority
-- Grouping: none / by status / by priority (with collapsible groups)
-- Task status summary: counts checkbox tasks in the file and shows a summary (e.g., completed/total)
-- Priority: set/clear `Priority` (0–9) for a task file and use it in sort/group
-- UpTask hierarchy: drag & drop to set a parent task via `UpTask`; drag to the “remove parent task” zone to clear it
-- Hover preview: hover task rows to preview without leaving the view
-- Convert selected text to subtask: turns selected text in a task file into a new subtask file and replaces the selection with a wikilink
-- Task creation with templates: create task files with optional templates (Templater file mode or inline content), per task type
+- Keeps your tasks as normal Markdown files
+- Organizes task files by project folders
+- Adds hierarchy, metadata, search, popovers, and preview without locking data into a database
+- Supports both lightweight daily execution and higher-level project management
 
-## How it organizes files
+## Highlights
 
-- Tasks root path (vault-relative): defaults to `3-任务`
-- Projects: first-level folders under the tasks root
-- Task files: Markdown files directly under a project folder (only the first level is listed)
+- **Tasks center**
+  - Project list, task list, preview pane, search, filter tabs, sorting, grouping
+- **Project center**
+  - Table-based project management for category, dates, archive state, and task count
+- **Task creation**
+  - Four task types: normal, date, topic, plan
+  - Per-type templates
+  - Optional priority and core-task flag during creation
+- **Hierarchy**
+  - Drag and drop `UpTask`
+  - Context-menu subtask creation
+  - Collapsible subtasks
+  - Subtask count badges with hover popovers
+- **Insight badges**
+  - Status popovers for incomplete checklist items
+  - Input/output/outcome outlink badges and popovers
+  - Multicolor or monochrome badge background mode
+
+## What's New in 2.1.1
+
+- Native submenu behavior for creating subtasks
+- Core tasks tab becomes the first and default filter
+- Incomplete checklist popovers on `To do` and `In progress` badges
+- Priority and core-task options added to the creation modal
+- Optional subtask count badges in the task list
+- Configurable badge background mode: **Multicolor** or **Monochrome**
+
+## Quick Start
+
+1. Create a tasks root such as `3-任务/`
+2. Put project folders directly under it
+3. Open **Tasks center**
+4. Create tasks or subtasks
+5. Configure templates, outlink roots, and badge options in plugin settings
 
 Example structure:
 
 ```text
 3-任务/
-  项目A/
-    需求梳理.md
-    项目A-2026-06-04.md
-  项目B/
-    发布复盘.md
+  Project Alpha/
+    Kickoff.md
+    Launch plan.md
 ```
-
-## Frontmatter fields
-
-This plugin reads/writes a small set of frontmatter fields:
-
-- `Project`: list of project names (written as a YAML list)
-- `UpTask`: list; stores a parent task wikilink like `[[Parent task]]`
-- `Priority`: scalar number (0–9)
-- `Subject`: list; used by “subject task” type
-- `Plan`: list; used by “plan task” type
-
-## Commands
-
-- Open tasks center view
-- Convert selected text to subtask
-  - Works only when the current file is inside the configured tasks root.
-  - The subtask is created in the same project and directory as the current task file.
-  - The new subtask inherits `Project` and gets `UpTask` pointing to the current file.
-
-## Settings
-
-- Tasks root path: where projects are discovered
-- View entry: open the tasks center view from settings
-- Task templates
-  - Configure templates per task type: date / plan / subject / normal
-  - Template source: template file (optionally via Templater) or inline content
-- Date task date format: controls the filename segment for date tasks (Moment/Day.js style patterns)
-- Project list sorting: by incomplete task count (default) or by name
-- Hidden projects: hide selected projects from the project list
-- Task list presentation
-  - Sort mode, group mode, and whether to show priority
 
 ## Installation
 
-- Community plugins: (if published) install from **Settings → Community plugins**.
-- Manual install:
-  - Copy `main.js`, `manifest.json`, and `styles.css` (if present) into:
-    - `<Vault>/.obsidian/plugins/ioto-tasks-center/`
-  - Reload Obsidian and enable the plugin in **Settings → Community plugins**.
+### Community Plugins
 
-## Development
+1. Open **Settings → Community plugins**
+2. Search for `IOTO Tasks Center`
+3. Install and enable it
 
-```bash
-npm install
-npm run dev
-```
+### Manual Install
 
-Other scripts:
+Copy these files into `<YourVault>/.obsidian/plugins/ioto-tasks-center/`:
 
-```bash
-npm run build
-npm test
-npm run lint
-```
+- `main.js`
+- `manifest.json`
+- `styles.css`
+
+Then reload Obsidian and enable the plugin.
+
+## Documentation
+
+- Full user guide: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
+- Chinese full guide: [docs/USER_GUIDE.zh-CN.md](docs/USER_GUIDE.zh-CN.md)
+- Chinese overview: [README.zh-CN.md](README.zh-CN.md)
+
+The full guide includes:
+
+- file organization
+- frontmatter fields
+- commands
+- complete settings reference
+- usage examples
+- compatibility notes
+- troubleshooting
+- release history
+
+## Release History
+
+- `2.1.1` — task list workflow upgrades, status checklist popovers, subtask badges, badge color modes
+- `2.1.0` — subtask collapse, context-menu subtask creation, delete action, search popover
+- `2.0.9` — Project center, project category grouping, core-task support, outlink visibility improvements
+- `2.0.8` — version alignment update
+- `1.0.0` — initial public release
 
 ## License
 
