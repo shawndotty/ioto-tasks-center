@@ -1,7 +1,7 @@
 {
 	"id": "ioto-tasks-center",
 	"name": "IOTO Tasks Center",
-	"version": "2.1.1",
+	"version": "2.1.2",
 	"minAppVersion": "1.1.0",
 	"description": "Manage your task files in Obsidian.",
 	"author": "Johnny Learns",
