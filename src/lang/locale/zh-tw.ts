@@ -35,6 +35,7 @@ const zhTW = {
 	'view.title': '任務中心',
 	'view.projectsPaneTitle': '專案列表',
 	'view.tasksPaneTitle': '任務列表',
+	'view.incompleteCount': '查看未完成任務',
 	'view.projectsPaneDesc': '選擇一個專案後，在右側查看對應任務檔案。',
 	'view.projectListSettings': '專案列表設定',
 	'view.tasksPane.addTask': '新增任務',

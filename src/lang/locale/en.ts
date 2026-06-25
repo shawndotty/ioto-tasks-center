@@ -40,6 +40,7 @@ const en = {
 	'view.title': 'Tasks center',
 	'view.projectsPaneTitle': 'Projects',
 	'view.tasksPaneTitle': 'Tasks',
+	'view.incompleteCount': 'View incomplete tasks',
 	'view.projectsPaneDesc':
 		'Select a project to view its task files on the right.',
 	'view.projectListSettings': 'Project list settings',

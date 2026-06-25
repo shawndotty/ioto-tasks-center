@@ -710,9 +710,34 @@ export class IOTOTasksCenterView extends ItemView {
 					text: project.name,
 				});
 				if (incompleteCount > 0) {
-					itemEl.createSpan({
+					const countEl = itemEl.createEl('button', {
 						cls: 'ioto-tasks-center__project-count',
-						text: `${incompleteCount}`,
+					});
+					countEl.type = 'button';
+					countEl.textContent = `${incompleteCount}`;
+					countEl.ariaLabel = t('view.incompleteCount');
+					countEl.addEventListener('click', (event: MouseEvent) => {
+						event.preventDefault();
+						event.stopPropagation();
+
+						const switchToIncompleteTab = (): void => {
+							if (this.activeTaskFilterTab !== 'incomplete') {
+								this.activeTaskFilterTab = 'incomplete';
+								this.render();
+							}
+						};
+
+						if (
+							project.name === this.selectedProject ||
+							this.isTasksLoading
+						) {
+							switchToIncompleteTab();
+							return;
+						}
+
+						void this.selectProject(project.name).then(
+							switchToIncompleteTab,
+						);
 					});
 				}
 

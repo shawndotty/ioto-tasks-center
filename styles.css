@@ -707,19 +707,20 @@ button:not(.clickable-icon).ioto-tasks-center__task-group-header {
 	white-space: nowrap;
 }
 
-.ioto-tasks-center__project-count {
+button:not(.clickable-icon).ioto-tasks-center__project-count {
 	flex: 0 0 auto;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	min-width: 22px;
-	padding: 0 6px;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 4px;
 	border-radius: 999px;
 	background: var(--background-primary-alt);
-	color: var(--text-muted);
+	color: inherit;
 	font-size: var(--font-ui-smaller);
-	font-weight: 600;
-	line-height: 1.5;
+	line-height: 1.4;
+	box-shadow: none;
 }
 
 .ioto-tasks-center__project-item:hover {

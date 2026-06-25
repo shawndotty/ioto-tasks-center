@@ -35,6 +35,7 @@ const zhCN = {
 	'view.title': '任务中心',
 	'view.projectsPaneTitle': '项目列表',
 	'view.tasksPaneTitle': '任务列表',
+	'view.incompleteCount': '查看未完成任务',
 	'view.projectsPaneDesc': '选择一个项目后，在右侧查看对应任务文件。',
 	'view.projectListSettings': '项目列表设置',
 	'view.tasksPane.addTask': '添加任务',
