@@ -78,8 +78,10 @@ export default class IOTOTasksCenter extends Plugin {
 					(groupMode) => this.updateTaskListGroupMode(groupMode),
 					(show) => this.updateShowTaskPriority(show),
 					(type) => this.settings.taskTemplateConfigs[type],
-					() => this.settings.dateTaskDateFormat,
-				),
+				() => this.settings.dateTaskDateFormat,
+				(projectName, hidden) =>
+					this.setProjectHidden(projectName, hidden),
+			),
 		);
 		this.registerView(
 			IOTO_PROJECT_CENTER_VIEW_TYPE,

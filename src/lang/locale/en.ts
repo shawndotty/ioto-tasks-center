@@ -46,6 +46,9 @@ const en = {
 	'view.projectsPaneDesc':
 		'Select a project to view its task files on the right.',
 	'view.projectListSettings': 'Project list settings',
+	'view.projectMenu.editSpec': 'Edit spec',
+	'view.projectMenu.archive': 'Archive',
+	'view.projectMenu.unarchive': 'Unarchive',
 	'view.tasksPane.addTask': 'Add task',
 	'view.tasksPane.addTaskCreating': 'Creating...',
 	'view.tasksPane.addTaskReady': 'Add task in {0}',

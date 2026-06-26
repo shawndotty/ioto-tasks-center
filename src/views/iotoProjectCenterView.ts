@@ -605,15 +605,16 @@ export class IOTOProjectCenterView extends ItemView {
 
 	private async openProjectSpec(row: ProjectCenterRow): Promise<void> {
 		const filePath = `${row.path}/${PROJECT_METADATA_FILE_NAME}`;
-		let file = this.app.vault.getAbstractFileByPath(filePath);
-		if (!(file instanceof TFile)) {
-			file = await this.app.vault.create(
-				filePath,
-				'---\nIOTOProject:\n---\n',
-			);
-		}
+		const abstractFile = this.app.vault.getAbstractFileByPath(filePath);
+		const file =
+			abstractFile instanceof TFile
+				? abstractFile
+				: await this.app.vault.create(
+						filePath,
+						'---\nIOTOProject:\n---\n',
+					);
 		const leaf = this.ensurePreviewLeaf();
-		await leaf.openFile(file as TFile, { active: true });
+		await leaf.openFile(file, { active: true });
 	}
 
 	private ensurePreviewLeaf(): WorkspaceLeaf {

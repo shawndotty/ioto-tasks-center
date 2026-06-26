@@ -22,6 +22,7 @@ import {
 } from '../tasks-center/project-sort';
 import {
 	getProjectMetadataFile,
+	PROJECT_METADATA_FILE_NAME,
 	readProjectMetadataFromFrontmatter,
 } from '../tasks-center/project-metadata';
 import { createTaskFile } from '../tasks-center/task-creation';
@@ -217,6 +218,10 @@ export class IOTOTasksCenterView extends ItemView {
 		type: TaskCreationType,
 	) => TaskTemplateConfig;
 	private readonly getDateTaskDateFormat: () => string;
+	private readonly setProjectHidden: (
+		projectName: string,
+		hidden: boolean,
+	) => Promise<void>;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -250,6 +255,10 @@ export class IOTOTasksCenterView extends ItemView {
 		updateShowTaskPriority: (show: boolean) => Promise<void>,
 		getTaskTemplateConfig: (type: TaskCreationType) => TaskTemplateConfig,
 		getDateTaskDateFormat: () => string,
+		setProjectHidden: (
+			projectName: string,
+			hidden: boolean,
+		) => Promise<void>,
 	) {
 		super(leaf);
 		this.navigation = true;
@@ -277,6 +286,7 @@ export class IOTOTasksCenterView extends ItemView {
 		this.updateShowTaskPriority = updateShowTaskPriority;
 		this.getTaskTemplateConfig = getTaskTemplateConfig;
 		this.getDateTaskDateFormat = getDateTaskDateFormat;
+		this.setProjectHidden = setProjectHidden;
 	}
 
 	getViewType(): string {
@@ -755,10 +765,59 @@ export class IOTOTasksCenterView extends ItemView {
 
 					void this.selectProject(project.name);
 				});
+				itemEl.addEventListener('contextmenu', (event: MouseEvent) => {
+					event.preventDefault();
+					event.stopPropagation();
+					this.showProjectContextMenu(event, project);
+				});
 			}
 		}
 
 		restoreProjectListScrollTop(listEl, this.projectListScrollTop);
+	}
+
+	private showProjectContextMenu(
+		event: MouseEvent,
+		project: ProjectFolderEntry,
+	): void {
+		const menu = new Menu();
+		const isArchived = this.getHiddenProjectNames().includes(project.name);
+
+		menu.addItem((item) =>
+			item.setTitle(t('view.projectMenu.editSpec')).onClick(() => {
+				void this.openProjectSpecByProject(project);
+			}),
+		);
+
+		menu.addItem((item) =>
+			item
+				.setTitle(
+					isArchived
+						? t('view.projectMenu.unarchive')
+						: t('view.projectMenu.archive'),
+				)
+				.onClick(() => {
+					void this.setProjectHidden(project.name, !isArchived);
+				}),
+		);
+
+		menu.showAtMouseEvent(event);
+	}
+
+	private async openProjectSpecByProject(
+		project: ProjectFolderEntry,
+	): Promise<void> {
+		const filePath = `${project.path}/${PROJECT_METADATA_FILE_NAME}`;
+		const abstractFile = this.app.vault.getAbstractFileByPath(filePath);
+		const file =
+			abstractFile instanceof TFile
+				? abstractFile
+				: await this.app.vault.create(
+						filePath,
+						'---\nIOTOProject:\n---\n',
+					);
+		const leaf = this.ensurePreviewLeaf();
+		await leaf.openFile(file, { active: true });
 	}
 
 	private renderTasksPane(container: HTMLElement): void {
