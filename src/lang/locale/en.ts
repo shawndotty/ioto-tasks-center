@@ -386,6 +386,9 @@ const en = {
 	'settings.batchTemplates.editModal.taskType': 'Task type',
 	'settings.batchTemplates.editModal.content':
 		'Template content (Markdown list)',
+	'settings.batchTemplates.editModal.levelTaskType': 'Task type (Level {0})',
+	'settings.batchTemplates.editModal.levelTaskTypeOverflow':
+		'Tasks at level 4 and beyond will use the Normal task type.',
 	'settings.batchTemplates.editModal.contentHint':
 		'Use unordered list items (- ) and indent with 2 spaces per level. Indented items become subtasks of the nearest parent above.',
 	'settings.batchTemplates.editModal.contentPlaceholder':

@@ -1,7 +1,4 @@
-import {
-	buildTaskFileName,
-	normalizeCustomTaskName,
-} from './task-creation';
+import { buildTaskFileName, normalizeCustomTaskName } from './task-creation';
 import type { TaskCreationType } from './task-template-config';
 
 // 批量模板支持的任务类型（排除 date，因 date 文件名不接受 customName）
@@ -12,10 +9,18 @@ export const BATCH_TASK_TYPES: readonly TaskCreationType[] = [
 ] as const;
 export type BatchTaskType = (typeof BATCH_TASK_TYPES)[number];
 
+// 批量模板支持的最大层级类型数（超出层级回退 normal）
+export const MAX_LEVEL_TASK_TYPES = 3;
+export const DEFAULT_LEVEL_TASK_TYPES: readonly BatchTaskType[] = [
+	'normal',
+	'normal',
+	'normal',
+] as const;
+
 export interface BatchTaskTemplate {
 	id: string;
 	name: string;
-	taskType: BatchTaskType;
+	levelTaskTypes: BatchTaskType[];
 	listContent: string;
 }
 
@@ -51,9 +56,7 @@ export function createBatchTemplateId(): string {
 }
 
 export function isBatchTaskType(value: unknown): value is BatchTaskType {
-	return (
-		value === 'normal' || value === 'topic' || value === 'plan'
-	);
+	return value === 'normal' || value === 'topic' || value === 'plan';
 }
 
 export function parseBatchList(content: string): BatchTaskItem[] {
@@ -116,9 +119,7 @@ function computeRawIndent(indent: string): number {
 	return spaces;
 }
 
-function resolveIndentUnit(
-	entries: Array<{ indent: number }>,
-): number {
+function resolveIndentUnit(entries: Array<{ indent: number }>): number {
 	for (const entry of entries) {
 		if (entry.indent > 0) {
 			return entry.indent;
@@ -147,13 +148,53 @@ export function applyPrefix(name: string, prefix: string): string {
 	return `${prefix ?? ''}${name ?? ''}`;
 }
 
+export function resolveTaskTypeForLevel(
+	levelTaskTypes: BatchTaskType[],
+	level: number,
+): BatchTaskType {
+	if (level < 0 || level >= levelTaskTypes.length) {
+		return 'normal';
+	}
+	const taskType = levelTaskTypes[level];
+	return isBatchTaskType(taskType) ? taskType : 'normal';
+}
+
+export function resolveMaxLevel(items: BatchTaskItem[]): number {
+	let maxLevel = 0;
+	for (const item of items) {
+		if (item.level > maxLevel) {
+			maxLevel = item.level;
+		}
+	}
+	return maxLevel;
+}
+
+export function formatLevelTaskTypes(
+	levelTaskTypes: BatchTaskType[],
+	getLabel: (taskType: BatchTaskType) => string,
+): string {
+	const padded: BatchTaskType[] = [...DEFAULT_LEVEL_TASK_TYPES];
+	const source = levelTaskTypes.length > 0 ? levelTaskTypes : padded;
+	for (let i = 0; i < MAX_LEVEL_TASK_TYPES && i < source.length; i += 1) {
+		const taskType = source[i];
+		if (taskType) {
+			padded[i] = taskType;
+		}
+	}
+	return padded
+		.map((taskType, index) => `L${index + 1}: ${getLabel(taskType)}`)
+		.join(', ');
+}
+
 export function formatBatchItemsForPreview(
 	items: BatchTaskItem[],
 	prefix: string,
-): Array<{ indent: number; text: string }> {
+	levelTaskTypes: BatchTaskType[] = [...DEFAULT_LEVEL_TASK_TYPES],
+): Array<{ indent: number; text: string; taskType: BatchTaskType }> {
 	return items.map((item) => ({
 		indent: item.level,
 		text: applyPrefix(item.name, prefix),
+		taskType: resolveTaskTypeForLevel(levelTaskTypes, item.level),
 	}));
 }
 
@@ -200,25 +241,52 @@ export function normalizeBatchTemplate(
 		return null;
 	}
 
-	const candidate = input as Partial<BatchTaskTemplate>;
+	const candidate = input as Partial<BatchTaskTemplate> & {
+		taskType?: unknown;
+	};
 	const id =
 		typeof candidate.id === 'string' && candidate.id.trim().length > 0
 			? candidate.id.trim()
 			: createBatchTemplateId();
 	const name =
 		typeof candidate.name === 'string' ? candidate.name.trim() : '';
-	const taskType = isBatchTaskType(candidate.taskType)
-		? candidate.taskType
-		: 'normal';
+	const levelTaskTypes = resolveLevelTaskTypes(candidate);
 	const listContent =
 		typeof candidate.listContent === 'string' ? candidate.listContent : '';
 
-	return { id, name, taskType, listContent };
+	return { id, name, levelTaskTypes, listContent };
 }
 
-export function isBatchTemplateValid(
-	template: BatchTaskTemplate,
-): boolean {
+function resolveLevelTaskTypes(
+	candidate: Partial<BatchTaskTemplate> & { taskType?: unknown },
+): BatchTaskType[] {
+	if (
+		Array.isArray(candidate.levelTaskTypes) &&
+		candidate.levelTaskTypes.length > 0
+	) {
+		const normalized = candidate.levelTaskTypes.map((entry) =>
+			isBatchTaskType(entry) ? entry : 'normal',
+		);
+		return padLevelTaskTypes(normalized);
+	}
+
+	if (isBatchTaskType(candidate.taskType)) {
+		const legacyType = candidate.taskType;
+		return [legacyType, legacyType, legacyType];
+	}
+
+	return [...DEFAULT_LEVEL_TASK_TYPES];
+}
+
+function padLevelTaskTypes(types: BatchTaskType[]): BatchTaskType[] {
+	const sliced = types.slice(0, MAX_LEVEL_TASK_TYPES);
+	while (sliced.length < MAX_LEVEL_TASK_TYPES) {
+		sliced.push('normal');
+	}
+	return sliced;
+}
+
+export function isBatchTemplateValid(template: BatchTaskTemplate): boolean {
 	if (!template.name.trim()) {
 		return false;
 	}
@@ -244,10 +312,23 @@ export function areBatchTemplateConfigsEqual(
 		return (
 			template.id === other.id &&
 			template.name === other.name &&
-			template.taskType === other.taskType &&
+			areLevelTaskTypesEqual(
+				template.levelTaskTypes,
+				other.levelTaskTypes,
+			) &&
 			template.listContent === other.listContent
 		);
 	});
+}
+
+function areLevelTaskTypesEqual(
+	left: BatchTaskType[],
+	right: BatchTaskType[],
+): boolean {
+	if (left.length !== right.length) {
+		return false;
+	}
+	return left.every((type, index) => type === right[index]);
 }
 
 // 保持 normalizeCustomTaskName 可被外部复用（与 task-creation 行为一致）

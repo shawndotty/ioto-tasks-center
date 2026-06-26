@@ -49,6 +49,7 @@ import {
 	applyPrefix,
 	buildBatchTaskTitleForUpTask,
 	parseBatchList,
+	resolveTaskTypeForLevel,
 	type BatchTaskItem,
 	type BatchTaskTemplate,
 	type BatchTemplateConfig,
@@ -896,6 +897,7 @@ export class IOTOTasksCenterView extends ItemView {
 			prefix,
 			projectName,
 			items,
+			levelTaskTypes: template.levelTaskTypes,
 		}).openAndConfirm();
 		if (!confirmed) {
 			return;
@@ -928,16 +930,18 @@ export class IOTOTasksCenterView extends ItemView {
 
 			for (const item of items) {
 				const fullName = applyPrefix(item.name, prefix);
+				const taskType = resolveTaskTypeForLevel(
+					template.levelTaskTypes,
+					item.level,
+				);
 				try {
 					const result = await createTaskFile({
 						app: this.app,
 						tasksRootPath: this.getTasksRootPath(),
 						projectName,
-						type: template.taskType,
+						type: taskType,
 						customName: fullName,
-						templateConfig: this.getTaskTemplateConfig(
-							template.taskType,
-						),
+						templateConfig: this.getTaskTemplateConfig(taskType),
 						dateTaskDateFormat: this.getDateTaskDateFormat(),
 						targetLeaf: previewLeaf,
 						sourceLeaf: this.leaf,
@@ -970,9 +974,13 @@ export class IOTOTasksCenterView extends ItemView {
 					parentEntry.item.name,
 					prefix,
 				);
+				const parentTaskType = resolveTaskTypeForLevel(
+					template.levelTaskTypes,
+					parentEntry.item.level,
+				);
 				const parentTitle = buildBatchTaskTitleForUpTask(
 					projectName,
-					template.taskType,
+					parentTaskType,
 					parentFullName,
 				);
 				try {

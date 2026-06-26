@@ -2,11 +2,13 @@ import { ButtonComponent, Modal, TextComponent } from 'obsidian';
 import { t } from '../lang/helpter';
 import {
 	formatBatchItemsForPreview,
+	formatLevelTaskTypes,
 	type BatchTaskItem,
 	type BatchTaskTemplate,
+	type BatchTaskType,
 } from '../tasks-center/batch-task-template';
 
-function getBatchTaskTypeLabel(taskType: BatchTaskTemplate['taskType']): string {
+function getBatchTaskTypeLabel(taskType: BatchTaskType): string {
 	switch (taskType) {
 		case 'normal':
 			return t('task.type.normal');
@@ -24,9 +26,8 @@ function getBatchTaskTypeLabel(taskType: BatchTaskTemplate['taskType']): string 
  */
 export class BatchTemplateSelectModal extends Modal {
 	private readonly templates: BatchTaskTemplate[];
-	private resolvePromise:
-		| ((value: BatchTaskTemplate | null) => void)
-		| null = null;
+	private resolvePromise: ((value: BatchTaskTemplate | null) => void) | null =
+		null;
 	private isResolved = false;
 
 	constructor(app: Modal['app'], templates: BatchTaskTemplate[]) {
@@ -71,7 +72,10 @@ export class BatchTemplateSelectModal extends Modal {
 			});
 			rowEl.createSpan({
 				cls: 'ioto-tasks-center__batch-template-option-type',
-				text: getBatchTaskTypeLabel(template.taskType),
+				text: formatLevelTaskTypes(
+					template.levelTaskTypes,
+					getBatchTaskTypeLabel,
+				),
 			});
 			rowEl.addEventListener('click', () => {
 				this.resolve(template);
@@ -173,6 +177,7 @@ export interface BatchCreateConfirmModalOptions {
 	prefix: string;
 	projectName: string;
 	items: BatchTaskItem[];
+	levelTaskTypes: BatchTaskType[];
 }
 
 /**
@@ -183,10 +188,7 @@ export class BatchCreateConfirmModal extends Modal {
 	private resolvePromise: ((value: boolean) => void) | null = null;
 	private isResolved = false;
 
-	constructor(
-		app: Modal['app'],
-		options: BatchCreateConfirmModalOptions,
-	) {
+	constructor(app: Modal['app'], options: BatchCreateConfirmModalOptions) {
 		super(app);
 		this.options = options;
 	}
@@ -220,13 +222,21 @@ export class BatchCreateConfirmModal extends Modal {
 		const previewEl = this.contentEl.createDiv({
 			cls: 'ioto-tasks-center__batch-preview',
 		});
-		const previewEntries = formatBatchItemsForPreview(items, prefix);
+		const previewEntries = formatBatchItemsForPreview(
+			items,
+			prefix,
+			this.options.levelTaskTypes,
+		);
 		for (const entry of previewEntries) {
 			const lineEl = previewEl.createDiv({
 				cls: 'ioto-tasks-center__batch-preview-line',
 			});
 			lineEl.style.paddingLeft = `${entry.indent * 1.2}em`;
-			lineEl.setText(`• ${entry.text}`);
+			lineEl.createSpan({ text: `• ${entry.text}` });
+			lineEl.createSpan({
+				cls: 'ioto-tasks-center__batch-preview-type',
+				text: getBatchTaskTypeLabel(entry.taskType),
+			});
 		}
 
 		const actionsEl = this.contentEl.createDiv({

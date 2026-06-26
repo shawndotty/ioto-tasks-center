@@ -16,6 +16,9 @@ const {
 	normalizeBatchTemplate,
 	parseBatchList,
 	formatBatchItemsForPreview,
+	formatLevelTaskTypes,
+	resolveTaskTypeForLevel,
+	resolveMaxLevel,
 	areBatchTemplateConfigsEqual,
 } = await jiti.import(
 	'../src/tasks-center/batch-task-template.ts',
@@ -121,14 +124,20 @@ test('applyPrefix 非空前缀拼接', () => {
 	assert.equal(applyPrefix('任务A', 'Sprint1-'), 'Sprint1-任务A');
 });
 
-test('formatBatchItemsForPreview 按层级输出缩进文本', () => {
+test('formatBatchItemsForPreview 按层级输出缩进文本与类型', () => {
 	const items = parseBatchList('- 父\n    - 子');
-	const preview = formatBatchItemsForPreview(items, '前缀-');
+	const preview = formatBatchItemsForPreview(items, '前缀-', [
+		'plan',
+		'topic',
+		'normal',
+	]);
 	assert.equal(preview.length, 2);
 	assert.equal(preview[0].indent, 0);
 	assert.equal(preview[0].text, '前缀-父');
+	assert.equal(preview[0].taskType, 'plan');
 	assert.equal(preview[1].indent, 1);
 	assert.equal(preview[1].text, '前缀-子');
+	assert.equal(preview[1].taskType, 'topic');
 });
 
 test('isBatchTaskType 仅接受 normal/topic/plan', () => {
@@ -154,19 +163,32 @@ test('createBatchTemplateId 多次调用返回不同值', () => {
 	assert.equal(ids.size, 100);
 });
 
-test('normalizeBatchTemplate 合法对象保留字段', () => {
+test('normalizeBatchTemplate 新版 levelTaskTypes 保留字段', () => {
 	const template = normalizeBatchTemplate({
 		id: 'fixed-id',
 		name: '入职 SOP',
-		taskType: 'normal',
+		levelTaskTypes: ['plan', 'topic', 'normal'],
 		listContent: '- 任务一',
 	});
 	assert.deepEqual(template, {
 		id: 'fixed-id',
 		name: '入职 SOP',
-		taskType: 'normal',
+		levelTaskTypes: ['plan', 'topic', 'normal'],
 		listContent: '- 任务一',
 	});
+});
+
+test('normalizeBatchTemplate 向后兼容旧版 taskType 展开为三级', () => {
+	const template = normalizeBatchTemplate({
+		name: '旧模板',
+		taskType: 'topic',
+		listContent: '- 任务',
+	});
+	assert.deepEqual(template.levelTaskTypes, [
+		'topic',
+		'topic',
+		'topic',
+	]);
 });
 
 test('normalizeBatchTemplate 非法 taskType 回退为 normal', () => {
@@ -175,7 +197,51 @@ test('normalizeBatchTemplate 非法 taskType 回退为 normal', () => {
 		taskType: 'date',
 		listContent: '- 任务',
 	});
-	assert.equal(template.taskType, 'normal');
+	assert.deepEqual(template.levelTaskTypes, [
+		'normal',
+		'normal',
+		'normal',
+	]);
+});
+
+test('normalizeBatchTemplate levelTaskTypes 优先于 taskType', () => {
+	const template = normalizeBatchTemplate({
+		name: '优先级测试',
+		taskType: 'topic',
+		levelTaskTypes: ['plan', 'normal', 'normal'],
+		listContent: '- 任务',
+	});
+	assert.deepEqual(template.levelTaskTypes, [
+		'plan',
+		'normal',
+		'normal',
+	]);
+});
+
+test('normalizeBatchTemplate levelTaskTypes 超长截断到 3', () => {
+	const template = normalizeBatchTemplate({
+		name: '截断测试',
+		levelTaskTypes: ['plan', 'topic', 'normal', 'plan', 'topic'],
+		listContent: '- 任务',
+	});
+	assert.deepEqual(template.levelTaskTypes, [
+		'plan',
+		'topic',
+		'normal',
+	]);
+});
+
+test('normalizeBatchTemplate levelTaskTypes 不足补齐 normal', () => {
+	const template = normalizeBatchTemplate({
+		name: '补齐测试',
+		levelTaskTypes: ['plan'],
+		listContent: '- 任务',
+	});
+	assert.deepEqual(template.levelTaskTypes, [
+		'plan',
+		'normal',
+		'normal',
+	]);
 });
 
 test('normalizeBatchTemplate 缺失 id 时自动生成', () => {
@@ -205,7 +271,7 @@ test('normalizeBatchTemplateConfig 合法对象保留', () => {
 			{
 				id: 't1',
 				name: '模板一',
-				taskType: 'topic',
+				levelTaskTypes: ['topic', 'topic', 'topic'],
 				listContent: '- 任务',
 			},
 		],
@@ -213,6 +279,11 @@ test('normalizeBatchTemplateConfig 合法对象保留', () => {
 	assert.equal(config.enabled, true);
 	assert.equal(config.templates.length, 1);
 	assert.equal(config.templates[0].name, '模板一');
+	assert.deepEqual(config.templates[0].levelTaskTypes, [
+		'topic',
+		'topic',
+		'topic',
+	]);
 });
 
 test('normalizeBatchTemplateConfig 缺失 enabled 回退为 false', () => {
@@ -234,7 +305,7 @@ test('normalizeBatchTemplateConfig 过滤无效模板条目', () => {
 	const config = normalizeBatchTemplateConfig({
 		enabled: true,
 		templates: [
-			{ id: 't1', name: '有效', taskType: 'normal', listContent: '- x' },
+			{ id: 't1', name: '有效', levelTaskTypes: ['normal', 'normal', 'normal'], listContent: '- x' },
 			null,
 			'string',
 			{ name: '无 id 但有效', taskType: 'plan', listContent: '- y' },
@@ -252,7 +323,7 @@ test('isBatchTemplateValid 合法模板返回 true', () => {
 		isBatchTemplateValid({
 			id: 't1',
 			name: '入职 SOP',
-			taskType: 'normal',
+			levelTaskTypes: ['normal', 'normal', 'normal'],
 			listContent: '- 任务一\n- 任务二',
 		}),
 		true,
@@ -264,7 +335,7 @@ test('isBatchTemplateValid 空 name 返回 false', () => {
 		isBatchTemplateValid({
 			id: 't1',
 			name: '   ',
-			taskType: 'normal',
+			levelTaskTypes: ['normal', 'normal', 'normal'],
 			listContent: '- 任务',
 		}),
 		false,
@@ -276,7 +347,7 @@ test('isBatchTemplateValid 空 listContent 返回 false', () => {
 		isBatchTemplateValid({
 			id: 't1',
 			name: '模板',
-			taskType: 'normal',
+			levelTaskTypes: ['normal', 'normal', 'normal'],
 			listContent: '',
 		}),
 		false,
@@ -288,7 +359,7 @@ test('isBatchTemplateValid 仅含非列表文本的 content 返回 false', () =>
 		isBatchTemplateValid({
 			id: 't1',
 			name: '模板',
-			taskType: 'normal',
+			levelTaskTypes: ['normal', 'normal', 'normal'],
 			listContent: '这是普通文本，没有列表项',
 		}),
 		false,
@@ -317,7 +388,7 @@ test('areBatchTemplateConfigsEqual 相同配置返回 true', () => {
 			{
 				id: 't1',
 				name: 'A',
-				taskType: 'normal',
+				levelTaskTypes: ['normal', 'normal', 'normal'],
 				listContent: '- x',
 			},
 		],
@@ -329,7 +400,7 @@ test('areBatchTemplateConfigsEqual 相同配置返回 true', () => {
 				{
 					id: 't1',
 					name: 'A',
-					taskType: 'normal',
+					levelTaskTypes: ['normal', 'normal', 'normal'],
 					listContent: '- x',
 				},
 			],
@@ -357,7 +428,7 @@ test('areBatchTemplateConfigsEqual 模板数量不同返回 false', () => {
 					{
 						id: 't1',
 						name: 'A',
-						taskType: 'normal',
+						levelTaskTypes: ['normal', 'normal', 'normal'],
 						listContent: '- x',
 					},
 				],
@@ -366,4 +437,82 @@ test('areBatchTemplateConfigsEqual 模板数量不同返回 false', () => {
 		),
 		false,
 	);
+});
+
+test('areBatchTemplateConfigsEqual levelTaskTypes 不同返回 false', () => {
+	assert.equal(
+		areBatchTemplateConfigsEqual(
+			{
+				enabled: true,
+				templates: [
+					{
+						id: 't1',
+						name: 'A',
+						levelTaskTypes: ['plan', 'normal', 'normal'],
+						listContent: '- x',
+					},
+				],
+			},
+			{
+				enabled: true,
+				templates: [
+					{
+						id: 't1',
+						name: 'A',
+						levelTaskTypes: ['topic', 'normal', 'normal'],
+						listContent: '- x',
+					},
+				],
+			},
+		),
+		false,
+	);
+});
+
+test('resolveTaskTypeForLevel 层级在范围内返回对应类型', () => {
+	const types = ['plan', 'topic', 'normal'];
+	assert.equal(resolveTaskTypeForLevel(types, 0), 'plan');
+	assert.equal(resolveTaskTypeForLevel(types, 1), 'topic');
+	assert.equal(resolveTaskTypeForLevel(types, 2), 'normal');
+});
+
+test('resolveTaskTypeForLevel 层级超出范围回退 normal', () => {
+	const types = ['plan', 'topic', 'normal'];
+	assert.equal(resolveTaskTypeForLevel(types, 3), 'normal');
+	assert.equal(resolveTaskTypeForLevel(types, 99), 'normal');
+});
+
+test('resolveTaskTypeForLevel 负数层级回退 normal', () => {
+	assert.equal(resolveTaskTypeForLevel(['plan'], -1), 'normal');
+});
+
+test('resolveTaskTypeForLevel 空数组回退 normal', () => {
+	assert.equal(resolveTaskTypeForLevel([], 0), 'normal');
+});
+
+test('resolveMaxLevel 平级列表返回 0', () => {
+	const items = parseBatchList('- a\n- b\n- c');
+	assert.equal(resolveMaxLevel(items), 0);
+});
+
+test('resolveMaxLevel 多级嵌套返回最大层级', () => {
+	const items = parseBatchList('- L0\n    - L1\n        - L2\n- L0b');
+	assert.equal(resolveMaxLevel(items), 2);
+});
+
+test('resolveMaxLevel 空 items 返回 0', () => {
+	assert.equal(resolveMaxLevel([]), 0);
+});
+
+test('formatLevelTaskTypes 输出层级类型摘要', () => {
+	const result = formatLevelTaskTypes(
+		['plan', 'topic'],
+		(type) => `标签-${type}`,
+	);
+	assert.equal(result, 'L1: 标签-plan, L2: 标签-topic, L3: 标签-normal');
+});
+
+test('formatLevelTaskTypes 空数组使用默认值', () => {
+	const result = formatLevelTaskTypes([], (type) => type);
+	assert.equal(result, 'L1: normal, L2: normal, L3: normal');
 });

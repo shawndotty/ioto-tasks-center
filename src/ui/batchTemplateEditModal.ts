@@ -10,8 +10,13 @@ import {
 import { t } from '../lang/helpter';
 import {
 	BATCH_TASK_TYPES,
+	DEFAULT_LEVEL_TASK_TYPES,
+	MAX_LEVEL_TASK_TYPES,
 	createBatchTemplateId,
 	isBatchTemplateValid,
+	normalizeBatchTemplate,
+	parseBatchList,
+	resolveMaxLevel,
 	type BatchTaskTemplate,
 	type BatchTaskType,
 } from '../tasks-center/batch-task-template';
@@ -32,8 +37,9 @@ function getBatchTaskTypeLabel(taskType: BatchTaskType): string {
 export class BatchTemplateEditModal extends Modal {
 	private readonly existing: BatchTaskTemplate | null;
 	private name = '';
-	private taskType: BatchTaskType = 'normal';
+	private levelTaskTypes: BatchTaskType[] = [...DEFAULT_LEVEL_TASK_TYPES];
 	private listContent = '';
+	private levelTypesContainerEl: HTMLElement | null = null;
 	private resolvePromise: ((value: BatchTaskTemplate | null) => void) | null =
 		null;
 	private isResolved = false;
@@ -42,7 +48,11 @@ export class BatchTemplateEditModal extends Modal {
 		super(app);
 		this.existing = existing;
 		this.name = existing?.name ?? '';
-		this.taskType = existing?.taskType ?? 'normal';
+		this.levelTaskTypes = existing
+			? (normalizeBatchTemplate(existing)?.levelTaskTypes ?? [
+					...DEFAULT_LEVEL_TASK_TYPES,
+				])
+			: [...DEFAULT_LEVEL_TASK_TYPES];
 		this.listContent = existing?.listContent ?? '';
 	}
 
@@ -70,26 +80,10 @@ export class BatchTemplateEditModal extends Modal {
 				});
 			});
 
-		new Setting(this.contentEl)
-			.setName(t('settings.batchTemplates.editModal.taskType'))
-			.addDropdown((dropdown: DropdownComponent) => {
-				for (const taskType of BATCH_TASK_TYPES) {
-					dropdown.addOption(
-						taskType,
-						getBatchTaskTypeLabel(taskType),
-					);
-				}
-				dropdown.setValue(this.taskType);
-				dropdown.onChange((value) => {
-					if (
-						value === 'normal' ||
-						value === 'topic' ||
-						value === 'plan'
-					) {
-						this.taskType = value;
-					}
-				});
-			});
+		this.levelTypesContainerEl = this.contentEl.createDiv({
+			cls: 'ioto-tasks-center__batch-level-types',
+		});
+		this.renderLevelTypeSettings();
 
 		const contentSetting = new Setting(this.contentEl)
 			.setName(t('settings.batchTemplates.editModal.content'))
@@ -102,6 +96,7 @@ export class BatchTemplateEditModal extends Modal {
 			);
 			textArea.onChange((value) => {
 				this.listContent = value;
+				this.renderLevelTypeSettings();
 			});
 		});
 
@@ -124,11 +119,68 @@ export class BatchTemplateEditModal extends Modal {
 		this.resolve(null);
 	}
 
+	private renderLevelTypeSettings(): void {
+		const containerEl = this.levelTypesContainerEl;
+		if (!containerEl) {
+			return;
+		}
+		containerEl.empty();
+
+		const items = parseBatchList(this.listContent);
+		const maxLevel = resolveMaxLevel(items);
+		const displayLevelCount = Math.min(
+			Math.max(maxLevel + 1, 1),
+			MAX_LEVEL_TASK_TYPES,
+		);
+
+		// 确保数组长度足够
+		while (this.levelTaskTypes.length < displayLevelCount) {
+			this.levelTaskTypes.push('normal');
+		}
+
+		for (let level = 0; level < displayLevelCount; level += 1) {
+			const levelNumber = level + 1;
+			new Setting(containerEl)
+				.setName(
+					t('settings.batchTemplates.editModal.levelTaskType', [
+						String(levelNumber),
+					]),
+				)
+				.addDropdown((dropdown: DropdownComponent) => {
+					for (const taskType of BATCH_TASK_TYPES) {
+						dropdown.addOption(
+							taskType,
+							getBatchTaskTypeLabel(taskType),
+						);
+					}
+					dropdown.setValue(this.levelTaskTypes[level] ?? 'normal');
+					dropdown.onChange((value) => {
+						if (
+							value === 'normal' ||
+							value === 'topic' ||
+							value === 'plan'
+						) {
+							this.levelTaskTypes[level] = value;
+						}
+					});
+				});
+		}
+
+		if (displayLevelCount >= MAX_LEVEL_TASK_TYPES) {
+			containerEl.createEl('p', {
+				text: t(
+					'settings.batchTemplates.editModal.levelTaskTypeOverflow',
+				),
+				cls: 'ioto-tasks-center__settings-hint',
+			});
+		}
+	}
+
 	private confirm(): void {
 		const candidate: BatchTaskTemplate = {
 			id: this.existing?.id ?? createBatchTemplateId(),
 			name: this.name.trim(),
-			taskType: this.taskType,
+			levelTaskTypes: this.levelTaskTypes.slice(0, MAX_LEVEL_TASK_TYPES),
 			listContent: this.listContent,
 		};
 

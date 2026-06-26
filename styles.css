@@ -1646,5 +1646,22 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 }
 
 .ioto-tasks-center__batch-preview-line {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	flex-wrap: wrap;
 	padding-bottom: 8px;
+}
+
+.ioto-tasks-center__batch-preview-type {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.ioto-tasks-center__batch-level-types {
+	margin-bottom: var(--size-4-4);
+}
+
+.ioto-tasks-center__batch-level-types .ioto-tasks-center__settings-hint{
+	padding: 0;
 }
