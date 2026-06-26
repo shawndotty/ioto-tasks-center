@@ -1,0 +1,263 @@
+import { ButtonComponent, Modal, TextComponent } from 'obsidian';
+import { t } from '../lang/helpter';
+import {
+	formatBatchItemsForPreview,
+	type BatchTaskItem,
+	type BatchTaskTemplate,
+} from '../tasks-center/batch-task-template';
+
+function getBatchTaskTypeLabel(taskType: BatchTaskTemplate['taskType']): string {
+	switch (taskType) {
+		case 'normal':
+			return t('task.type.normal');
+		case 'topic':
+			return t('task.type.topic');
+		case 'plan':
+			return t('task.type.plan');
+		default:
+			return taskType;
+	}
+}
+
+/**
+ * 选择一个批量模板。返回 null 表示用户取消。
+ */
+export class BatchTemplateSelectModal extends Modal {
+	private readonly templates: BatchTaskTemplate[];
+	private resolvePromise:
+		| ((value: BatchTaskTemplate | null) => void)
+		| null = null;
+	private isResolved = false;
+
+	constructor(app: Modal['app'], templates: BatchTaskTemplate[]) {
+		super(app);
+		this.templates = templates;
+	}
+
+	openAndGetValue(): Promise<BatchTaskTemplate | null> {
+		return new Promise((resolve) => {
+			this.resolvePromise = resolve;
+			this.open();
+		});
+	}
+
+	onOpen(): void {
+		this.setTitle(t('modal.batchSelect.title'));
+
+		const descriptionEl = this.contentEl.createEl('p', {
+			text: t('modal.batchSelect.desc'),
+		});
+		descriptionEl.addClass('ioto-tasks-center__modal-desc');
+
+		if (this.templates.length === 0) {
+			const emptyEl = this.contentEl.createEl('p', {
+				text: t('modal.batchSelect.empty'),
+			});
+			emptyEl.addClass('ioto-tasks-center__modal-hint');
+			return;
+		}
+
+		const listEl = this.contentEl.createDiv({
+			cls: 'ioto-tasks-center__batch-template-list',
+		});
+
+		for (const template of this.templates) {
+			const rowEl = listEl.createDiv({
+				cls: 'ioto-tasks-center__batch-template-option',
+			});
+			rowEl.createSpan({
+				cls: 'ioto-tasks-center__batch-template-option-name',
+				text: template.name,
+			});
+			rowEl.createSpan({
+				cls: 'ioto-tasks-center__batch-template-option-type',
+				text: getBatchTaskTypeLabel(template.taskType),
+			});
+			rowEl.addEventListener('click', () => {
+				this.resolve(template);
+				this.close();
+			});
+		}
+	}
+
+	onClose(): void {
+		this.contentEl.empty();
+		this.resolve(null);
+	}
+
+	private resolve(value: BatchTaskTemplate | null): void {
+		if (this.isResolved) {
+			return;
+		}
+		this.isResolved = true;
+		this.resolvePromise?.(value);
+	}
+}
+
+/**
+ * 输入批量任务名称前缀。允许留空（返回空字符串）；返回 null 表示取消。
+ */
+export class BatchPrefixModal extends Modal {
+	private readonly placeholder: string;
+	private prefixInput: TextComponent | null = null;
+	private resolvePromise: ((value: string | null) => void) | null = null;
+	private isResolved = false;
+
+	constructor(app: Modal['app']) {
+		super(app);
+		this.placeholder = t('modal.batchPrefix.placeholder');
+	}
+
+	openAndGetValue(): Promise<string | null> {
+		return new Promise((resolve) => {
+			this.resolvePromise = resolve;
+			this.open();
+		});
+	}
+
+	onOpen(): void {
+		this.setTitle(t('modal.batchPrefix.title'));
+
+		const descriptionEl = this.contentEl.createEl('p', {
+			text: t('modal.batchPrefix.desc'),
+		});
+		descriptionEl.addClass('ioto-tasks-center__modal-desc');
+
+		this.prefixInput = new TextComponent(this.contentEl);
+		this.prefixInput.setPlaceholder(this.placeholder);
+		this.prefixInput.inputEl.addClass('ioto-tasks-center__modal-input');
+		this.prefixInput.inputEl.focus();
+		this.prefixInput.inputEl.addEventListener('keydown', (event) => {
+			if (event.key === 'Enter') {
+				event.preventDefault();
+				this.confirm();
+			}
+		});
+
+		const actionsEl = this.contentEl.createDiv({
+			cls: 'ioto-tasks-center__modal-actions',
+		});
+
+		new ButtonComponent(actionsEl)
+			.setButtonText(t('modal.cancel'))
+			.onClick(() => this.close());
+
+		new ButtonComponent(actionsEl)
+			.setButtonText(t('modal.confirm'))
+			.setCta()
+			.onClick(() => this.confirm());
+	}
+
+	onClose(): void {
+		this.contentEl.empty();
+		this.resolve(null);
+	}
+
+	private confirm(): void {
+		const value = this.prefixInput?.getValue() ?? '';
+		this.resolve(value);
+		this.close();
+	}
+
+	private resolve(value: string | null): void {
+		if (this.isResolved) {
+			return;
+		}
+		this.isResolved = true;
+		this.resolvePromise?.(value);
+	}
+}
+
+export interface BatchCreateConfirmModalOptions {
+	templateName: string;
+	prefix: string;
+	projectName: string;
+	items: BatchTaskItem[];
+}
+
+/**
+ * 确认弹窗：展示即将创建的任务预览，返回是否确认。
+ */
+export class BatchCreateConfirmModal extends Modal {
+	private readonly options: BatchCreateConfirmModalOptions;
+	private resolvePromise: ((value: boolean) => void) | null = null;
+	private isResolved = false;
+
+	constructor(
+		app: Modal['app'],
+		options: BatchCreateConfirmModalOptions,
+	) {
+		super(app);
+		this.options = options;
+	}
+
+	openAndConfirm(): Promise<boolean> {
+		return new Promise((resolve) => {
+			this.resolvePromise = resolve;
+			this.open();
+		});
+	}
+
+	onOpen(): void {
+		this.setTitle(t('modal.batchConfirm.title'));
+
+		const { templateName, prefix, projectName, items } = this.options;
+		const summary = t('modal.batchConfirm.summary', [
+			templateName,
+			prefix.length > 0 ? prefix : '-',
+			projectName,
+		]);
+		const summaryEl = this.contentEl.createEl('p', {
+			text: summary,
+		});
+		summaryEl.addClass('ioto-tasks-center__modal-desc');
+
+		const countEl = this.contentEl.createEl('p', {
+			text: t('modal.batchConfirm.count', [String(items.length)]),
+		});
+		countEl.addClass('ioto-tasks-center__modal-hint');
+
+		const previewEl = this.contentEl.createDiv({
+			cls: 'ioto-tasks-center__batch-preview',
+		});
+		const previewEntries = formatBatchItemsForPreview(items, prefix);
+		for (const entry of previewEntries) {
+			const lineEl = previewEl.createDiv({
+				cls: 'ioto-tasks-center__batch-preview-line',
+			});
+			lineEl.style.paddingLeft = `${entry.indent * 1.2}em`;
+			lineEl.setText(`• ${entry.text}`);
+		}
+
+		const actionsEl = this.contentEl.createDiv({
+			cls: 'ioto-tasks-center__modal-actions',
+		});
+
+		new ButtonComponent(actionsEl)
+			.setButtonText(t('modal.cancel'))
+			.onClick(() => this.close());
+
+		new ButtonComponent(actionsEl)
+			.setButtonText(t('modal.batchConfirm.confirm'))
+			.setCta()
+			.onClick(() => this.confirm());
+	}
+
+	onClose(): void {
+		this.contentEl.empty();
+		this.resolve(false);
+	}
+
+	private confirm(): void {
+		this.resolve(true);
+		this.close();
+	}
+
+	private resolve(value: boolean): void {
+		if (this.isResolved) {
+			return;
+		}
+		this.isResolved = true;
+		this.resolvePromise?.(value);
+	}
+}

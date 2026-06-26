@@ -32,6 +32,11 @@ import {
 	normalizeProjectListSortMode,
 } from './settings';
 import {
+	areBatchTemplateConfigsEqual,
+	normalizeBatchTemplateConfig,
+	type BatchTemplateConfig,
+} from './tasks-center/batch-task-template';
+import {
 	IOTO_TASKS_CENTER_VIEW_TYPE,
 	IOTOTasksCenterView,
 } from './views/iotoTasksCenterView';
@@ -78,10 +83,11 @@ export default class IOTOTasksCenter extends Plugin {
 					(groupMode) => this.updateTaskListGroupMode(groupMode),
 					(show) => this.updateShowTaskPriority(show),
 					(type) => this.settings.taskTemplateConfigs[type],
-				() => this.settings.dateTaskDateFormat,
-				(projectName, hidden) =>
-					this.setProjectHidden(projectName, hidden),
-			),
+					() => this.settings.dateTaskDateFormat,
+					(projectName, hidden) =>
+						this.setProjectHidden(projectName, hidden),
+					() => this.settings.batchTemplateConfig,
+				),
 		);
 		this.registerView(
 			IOTO_PROJECT_CENTER_VIEW_TYPE,
@@ -145,6 +151,31 @@ export default class IOTOTasksCenter extends Plugin {
 			},
 		});
 
+		this.addCommand({
+			id: 'batch-create-tasks-from-template',
+			name: t('command.batchCreateTasksFromTemplate'),
+			callback: () => {
+				const existingLeaf = this.app.workspace.getLeavesOfType(
+					IOTO_TASKS_CENTER_VIEW_TYPE,
+				)[0];
+				const existingView = existingLeaf?.view;
+				if (existingView instanceof IOTOTasksCenterView) {
+					void existingView.triggerBatchCreateFromTemplate();
+					return;
+				}
+
+				void this.activateIOTOTasksCenterView().then(() => {
+					const leaf = this.app.workspace.getLeavesOfType(
+						IOTO_TASKS_CENTER_VIEW_TYPE,
+					)[0];
+					const view = leaf?.view;
+					if (view instanceof IOTOTasksCenterView) {
+						void view.triggerBatchCreateFromTemplate();
+					}
+				});
+			},
+		});
+
 		this.addSettingTab(new IOTOTasksCenterSettingTab(this.app, this));
 		this.registerVaultRefreshEvents();
 	}
@@ -199,6 +230,9 @@ export default class IOTOTasksCenter extends Plugin {
 		);
 		this.settings.projectCategoryOptions = normalizeProjectCategoryOptions(
 			loadedData?.projectCategoryOptions,
+		);
+		this.settings.batchTemplateConfig = normalizeBatchTemplateConfig(
+			loadedData?.batchTemplateConfig,
 		);
 	}
 
@@ -464,6 +498,24 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.projectCategoryOptions = nextCategories;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateBatchTemplateConfig(
+		config: BatchTemplateConfig,
+	): Promise<void> {
+		const nextConfig = normalizeBatchTemplateConfig(config);
+		if (
+			areBatchTemplateConfigsEqual(
+				this.settings.batchTemplateConfig,
+				nextConfig,
+			)
+		) {
+			return;
+		}
+
+		this.settings.batchTemplateConfig = nextConfig;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}

@@ -8,6 +8,11 @@ import {
 	type TaskTemplateConfigMap,
 	type TaskTemplateSourceMode,
 } from './tasks-center/task-template-config';
+import {
+	DEFAULT_BATCH_TEMPLATE_CONFIG,
+	type BatchTemplateConfig,
+	type BatchTaskTemplate,
+} from './tasks-center/batch-task-template';
 import { ENABLED_TASK_CREATION_TYPE_ORDER } from './tasks-center/enabled-task-creation-types';
 import {
 	DEFAULT_INPUT_ROOT_PATH,
@@ -21,6 +26,8 @@ import {
 } from './tasks-center/types';
 import { ImportModal } from './modals/ImportModal';
 import { TabbedSettings } from './ui/tabbed-settings';
+import { ConfirmModal } from './ui/confirmModal';
+import { BatchTemplateEditModal } from './ui/batchTemplateEditModal';
 
 export type ProjectListSortMode =
 	| 'incomplete-count'
@@ -61,6 +68,7 @@ export interface IOTOTasksCenterSettings {
 	enabledTaskCreationTypes: TaskCreationType[];
 	taskTemplateConfigs: TaskTemplateConfigMap;
 	dateTaskDateFormat: string;
+	batchTemplateConfig: BatchTemplateConfig;
 }
 
 export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
@@ -84,6 +92,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	enabledTaskCreationTypes: [...ENABLED_TASK_CREATION_TYPE_ORDER],
 	taskTemplateConfigs: createDefaultTaskTemplateConfigMap(),
 	dateTaskDateFormat: DEFAULT_DATE_TASK_DATE_FORMAT,
+	batchTemplateConfig: { ...DEFAULT_BATCH_TEMPLATE_CONFIG },
 };
 
 export { normalizeEnabledTaskCreationTypes } from './tasks-center/enabled-task-creation-types';
@@ -532,6 +541,142 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 				}
 			},
 		);
+
+		tabbedSettings.addTab(
+			t('settings.tabs.batchTemplates'),
+			(containerEl) => {
+				this.renderBatchTemplateSettings(containerEl);
+			},
+		);
+	}
+
+	private renderBatchTemplateSettings(containerEl: HTMLElement): void {
+		containerEl.empty();
+
+		new Setting(containerEl)
+			.setName(t('settings.batchTemplates.heading'))
+			.setHeading();
+
+		const config = this.plugin.settings.batchTemplateConfig;
+
+		new Setting(containerEl)
+			.setName(t('settings.batchTemplates.enabled.name'))
+			.setDesc(t('settings.batchTemplates.enabled.desc'))
+			.addToggle((toggle) =>
+				toggle.setValue(config.enabled).onChange(async (value) => {
+					await this.plugin.updateBatchTemplateConfig({
+						enabled: value,
+						templates: config.templates,
+					});
+					this.renderBatchTemplateSettings(containerEl);
+				}),
+			);
+
+		if (config.templates.length === 0) {
+			containerEl.createEl('p', {
+				text: t('settings.batchTemplates.empty'),
+				cls: 'ioto-tasks-center__settings-hint',
+			});
+		}
+
+		for (const template of config.templates) {
+			const rowEl = containerEl.createDiv({
+				cls: 'ioto-tasks-center__batch-template-row',
+			});
+			rowEl.createSpan({
+				cls: 'ioto-tasks-center__batch-template-row-name',
+				text: template.name,
+			});
+
+			const actionsEl = rowEl.createDiv({
+				cls: 'ioto-tasks-center__batch-template-row-actions',
+			});
+
+			const editButtonEl = actionsEl.createEl('button', {
+				text: t('settings.batchTemplates.edit'),
+			});
+			editButtonEl.type = 'button';
+			editButtonEl.addEventListener('click', () => {
+				void this.openBatchTemplateEditor(containerEl, template);
+			});
+
+			const deleteButtonEl = actionsEl.createEl('button', {
+				text: t('settings.batchTemplates.delete'),
+			});
+			deleteButtonEl.type = 'button';
+			deleteButtonEl.addEventListener('click', () => {
+				void this.confirmDeleteBatchTemplate(containerEl, template);
+			});
+		}
+
+		const addButtonEl = containerEl.createEl('button', {
+			cls: 'ioto-tasks-center__batch-template-add',
+			text: t('settings.batchTemplates.add'),
+		});
+		addButtonEl.type = 'button';
+		addButtonEl.addEventListener('click', () => {
+			void this.openBatchTemplateEditor(containerEl, null);
+		});
+	}
+
+	private async openBatchTemplateEditor(
+		containerEl: HTMLElement,
+		existing: BatchTaskTemplate | null,
+	): Promise<void> {
+		const result = await new BatchTemplateEditModal(
+			this.app,
+			existing,
+		).openAndGetValue();
+		if (!result) {
+			return;
+		}
+
+		const config = this.plugin.settings.batchTemplateConfig;
+		const nextTemplates =
+			existing === null
+				? [...config.templates, result]
+				: config.templates.map((template) =>
+						template.id === existing.id ? result : template,
+					);
+
+		await this.plugin.updateBatchTemplateConfig({
+			enabled: config.enabled,
+			templates: nextTemplates,
+		});
+		this.renderBatchTemplateSettings(containerEl);
+	}
+
+	private async confirmDeleteBatchTemplate(
+		containerEl: HTMLElement,
+		template: BatchTaskTemplate,
+	): Promise<void> {
+		const confirmed = await new ConfirmModal(
+			this.app,
+			t('settings.batchTemplates.deleteConfirm.title'),
+			{
+				descriptionText: t(
+					'settings.batchTemplates.deleteConfirm.desc',
+					[template.name],
+				),
+				confirmButtonText: t(
+					'settings.batchTemplates.deleteConfirm.confirm',
+				),
+				cancelButtonText: t('modal.cancel'),
+			},
+		).openAndConfirm();
+		if (!confirmed) {
+			return;
+		}
+
+		const config = this.plugin.settings.batchTemplateConfig;
+		const nextTemplates = config.templates.filter(
+			(entry) => entry.id !== template.id,
+		);
+		await this.plugin.updateBatchTemplateConfig({
+			enabled: config.enabled,
+			templates: nextTemplates,
+		});
+		this.renderBatchTemplateSettings(containerEl);
 	}
 
 	private renderTaskTemplateSettings(

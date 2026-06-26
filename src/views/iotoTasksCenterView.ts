@@ -45,6 +45,14 @@ import {
 	assignUpTaskToFile,
 	removeUpTaskFromFile,
 } from '../tasks-center/up-task-assignment';
+import {
+	applyPrefix,
+	buildBatchTaskTitleForUpTask,
+	parseBatchList,
+	type BatchTaskItem,
+	type BatchTaskTemplate,
+	type BatchTemplateConfig,
+} from '../tasks-center/batch-task-template';
 import type {
 	TaskCreationType,
 	TaskTemplateConfig,
@@ -82,6 +90,11 @@ import {
 } from '../ui/task-status-checklist-popover';
 import { ConfirmModal } from '../ui/confirmModal';
 import { TaskCreationModal } from '../ui/taskCreationModal';
+import {
+	BatchCreateConfirmModal,
+	BatchPrefixModal,
+	BatchTemplateSelectModal,
+} from '../ui/batchTaskModals';
 import { TaskSearchPopover } from '../ui/task-search-popover';
 import { TaskNameModal } from '../ui/taskNameModal';
 import {
@@ -222,6 +235,7 @@ export class IOTOTasksCenterView extends ItemView {
 		projectName: string,
 		hidden: boolean,
 	) => Promise<void>;
+	private readonly getBatchTemplateConfig: () => BatchTemplateConfig;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -259,6 +273,7 @@ export class IOTOTasksCenterView extends ItemView {
 			projectName: string,
 			hidden: boolean,
 		) => Promise<void>,
+		getBatchTemplateConfig: () => BatchTemplateConfig,
 	) {
 		super(leaf);
 		this.navigation = true;
@@ -287,6 +302,7 @@ export class IOTOTasksCenterView extends ItemView {
 		this.getTaskTemplateConfig = getTaskTemplateConfig;
 		this.getDateTaskDateFormat = getDateTaskDateFormat;
 		this.setProjectHidden = setProjectHidden;
+		this.getBatchTemplateConfig = getBatchTemplateConfig;
 	}
 
 	getViewType(): string {
@@ -782,6 +798,9 @@ export class IOTOTasksCenterView extends ItemView {
 	): void {
 		const menu = new Menu();
 		const isArchived = this.getHiddenProjectNames().includes(project.name);
+		const batchConfig = this.getBatchTemplateConfig();
+		const canBatchCreate =
+			batchConfig.enabled && batchConfig.templates.length > 0;
 
 		menu.addItem((item) =>
 			item.setTitle(t('view.projectMenu.editSpec')).onClick(() => {
@@ -801,6 +820,19 @@ export class IOTOTasksCenterView extends ItemView {
 				}),
 		);
 
+		if (canBatchCreate) {
+			menu.addSeparator();
+			menu.addItem((item) =>
+				item
+					.setTitle(t('view.projectMenu.batchCreateTasks'))
+					.onClick(() => {
+						void this.selectProject(project.name).then(() =>
+							this.triggerBatchCreateFromTemplate(),
+						);
+					}),
+			);
+		}
+
 		menu.showAtMouseEvent(event);
 	}
 
@@ -818,6 +850,173 @@ export class IOTOTasksCenterView extends ItemView {
 					);
 		const leaf = this.ensurePreviewLeaf();
 		await leaf.openFile(file, { active: true });
+	}
+
+	async triggerBatchCreateFromTemplate(): Promise<void> {
+		const projectName = this.selectedProject;
+		if (
+			!projectName ||
+			!this.projects.some((project) => project.name === projectName)
+		) {
+			new Notice(t('view.notice.currentProjectUnavailable'));
+			return;
+		}
+
+		const batchConfig = this.getBatchTemplateConfig();
+		if (!batchConfig.enabled) {
+			new Notice(t('notice.batchCreate.disabled'));
+			return;
+		}
+		if (batchConfig.templates.length === 0) {
+			new Notice(t('notice.batchCreate.noTemplates'));
+			return;
+		}
+
+		const template = await new BatchTemplateSelectModal(
+			this.app,
+			batchConfig.templates,
+		).openAndGetValue();
+		if (!template) {
+			return;
+		}
+
+		const prefix = await new BatchPrefixModal(this.app).openAndGetValue();
+		if (prefix === null) {
+			return;
+		}
+
+		const items = parseBatchList(template.listContent);
+		if (items.length === 0) {
+			new Notice(t('notice.batchCreate.emptyContent'));
+			return;
+		}
+
+		const confirmed = await new BatchCreateConfirmModal(this.app, {
+			templateName: template.name,
+			prefix,
+			projectName,
+			items,
+		}).openAndConfirm();
+		if (!confirmed) {
+			return;
+		}
+
+		await this.executeBatchCreate(template, prefix, items);
+	}
+
+	private async executeBatchCreate(
+		template: BatchTaskTemplate,
+		prefix: string,
+		items: BatchTaskItem[],
+	): Promise<void> {
+		const projectName = this.selectedProject;
+		if (!projectName) {
+			return;
+		}
+
+		this.isCreatingTask = true;
+		this.render();
+
+		let successCount = 0;
+		let failureCount = 0;
+		let firstCreatedFile: TFile | null = null;
+
+		try {
+			const previewLeaf = this.ensurePreviewLeaf();
+			const createdFiles: Array<{ file: TFile; item: BatchTaskItem }> =
+				[];
+
+			for (const item of items) {
+				const fullName = applyPrefix(item.name, prefix);
+				try {
+					const result = await createTaskFile({
+						app: this.app,
+						tasksRootPath: this.getTasksRootPath(),
+						projectName,
+						type: template.taskType,
+						customName: fullName,
+						templateConfig: this.getTaskTemplateConfig(
+							template.taskType,
+						),
+						dateTaskDateFormat: this.getDateTaskDateFormat(),
+						targetLeaf: previewLeaf,
+						sourceLeaf: this.leaf,
+					});
+					createdFiles.push({ file: result.file, item });
+					if (!firstCreatedFile) {
+						firstCreatedFile = result.file;
+					}
+					successCount += 1;
+				} catch (error) {
+					failureCount += 1;
+					const message =
+						error instanceof Error
+							? error.message
+							: t('notice.batchCreate.failed', [item.name]);
+					new Notice(message);
+				}
+			}
+
+			// 建立父子关系（依赖已创建文件，串行执行）
+			for (const { file, item } of createdFiles) {
+				if (item.parentIndex === null) {
+					continue;
+				}
+				const parentEntry = createdFiles[item.parentIndex];
+				if (!parentEntry) {
+					continue;
+				}
+				const parentFullName = applyPrefix(
+					parentEntry.item.name,
+					prefix,
+				);
+				const parentTitle = buildBatchTaskTitleForUpTask(
+					projectName,
+					template.taskType,
+					parentFullName,
+				);
+				try {
+					await assignUpTaskToFile(this.app, file, parentTitle);
+				} catch {
+					new Notice(
+						t('notice.batchCreate.parentAssignFailed', [
+							file.basename,
+						]),
+					);
+				}
+			}
+
+			this.previewLeaf = previewLeaf;
+			await this.refreshFromVaultChange();
+
+			if (firstCreatedFile) {
+				await this.openFileInPreview(firstCreatedFile);
+			}
+
+			if (failureCount === 0) {
+				new Notice(
+					t('notice.batchCreate.success', [String(successCount)]),
+				);
+			} else {
+				new Notice(
+					t('notice.batchCreate.partialFail', [
+						String(successCount),
+						String(failureCount),
+					]),
+				);
+			}
+		} catch (error) {
+			const message =
+				error instanceof Error
+					? error.message
+					: t('notice.batchCreate.failed', [
+							error instanceof Error ? error.message : '',
+						]);
+			new Notice(message);
+		} finally {
+			this.isCreatingTask = false;
+			this.render();
+		}
 	}
 
 	private renderTasksPane(container: HTMLElement): void {

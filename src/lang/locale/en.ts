@@ -365,6 +365,55 @@ const en = {
 	'modal.newNormalTask.placeholder': 'Enter task name',
 	'modal.newTask.desc': 'Please enter a name for the new task file.',
 	'modal.taskSettings.priority.none': 'None',
+	'command.batchCreateTasksFromTemplate': 'Batch create tasks from template',
+	'settings.tabs.batchTemplates': 'Batch Templates',
+	'settings.batchTemplates.heading': 'Batch Task Templates',
+	'settings.batchTemplates.enabled.name': 'Enable batch templates',
+	'settings.batchTemplates.enabled.desc':
+		'When enabled, you can batch-create tasks from a Markdown list template.',
+	'settings.batchTemplates.empty':
+		'No batch templates yet. Click "Add template" to create one.',
+	'settings.batchTemplates.add': 'Add template',
+	'settings.batchTemplates.edit': 'Edit',
+	'settings.batchTemplates.delete': 'Delete',
+	'settings.batchTemplates.deleteConfirm.title': 'Delete batch template',
+	'settings.batchTemplates.deleteConfirm.desc':
+		'Delete the template "{0}"? This cannot be undone.',
+	'settings.batchTemplates.deleteConfirm.confirm': 'Delete',
+	'settings.batchTemplates.editModal.title.new': 'New batch template',
+	'settings.batchTemplates.editModal.title.edit': 'Edit batch template',
+	'settings.batchTemplates.editModal.name': 'Template name',
+	'settings.batchTemplates.editModal.taskType': 'Task type',
+	'settings.batchTemplates.editModal.content':
+		'Template content (Markdown list)',
+	'settings.batchTemplates.editModal.contentPlaceholder':
+		'- First task\n    - Sub task\n- Second task',
+	'settings.batchTemplates.editModal.invalid':
+		'Template name cannot be empty and content must contain at least one list item.',
+	'view.projectMenu.batchCreateTasks': 'Batch create tasks',
+	'modal.batchSelect.title': 'Select a batch template',
+	'modal.batchSelect.desc':
+		'Choose a template to batch-create tasks under the current project.',
+	'modal.batchSelect.empty':
+		'No templates available. Please configure one in settings first.',
+	'modal.batchPrefix.title': 'Task name prefix (optional)',
+	'modal.batchPrefix.desc':
+		'Add a prefix to every task name in this batch. Leave empty to skip.',
+	'modal.batchPrefix.placeholder': 'e.g. Sprint1-',
+	'modal.batchConfirm.title': 'Confirm batch creation',
+	'modal.batchConfirm.summary': 'Template: {0} | Prefix: {1} | Project: {2}',
+	'modal.batchConfirm.count': 'Will create {0} task(s):',
+	'modal.batchConfirm.confirm': 'Create',
+	'notice.batchCreate.disabled':
+		'Batch templates are disabled. Enable them in settings first.',
+	'notice.batchCreate.noTemplates': 'No batch templates configured.',
+	'notice.batchCreate.emptyContent':
+		'The selected template has no list items.',
+	'notice.batchCreate.success': 'Created {0} task(s).',
+	'notice.batchCreate.partialFail': 'Created {0} task(s); {1} failed.',
+	'notice.batchCreate.failed': 'Batch creation failed: {0}',
+	'notice.batchCreate.parentAssignFailed':
+		'Failed to link subtask "{0}" to its parent.',
 } as const;
 
 export default en;
