@@ -555,7 +555,15 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName(t('settings.batchTemplates.heading'))
-			.setHeading();
+			.setHeading()
+			.addButton((button) =>
+				button
+					.setButtonText(t('settings.batchTemplates.add'))
+					.setClass('ioto-tasks-center__batch-template-add')
+					.onClick(() => {
+						void this.openBatchTemplateEditor(containerEl, null);
+					}),
+			);
 
 		const config = this.plugin.settings.batchTemplateConfig;
 
@@ -608,15 +616,6 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 				void this.confirmDeleteBatchTemplate(containerEl, template);
 			});
 		}
-
-		const addButtonEl = containerEl.createEl('button', {
-			cls: 'ioto-tasks-center__batch-template-add',
-			text: t('settings.batchTemplates.add'),
-		});
-		addButtonEl.type = 'button';
-		addButtonEl.addEventListener('click', () => {
-			void this.openBatchTemplateEditor(containerEl, null);
-		});
 	}
 
 	private async openBatchTemplateEditor(

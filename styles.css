@@ -1586,3 +1586,49 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	color: var(--text-muted);
 	line-height: 1.5;
 }
+
+.ioto-tasks-center__settings-hint {
+	padding: 10px var(--size-4-4);
+}
+
+.ioto-tasks-center__batch-template-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 10px var(--size-4-4);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.ioto-tasks-center__batch-template-row-name {
+	flex: 1;
+	min-width: 0;
+}
+
+.ioto-tasks-center__batch-template-row-actions {
+	display: flex;
+	gap: 8px;
+	flex-shrink: 0;
+}
+
+.ioto-tasks-center__batch-template-option {
+	padding: 6px 10px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	cursor: pointer;
+	margin-bottom: 8px;
+}
+
+.ioto-tasks-center__batch-template-option:hover {
+	border-color: var(--interactive-accent);
+}
+
+.ioto-tasks-center__batch-preview-line {
+	padding-bottom: 8px;
+}
