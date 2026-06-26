@@ -37,7 +37,7 @@
 .ioto-tasks-center {
 	display: grid;
 	flex: 1 1 auto;
-	grid-template-columns: minmax(220px, 28%) minmax(0, 1fr);
+	grid-template-columns: minmax(220px, 20%) minmax(0, 1fr);
 	gap: 16px;
 	min-height: 0;
 	padding: 16px;
@@ -1413,7 +1413,7 @@ button:not(.clickable-icon).ioto-tasks-center__status-checklist-popover-item {
 	background: var(--background-modifier-hover);
 }
 
-.ioto-project-center__icon-button {
+button:not(.clickable-icon).ioto-project-center__icon-button {
 	appearance: none;
 	display: inline-flex;
 	align-items: center;
@@ -1421,10 +1421,11 @@ button:not(.clickable-icon).ioto-tasks-center__status-checklist-popover-item {
 	width: 34px;
 	height: 34px;
 	padding: 0;
-	border: 1px solid var(--background-modifier-border);
+	border: none;
 	border-radius: 10px;
-	background: var(--background-primary);
+	background: transparent;
 	color: var(--text-muted);
+	box-shadow: none;
 	cursor: pointer;
 	transition:
 		background-color 120ms ease,
@@ -1462,13 +1463,13 @@ button:not(.clickable-icon).ioto-tasks-center__status-checklist-popover-item {
 .ioto-project-center__row {
 	display: grid;
 	grid-template-columns:
+		minmax(90px, 0.8fr)
 		minmax(180px, 1.4fr)
-		minmax(140px, 1fr)
-		minmax(140px, 1fr)
-		minmax(140px, 1fr)
+		minmax(90px, 1fr)
 		minmax(90px, 0.6fr)
-		minmax(90px, 0.6fr)
-		minmax(52px, 52px);
+		minmax(60px, 0.6fr)
+		minmax(90px, 1fr)
+		minmax(90px, 1fr);
 	align-items: center;
 }
 

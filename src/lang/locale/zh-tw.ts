@@ -33,7 +33,6 @@ const zhTW = {
 	'projectCenter.notice.updateArchivedFailed': '更新封存狀態失敗。',
 	'projectCenter.notice.updateMetadataFailed': '更新專案元資料失敗。',
 	'projectCenter.notice.createProjectFailed': '建立專案失敗。',
-	'projectCenter.notice.specNotFound': '未找到專案規範檔案。',
 	'view.title': '任務中心',
 	'view.projectsPaneTitle': '專案列表',
 	'view.tasksPaneTitle': '任務列表',
