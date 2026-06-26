@@ -1,4 +1,4 @@
-import { ItemView, Notice, setIcon, WorkspaceLeaf } from 'obsidian';
+import { ItemView, Notice, setIcon, TFile, WorkspaceLeaf } from 'obsidian';
 
 import { t } from '../lang/helpter';
 import { listProjectFolders } from '../tasks-center/data';
@@ -6,6 +6,7 @@ import {
 	countProjectTaskNotes,
 	ensureProjectMetadataFile,
 	getProjectMetadataFile,
+	PROJECT_METADATA_FILE_NAME,
 	readProjectMetadata,
 	updateProjectMetadata,
 	type ProjectMetadata,
@@ -247,7 +248,10 @@ export class IOTOProjectCenterView extends ItemView {
 
 			if (this.shouldFocusProjectSearch) {
 				this.shouldFocusProjectSearch = false;
-				if (typeof window !== 'undefined' && window.requestAnimationFrame) {
+				if (
+					typeof window !== 'undefined' &&
+					window.requestAnimationFrame
+				) {
 					window.requestAnimationFrame(() => {
 						searchInputEl.focus();
 					});
@@ -337,7 +341,10 @@ export class IOTOProjectCenterView extends ItemView {
 					t('projectCenter.search.emptyDesc', [keyword]),
 					'is-empty',
 				);
-				restoreProjectCenterScrollPosition(contentEl, this.contentScroll);
+				restoreProjectCenterScrollPosition(
+					contentEl,
+					this.contentScroll,
+				);
 				return;
 			}
 
@@ -406,7 +413,10 @@ export class IOTOProjectCenterView extends ItemView {
 		}
 	}
 
-	private renderTable(container: HTMLElement, rows: ProjectCenterRow[]): void {
+	private renderTable(
+		container: HTMLElement,
+		rows: ProjectCenterRow[],
+	): void {
 		const tableEl = container.createDiv({
 			cls: 'ioto-project-center__table',
 		});
@@ -443,6 +453,10 @@ export class IOTOProjectCenterView extends ItemView {
 			'archived',
 			t('projectCenter.columns.archived'),
 		);
+		headerRowEl.createDiv({
+			cls: 'ioto-project-center__cell ioto-project-center__cell--editSpec',
+			text: t('projectCenter.columns.editSpec'),
+		});
 
 		for (const row of sortProjectCenterRows(
 			rows,
@@ -458,6 +472,7 @@ export class IOTOProjectCenterView extends ItemView {
 			this.renderDateCell(rowEl, row, 'dueDate');
 			this.renderTaskCountCell(rowEl, row);
 			this.renderArchivedCell(rowEl, row);
+			this.renderEditSpecCell(rowEl, row);
 		}
 	}
 
@@ -561,6 +576,37 @@ export class IOTOProjectCenterView extends ItemView {
 			new Notice(message);
 			await this.refreshFromVaultChange();
 		}
+	}
+
+	private renderEditSpecCell(
+		rowEl: HTMLElement,
+		row: ProjectCenterRow,
+	): void {
+		const cellEl = rowEl.createDiv({
+			cls: 'ioto-project-center__cell ioto-project-center__cell--editSpec',
+		});
+		const buttonEl = cellEl.createEl('button', {
+			cls: 'ioto-project-center__icon-button',
+			attr: {
+				'aria-label': t('projectCenter.columns.editSpec'),
+				title: t('projectCenter.columns.editSpec'),
+			},
+		});
+		setIcon(buttonEl, 'file-edit');
+		buttonEl.addEventListener('click', () => {
+			void this.openProjectSpec(row);
+		});
+	}
+
+	private async openProjectSpec(row: ProjectCenterRow): Promise<void> {
+		const filePath = `${row.path}/${PROJECT_METADATA_FILE_NAME}`;
+		const file = this.app.vault.getAbstractFileByPath(filePath);
+		if (!(file instanceof TFile)) {
+			new Notice(t('projectCenter.notice.specNotFound'));
+			return;
+		}
+		const leaf = this.app.workspace.getLeaf('split', 'vertical');
+		await leaf.openFile(file, { active: true });
 	}
 
 	private renderCategoryCell(rowEl: HTMLElement, row: ProjectCenterRow) {

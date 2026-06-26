@@ -18,6 +18,7 @@ const en = {
 	'projectCenter.columns.dueDate': 'Due date',
 	'projectCenter.columns.taskCount': 'Tasks',
 	'projectCenter.columns.archived': 'Archived',
+	'projectCenter.columns.editSpec': 'Edit spec',
 	'projectCenter.category.empty': 'Unassigned',
 	'projectCenter.category.addNew': 'Add category…',
 	'projectCenter.category.addTitle': 'New category',
@@ -37,6 +38,7 @@ const en = {
 	'projectCenter.notice.updateMetadataFailed':
 		'Failed to update project metadata.',
 	'projectCenter.notice.createProjectFailed': 'Failed to create project.',
+	'projectCenter.notice.specNotFound': 'Project spec file not found.',
 	'view.title': 'Tasks center',
 	'view.projectsPaneTitle': 'Projects',
 	'view.tasksPaneTitle': 'Tasks',

@@ -1467,7 +1467,8 @@ button:not(.clickable-icon).ioto-tasks-center__status-checklist-popover-item {
 		minmax(140px, 1fr)
 		minmax(140px, 1fr)
 		minmax(90px, 0.6fr)
-		minmax(90px, 0.6fr);
+		minmax(90px, 0.6fr)
+		minmax(52px, 52px);
 	align-items: center;
 }
 
