@@ -1611,6 +1611,22 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	flex-shrink: 0;
 }
 
+.ioto-tasks-center__batch-template-content-setting {
+	flex-direction: column;
+	align-items: stretch;
+}
+
+.ioto-tasks-center__batch-template-content-setting .setting-item-control {
+	width: 100%;
+	margin-top: 8px;
+}
+
+.ioto-tasks-center__batch-template-content-setting textarea {
+	width: 100%;
+	min-height: 220px;
+	resize: vertical;
+}
+
 .ioto-tasks-center__batch-template-option {
 	padding: 6px 10px;
 	border: 1px solid var(--background-modifier-border);

@@ -34,9 +34,8 @@ export class BatchTemplateEditModal extends Modal {
 	private name = '';
 	private taskType: BatchTaskType = 'normal';
 	private listContent = '';
-	private resolvePromise:
-		| ((value: BatchTaskTemplate | null) => void)
-		| null = null;
+	private resolvePromise: ((value: BatchTaskTemplate | null) => void) | null =
+		null;
 	private isResolved = false;
 
 	constructor(app: Modal['app'], existing: BatchTaskTemplate | null) {
@@ -75,7 +74,10 @@ export class BatchTemplateEditModal extends Modal {
 			.setName(t('settings.batchTemplates.editModal.taskType'))
 			.addDropdown((dropdown: DropdownComponent) => {
 				for (const taskType of BATCH_TASK_TYPES) {
-					dropdown.addOption(taskType, getBatchTaskTypeLabel(taskType));
+					dropdown.addOption(
+						taskType,
+						getBatchTaskTypeLabel(taskType),
+					);
 				}
 				dropdown.setValue(this.taskType);
 				dropdown.onChange((value) => {
@@ -89,9 +91,10 @@ export class BatchTemplateEditModal extends Modal {
 				});
 			});
 
-		const contentSetting = new Setting(this.contentEl).setName(
-			t('settings.batchTemplates.editModal.content'),
-		);
+		const contentSetting = new Setting(this.contentEl)
+			.setName(t('settings.batchTemplates.editModal.content'))
+			.setDesc(t('settings.batchTemplates.editModal.contentHint'))
+			.setClass('ioto-tasks-center__batch-template-content-setting');
 		contentSetting.addTextArea((textArea: TextAreaComponent) => {
 			textArea.setValue(this.listContent);
 			textArea.setPlaceholder(

@@ -553,18 +553,6 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 	private renderBatchTemplateSettings(containerEl: HTMLElement): void {
 		containerEl.empty();
 
-		new Setting(containerEl)
-			.setName(t('settings.batchTemplates.heading'))
-			.setHeading()
-			.addButton((button) =>
-				button
-					.setButtonText(t('settings.batchTemplates.add'))
-					.setClass('ioto-tasks-center__batch-template-add')
-					.onClick(() => {
-						void this.openBatchTemplateEditor(containerEl, null);
-					}),
-			);
-
 		const config = this.plugin.settings.batchTemplateConfig;
 
 		new Setting(containerEl)
@@ -578,6 +566,18 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 					});
 					this.renderBatchTemplateSettings(containerEl);
 				}),
+			);
+
+		new Setting(containerEl)
+			.setName(t('settings.batchTemplates.heading'))
+			.setHeading()
+			.addButton((button) =>
+				button
+					.setButtonText(t('settings.batchTemplates.add'))
+					.setClass('ioto-tasks-center__batch-template-add')
+					.onClick(() => {
+						void this.openBatchTemplateEditor(containerEl, null);
+					}),
 			);
 
 		if (config.templates.length === 0) {

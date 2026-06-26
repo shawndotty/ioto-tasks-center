@@ -352,6 +352,8 @@ const zhTW = {
 	'settings.batchTemplates.editModal.name': '範本名稱',
 	'settings.batchTemplates.editModal.taskType': '任務類型',
 	'settings.batchTemplates.editModal.content': '範本內容（Markdown 列表）',
+	'settings.batchTemplates.editModal.contentHint':
+		'請使用無序列表項（- ），每級縮排 2 個空格。縮排的項目會成為上方最近父項的子任務。',
 	'settings.batchTemplates.editModal.contentPlaceholder':
 		'- 第一個任務\n    - 子任務\n- 第二個任務',
 	'settings.batchTemplates.editModal.invalid':

@@ -352,6 +352,8 @@ const zhCN = {
 	'settings.batchTemplates.editModal.name': '模板名称',
 	'settings.batchTemplates.editModal.taskType': '任务类型',
 	'settings.batchTemplates.editModal.content': '模板内容（Markdown 列表）',
+	'settings.batchTemplates.editModal.contentHint':
+		'请使用无序列表项（- ），每级缩进 2 个空格。缩进的条目会成为上方最近父项的子任务。',
 	'settings.batchTemplates.editModal.contentPlaceholder':
 		'- 第一个任务\n    - 子任务\n- 第二个任务',
 	'settings.batchTemplates.editModal.invalid':
