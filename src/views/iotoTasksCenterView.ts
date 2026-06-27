@@ -876,6 +876,7 @@ export class IOTOTasksCenterView extends ItemView {
 		const template = await new BatchTemplateSelectModal(
 			this.app,
 			batchConfig.templates,
+			projectName,
 		).openAndGetValue();
 		if (!template) {
 			return;

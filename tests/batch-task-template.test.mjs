@@ -12,6 +12,7 @@ const {
 	createBatchTemplateId,
 	isBatchTemplateValid,
 	isBatchTaskType,
+	isTemplateAvailableForProject,
 	normalizeBatchTemplateConfig,
 	normalizeBatchTemplate,
 	parseBatchList,
@@ -175,7 +176,36 @@ test('normalizeBatchTemplate 新版 levelTaskTypes 保留字段', () => {
 		name: '入职 SOP',
 		levelTaskTypes: ['plan', 'topic', 'normal'],
 		listContent: '- 任务一',
+		projects: [],
 	});
+});
+
+test('normalizeBatchTemplate 保留并规范化 projects 字段', () => {
+	const template = normalizeBatchTemplate({
+		id: 'p1',
+		name: '项目模板',
+		levelTaskTypes: ['normal', 'normal', 'normal'],
+		listContent: '- 任务',
+		projects: ['  项目A  ', '', '项目B', 123],
+	});
+	assert.deepEqual(template.projects, ['项目A', '项目B']);
+});
+
+test('normalizeBatchTemplate 缺失 projects 时返回空数组', () => {
+	const template = normalizeBatchTemplate({
+		name: '无项目',
+		listContent: '- 任务',
+	});
+	assert.deepEqual(template.projects, []);
+});
+
+test('normalizeBatchTemplate projects 为非数组时返回空数组', () => {
+	const template = normalizeBatchTemplate({
+		name: '非法 projects',
+		listContent: '- 任务',
+		projects: '项目A',
+	});
+	assert.deepEqual(template.projects, []);
 });
 
 test('normalizeBatchTemplate 向后兼容旧版 taskType 展开为三级', () => {
@@ -467,6 +497,95 @@ test('areBatchTemplateConfigsEqual levelTaskTypes 不同返回 false', () => {
 		),
 		false,
 	);
+});
+
+test('areBatchTemplateConfigsEqual projects 不同返回 false', () => {
+	assert.equal(
+		areBatchTemplateConfigsEqual(
+			{
+				enabled: true,
+				templates: [
+					{
+						id: 't1',
+						name: 'A',
+						levelTaskTypes: ['normal', 'normal', 'normal'],
+						listContent: '- x',
+						projects: ['项目A'],
+					},
+				],
+			},
+			{
+				enabled: true,
+				templates: [
+					{
+						id: 't1',
+						name: 'A',
+						levelTaskTypes: ['normal', 'normal', 'normal'],
+						listContent: '- x',
+						projects: ['项目B'],
+					},
+				],
+			},
+		),
+		false,
+	);
+});
+
+test('areBatchTemplateConfigsEqual projects 顺序不同但内容相同返回 true', () => {
+	assert.equal(
+		areBatchTemplateConfigsEqual(
+			{
+				enabled: true,
+				templates: [
+					{
+						id: 't1',
+						name: 'A',
+						levelTaskTypes: ['normal', 'normal', 'normal'],
+						listContent: '- x',
+						projects: ['项目A', '项目B', '项目C'],
+					},
+				],
+			},
+			{
+				enabled: true,
+				templates: [
+					{
+						id: 't1',
+						name: 'A',
+						levelTaskTypes: ['normal', 'normal', 'normal'],
+						listContent: '- x',
+						projects: ['项目C', '项目A', '项目B'],
+					},
+				],
+			},
+		),
+		true,
+	);
+});
+
+test('isTemplateAvailableForProject projects 为空时任意项目可用', () => {
+	const template = {
+		id: 't1',
+		name: 'A',
+		levelTaskTypes: ['normal', 'normal', 'normal'],
+		listContent: '- x',
+		projects: [],
+	};
+	assert.equal(isTemplateAvailableForProject(template, '项目A'), true);
+	assert.equal(isTemplateAvailableForProject(template, '任意项目'), true);
+});
+
+test('isTemplateAvailableForProject projects 非空时仅命中项目可用', () => {
+	const template = {
+		id: 't1',
+		name: 'A',
+		levelTaskTypes: ['normal', 'normal', 'normal'],
+		listContent: '- x',
+		projects: ['项目A', '项目B'],
+	};
+	assert.equal(isTemplateAvailableForProject(template, '项目A'), true);
+	assert.equal(isTemplateAvailableForProject(template, '项目B'), true);
+	assert.equal(isTemplateAvailableForProject(template, '项目C'), false);
 });
 
 test('resolveTaskTypeForLevel 层级在范围内返回对应类型', () => {

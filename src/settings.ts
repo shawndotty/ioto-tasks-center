@@ -13,6 +13,7 @@ import {
 	type BatchTemplateConfig,
 	type BatchTaskTemplate,
 } from './tasks-center/batch-task-template';
+import { listProjectFolders } from './tasks-center/data';
 import { ENABLED_TASK_CREATION_TYPE_ORDER } from './tasks-center/enabled-task-creation-types';
 import {
 	DEFAULT_INPUT_ROOT_PATH,
@@ -622,9 +623,11 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 		containerEl: HTMLElement,
 		existing: BatchTaskTemplate | null,
 	): Promise<void> {
+		const availableProjects = this.resolveAvailableProjectNames();
 		const result = await new BatchTemplateEditModal(
 			this.app,
 			existing,
+			availableProjects,
 		).openAndGetValue();
 		if (!result) {
 			return;
@@ -643,6 +646,17 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 			templates: nextTemplates,
 		});
 		this.renderBatchTemplateSettings(containerEl);
+	}
+
+	private resolveAvailableProjectNames(): string[] {
+		const tasksRootPath = this.plugin.settings.tasksRootPath;
+		if (!tasksRootPath) {
+			return [];
+		}
+		const result = listProjectFolders(this.app, tasksRootPath);
+		return result.status === 'success'
+			? result.projects.map((project) => project.name)
+			: [];
 	}
 
 	private async confirmDeleteBatchTemplate(

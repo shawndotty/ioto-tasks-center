@@ -395,6 +395,11 @@ const en = {
 		'- First task\n    - Sub task\n- Second task',
 	'settings.batchTemplates.editModal.invalid':
 		'Template name cannot be empty and content must contain at least one list item.',
+	'settings.batchTemplates.editModal.projects': 'Projects',
+	'settings.batchTemplates.editModal.projectsDesc':
+		'Specify which projects can use this template. Leave empty to allow all projects. One project name per line.',
+	'settings.batchTemplates.editModal.projectsPlaceholder':
+		'Example:\nIOTO Task Center\nAI Learning',
 	'view.projectMenu.batchCreateTasks': 'Batch create tasks',
 	'modal.batchSelect.title': 'Select a batch template',
 	'modal.batchSelect.desc':

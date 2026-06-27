@@ -36,17 +36,24 @@ function getBatchTaskTypeLabel(taskType: BatchTaskType): string {
 
 export class BatchTemplateEditModal extends Modal {
 	private readonly existing: BatchTaskTemplate | null;
+	private readonly availableProjects: string[];
 	private name = '';
 	private levelTaskTypes: BatchTaskType[] = [...DEFAULT_LEVEL_TASK_TYPES];
 	private listContent = '';
+	private projects: string[] = [];
 	private levelTypesContainerEl: HTMLElement | null = null;
 	private resolvePromise: ((value: BatchTaskTemplate | null) => void) | null =
 		null;
 	private isResolved = false;
 
-	constructor(app: Modal['app'], existing: BatchTaskTemplate | null) {
+	constructor(
+		app: Modal['app'],
+		existing: BatchTaskTemplate | null,
+		availableProjects: string[] = [],
+	) {
 		super(app);
 		this.existing = existing;
+		this.availableProjects = availableProjects;
 		this.name = existing?.name ?? '';
 		this.levelTaskTypes = existing
 			? (normalizeBatchTemplate(existing)?.levelTaskTypes ?? [
@@ -54,6 +61,7 @@ export class BatchTemplateEditModal extends Modal {
 				])
 			: [...DEFAULT_LEVEL_TASK_TYPES];
 		this.listContent = existing?.listContent ?? '';
+		this.projects = existing?.projects ?? [];
 	}
 
 	openAndGetValue(): Promise<BatchTaskTemplate | null> {
@@ -77,6 +85,28 @@ export class BatchTemplateEditModal extends Modal {
 				text.setValue(this.name);
 				text.onChange((value) => {
 					this.name = value;
+				});
+			});
+
+		new Setting(this.contentEl)
+			.setName(t('settings.batchTemplates.editModal.projects'))
+			.setDesc(t('settings.batchTemplates.editModal.projectsDesc'))
+			.setClass('ioto-tasks-center__batch-template-projects-setting')
+			.addTextArea((textArea: TextAreaComponent) => {
+				textArea.setValue(this.projects.join('\n'));
+				textArea.setPlaceholder(
+					this.availableProjects.length > 0
+						? this.availableProjects.slice(0, 3).join('\n')
+						: t(
+								'settings.batchTemplates.editModal.projectsPlaceholder',
+							),
+				);
+				textArea.inputEl.rows = 3;
+				textArea.onChange((value) => {
+					this.projects = value
+						.split('\n')
+						.map((line) => line.trim())
+						.filter((line) => line.length > 0);
 				});
 			});
 
@@ -182,6 +212,7 @@ export class BatchTemplateEditModal extends Modal {
 			name: this.name.trim(),
 			levelTaskTypes: this.levelTaskTypes.slice(0, MAX_LEVEL_TASK_TYPES),
 			listContent: this.listContent,
+			projects: this.projects,
 		};
 
 		if (!isBatchTemplateValid(candidate)) {

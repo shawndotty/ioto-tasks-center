@@ -22,6 +22,7 @@ export interface BatchTaskTemplate {
 	name: string;
 	levelTaskTypes: BatchTaskType[];
 	listContent: string;
+	projects: string[]; // 所属项目列表，空数组表示可被所有项目使用
 }
 
 export interface BatchTemplateConfig {
@@ -253,8 +254,9 @@ export function normalizeBatchTemplate(
 	const levelTaskTypes = resolveLevelTaskTypes(candidate);
 	const listContent =
 		typeof candidate.listContent === 'string' ? candidate.listContent : '';
+	const projects = resolveProjects(candidate.projects);
 
-	return { id, name, levelTaskTypes, listContent };
+	return { id, name, levelTaskTypes, listContent, projects };
 }
 
 function resolveLevelTaskTypes(
@@ -284,6 +286,25 @@ function padLevelTaskTypes(types: BatchTaskType[]): BatchTaskType[] {
 		sliced.push('normal');
 	}
 	return sliced;
+}
+
+function resolveProjects(input: unknown): string[] {
+	if (!Array.isArray(input)) {
+		return [];
+	}
+	return input
+		.map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+		.filter((entry) => entry.length > 0);
+}
+
+export function isTemplateAvailableForProject(
+	template: BatchTaskTemplate,
+	projectName: string,
+): boolean {
+	if (!template.projects || template.projects.length === 0) {
+		return true;
+	}
+	return template.projects.includes(projectName);
 }
 
 export function isBatchTemplateValid(template: BatchTaskTemplate): boolean {
@@ -316,7 +337,8 @@ export function areBatchTemplateConfigsEqual(
 				template.levelTaskTypes,
 				other.levelTaskTypes,
 			) &&
-			template.listContent === other.listContent
+			template.listContent === other.listContent &&
+			areProjectsEqual(template.projects, other.projects)
 		);
 	});
 }
@@ -329,6 +351,18 @@ function areLevelTaskTypesEqual(
 		return false;
 	}
 	return left.every((type, index) => type === right[index]);
+}
+
+function areProjectsEqual(left: unknown, right: unknown): boolean {
+	const leftArr: unknown[] = Array.isArray(left) ? left : [];
+	const rightArr: unknown[] = Array.isArray(right) ? right : [];
+	if (leftArr.length !== rightArr.length) {
+		return false;
+	}
+	// 排序后比较，忽略顺序差异
+	const sortedLeft = [...leftArr].sort();
+	const sortedRight = [...rightArr].sort();
+	return sortedLeft.every((project, index) => project === sortedRight[index]);
 }
 
 // 保持 normalizeCustomTaskName 可被外部复用（与 task-creation 行为一致）

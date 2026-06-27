@@ -361,6 +361,11 @@ const zhTW = {
 		'- 第一個任務\n    - 子任務\n- 第二個任務',
 	'settings.batchTemplates.editModal.invalid':
 		'範本名稱不能為空，且內容至少包含一個列表項。',
+	'settings.batchTemplates.editModal.projects': '所屬專案',
+	'settings.batchTemplates.editModal.projectsDesc':
+		'指定該範本可被哪些專案使用，留空表示可被所有專案使用。每行一個專案名稱。',
+	'settings.batchTemplates.editModal.projectsPlaceholder':
+		'範例：\nIOTO Task Center\n學習AI',
 	'view.projectMenu.batchCreateTasks': '批次建立任務',
 	'modal.batchSelect.title': '選擇批次範本',
 	'modal.batchSelect.desc': '選擇一個範本，在目前專案下批次建立任務。',

@@ -3,6 +3,7 @@ import { t } from '../lang/helpter';
 import {
 	formatBatchItemsForPreview,
 	formatLevelTaskTypes,
+	isTemplateAvailableForProject,
 	type BatchTaskItem,
 	type BatchTaskTemplate,
 	type BatchTaskType,
@@ -25,14 +26,20 @@ function getBatchTaskTypeLabel(taskType: BatchTaskType): string {
  * 选择一个批量模板。返回 null 表示用户取消。
  */
 export class BatchTemplateSelectModal extends Modal {
-	private readonly templates: BatchTaskTemplate[];
+	private readonly filteredTemplates: BatchTaskTemplate[];
 	private resolvePromise: ((value: BatchTaskTemplate | null) => void) | null =
 		null;
 	private isResolved = false;
 
-	constructor(app: Modal['app'], templates: BatchTaskTemplate[]) {
+	constructor(
+		app: Modal['app'],
+		templates: BatchTaskTemplate[],
+		currentProject: string,
+	) {
 		super(app);
-		this.templates = templates;
+		this.filteredTemplates = templates.filter((template) =>
+			isTemplateAvailableForProject(template, currentProject),
+		);
 	}
 
 	openAndGetValue(): Promise<BatchTaskTemplate | null> {
@@ -50,7 +57,7 @@ export class BatchTemplateSelectModal extends Modal {
 		});
 		descriptionEl.addClass('ioto-tasks-center__modal-desc');
 
-		if (this.templates.length === 0) {
+		if (this.filteredTemplates.length === 0) {
 			const emptyEl = this.contentEl.createEl('p', {
 				text: t('modal.batchSelect.empty'),
 			});
@@ -62,7 +69,7 @@ export class BatchTemplateSelectModal extends Modal {
 			cls: 'ioto-tasks-center__batch-template-list',
 		});
 
-		for (const template of this.templates) {
+		for (const template of this.filteredTemplates) {
 			const rowEl = listEl.createDiv({
 				cls: 'ioto-tasks-center__batch-template-option',
 			});

@@ -361,6 +361,11 @@ const zhCN = {
 		'- 第一个任务\n    - 子任务\n- 第二个任务',
 	'settings.batchTemplates.editModal.invalid':
 		'模板名称不能为空，且内容至少包含一个列表项。',
+	'settings.batchTemplates.editModal.projects': '所属项目',
+	'settings.batchTemplates.editModal.projectsDesc':
+		'指定该模板可被哪些项目使用，留空表示可被所有项目使用。每行一个项目名称。',
+	'settings.batchTemplates.editModal.projectsPlaceholder':
+		'示例：\nIOTO Task Center\n学习AI',
 	'view.projectMenu.batchCreateTasks': '批量创建任务',
 	'modal.batchSelect.title': '选择批量模板',
 	'modal.batchSelect.desc': '选择一个模板，在当前项目下批量创建任务。',
