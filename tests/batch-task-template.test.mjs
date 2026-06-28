@@ -8,6 +8,8 @@ const jiti = createJiti(import.meta.url, { moduleCache: false });
 
 const {
 	applyPrefix,
+	applySuffix,
+	applyAffix,
 	buildBatchTaskTitleForUpTask,
 	createBatchTemplateId,
 	isBatchTemplateValid,
@@ -127,7 +129,7 @@ test('applyPrefix 非空前缀拼接', () => {
 
 test('formatBatchItemsForPreview 按层级输出缩进文本与类型', () => {
 	const items = parseBatchList('- 父\n    - 子');
-	const preview = formatBatchItemsForPreview(items, '前缀-', [
+	const preview = formatBatchItemsForPreview(items, '前缀-', '', [
 		'plan',
 		'topic',
 		'normal',
@@ -139,6 +141,43 @@ test('formatBatchItemsForPreview 按层级输出缩进文本与类型', () => {
 	assert.equal(preview[1].indent, 1);
 	assert.equal(preview[1].text, '前缀-子');
 	assert.equal(preview[1].taskType, 'topic');
+});
+
+test('applySuffix 空后缀返回原名', () => {
+	assert.equal(applySuffix('任务A', ''), '任务A');
+});
+
+test('applySuffix 非空后缀拼接', () => {
+	assert.equal(applySuffix('任务A', '-笔记'), '任务A-笔记');
+});
+
+test('applyAffix 前后缀均为空返回原名', () => {
+	assert.equal(applyAffix('任务A', '', ''), '任务A');
+});
+
+test('applyAffix 仅前缀等价 applyPrefix', () => {
+	assert.equal(applyAffix('任务A', 'Sprint1-', ''), 'Sprint1-任务A');
+});
+
+test('applyAffix 仅后缀等价 applySuffix', () => {
+	assert.equal(applyAffix('任务A', '', '-笔记'), '任务A-笔记');
+});
+
+test('applyAffix 前后缀同时存在按 prefix+name+suffix 顺序拼接', () => {
+	assert.equal(applyAffix('任务A', '学习-', '-笔记'), '学习-任务A-笔记');
+});
+
+test('formatBatchItemsForPreview 同时应用前后缀', () => {
+	const items = parseBatchList('- 父\n    - 子');
+	const preview = formatBatchItemsForPreview(
+		items,
+		'前缀-',
+		'-后缀',
+		['plan', 'topic', 'normal'],
+	);
+	assert.equal(preview.length, 2);
+	assert.equal(preview[0].text, '前缀-父-后缀');
+	assert.equal(preview[1].text, '前缀-子-后缀');
 });
 
 test('isBatchTaskType 仅接受 normal/topic/plan', () => {

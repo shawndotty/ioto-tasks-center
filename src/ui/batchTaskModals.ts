@@ -1,4 +1,4 @@
-import { ButtonComponent, Modal, TextComponent } from 'obsidian';
+import { ButtonComponent, Modal, Setting, TextComponent } from 'obsidian';
 import { t } from '../lang/helpter';
 import {
 	formatBatchItemsForPreview,
@@ -105,21 +105,26 @@ export class BatchTemplateSelectModal extends Modal {
 	}
 }
 
+export interface BatchNameAffix {
+	prefix: string;
+	suffix: string;
+}
+
 /**
- * 输入批量任务名称前缀。允许留空（返回空字符串）；返回 null 表示取消。
+ * 输入批量任务名称前缀与后缀（均可选）。返回 null 表示取消。
  */
-export class BatchPrefixModal extends Modal {
-	private readonly placeholder: string;
+export class BatchNameAffixModal extends Modal {
 	private prefixInput: TextComponent | null = null;
-	private resolvePromise: ((value: string | null) => void) | null = null;
+	private suffixInput: TextComponent | null = null;
+	private resolvePromise: ((value: BatchNameAffix | null) => void) | null =
+		null;
 	private isResolved = false;
 
 	constructor(app: Modal['app']) {
 		super(app);
-		this.placeholder = t('modal.batchPrefix.placeholder');
 	}
 
-	openAndGetValue(): Promise<string | null> {
+	openAndGetValue(): Promise<BatchNameAffix | null> {
 		return new Promise((resolve) => {
 			this.resolvePromise = resolve;
 			this.open();
@@ -127,23 +132,45 @@ export class BatchPrefixModal extends Modal {
 	}
 
 	onOpen(): void {
-		this.setTitle(t('modal.batchPrefix.title'));
+		this.setTitle(t('modal.batchNameAffix.title'));
 
 		const descriptionEl = this.contentEl.createEl('p', {
-			text: t('modal.batchPrefix.desc'),
+			text: t('modal.batchNameAffix.desc'),
 		});
 		descriptionEl.addClass('ioto-tasks-center__modal-desc');
 
-		this.prefixInput = new TextComponent(this.contentEl);
-		this.prefixInput.setPlaceholder(this.placeholder);
-		this.prefixInput.inputEl.addClass('ioto-tasks-center__modal-input');
-		this.prefixInput.inputEl.focus();
-		this.prefixInput.inputEl.addEventListener('keydown', (event) => {
+		new Setting(this.contentEl)
+			.setName(t('modal.batchNameAffix.prefix'))
+			.setDesc(t('modal.batchNameAffix.prefixDesc'))
+			.addText((text: TextComponent) => {
+				this.prefixInput = text;
+				text.setPlaceholder(
+					t('modal.batchNameAffix.prefixPlaceholder'),
+				);
+				text.inputEl.addClass('ioto-tasks-center__modal-input');
+			});
+
+		new Setting(this.contentEl)
+			.setName(t('modal.batchNameAffix.suffix'))
+			.setDesc(t('modal.batchNameAffix.suffixDesc'))
+			.addText((text: TextComponent) => {
+				this.suffixInput = text;
+				text.setPlaceholder(
+					t('modal.batchNameAffix.suffixPlaceholder'),
+				);
+				text.inputEl.addClass('ioto-tasks-center__modal-input');
+			});
+
+		this.prefixInput?.inputEl.focus();
+
+		const handleKeyDown = (event: KeyboardEvent) => {
 			if (event.key === 'Enter') {
 				event.preventDefault();
 				this.confirm();
 			}
-		});
+		};
+		this.prefixInput?.inputEl.addEventListener('keydown', handleKeyDown);
+		this.suffixInput?.inputEl.addEventListener('keydown', handleKeyDown);
 
 		const actionsEl = this.contentEl.createDiv({
 			cls: 'ioto-tasks-center__modal-actions',
@@ -165,12 +192,13 @@ export class BatchPrefixModal extends Modal {
 	}
 
 	private confirm(): void {
-		const value = this.prefixInput?.getValue() ?? '';
-		this.resolve(value);
+		const prefix = this.prefixInput?.getValue() ?? '';
+		const suffix = this.suffixInput?.getValue() ?? '';
+		this.resolve({ prefix, suffix });
 		this.close();
 	}
 
-	private resolve(value: string | null): void {
+	private resolve(value: BatchNameAffix | null): void {
 		if (this.isResolved) {
 			return;
 		}
@@ -182,6 +210,7 @@ export class BatchPrefixModal extends Modal {
 export interface BatchCreateConfirmModalOptions {
 	templateName: string;
 	prefix: string;
+	suffix: string;
 	projectName: string;
 	items: BatchTaskItem[];
 	levelTaskTypes: BatchTaskType[];
@@ -210,10 +239,12 @@ export class BatchCreateConfirmModal extends Modal {
 	onOpen(): void {
 		this.setTitle(t('modal.batchConfirm.title'));
 
-		const { templateName, prefix, projectName, items } = this.options;
+		const { templateName, prefix, suffix, projectName, items } =
+			this.options;
 		const summary = t('modal.batchConfirm.summary', [
 			templateName,
 			prefix.length > 0 ? prefix : '-',
+			suffix.length > 0 ? suffix : '-',
 			projectName,
 		]);
 		const summaryEl = this.contentEl.createEl('p', {
@@ -232,6 +263,7 @@ export class BatchCreateConfirmModal extends Modal {
 		const previewEntries = formatBatchItemsForPreview(
 			items,
 			prefix,
+			suffix,
 			this.options.levelTaskTypes,
 		);
 		for (const entry of previewEntries) {

@@ -149,6 +149,18 @@ export function applyPrefix(name: string, prefix: string): string {
 	return `${prefix ?? ''}${name ?? ''}`;
 }
 
+export function applySuffix(name: string, suffix: string): string {
+	return `${name ?? ''}${suffix ?? ''}`;
+}
+
+export function applyAffix(
+	name: string,
+	prefix: string,
+	suffix: string,
+): string {
+	return `${prefix ?? ''}${name ?? ''}${suffix ?? ''}`;
+}
+
 export function resolveTaskTypeForLevel(
 	levelTaskTypes: BatchTaskType[],
 	level: number,
@@ -190,11 +202,12 @@ export function formatLevelTaskTypes(
 export function formatBatchItemsForPreview(
 	items: BatchTaskItem[],
 	prefix: string,
+	suffix: string = '',
 	levelTaskTypes: BatchTaskType[] = [...DEFAULT_LEVEL_TASK_TYPES],
 ): Array<{ indent: number; text: string; taskType: BatchTaskType }> {
 	return items.map((item) => ({
 		indent: item.level,
-		text: applyPrefix(item.name, prefix),
+		text: applyAffix(item.name, prefix, suffix),
 		taskType: resolveTaskTypeForLevel(levelTaskTypes, item.level),
 	}));
 }

@@ -406,12 +406,18 @@ const en = {
 		'Choose a template to batch-create tasks under the current project.',
 	'modal.batchSelect.empty':
 		'No templates available. Please configure one in settings first.',
-	'modal.batchPrefix.title': 'Task name prefix (optional)',
-	'modal.batchPrefix.desc':
-		'Add a prefix to every task name in this batch. Leave empty to skip.',
-	'modal.batchPrefix.placeholder': 'e.g. Sprint1-',
+	'modal.batchNameAffix.title': 'Set task name affixes',
+	'modal.batchNameAffix.desc':
+		'Add a prefix or suffix to batch-created task names (optional).',
+	'modal.batchNameAffix.prefix': 'Prefix',
+	'modal.batchNameAffix.prefixDesc': 'Content added before the task name.',
+	'modal.batchNameAffix.prefixPlaceholder': 'e.g., Learning-',
+	'modal.batchNameAffix.suffix': 'Suffix',
+	'modal.batchNameAffix.suffixDesc': 'Content added after the task name.',
+	'modal.batchNameAffix.suffixPlaceholder': 'e.g., -Notes',
 	'modal.batchConfirm.title': 'Confirm batch creation',
-	'modal.batchConfirm.summary': 'Template: {0} | Prefix: {1} | Project: {2}',
+	'modal.batchConfirm.summary':
+		'Template: {0} | Prefix: {1} | Suffix: {2} | Project: {3}',
 	'modal.batchConfirm.count': 'Will create {0} task(s):',
 	'modal.batchConfirm.confirm': 'Create',
 	'notice.batchCreate.disabled':

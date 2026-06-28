@@ -46,7 +46,7 @@ import {
 	removeUpTaskFromFile,
 } from '../tasks-center/up-task-assignment';
 import {
-	applyPrefix,
+	applyAffix,
 	buildBatchTaskTitleForUpTask,
 	parseBatchList,
 	resolveTaskTypeForLevel,
@@ -93,7 +93,7 @@ import { ConfirmModal } from '../ui/confirmModal';
 import { TaskCreationModal } from '../ui/taskCreationModal';
 import {
 	BatchCreateConfirmModal,
-	BatchPrefixModal,
+	BatchNameAffixModal,
 	BatchTemplateSelectModal,
 } from '../ui/batchTaskModals';
 import { TaskSearchPopover } from '../ui/task-search-popover';
@@ -882,8 +882,10 @@ export class IOTOTasksCenterView extends ItemView {
 			return;
 		}
 
-		const prefix = await new BatchPrefixModal(this.app).openAndGetValue();
-		if (prefix === null) {
+		const nameAffix = await new BatchNameAffixModal(
+			this.app,
+		).openAndGetValue();
+		if (nameAffix === null) {
 			return;
 		}
 
@@ -895,7 +897,8 @@ export class IOTOTasksCenterView extends ItemView {
 
 		const confirmed = await new BatchCreateConfirmModal(this.app, {
 			templateName: template.name,
-			prefix,
+			prefix: nameAffix.prefix,
+			suffix: nameAffix.suffix,
 			projectName,
 			items,
 			levelTaskTypes: template.levelTaskTypes,
@@ -904,12 +907,18 @@ export class IOTOTasksCenterView extends ItemView {
 			return;
 		}
 
-		await this.executeBatchCreate(template, prefix, items);
+		await this.executeBatchCreate(
+			template,
+			nameAffix.prefix,
+			nameAffix.suffix,
+			items,
+		);
 	}
 
 	private async executeBatchCreate(
 		template: BatchTaskTemplate,
 		prefix: string,
+		suffix: string,
 		items: BatchTaskItem[],
 	): Promise<void> {
 		const projectName = this.selectedProject;
@@ -930,7 +939,7 @@ export class IOTOTasksCenterView extends ItemView {
 				[];
 
 			for (const item of items) {
-				const fullName = applyPrefix(item.name, prefix);
+				const fullName = applyAffix(item.name, prefix, suffix);
 				const taskType = resolveTaskTypeForLevel(
 					template.levelTaskTypes,
 					item.level,
@@ -971,9 +980,10 @@ export class IOTOTasksCenterView extends ItemView {
 				if (!parentEntry) {
 					continue;
 				}
-				const parentFullName = applyPrefix(
+				const parentFullName = applyAffix(
 					parentEntry.item.name,
 					prefix,
+					suffix,
 				);
 				const parentTaskType = resolveTaskTypeForLevel(
 					template.levelTaskTypes,
