@@ -21,6 +21,7 @@ import {
 	TaskLinkBadgeBackgroundMode,
 	TaskListGroupMode,
 	TaskListSortMode,
+	TaskListTimeFilter,
 	normalizeConfiguredInputRootPath,
 	normalizeConfiguredOutcomeRootPath,
 	normalizeConfiguredOutputRootPath,
@@ -82,6 +83,8 @@ export default class IOTOTasksCenter extends Plugin {
 					(sortMode) => this.updateTaskListSortMode(sortMode),
 					(groupMode) => this.updateTaskListGroupMode(groupMode),
 					(show) => this.updateShowTaskPriority(show),
+					() => this.settings.taskListTimeFilter,
+					(filter) => this.updateTaskListTimeFilter(filter),
 					(type) => this.settings.taskTemplateConfigs[type],
 					() => this.settings.dateTaskDateFormat,
 					(projectName, hidden) =>
@@ -290,6 +293,16 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.showTaskPriority = show;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateTaskListTimeFilter(filter: TaskListTimeFilter): Promise<void> {
+		if (this.settings.taskListTimeFilter === filter) {
+			return;
+		}
+
+		this.settings.taskListTimeFilter = filter;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}

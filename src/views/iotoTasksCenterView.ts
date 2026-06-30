@@ -34,6 +34,7 @@ import type {
 	TaskLinkBadgeBackgroundMode,
 	TaskListGroupMode,
 	TaskListSortMode,
+	TaskListTimeFilter,
 } from '../settings';
 import {
 	getTaskListGroupModeOptions,
@@ -84,6 +85,7 @@ import {
 	type TaskFilterTab,
 } from './task-filter-tabs';
 import * as SearchController from './tasks-center/search-controller';
+import { filterTasksByTime } from './tasks-center/task-time-filter';
 import {
 	refreshFromVaultChange,
 	loadProjects,
@@ -209,6 +211,10 @@ export class IOTOTasksCenterView extends ItemView {
 	readonly getProjectListGroupMode: () => ProjectListGroupMode;
 	readonly getTaskListSortMode: () => TaskListSortMode;
 	readonly getTaskListGroupMode: () => TaskListGroupMode;
+	readonly getTaskListTimeFilter: () => TaskListTimeFilter;
+	readonly updateTaskListTimeFilter: (
+		filter: TaskListTimeFilter,
+	) => Promise<void>;
 	readonly getShowTaskPriority: () => boolean;
 	private readonly getInputRootPath: () => string;
 	private readonly getOutputRootPath: () => string;
@@ -274,6 +280,8 @@ export class IOTOTasksCenterView extends ItemView {
 			groupMode: TaskListGroupMode,
 		) => Promise<void>,
 		updateShowTaskPriority: (show: boolean) => Promise<void>,
+		getTaskListTimeFilter: () => TaskListTimeFilter,
+		updateTaskListTimeFilter: (filter: TaskListTimeFilter) => Promise<void>,
 		getTaskTemplateConfig: (type: TaskCreationType) => TaskTemplateConfig,
 		getDateTaskDateFormat: () => string,
 		setProjectHidden: (
@@ -306,6 +314,8 @@ export class IOTOTasksCenterView extends ItemView {
 		this.updateTaskListSortMode = updateTaskListSortMode;
 		this.updateTaskListGroupMode = updateTaskListGroupMode;
 		this.updateShowTaskPriority = updateShowTaskPriority;
+		this.getTaskListTimeFilter = getTaskListTimeFilter;
+		this.updateTaskListTimeFilter = updateTaskListTimeFilter;
 		this.getTaskTemplateConfig = getTaskTemplateConfig;
 		this.getDateTaskDateFormat = getDateTaskDateFormat;
 		this.setProjectHidden = setProjectHidden;
@@ -2095,10 +2105,9 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private getVisibleTasks(): TaskFileEntry[] {
-		return filterTasksBySearchQuery(
-			this.getTasksForActiveTab(),
-			this.taskSearchQuery,
-		);
+		const byTab = this.getTasksForActiveTab();
+		const bySearch = filterTasksBySearchQuery(byTab, this.taskSearchQuery);
+		return filterTasksByTime(bySearch, this.getTaskListTimeFilter());
 	}
 
 	private getTaskPresentationSections(tasks: TaskFileEntry[]) {

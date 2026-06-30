@@ -46,6 +46,15 @@ export type TaskListSortMode =
 	| 'priority-desc'
 	| 'priority-asc';
 export type TaskListGroupMode = 'none' | 'status' | 'priority';
+
+export type TaskListTimeFilter =
+	| 'none'
+	| 'created-week'
+	| 'created-two-weeks'
+	| 'created-month'
+	| 'updated-week'
+	| 'updated-two-weeks'
+	| 'updated-month';
 export type TaskLinkBadgeBackgroundMode = 'multicolor' | 'monochrome';
 
 export interface IOTOTasksCenterSettings {
@@ -57,6 +66,7 @@ export interface IOTOTasksCenterSettings {
 	projectListGroupMode: ProjectListGroupMode;
 	taskListSortMode: TaskListSortMode;
 	taskListGroupMode: TaskListGroupMode;
+	taskListTimeFilter: TaskListTimeFilter;
 	showTaskPriority: boolean;
 	showTaskSubtaskCount: boolean;
 	taskLinkBadgeBackgroundMode: TaskLinkBadgeBackgroundMode;
@@ -81,6 +91,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	projectListGroupMode: 'none',
 	taskListSortMode: 'created-desc',
 	taskListGroupMode: 'none',
+	taskListTimeFilter: 'none',
 	showTaskPriority: false,
 	showTaskSubtaskCount: true,
 	taskLinkBadgeBackgroundMode: 'multicolor',

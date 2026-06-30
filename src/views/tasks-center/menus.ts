@@ -9,6 +9,7 @@ import type {
 
 import { TASK_PRIORITY_VALUES } from '../../tasks-center/task-priority';
 import type { TaskCreationType } from '../../tasks-center/task-template-config';
+import type { TaskListTimeFilter } from '../../settings';
 import {
 	getProjectListGroupModeOptions,
 	getProjectListSortModeOptions,
@@ -63,17 +64,15 @@ export function showProjectContextMenu(
 			item
 				.setTitle(t('view.projectMenu.batchCreateTasks'))
 				.onClick(() => {
-					void view.selectProject(project.name).then(() =>
-						view.triggerBatchCreateFromTemplate(),
-					);
+					void view
+						.selectProject(project.name)
+						.then(() => view.triggerBatchCreateFromTemplate());
 				}),
 		);
 	}
 
 	menu.showAtMouseEvent(event);
 }
-
-
 
 export function showProjectPresentationMenu(
 	view: IOTOTasksCenterView,
@@ -97,17 +96,15 @@ export function showProjectPresentationMenu(
 					),
 				)
 				.onClick(() => {
-					void view.updateProjectListSortMode(sortMode).catch(
-						(error: unknown) => {
+					void view
+						.updateProjectListSortMode(sortMode)
+						.catch((error: unknown) => {
 							const message =
 								error instanceof Error
 									? error.message
-									: t(
-											'view.notice.updateProjectSortFailed',
-										);
+									: t('view.notice.updateProjectSortFailed');
 							new Notice(message);
-						},
-					);
+						});
 				}),
 		);
 	}
@@ -126,17 +123,15 @@ export function showProjectPresentationMenu(
 					),
 				)
 				.onClick(() => {
-					void view.updateProjectListGroupMode(groupMode).catch(
-						(error: unknown) => {
+					void view
+						.updateProjectListGroupMode(groupMode)
+						.catch((error: unknown) => {
 							const message =
 								error instanceof Error
 									? error.message
-									: t(
-											'view.notice.updateProjectGroupFailed',
-										);
+									: t('view.notice.updateProjectGroupFailed');
 							new Notice(message);
-						},
-					);
+						});
 				}),
 		);
 	}
@@ -167,15 +162,15 @@ export function showTaskPresentationMenu(
 					),
 				)
 				.onClick(() => {
-					void view.updateTaskListSortMode(sortMode).catch(
-						(error: unknown) => {
+					void view
+						.updateTaskListSortMode(sortMode)
+						.catch((error: unknown) => {
 							const message =
 								error instanceof Error
 									? error.message
 									: t('view.notice.updateTaskSortFailed');
 							new Notice(message);
-						},
-					);
+						});
 				}),
 		);
 	}
@@ -194,17 +189,15 @@ export function showTaskPresentationMenu(
 					),
 				)
 				.onClick(() => {
-					void view.updateTaskListGroupMode(groupMode).catch(
-						(error: unknown) => {
+					void view
+						.updateTaskListGroupMode(groupMode)
+						.catch((error: unknown) => {
 							const message =
 								error instanceof Error
 									? error.message
-									: t(
-											'view.notice.updateTaskGroupFailed',
-										);
+									: t('view.notice.updateTaskGroupFailed');
 							new Notice(message);
-						},
-					);
+						});
 				}),
 		);
 	}
@@ -221,17 +214,57 @@ export function showTaskPresentationMenu(
 					),
 				)
 				.onClick(() => {
-					void view.updateShowTaskPriority(
-						visibilityOption.show,
-					).catch((error: unknown) => {
-						const message =
-							error instanceof Error
-								? error.message
-								: t(
-										'view.notice.updateTaskPriorityDisplayFailed',
-									);
-						new Notice(message);
-					});
+					void view
+						.updateShowTaskPriority(visibilityOption.show)
+						.catch((error: unknown) => {
+							const message =
+								error instanceof Error
+									? error.message
+									: t(
+											'view.notice.updateTaskPriorityDisplayFailed',
+										);
+							new Notice(message);
+						});
+				}),
+		);
+	}
+
+	menu.addSeparator();
+
+	const currentTimeFilter = view.getTaskListTimeFilter();
+	const filterOptions: Array<{
+		key: TaskListTimeFilter;
+		label: string;
+	}> = [
+		{ key: 'none', label: t('menu.filter.none') },
+		{ key: 'created-week', label: t('menu.filter.createdWeek') },
+		{ key: 'created-two-weeks', label: t('menu.filter.createdTwoWeeks') },
+		{ key: 'created-month', label: t('menu.filter.createdMonth') },
+		{ key: 'updated-week', label: t('menu.filter.updatedWeek') },
+		{ key: 'updated-two-weeks', label: t('menu.filter.updatedTwoWeeks') },
+		{ key: 'updated-month', label: t('menu.filter.updatedMonth') },
+	];
+
+	for (const option of filterOptions) {
+		menu.addItem((item) =>
+			item
+				.setTitle(
+					formatMenuOptionTitle(
+						t('menu.category.filter'),
+						option.label,
+						option.key === currentTimeFilter,
+					),
+				)
+				.onClick(() => {
+					void view
+						.updateTaskListTimeFilter(option.key)
+						.catch((error: unknown) => {
+							const message =
+								error instanceof Error
+									? error.message
+									: t('view.notice.updateTimeFilterFailed');
+							new Notice(message);
+						});
 				}),
 		);
 	}
@@ -300,9 +333,7 @@ export function showTaskPriorityMenu(
 				normalizedEnabledTypes.includes(option.key),
 			);
 			const resolvedMenuOptions =
-				menuOptions.length > 0
-					? menuOptions
-					: getTaskCreationOptions();
+				menuOptions.length > 0 ? menuOptions : getTaskCreationOptions();
 			for (const option of resolvedMenuOptions) {
 				subMenu.addItem((subItem) =>
 					subItem.setTitle(option.label).onClick(() => {
