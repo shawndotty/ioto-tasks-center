@@ -104,12 +104,59 @@ import {
 } from './task-preview-state';
 import { validateTaskParentDrop } from './task-drag';
 import {
+	handleTaskDragStart,
+	handleTaskDragOver,
+	handleTaskDragLeave,
+	handleTaskDrop,
+	setCurrentDropTarget,
+	clearTaskDragState,
+	getTaskRowElements,
+	findTaskRowByPath,
+	assignDraggedTaskToParent,
+	handleRemoveUpTaskDragOver,
+	handleRemoveUpTaskDragLeave,
+	handleRemoveUpTaskDrop,
+	clearCurrentTaskDropTargetClasses,
+	removeDraggedTaskParent,
+} from './tasks-center/drag-controller';
+import {
 	getTaskFilterCounts,
 	getTaskFilterTabs,
 	isTaskFilterTab,
 	matchesTaskFilterTab,
 	type TaskFilterTab,
 } from './task-filter-tabs';
+import * as SearchController from './tasks-center/search-controller';
+import {
+	refreshFromVaultChange,
+	loadProjects,
+	resolveSelectedProject,
+	selectProject,
+	loadTasks,
+	getCachedTaskPath,
+	buildProjectIncompleteCounts,
+	buildProjectCategoryByName,
+	applyProjectSorting,
+} from './tasks-center/data-loader';
+import {
+	triggerBatchCreateFromTemplate,
+	executeBatchCreate,
+	canCreateTask,
+	getAddTaskButtonLabel,
+	canCreateProject,
+	getAddProjectButtonLabel,
+	handleCreateProject,
+	showTaskCreationMenu,
+	handleCreateTask,
+	handleCreateSubtask,
+	applyCreatedTaskSettings,
+	updateTaskPriority,
+	clearTaskPriority,
+	updateTaskStarred,
+	clearTaskStarred,
+	confirmAndDeleteTask,
+	refreshCurrentProjectTasks,
+} from './tasks-center/task-operations';
 import { buildProjectListSections } from './project-list-group';
 import {
 	captureProjectListScrollTop,
@@ -135,75 +182,104 @@ import {
 } from './task-list-presentation';
 import { filterTasksBySearchQuery } from './task-search';
 import { resolveCurrentTaskContext } from '../tasks-center/selected-text-subtask';
+import {
+	COMPACT_LAYOUT_BREAKPOINT,
+	getTaskDropValidationMessage,
+	getWorkspaceLeafId,
+	HOVER_PREVIEW_REFRESH_RETRY_MS,
+	isIncompleteTaskStatus,
+	parseViewState,
+	PROJECT_LIST_GROUP_MODE_ORDER,
+	PROJECT_LIST_SORT_MODE_ORDER,
+	TASK_LIST_GROUP_MODE_ORDER,
+	TASK_LIST_SORT_MODE_ORDER,
+} from './tasks-center/constants';
+import type { IOTOTasksCenterViewState } from './tasks-center/constants';
+import {
+	getActiveTaskPath,
+	getPreviewLeafFilePath,
+	activatePreviewLeaf,
+	ensurePreviewLeaf,
+	isLeafAvailable,
+	findReusablePreviewLeaf,
+	findLeafByFilePath,
+	findLeafById,
+} from './tasks-center/preview-leaf';
+import {
+	getTaskCreationOptions,
+	buildProjectGroupBodyId,
+	getTaskPriorityVisibilityOptions,
+	formatPriorityMenuTitle,
+	formatMenuOptionTitle,
+	getTaskPriorityClassName,
+} from './tasks-center/helpers';
+import {
+	showProjectContextMenu,
+	openProjectSpecByProject,
+	showProjectSwitcherMenu,
+	showProjectPresentationMenu,
+	showTaskPresentationMenu,
+	showTaskPriorityMenu,
+	showTaskSubtaskTypeMenu,
+} from './tasks-center/menus';
 
 export const IOTO_TASKS_CENTER_VIEW_TYPE = 'IOTOTasksCenter';
-const COMPACT_LAYOUT_BREAKPOINT = 720;
-const HOVER_PREVIEW_REFRESH_RETRY_MS = 150;
-interface IOTOTasksCenterViewState {
-	selectedProject?: string;
-	activeTaskFilterTab?: TaskFilterTab;
-	taskSearchQuery?: string;
-	taskSearchInputValue?: string;
-	openedTaskPath?: string;
-	previewLeafId?: string;
-}
 
 export class IOTOTasksCenterView extends ItemView {
-	private projects: ProjectFolderEntry[] = [];
-	private projectIncompleteCounts = new Map<string, number>();
-	private projectCategoryByName = new Map<string, string>();
-	private selectedProject: string | null = null;
-	private tasks: TaskFileEntry[] = [];
+	projects: ProjectFolderEntry[] = [];
+	projectIncompleteCounts = new Map<string, number>();
+	projectCategoryByName = new Map<string, string>();
+	public selectedProject: string | null = null;
+	public tasks: TaskFileEntry[] = [];
 	private activeTaskFilterTab: TaskFilterTab = 'core';
-	private taskSearchQuery = '';
-	private taskSearchInputValue = '';
-	private isTaskSearchPopoverOpen = false;
-	private shouldFocusTaskSearchPopover = false;
-	private openedTaskPath: string | null = null;
+	public taskSearchQuery = '';
+	public taskSearchInputValue = '';
+	public isTaskSearchPopoverOpen = false;
+	public shouldFocusTaskSearchPopover = false;
+	openedTaskPath: string | null = null;
 	private openingTaskPath: string | null = null;
-	private draggingTaskPath: string | null = null;
-	private dropTargetTaskPath: string | null = null;
-	private invalidDropTargetTaskPath: string | null = null;
-	private isRemoveUpTaskDropTarget = false;
-	private previewLeaf: WorkspaceLeaf | null = null;
-	private readonly lastOpenedTaskByProject = new Map<string, string>();
+	draggingTaskPath: string | null = null;
+	dropTargetTaskPath: string | null = null;
+	invalidDropTargetTaskPath: string | null = null;
+	isRemoveUpTaskDropTarget = false;
+	previewLeaf: WorkspaceLeaf | null = null;
+	readonly lastOpenedTaskByProject = new Map<string, string>();
 	private readonly hoverPreviewParent: { hoverPopover: HoverPopover | null } =
 		{
 			hoverPopover: null,
 		};
-	private outlinkPopover: TaskOutlinkPopover | null = null;
-	private taskStatusChecklistPopover: TaskStatusChecklistPopover | null =
-		null;
-	private taskSearchPopover: TaskSearchPopover | null = null;
+	outlinkPopover: TaskOutlinkPopover | null = null;
+	taskStatusChecklistPopover: TaskStatusChecklistPopover | null = null;
+	public taskSearchPopover: TaskSearchPopover | null = null;
 	private readonly pendingOutlinkBadgeUpdates = new Set<string>();
 	private outlinkBadgeUpdateTimer: number | null = null;
-	private pendingVaultRefresh = false;
-	private deferredVaultRefreshTimer: number | null = null;
-	private deferVaultRefreshForSubtaskCreation = false;
-	private projectResult: ProjectListResult = {
+	pendingVaultRefresh = false;
+	deferredVaultRefreshTimer: number | null = null;
+	deferVaultRefreshForSubtaskCreation = false;
+	projectResult: ProjectListResult = {
 		status: 'success',
 		projects: [],
 	};
-	private taskResult: TaskFileListResult | null = null;
-	private isProjectsLoading = false;
-	private isTasksLoading = false;
-	private isCreatingProject = false;
-	private isCreatingTask = false;
-	private isUpdatingUpTask = false;
+	public taskResult: TaskFileListResult | null = null;
+	isProjectsLoading = false;
+	public isTasksLoading = false;
+	isCreatingProject = false;
+	isCreatingTask = false;
+	isUpdatingUpTask = false;
 	private isCompactLayout = false;
 	private readonly collapsedTaskGroups = new Set<string>();
 	private readonly collapsedProjectGroups = new Set<string>();
-	private readonly collapsedSubtaskParents = new Set<string>();
+	readonly collapsedSubtaskParents = new Set<string>();
 	private projectListScrollTop = 0;
-	private taskListScrollTop = 0;
-	private refreshToken = 0;
+	taskListScrollTop = 0;
+	refreshToken = 0;
 	private resizeObserver: ResizeObserver | null = null;
-	private readonly getTasksRootPath: () => string;
-	private readonly getProjectListSortMode: () => ProjectListSortMode;
-	private readonly getProjectListGroupMode: () => ProjectListGroupMode;
-	private readonly getTaskListSortMode: () => TaskListSortMode;
-	private readonly getTaskListGroupMode: () => TaskListGroupMode;
-	private readonly getShowTaskPriority: () => boolean;
+	readonly getTasksRootPath: () => string;
+	readonly getProjectListSortMode: () => ProjectListSortMode;
+	readonly getProjectListGroupMode: () => ProjectListGroupMode;
+	readonly getTaskListSortMode: () => TaskListSortMode;
+	readonly getTaskListGroupMode: () => TaskListGroupMode;
+	readonly getShowTaskPriority: () => boolean;
 	private readonly getInputRootPath: () => string;
 	private readonly getOutputRootPath: () => string;
 	private readonly getOutcomeRootPath: () => string;
@@ -213,30 +289,30 @@ export class IOTOTasksCenterView extends ItemView {
 	private readonly getShowTaskInputOutlinkCount: () => boolean;
 	private readonly getShowTaskOutputOutlinkCount: () => boolean;
 	private readonly getShowTaskOutcomeOutlinkCount: () => boolean;
-	private readonly getHiddenProjectNames: () => string[];
-	private readonly getEnabledTaskCreationTypes: () => TaskCreationType[];
-	private readonly updateProjectListSortMode: (
+	readonly getHiddenProjectNames: () => string[];
+	readonly getEnabledTaskCreationTypes: () => TaskCreationType[];
+	readonly updateProjectListSortMode: (
 		sortMode: ProjectListSortMode,
 	) => Promise<void>;
-	private readonly updateProjectListGroupMode: (
+	readonly updateProjectListGroupMode: (
 		groupMode: ProjectListGroupMode,
 	) => Promise<void>;
-	private readonly updateTaskListSortMode: (
+	readonly updateTaskListSortMode: (
 		sortMode: TaskListSortMode,
 	) => Promise<void>;
-	private readonly updateTaskListGroupMode: (
+	readonly updateTaskListGroupMode: (
 		groupMode: TaskListGroupMode,
 	) => Promise<void>;
-	private readonly updateShowTaskPriority: (show: boolean) => Promise<void>;
-	private readonly getTaskTemplateConfig: (
+	readonly updateShowTaskPriority: (show: boolean) => Promise<void>;
+	readonly getTaskTemplateConfig: (
 		type: TaskCreationType,
 	) => TaskTemplateConfig;
-	private readonly getDateTaskDateFormat: () => string;
-	private readonly setProjectHidden: (
+	readonly getDateTaskDateFormat: () => string;
+	readonly setProjectHidden: (
 		projectName: string,
 		hidden: boolean,
 	) => Promise<void>;
-	private readonly getBatchTemplateConfig: () => BatchTemplateConfig;
+	readonly getBatchTemplateConfig: () => BatchTemplateConfig;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -397,70 +473,15 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	async refreshFromVaultChange(): Promise<void> {
-		this.outlinkPopover?.close();
-		this.taskStatusChecklistPopover?.close();
-		if (this.shouldDeferVaultRefresh()) {
-			this.pendingVaultRefresh = true;
-			this.scheduleDeferredVaultRefresh();
-			return;
-		}
-
-		this.pendingVaultRefresh = false;
-		if (this.deferredVaultRefreshTimer !== null) {
-			window.clearTimeout(this.deferredVaultRefreshTimer);
-			this.deferredVaultRefreshTimer = null;
-		}
-
-		const previousSelection = this.selectedProject;
-		await this.loadProjects(previousSelection);
+		return refreshFromVaultChange(this);
 	}
 
 	async handleSettingsChange(): Promise<void> {
 		await this.refreshFromVaultChange();
 	}
 
-	private async loadProjects(
-		preferredProject?: string | null,
-	): Promise<void> {
-		const token = ++this.refreshToken;
-		this.isProjectsLoading = true;
-		this.render();
-
-		const result = listProjectFolders(this.app, this.getTasksRootPath());
-		if (token !== this.refreshToken) {
-			return;
-		}
-
-		this.projectResult = result;
-		this.projects = filterHiddenProjectEntries(
-			result.projects,
-			this.getHiddenProjectNames(),
-		);
-		this.projectIncompleteCounts = await this.buildProjectIncompleteCounts(
-			result.projects,
-		);
-		this.applyProjectSorting();
-		this.projectCategoryByName = this.buildProjectCategoryByName(
-			this.projects,
-		);
-		this.isProjectsLoading = false;
-
-		if (result.status !== 'success' || this.projects.length === 0) {
-			this.selectedProject = null;
-			this.taskResult = null;
-			this.tasks = [];
-			this.isTasksLoading = false;
-			this.render();
-			return;
-		}
-
-		const nextProject = this.resolveSelectedProject(preferredProject);
-		const shouldPreserveTaskListState =
-			nextProject === this.selectedProject;
-		await this.selectProject(nextProject, {
-			resetTaskListScroll: !shouldPreserveTaskListState,
-			resetCollapsedSubtasks: !shouldPreserveTaskListState,
-		});
+	async loadProjects(preferredProject?: string | null): Promise<void> {
+		return loadProjects(this, preferredProject);
 	}
 
 	private resolveSelectedProject(preferredProject?: string | null): string {
@@ -479,7 +500,7 @@ export class IOTOTasksCenterView extends ItemView {
 		return fallbackProject.name;
 	}
 
-	private async selectProject(
+	async selectProject(
 		projectName: string,
 		options: {
 			resetTaskListScroll?: boolean;
@@ -500,35 +521,11 @@ export class IOTOTasksCenterView extends ItemView {
 		await this.loadTasks(projectName);
 	}
 
-	private async loadTasks(projectName: string): Promise<void> {
-		const token = ++this.refreshToken;
-		const result = await listProjectTaskFiles(
-			this.app,
-			this.getTasksRootPath(),
-			projectName,
-		);
-
-		if (token !== this.refreshToken) {
-			return;
-		}
-
-		this.taskResult = result;
-		this.tasks = result.tasks;
-		this.isTasksLoading = false;
-		this.openedTaskPath = this.getCachedTaskPath(projectName);
-
-		if (result.status === 'project-missing') {
-			const nextProject = this.resolveSelectedProject(projectName);
-			if (nextProject !== projectName) {
-				await this.selectProject(nextProject);
-				return;
-			}
-		}
-
-		this.render();
+	async loadTasks(projectName: string): Promise<void> {
+		return loadTasks(this, projectName);
 	}
 
-	private render(): void {
+	public render(): void {
 		this.outlinkPopover?.close();
 		this.taskStatusChecklistPopover?.close();
 		this.projectListScrollTop = captureProjectListScrollTop(
@@ -797,49 +794,10 @@ export class IOTOTasksCenterView extends ItemView {
 		event: MouseEvent,
 		project: ProjectFolderEntry,
 	): void {
-		const menu = new Menu();
-		const isArchived = this.getHiddenProjectNames().includes(project.name);
-		const batchConfig = this.getBatchTemplateConfig();
-		const canBatchCreate =
-			batchConfig.enabled && batchConfig.templates.length > 0;
-
-		menu.addItem((item) =>
-			item.setTitle(t('view.projectMenu.editSpec')).onClick(() => {
-				void this.openProjectSpecByProject(project);
-			}),
-		);
-
-		menu.addItem((item) =>
-			item
-				.setTitle(
-					isArchived
-						? t('view.projectMenu.unarchive')
-						: t('view.projectMenu.archive'),
-				)
-				.onClick(() => {
-					void this.setProjectHidden(project.name, !isArchived);
-				}),
-		);
-
-		if (canBatchCreate) {
-			menu.addSeparator();
-			menu.addItem((item) =>
-				item
-					.setTitle(t('view.projectMenu.batchCreateTasks'))
-					.onClick(() => {
-						void this.selectProject(project.name).then(() =>
-							this.triggerBatchCreateFromTemplate(),
-						);
-					}),
-			);
-		}
-
-		menu.showAtMouseEvent(event);
+		showProjectContextMenu(this, event, project);
 	}
 
-	private async openProjectSpecByProject(
-		project: ProjectFolderEntry,
-	): Promise<void> {
+	async openProjectSpecByProject(project: ProjectFolderEntry): Promise<void> {
 		const filePath = `${project.path}/${PROJECT_METADATA_FILE_NAME}`;
 		const abstractFile = this.app.vault.getAbstractFileByPath(filePath);
 		const file =
@@ -854,65 +812,7 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	async triggerBatchCreateFromTemplate(): Promise<void> {
-		const projectName = this.selectedProject;
-		if (
-			!projectName ||
-			!this.projects.some((project) => project.name === projectName)
-		) {
-			new Notice(t('view.notice.currentProjectUnavailable'));
-			return;
-		}
-
-		const batchConfig = this.getBatchTemplateConfig();
-		if (!batchConfig.enabled) {
-			new Notice(t('notice.batchCreate.disabled'));
-			return;
-		}
-		if (batchConfig.templates.length === 0) {
-			new Notice(t('notice.batchCreate.noTemplates'));
-			return;
-		}
-
-		const template = await new BatchTemplateSelectModal(
-			this.app,
-			batchConfig.templates,
-			projectName,
-		).openAndGetValue();
-		if (!template) {
-			return;
-		}
-
-		const nameAffix = await new BatchNameAffixModal(
-			this.app,
-		).openAndGetValue();
-		if (nameAffix === null) {
-			return;
-		}
-
-		const items = parseBatchList(template.listContent);
-		if (items.length === 0) {
-			new Notice(t('notice.batchCreate.emptyContent'));
-			return;
-		}
-
-		const confirmed = await new BatchCreateConfirmModal(this.app, {
-			templateName: template.name,
-			prefix: nameAffix.prefix,
-			suffix: nameAffix.suffix,
-			projectName,
-			items,
-			levelTaskTypes: template.levelTaskTypes,
-		}).openAndConfirm();
-		if (!confirmed) {
-			return;
-		}
-
-		await this.executeBatchCreate(
-			template,
-			nameAffix.prefix,
-			nameAffix.suffix,
-			items,
-		);
+		return triggerBatchCreateFromTemplate(this);
 	}
 
 	private async executeBatchCreate(
@@ -921,121 +821,7 @@ export class IOTOTasksCenterView extends ItemView {
 		suffix: string,
 		items: BatchTaskItem[],
 	): Promise<void> {
-		const projectName = this.selectedProject;
-		if (!projectName) {
-			return;
-		}
-
-		this.isCreatingTask = true;
-		this.render();
-
-		let successCount = 0;
-		let failureCount = 0;
-		let firstCreatedFile: TFile | null = null;
-
-		try {
-			const previewLeaf = this.ensurePreviewLeaf();
-			const createdFiles: Array<{ file: TFile; item: BatchTaskItem }> =
-				[];
-
-			for (const item of items) {
-				const fullName = applyAffix(item.name, prefix, suffix);
-				const taskType = resolveTaskTypeForLevel(
-					template.levelTaskTypes,
-					item.level,
-				);
-				try {
-					const result = await createTaskFile({
-						app: this.app,
-						tasksRootPath: this.getTasksRootPath(),
-						projectName,
-						type: taskType,
-						customName: fullName,
-						templateConfig: this.getTaskTemplateConfig(taskType),
-						dateTaskDateFormat: this.getDateTaskDateFormat(),
-						targetLeaf: previewLeaf,
-						sourceLeaf: this.leaf,
-					});
-					createdFiles.push({ file: result.file, item });
-					if (!firstCreatedFile) {
-						firstCreatedFile = result.file;
-					}
-					successCount += 1;
-				} catch (error) {
-					failureCount += 1;
-					const message =
-						error instanceof Error
-							? error.message
-							: t('notice.batchCreate.failed', [item.name]);
-					new Notice(message);
-				}
-			}
-
-			// 建立父子关系（依赖已创建文件，串行执行）
-			for (const { file, item } of createdFiles) {
-				if (item.parentIndex === null) {
-					continue;
-				}
-				const parentEntry = createdFiles[item.parentIndex];
-				if (!parentEntry) {
-					continue;
-				}
-				const parentFullName = applyAffix(
-					parentEntry.item.name,
-					prefix,
-					suffix,
-				);
-				const parentTaskType = resolveTaskTypeForLevel(
-					template.levelTaskTypes,
-					parentEntry.item.level,
-				);
-				const parentTitle = buildBatchTaskTitleForUpTask(
-					projectName,
-					parentTaskType,
-					parentFullName,
-				);
-				try {
-					await assignUpTaskToFile(this.app, file, parentTitle);
-				} catch {
-					new Notice(
-						t('notice.batchCreate.parentAssignFailed', [
-							file.basename,
-						]),
-					);
-				}
-			}
-
-			this.previewLeaf = previewLeaf;
-			await this.refreshFromVaultChange();
-
-			if (firstCreatedFile) {
-				await this.openFileInPreview(firstCreatedFile);
-			}
-
-			if (failureCount === 0) {
-				new Notice(
-					t('notice.batchCreate.success', [String(successCount)]),
-				);
-			} else {
-				new Notice(
-					t('notice.batchCreate.partialFail', [
-						String(successCount),
-						String(failureCount),
-					]),
-				);
-			}
-		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: t('notice.batchCreate.failed', [
-							error instanceof Error ? error.message : '',
-						]);
-			new Notice(message);
-		} finally {
-			this.isCreatingTask = false;
-			this.render();
-		}
+		return executeBatchCreate(this, template, prefix, suffix, items);
 	}
 
 	private renderTasksPane(container: HTMLElement): void {
@@ -1935,14 +1721,14 @@ export class IOTOTasksCenterView extends ItemView {
 		);
 	}
 
-	private shouldDeferVaultRefresh(): boolean {
+	shouldDeferVaultRefresh(): boolean {
 		return (
 			hasActiveTaskHoverPopover(this.hoverPreviewParent) ||
 			this.deferVaultRefreshForSubtaskCreation
 		);
 	}
 
-	private scheduleDeferredVaultRefresh(): void {
+	scheduleDeferredVaultRefresh(): void {
 		if (this.deferredVaultRefreshTimer !== null) {
 			return;
 		}
@@ -1973,18 +1759,10 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private canCreateTask(): boolean {
-		return Boolean(
-			this.selectedProject &&
-			!this.isProjectsLoading &&
-			!this.isTasksLoading &&
-			!this.isCreatingTask &&
-			this.projects.some(
-				(project) => project.name === this.selectedProject,
-			),
-		);
+		return canCreateTask(this);
 	}
 
-	private canSwitchProjects(): boolean {
+	canSwitchProjects(): boolean {
 		return (
 			!this.isProjectsLoading &&
 			!this.isTasksLoading &&
@@ -2010,169 +1788,35 @@ export class IOTOTasksCenterView extends ItemView {
 		});
 	}
 
-	private renderTaskSearch(container: HTMLElement): void {
-		const searchContainerEl = container.createDiv({
-			cls: 'ioto-tasks-center__task-search',
-		});
-		const searchControlsEl = searchContainerEl.createDiv({
-			cls: 'ioto-tasks-center__task-search-controls',
-		});
-		const searchInputWrapperEl = searchControlsEl.createDiv({
-			cls: 'ioto-tasks-center__task-search-input-wrapper',
-		});
-		const searchInputEl = searchInputWrapperEl.createEl('input', {
-			cls: 'ioto-tasks-center__task-search-input',
-			type: 'search',
-		});
-		searchInputEl.placeholder = t('view.search.placeholder');
-		searchInputEl.value = this.taskSearchInputValue;
-		searchInputEl.disabled = !this.canSearchTasks();
-		searchInputEl.addEventListener('input', () => {
-			this.taskSearchInputValue = searchInputEl.value;
-		});
-		searchInputEl.addEventListener('keydown', (event) => {
-			if (event.key !== 'Enter') {
-				return;
-			}
-
-			event.preventDefault();
-			this.applyTaskSearchQuery();
-		});
-		if (this.taskSearchInputValue || this.taskSearchQuery) {
-			const clearButtonEl = searchInputWrapperEl.createEl('button', {
-				cls: 'ioto-tasks-center__task-search-clear-button',
-				text: 'X',
-			});
-			clearButtonEl.type = 'button';
-			clearButtonEl.disabled = !this.canSearchTasks();
-			clearButtonEl.ariaLabel = t('view.search.clear');
-			clearButtonEl.title = t('view.search.clearShort');
-			clearButtonEl.addEventListener('click', () => {
-				this.clearTaskSearch();
-			});
-		}
-		const searchButtonEl = searchControlsEl.createEl('button', {
-			cls: 'ioto-tasks-center__task-search-button',
-			text: t('view.search.button'),
-		});
-		searchButtonEl.type = 'button';
-		searchButtonEl.disabled = !this.canSearchTasks();
-		searchButtonEl.ariaLabel = t('view.search.run');
-		searchButtonEl.addEventListener('click', () => {
-			this.applyTaskSearchQuery();
-		});
-	}
-
 	private canSearchTasks(): boolean {
-		return Boolean(
-			this.selectedProject &&
-			!this.isTasksLoading &&
-			this.taskResult &&
-			this.taskResult.status === 'success',
-		);
+		return SearchController.canSearchTasks(this);
 	}
 
 	private shouldShowTaskSearchIcon(): boolean {
-		return Boolean(
-			this.selectedProject &&
-			this.taskResult &&
-			this.taskResult.status === 'success' &&
-			this.tasks.length > 0,
-		);
+		return SearchController.shouldShowTaskSearchIcon(this);
 	}
 
 	private toggleTaskSearchPopover(anchorEl: HTMLElement): void {
-		if (this.isTaskSearchPopoverOpen) {
-			this.closeTaskSearchPopover();
-			this.render();
-			return;
-		}
-
-		this.isTaskSearchPopoverOpen = true;
-		this.shouldFocusTaskSearchPopover = true;
-		this.contentEl
-			.querySelector('.ioto-tasks-center__task-search-hint')
-			?.remove();
-		this.openTaskSearchPopover(anchorEl, true);
+		SearchController.toggleTaskSearchPopover(this, anchorEl);
 	}
 
 	private openTaskSearchPopover(
 		anchorEl: HTMLElement,
 		forceFocus: boolean,
 	): void {
-		const popover = this.taskSearchPopover;
-		if (!popover) {
-			return;
-		}
-
-		if (!this.shouldShowTaskSearchIcon()) {
-			this.closeTaskSearchPopover();
-			return;
-		}
-
-		const shouldFocus = forceFocus || this.shouldFocusTaskSearchPopover;
-		this.shouldFocusTaskSearchPopover = false;
-
-		popover.open({
-			anchorEl,
-			placeholder: t('view.search.placeholder'),
-			value: this.taskSearchInputValue,
-			canSearch: this.canSearchTasks(),
-			showClear: Boolean(
-				this.taskSearchInputValue || this.taskSearchQuery,
-			),
-			searchButtonText: t('view.search.button'),
-			searchButtonAriaLabel: t('view.search.run'),
-			clearButtonAriaLabel: t('view.search.clear'),
-			clearButtonTitle: t('view.search.clearShort'),
-			onChange: (value) => {
-				this.taskSearchInputValue = value;
-			},
-			onApply: () => {
-				this.applyTaskSearchQuery();
-			},
-			onClear: () => {
-				this.clearTaskSearch();
-			},
-			onClose: () => {
-				this.isTaskSearchPopoverOpen = false;
-				this.shouldFocusTaskSearchPopover = false;
-				this.render();
-			},
-			shouldFocus,
-		});
+		SearchController.openTaskSearchPopover(this, anchorEl, forceFocus);
 	}
 
 	private closeTaskSearchPopover(): void {
-		this.taskSearchPopover?.close();
-		this.isTaskSearchPopoverOpen = false;
-		this.shouldFocusTaskSearchPopover = false;
+		SearchController.closeTaskSearchPopover(this);
 	}
 
 	private applyTaskSearchQuery(): void {
-		const nextQuery = this.taskSearchInputValue;
-		if (nextQuery === this.taskSearchQuery) {
-			return;
-		}
-
-		this.taskSearchQuery = nextQuery;
-		if (this.isTaskSearchPopoverOpen) {
-			this.shouldFocusTaskSearchPopover = true;
-		}
-		this.render();
+		SearchController.applyTaskSearchQuery(this);
 	}
 
 	private clearTaskSearch(): void {
-		if (!this.taskSearchInputValue && !this.taskSearchQuery) {
-			return;
-		}
-
-		this.taskSearchInputValue = '';
-		this.taskSearchQuery = '';
-		if (this.isTaskSearchPopoverOpen) {
-			this.shouldFocusTaskSearchPopover = true;
-		}
-		this.render();
+		SearchController.clearTaskSearch(this);
 	}
 
 	private handleTaskDragStart(
@@ -2180,23 +1824,7 @@ export class IOTOTasksCenterView extends ItemView {
 		task: TaskFileEntry,
 		rowEl: HTMLButtonElement,
 	): void {
-		if (this.isUpdatingUpTask) {
-			event.preventDefault();
-			return;
-		}
-
-		this.draggingTaskPath = task.path;
-		this.dropTargetTaskPath = null;
-		this.invalidDropTargetTaskPath = null;
-		this.isRemoveUpTaskDropTarget = false;
-		this.contentEl
-			.querySelector(TASK_LIST_SELECTOR)
-			?.addClass('has-remove-up-task-drop-zone');
-		rowEl.addClass('is-dragging');
-		if (event.dataTransfer) {
-			event.dataTransfer.effectAllowed = 'move';
-			event.dataTransfer.setData('text/plain', task.path);
-		}
+		handleTaskDragStart(this, event, task, rowEl);
 	}
 
 	private handleTaskDragOver(
@@ -2204,25 +1832,7 @@ export class IOTOTasksCenterView extends ItemView {
 		task: TaskFileEntry,
 		rowEl: HTMLButtonElement,
 	): void {
-		if (!this.draggingTaskPath || this.isUpdatingUpTask) {
-			return;
-		}
-
-		const validation = validateTaskParentDrop(
-			this.tasks,
-			this.draggingTaskPath,
-			task.path,
-		);
-		if (!validation.valid) {
-			this.setCurrentDropTarget(task.path, true, rowEl);
-			return;
-		}
-
-		event.preventDefault();
-		if (event.dataTransfer) {
-			event.dataTransfer.dropEffect = 'move';
-		}
-		this.setCurrentDropTarget(task.path, false, rowEl);
+		handleTaskDragOver(this, event, task, rowEl);
 	}
 
 	private handleTaskDragLeave(
@@ -2230,19 +1840,7 @@ export class IOTOTasksCenterView extends ItemView {
 		task: TaskFileEntry,
 		rowEl: HTMLButtonElement,
 	): void {
-		const nextTarget = event.relatedTarget;
-		if (nextTarget instanceof Node && rowEl.contains(nextTarget)) {
-			return;
-		}
-
-		if (
-			this.dropTargetTaskPath === task.path ||
-			this.invalidDropTargetTaskPath === task.path
-		) {
-			rowEl.removeClass('is-drop-target', 'is-drop-invalid');
-			this.dropTargetTaskPath = null;
-			this.invalidDropTargetTaskPath = null;
-		}
+		handleTaskDragLeave(this, event, task, rowEl);
 	}
 
 	private async handleTaskDrop(
@@ -2279,64 +1877,19 @@ export class IOTOTasksCenterView extends ItemView {
 		invalid: boolean,
 		rowEl: HTMLButtonElement,
 	): void {
-		if (this.dropTargetTaskPath && this.dropTargetTaskPath !== taskPath) {
-			this.findTaskRowByPath(this.dropTargetTaskPath)?.removeClass(
-				'is-drop-target',
-			);
-		}
-
-		if (
-			this.invalidDropTargetTaskPath &&
-			this.invalidDropTargetTaskPath !== taskPath
-		) {
-			this.findTaskRowByPath(this.invalidDropTargetTaskPath)?.removeClass(
-				'is-drop-invalid',
-			);
-		}
-
-		this.dropTargetTaskPath = invalid ? null : taskPath;
-		this.invalidDropTargetTaskPath = invalid ? taskPath : null;
-		rowEl.toggleClass('is-drop-target', !invalid);
-		rowEl.toggleClass('is-drop-invalid', invalid);
+		setCurrentDropTarget(this, taskPath, invalid, rowEl);
 	}
 
 	private clearTaskDragState(): void {
-		for (const rowEl of this.getTaskRowElements()) {
-			rowEl.removeClass(
-				'is-dragging',
-				'is-drop-target',
-				'is-drop-invalid',
-			);
-		}
-		this.contentEl
-			.querySelector('.ioto-tasks-center__remove-up-task-drop-zone')
-			?.removeClass('is-drop-target');
-		this.contentEl
-			.querySelector(TASK_LIST_SELECTOR)
-			?.removeClass('has-remove-up-task-drop-zone');
-
-		this.draggingTaskPath = null;
-		this.dropTargetTaskPath = null;
-		this.invalidDropTargetTaskPath = null;
-		this.isRemoveUpTaskDropTarget = false;
+		clearTaskDragState(this);
 	}
 
 	private getTaskRowElements(): HTMLButtonElement[] {
-		return Array.from(
-			this.contentEl.querySelectorAll<HTMLButtonElement>(
-				'.ioto-tasks-center__task-row',
-			),
-		);
+		return getTaskRowElements(this);
 	}
 
 	private findTaskRowByPath(taskPath: string): HTMLButtonElement | null {
-		for (const rowEl of this.getTaskRowElements()) {
-			if (rowEl.dataset.taskPath === taskPath) {
-				return rowEl;
-			}
-		}
-
-		return null;
+		return findTaskRowByPath(this, taskPath);
 	}
 
 	private async assignDraggedTaskToParent(
@@ -2344,52 +1897,19 @@ export class IOTOTasksCenterView extends ItemView {
 		targetTask: TaskFileEntry,
 		rowEl: HTMLButtonElement,
 	): Promise<void> {
-		const draggedFile =
-			this.app.vault.getAbstractFileByPath(draggedTaskPath);
-		if (!(draggedFile instanceof TFile)) {
-			this.clearTaskDragState();
-			new Notice(t('view.notice.draggedTaskMissing'));
-			return;
-		}
-
-		this.isUpdatingUpTask = true;
-		rowEl.removeClass('is-drop-target', 'is-drop-invalid');
-
-		try {
-			await assignUpTaskToFile(this.app, draggedFile, targetTask.title);
-			if (this.selectedProject) {
-				this.isTasksLoading = true;
-				this.render();
-				await this.loadTasks(this.selectedProject);
-			}
-		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: t('view.notice.updateUpTaskFailed');
-			new Notice(message);
-		} finally {
-			this.isUpdatingUpTask = false;
-			this.clearTaskDragState();
-			this.render();
-		}
+		await assignDraggedTaskToParent(
+			this,
+			draggedTaskPath,
+			targetTask,
+			rowEl,
+		);
 	}
 
 	private handleRemoveUpTaskDragOver(
 		event: DragEvent,
 		dropZoneEl: HTMLDivElement,
 	): void {
-		if (!this.draggingTaskPath || this.isUpdatingUpTask) {
-			return;
-		}
-
-		event.preventDefault();
-		if (event.dataTransfer) {
-			event.dataTransfer.dropEffect = 'move';
-		}
-		this.clearCurrentTaskDropTargetClasses();
-		this.isRemoveUpTaskDropTarget = true;
-		dropZoneEl.addClass('is-drop-target');
+		handleRemoveUpTaskDragOver(this, event, dropZoneEl);
 	}
 
 	private handleRemoveUpTaskDragLeave(
@@ -2409,84 +1929,21 @@ export class IOTOTasksCenterView extends ItemView {
 		event: DragEvent,
 		dropZoneEl: HTMLDivElement,
 	): Promise<void> {
-		event.preventDefault();
-		const draggedTaskPath = this.draggingTaskPath;
-		if (!draggedTaskPath || this.isUpdatingUpTask) {
-			return;
-		}
-
-		this.isRemoveUpTaskDropTarget = false;
-		dropZoneEl.removeClass('is-drop-target');
-		await this.removeDraggedTaskParent(draggedTaskPath);
+		await handleRemoveUpTaskDrop(this, event, dropZoneEl);
 	}
 
 	private clearCurrentTaskDropTargetClasses(): void {
-		if (this.dropTargetTaskPath) {
-			this.findTaskRowByPath(this.dropTargetTaskPath)?.removeClass(
-				'is-drop-target',
-			);
-			this.dropTargetTaskPath = null;
-		}
-
-		if (this.invalidDropTargetTaskPath) {
-			this.findTaskRowByPath(this.invalidDropTargetTaskPath)?.removeClass(
-				'is-drop-invalid',
-			);
-			this.invalidDropTargetTaskPath = null;
-		}
-
-		this.contentEl
-			.querySelector('.ioto-tasks-center__remove-up-task-drop-zone')
-			?.removeClass('is-drop-target');
-		this.isRemoveUpTaskDropTarget = false;
+		clearCurrentTaskDropTargetClasses(this);
 	}
 
 	private async removeDraggedTaskParent(
 		draggedTaskPath: string,
 	): Promise<void> {
-		const draggedFile =
-			this.app.vault.getAbstractFileByPath(draggedTaskPath);
-		if (!(draggedFile instanceof TFile)) {
-			this.clearTaskDragState();
-			new Notice(t('view.notice.draggedTaskMissing'));
-			return;
-		}
-
-		this.isUpdatingUpTask = true;
-		try {
-			await removeUpTaskFromFile(this.app, draggedFile);
-			if (this.selectedProject) {
-				this.isTasksLoading = true;
-				this.render();
-				await this.loadTasks(this.selectedProject);
-			}
-		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: t('view.notice.removeUpTaskFailed');
-			new Notice(message);
-		} finally {
-			this.isUpdatingUpTask = false;
-			this.clearTaskDragState();
-			this.render();
-		}
+		await removeDraggedTaskParent(this, draggedTaskPath);
 	}
 
 	private getAddTaskButtonLabel(): string {
-		if (this.isCreatingTask) {
-			return t('view.tasksPane.addTaskCreating');
-		}
-
-		if (!this.selectedProject) {
-			return t('view.tasksPane.addTaskSelectProject');
-		}
-
-		if (this.isProjectsLoading || this.isTasksLoading) {
-			return t('view.tasksPane.addTaskLoading');
-		}
-
-		return t('view.tasksPane.addTaskReady', [this.selectedProject]);
+		return getAddTaskButtonLabel(this);
 	}
 
 	private canCreateProject(): boolean {
@@ -2517,46 +1974,7 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private async handleCreateProject(): Promise<void> {
-		if (!this.canCreateProject()) {
-			return;
-		}
-
-		const projectNameResult = await new TaskNameModal(
-			this.app,
-			t('modal.newProject.title'),
-			t('modal.newProject.placeholder'),
-			{
-				descriptionText: t('modal.newProject.desc'),
-				confirmButtonText: t('modal.create'),
-			},
-		).openAndGetValue();
-		if (!projectNameResult) {
-			return;
-		}
-
-		this.isCreatingProject = true;
-		this.render();
-
-		try {
-			const result = await createProjectFolder(
-				this.app,
-				this.getTasksRootPath(),
-				projectNameResult,
-			);
-			if (!result.created) {
-				new Notice(t('view.notice.projectAlreadyExists'));
-			}
-			await this.loadProjects(result.name);
-		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: t('view.notice.createProjectFailed');
-			new Notice(message);
-		} finally {
-			this.isCreatingProject = false;
-			this.render();
-		}
+		return handleCreateProject(this);
 	}
 
 	private async showTaskCreationMenu(event: MouseEvent): Promise<void> {
@@ -2595,231 +2013,24 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private async handleCreateTask(type: TaskCreationType): Promise<void> {
-		const projectName = this.selectedProject;
-		if (
-			!projectName ||
-			!this.projects.some((project) => project.name === projectName)
-		) {
-			new Notice(t('view.notice.currentProjectUnavailable'));
-			return;
-		}
-
-		let customName: string | undefined;
-		let createdPriority: TaskPriorityValue | null = null;
-		let createdStarred = false;
-		if (type !== 'date') {
-			const taskTypeTexts =
-				type === 'plan'
-					? {
-							title: t('modal.newPlanTask.title'),
-							label: t('modal.newPlanTask.placeholder'),
-						}
-					: type === 'topic'
-						? {
-								title: t('modal.newTopicTask.title'),
-								label: t('modal.newTopicTask.placeholder'),
-							}
-						: {
-								title: t('modal.newNormalTask.title'),
-								label: t('modal.newNormalTask.placeholder'),
-							};
-			const modalResult = await new TaskCreationModal(
-				this.app,
-				taskTypeTexts.title,
-				taskTypeTexts.label,
-				{
-					descriptionText: t('modal.newTask.desc'),
-					confirmButtonText: t('modal.create'),
-				},
-			).openAndGetValue();
-			if (!modalResult) {
-				return;
-			}
-			customName = modalResult.name ?? undefined;
-			createdPriority = modalResult.priority;
-			createdStarred = modalResult.starred;
-		}
-
-		this.isCreatingTask = true;
-		this.render();
-
-		try {
-			const previewLeaf = this.ensurePreviewLeaf();
-			const result = await createTaskFile({
-				app: this.app,
-				tasksRootPath: this.getTasksRootPath(),
-				projectName,
-				type,
-				customName,
-				templateConfig: this.getTaskTemplateConfig(type),
-				dateTaskDateFormat: this.getDateTaskDateFormat(),
-				targetLeaf: previewLeaf,
-				sourceLeaf: this.leaf,
-			});
-			if (type !== 'date') {
-				await this.applyCreatedTaskSettings(result.file, {
-					priority: createdPriority,
-					starred: createdStarred,
-				});
-			}
-			this.previewLeaf = previewLeaf;
-			this.lastOpenedTaskByProject.set(projectName, result.file.path);
-			await this.refreshFromVaultChange();
-			await this.openFileInPreview(result.file);
-		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: t('view.notice.createTaskFailed');
-			new Notice(message);
-		} finally {
-			this.isCreatingTask = false;
-			this.render();
-		}
+		return handleCreateTask(this, type);
 	}
 
-	private async handleCreateSubtask(
+	async handleCreateSubtask(
 		parentTask: TaskFileEntry,
 		type: TaskCreationType,
 	): Promise<void> {
-		const parentFile = this.app.vault.getAbstractFileByPath(
-			parentTask.path,
-		);
-		if (!(parentFile instanceof TFile)) {
-			new Notice(t('view.notice.taskFileUnavailable'));
-			return;
-		}
-
-		const currentTaskContext = resolveCurrentTaskContext(
-			parentFile,
-			this.getTasksRootPath(),
-		);
-
-		let customName: string | undefined;
-		let createdPriority: TaskPriorityValue | null = null;
-		let createdStarred = false;
-		if (type !== 'date') {
-			const taskTypeTexts =
-				type === 'plan'
-					? {
-							title: t('modal.newPlanSubtask.title'),
-							label: t('modal.newPlanSubtask.placeholder'),
-						}
-					: type === 'topic'
-						? {
-								title: t('modal.newTopicSubtask.title'),
-								label: t('modal.newTopicSubtask.placeholder'),
-							}
-						: {
-								title: t('modal.newNormalSubtask.title'),
-								label: t('modal.newNormalSubtask.placeholder'),
-							};
-			const modalResult = await new TaskCreationModal(
-				this.app,
-				taskTypeTexts.title,
-				taskTypeTexts.label,
-				{
-					descriptionText: t('modal.newSubtask.desc'),
-					confirmButtonText: t('modal.create'),
-				},
-			).openAndGetValue();
-			if (!modalResult) {
-				return;
-			}
-			customName = modalResult.name ?? undefined;
-			createdPriority = modalResult.priority;
-			createdStarred = modalResult.starred;
-		}
-
-		this.isCreatingTask = true;
-		this.deferVaultRefreshForSubtaskCreation = true;
-		this.render();
-
-		try {
-			const previewLeaf = this.ensurePreviewLeaf();
-			const result = await createTaskFile({
-				app: this.app,
-				tasksRootPath: this.getTasksRootPath(),
-				projectName: currentTaskContext.projectName,
-				type,
-				customName,
-				targetDirectoryPath: currentTaskContext.currentDirectoryPath,
-				templateConfig: this.getTaskTemplateConfig(type),
-				dateTaskDateFormat: this.getDateTaskDateFormat(),
-				targetLeaf: previewLeaf,
-				sourceLeaf: this.leaf,
-			});
-			if (type !== 'date') {
-				await this.applyCreatedTaskSettings(result.file, {
-					priority: createdPriority,
-					starred: createdStarred,
-				});
-			}
-			await assignUpTaskToFile(
-				this.app,
-				result.file,
-				currentTaskContext.parentTaskTitle,
-			);
-			this.previewLeaf = previewLeaf;
-			this.lastOpenedTaskByProject.set(
-				currentTaskContext.projectName,
-				result.file.path,
-			);
-			this.deferVaultRefreshForSubtaskCreation = false;
-			this.clearDeferredVaultRefreshState();
-			await this.refreshFromVaultChange();
-			await this.openFileInPreview(result.file);
-		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: t('view.notice.createSubtaskFailed');
-			new Notice(message);
-		} finally {
-			this.deferVaultRefreshForSubtaskCreation = false;
-			if (this.pendingVaultRefresh) {
-				this.clearDeferredVaultRefreshState();
-				await this.refreshFromVaultChange();
-			}
-			this.isCreatingTask = false;
-			this.render();
-		}
+		return handleCreateSubtask(this, parentTask, type);
 	}
 
 	private async applyCreatedTaskSettings(
 		file: TFile,
 		settings: { priority: TaskPriorityValue | null; starred: boolean },
 	): Promise<void> {
-		try {
-			if (settings.priority === null) {
-				await clearTaskFilePriority(this.app, file);
-			} else {
-				await setTaskFilePriority(this.app, file, settings.priority);
-			}
-		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: t('view.notice.updateTaskPriorityFailed');
-			new Notice(message);
-		}
-
-		try {
-			if (settings.starred) {
-				await setTaskFileStarred(this.app, file);
-			} else {
-				await clearTaskFileStarred(this.app, file);
-			}
-		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: t('view.notice.updateTaskCoreFailed');
-			new Notice(message);
-		}
+		return applyCreatedTaskSettings(this, file, settings);
 	}
 
-	private clearDeferredVaultRefreshState(): void {
+	clearDeferredVaultRefreshState(): void {
 		this.pendingVaultRefresh = false;
 		if (this.deferredVaultRefreshTimer !== null) {
 			window.clearTimeout(this.deferredVaultRefreshTimer);
@@ -3103,299 +2314,23 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private showProjectPresentationMenu(event: MouseEvent): void {
-		const projectListSortModeOptions = getProjectListSortModeOptions();
-		const projectListGroupModeOptions = getProjectListGroupModeOptions();
-		const menu = new Menu();
-		const currentSortMode = this.getProjectListSortMode();
-		const currentGroupMode = this.getProjectListGroupMode();
-
-		for (const sortMode of PROJECT_LIST_SORT_MODE_ORDER) {
-			const label = projectListSortModeOptions[sortMode];
-			menu.addItem((item) =>
-				item
-					.setTitle(
-						formatMenuOptionTitle(
-							t('menu.category.sort'),
-							label,
-							sortMode === currentSortMode,
-						),
-					)
-					.onClick(() => {
-						void this.updateProjectListSortMode(sortMode).catch(
-							(error: unknown) => {
-								const message =
-									error instanceof Error
-										? error.message
-										: t(
-												'view.notice.updateProjectSortFailed',
-											);
-								new Notice(message);
-							},
-						);
-					}),
-			);
-		}
-
-		menu.addSeparator();
-
-		for (const groupMode of PROJECT_LIST_GROUP_MODE_ORDER) {
-			const label = projectListGroupModeOptions[groupMode];
-			menu.addItem((item) =>
-				item
-					.setTitle(
-						formatMenuOptionTitle(
-							t('menu.category.group'),
-							label,
-							groupMode === currentGroupMode,
-						),
-					)
-					.onClick(() => {
-						void this.updateProjectListGroupMode(groupMode).catch(
-							(error: unknown) => {
-								const message =
-									error instanceof Error
-										? error.message
-										: t(
-												'view.notice.updateProjectGroupFailed',
-											);
-								new Notice(message);
-							},
-						);
-					}),
-			);
-		}
-
-		menu.showAtMouseEvent(event);
+		showProjectPresentationMenu(this, event);
 	}
 
 	private showTaskPresentationMenu(event: MouseEvent): void {
-		const taskListSortModeOptions = getTaskListSortModeOptions();
-		const taskListGroupModeOptions = getTaskListGroupModeOptions();
-		const menu = new Menu();
-		const currentSortMode = this.getTaskListSortMode();
-		const currentGroupMode = this.getTaskListGroupMode();
-		const currentShowTaskPriority = this.getShowTaskPriority();
-
-		for (const sortMode of TASK_LIST_SORT_MODE_ORDER) {
-			const label = taskListSortModeOptions[sortMode];
-			menu.addItem((item) =>
-				item
-					.setTitle(
-						formatMenuOptionTitle(
-							t('menu.category.sort'),
-							label,
-							sortMode === currentSortMode,
-						),
-					)
-					.onClick(() => {
-						void this.updateTaskListSortMode(sortMode).catch(
-							(error: unknown) => {
-								const message =
-									error instanceof Error
-										? error.message
-										: t('view.notice.updateTaskSortFailed');
-								new Notice(message);
-							},
-						);
-					}),
-			);
-		}
-
-		menu.addSeparator();
-
-		for (const groupMode of TASK_LIST_GROUP_MODE_ORDER) {
-			const label = taskListGroupModeOptions[groupMode];
-			menu.addItem((item) =>
-				item
-					.setTitle(
-						formatMenuOptionTitle(
-							t('menu.category.group'),
-							label,
-							groupMode === currentGroupMode,
-						),
-					)
-					.onClick(() => {
-						void this.updateTaskListGroupMode(groupMode).catch(
-							(error: unknown) => {
-								const message =
-									error instanceof Error
-										? error.message
-										: t(
-												'view.notice.updateTaskGroupFailed',
-											);
-								new Notice(message);
-							},
-						);
-					}),
-			);
-		}
-
-		menu.addSeparator();
-		for (const visibilityOption of getTaskPriorityVisibilityOptions()) {
-			menu.addItem((item) =>
-				item
-					.setTitle(
-						formatMenuOptionTitle(
-							t('menu.category.priority'),
-							visibilityOption.label,
-							visibilityOption.show === currentShowTaskPriority,
-						),
-					)
-					.onClick(() => {
-						void this.updateShowTaskPriority(
-							visibilityOption.show,
-						).catch((error: unknown) => {
-							const message =
-								error instanceof Error
-									? error.message
-									: t(
-											'view.notice.updateTaskPriorityDisplayFailed',
-										);
-							new Notice(message);
-						});
-					}),
-			);
-		}
-
-		menu.showAtMouseEvent(event);
+		showTaskPresentationMenu(this, event);
 	}
 
 	private showTaskPriorityMenu(event: MouseEvent, task: TaskFileEntry): void {
-		const menu = new Menu();
-		const enabledTypes = this.getEnabledTaskCreationTypes();
-		const normalizedEnabledTypes =
-			enabledTypes.length > 0
-				? enabledTypes
-				: getTaskCreationOptions().map((option) => option.key);
-
-		menu.addItem((item) =>
-			item
-				.setTitle(
-					task.starred
-						? t('view.taskCoreMenu.clear')
-						: t('view.taskCoreMenu.set'),
-				)
-				.onClick(() => {
-					if (task.starred) {
-						void this.clearTaskStarred(task);
-						return;
-					}
-
-					void this.updateTaskStarred(task);
-				}),
-		);
-		menu.addSeparator();
-
-		menu.addItem((item) => {
-			item.setTitle(t('view.taskMenu.addSubtask'));
-
-			if (normalizedEnabledTypes.length === 1) {
-				const onlyType = normalizedEnabledTypes[0];
-				if (!onlyType) {
-					return;
-				}
-				item.onClick(() => {
-					void this.handleCreateSubtask(task, onlyType);
-				});
-				return;
-			}
-
-			if (typeof item.setSubmenu !== 'function') {
-				item.onClick(() => {
-					this.showTaskSubtaskTypeMenu(
-						event,
-						task,
-						normalizedEnabledTypes,
-					);
-				});
-				return;
-			}
-
-			try {
-				const subMenu = item.setSubmenu();
-				const menuOptions = getTaskCreationOptions().filter((option) =>
-					normalizedEnabledTypes.includes(option.key),
-				);
-				const resolvedMenuOptions =
-					menuOptions.length > 0
-						? menuOptions
-						: getTaskCreationOptions();
-				for (const option of resolvedMenuOptions) {
-					subMenu.addItem((subItem) =>
-						subItem.setTitle(option.label).onClick(() => {
-							void this.handleCreateSubtask(task, option.key);
-						}),
-					);
-				}
-			} catch {
-				item.onClick(() => {
-					this.showTaskSubtaskTypeMenu(
-						event,
-						task,
-						normalizedEnabledTypes,
-					);
-				});
-			}
-		});
-		menu.addSeparator();
-
-		if (typeof task.priority === 'number') {
-			menu.addItem((item) =>
-				item.setTitle(t('view.taskPriorityMenu.clear')).onClick(() => {
-					void this.clearTaskPriority(task);
-				}),
-			);
-			menu.addSeparator();
-		}
-
-		for (const priority of TASK_PRIORITY_VALUES) {
-			menu.addItem((item) =>
-				item
-					.setTitle(
-						formatPriorityMenuTitle(
-							priority,
-							task.priority === priority,
-						),
-					)
-					.onClick(() => {
-						void this.updateTaskPriority(task, priority);
-					}),
-			);
-		}
-
-		menu.addSeparator();
-		menu.addItem((item) =>
-			item.setTitle(t('view.taskMenu.delete')).onClick(() => {
-				void this.confirmAndDeleteTask(task);
-			}),
-		);
-
-		menu.showAtMouseEvent(event);
+		showTaskPriorityMenu(this, event, task);
 	}
 
-	private showTaskSubtaskTypeMenu(
+	showTaskSubtaskTypeMenu(
 		event: MouseEvent,
 		parentTask: TaskFileEntry,
 		enabledTypes: TaskCreationType[],
 	): void {
-		const menu = new Menu();
-		const menuOptions = getTaskCreationOptions().filter((option) =>
-			enabledTypes.includes(option.key),
-		);
-		const resolvedMenuOptions =
-			menuOptions.length > 0 ? menuOptions : getTaskCreationOptions();
-		for (const option of resolvedMenuOptions) {
-			menu.addItem((item) =>
-				item.setTitle(option.label).onClick(() => {
-					void this.handleCreateSubtask(parentTask, option.key);
-				}),
-			);
-		}
-
-		menu.showAtPosition({
-			x: event.clientX + 12,
-			y: event.clientY,
-		});
+		showTaskSubtaskTypeMenu(this, event, parentTask, enabledTypes);
 	}
 
 	private renderTaskFilterEmptyState(container: HTMLElement): void {
@@ -3495,14 +2430,7 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private getCachedTaskPath(projectName: string): string | null {
-		const cachedTaskPath = this.lastOpenedTaskByProject.get(projectName);
-		if (!cachedTaskPath) {
-			return null;
-		}
-
-		return this.tasks.some((task) => task.path === cachedTaskPath)
-			? cachedTaskPath
-			: null;
+		return getCachedTaskPath(this, projectName);
 	}
 
 	private async openTaskFile(task: TaskFileEntry): Promise<void> {
@@ -3597,115 +2525,27 @@ export class IOTOTasksCenterView extends ItemView {
 		}
 	}
 
-	private async updateTaskPriority(
+	async updateTaskPriority(
 		task: TaskFileEntry,
 		priority: TaskPriorityValue,
 	): Promise<void> {
-		const file = this.app.vault.getAbstractFileByPath(task.path);
-		if (!(file instanceof TFile)) {
-			new Notice(t('view.notice.taskFileUnavailable'));
-			return;
-		}
-
-		try {
-			await setTaskFilePriority(this.app, file, priority);
-			await this.refreshCurrentProjectTasks();
-		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: t('view.notice.updateTaskPriorityFailed');
-			new Notice(message);
-		}
+		return updateTaskPriority(this, task, priority);
 	}
 
-	private async clearTaskPriority(task: TaskFileEntry): Promise<void> {
-		const file = this.app.vault.getAbstractFileByPath(task.path);
-		if (!(file instanceof TFile)) {
-			new Notice(t('view.notice.taskFileUnavailable'));
-			return;
-		}
-
-		try {
-			await clearTaskFilePriority(this.app, file);
-			await this.refreshCurrentProjectTasks();
-		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: t('view.notice.clearTaskPriorityFailed');
-			new Notice(message);
-		}
+	async clearTaskPriority(task: TaskFileEntry): Promise<void> {
+		return clearTaskPriority(this, task);
 	}
 
-	private async updateTaskStarred(task: TaskFileEntry): Promise<void> {
-		const file = this.app.vault.getAbstractFileByPath(task.path);
-		if (!(file instanceof TFile)) {
-			new Notice(t('view.notice.taskFileUnavailable'));
-			return;
-		}
-
-		try {
-			await setTaskFileStarred(this.app, file);
-			await this.refreshCurrentProjectTasks();
-		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: t('view.notice.updateTaskCoreFailed');
-			new Notice(message);
-		}
+	async updateTaskStarred(task: TaskFileEntry): Promise<void> {
+		return updateTaskStarred(this, task);
 	}
 
-	private async clearTaskStarred(task: TaskFileEntry): Promise<void> {
-		const file = this.app.vault.getAbstractFileByPath(task.path);
-		if (!(file instanceof TFile)) {
-			new Notice(t('view.notice.taskFileUnavailable'));
-			return;
-		}
-
-		try {
-			await clearTaskFileStarred(this.app, file);
-			await this.refreshCurrentProjectTasks();
-		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: t('view.notice.clearTaskCoreFailed');
-			new Notice(message);
-		}
+	async clearTaskStarred(task: TaskFileEntry): Promise<void> {
+		return clearTaskStarred(this, task);
 	}
 
-	private async confirmAndDeleteTask(task: TaskFileEntry): Promise<void> {
-		const file = this.app.vault.getAbstractFileByPath(task.path);
-		if (!(file instanceof TFile)) {
-			new Notice(t('view.notice.taskFileUnavailable'));
-			return;
-		}
-
-		const confirmed = await new ConfirmModal(
-			this.app,
-			t('modal.deleteTask.title'),
-			{
-				descriptionText: t('modal.deleteTask.desc', [task.title]),
-				confirmButtonText: t('modal.deleteTask.confirm'),
-				cancelButtonText: t('modal.cancel'),
-			},
-		).openAndConfirm();
-		if (!confirmed) {
-			return;
-		}
-
-		try {
-			await trashTaskFile(this.app, file);
-			await this.refreshFromVaultChange();
-		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: t('view.notice.deleteTaskFailed');
-			new Notice(message);
-		}
+	async confirmAndDeleteTask(task: TaskFileEntry): Promise<void> {
+		return confirmAndDeleteTask(this, task);
 	}
 
 	private async refreshCurrentProjectTasks(): Promise<void> {
@@ -3718,7 +2558,7 @@ export class IOTOTasksCenterView extends ItemView {
 		await this.loadTasks(this.selectedProject);
 	}
 
-	private async openFileInPreview(file: TFile): Promise<void> {
+	async openFileInPreview(file: TFile): Promise<void> {
 		this.openingTaskPath = file.path;
 		this.render();
 
@@ -3751,7 +2591,7 @@ export class IOTOTasksCenterView extends ItemView {
 		});
 	}
 
-	private getPreviewLeafFilePath(): string | null {
+	getPreviewLeafFilePath(): string | null {
 		if (!this.previewLeaf || !this.isLeafAvailable(this.previewLeaf)) {
 			return null;
 		}
@@ -3770,7 +2610,7 @@ export class IOTOTasksCenterView extends ItemView {
 		});
 	}
 
-	private ensurePreviewLeaf(): WorkspaceLeaf {
+	ensurePreviewLeaf(): WorkspaceLeaf {
 		if (this.previewLeaf && this.isLeafAvailable(this.previewLeaf)) {
 			return this.previewLeaf;
 		}
@@ -3789,17 +2629,11 @@ export class IOTOTasksCenterView extends ItemView {
 		return previewLeaf;
 	}
 
-	private isLeafAvailable(targetLeaf: WorkspaceLeaf): boolean {
-		let exists = false;
-		this.app.workspace.iterateAllLeaves((leaf) => {
-			if (leaf === targetLeaf) {
-				exists = true;
-			}
-		});
-		return exists;
+	isLeafAvailable(targetLeaf: WorkspaceLeaf): boolean {
+		return isLeafAvailable(this, targetLeaf);
 	}
 
-	private findReusablePreviewLeaf(): WorkspaceLeaf | null {
+	findReusablePreviewLeaf(): WorkspaceLeaf | null {
 		if (this.openedTaskPath) {
 			const openedFileLeaf = this.findLeafByFilePath(this.openedTaskPath);
 			if (openedFileLeaf && openedFileLeaf !== this.leaf) {
@@ -3810,185 +2644,11 @@ export class IOTOTasksCenterView extends ItemView {
 		return null;
 	}
 
-	private findLeafByFilePath(filePath: string): WorkspaceLeaf | null {
-		let matchedLeaf: WorkspaceLeaf | null = null;
-
-		this.app.workspace.iterateAllLeaves((leaf) => {
-			if (matchedLeaf || leaf === this.leaf) {
-				return;
-			}
-
-			const view = leaf.view;
-			if (view instanceof FileView && view.file?.path === filePath) {
-				matchedLeaf = leaf;
-			}
-		});
-
-		return matchedLeaf;
+	findLeafByFilePath(filePath: string): WorkspaceLeaf | null {
+		return findLeafByFilePath(this, filePath);
 	}
 
 	private findLeafById(leafId: string): WorkspaceLeaf | null {
-		let matchedLeaf: WorkspaceLeaf | null = null;
-
-		this.app.workspace.iterateAllLeaves((leaf) => {
-			if (matchedLeaf) {
-				return;
-			}
-
-			if (getWorkspaceLeafId(leaf) === leafId) {
-				matchedLeaf = leaf;
-			}
-		});
-
-		return matchedLeaf;
-	}
-}
-
-function getTaskCreationOptions(): Array<{
-	key: TaskCreationType;
-	label: string;
-}> {
-	return [
-		{ key: 'normal', label: t('task.type.normal') },
-		{ key: 'date', label: t('task.type.date') },
-		{ key: 'topic', label: t('task.type.topic') },
-		{ key: 'plan', label: t('task.type.plan') },
-	];
-}
-
-function buildProjectGroupBodyId(groupKey: string): string {
-	const safeKey = encodeURIComponent(groupKey || 'uncategorized').replace(
-		/%/g,
-		'_',
-	);
-	return `ioto-tasks-center-project-group-${safeKey}`;
-}
-
-const PROJECT_LIST_SORT_MODE_ORDER: ProjectListSortMode[] = [
-	'incomplete-count',
-	'incomplete-count-asc',
-	'name',
-	'name-desc',
-];
-
-const PROJECT_LIST_GROUP_MODE_ORDER: ProjectListGroupMode[] = [
-	'none',
-	'category',
-];
-
-const TASK_LIST_SORT_MODE_ORDER: TaskListSortMode[] = [
-	'created-desc',
-	'created-asc',
-	'updated-desc',
-	'updated-asc',
-	'name-asc',
-	'name-desc',
-	'priority-desc',
-	'priority-asc',
-];
-
-const TASK_LIST_GROUP_MODE_ORDER: TaskListGroupMode[] = [
-	'none',
-	'status',
-	'priority',
-];
-function getTaskPriorityVisibilityOptions() {
-	return [
-		{ show: true, label: t('menu.priority.show') },
-		{ show: false, label: t('menu.priority.hide') },
-	] as const;
-}
-
-function formatPriorityMenuTitle(priority: number, active: boolean): string {
-	const label = `P${priority}`;
-	return active
-		? `${label}${t('view.taskPriorityMenu.currentSuffix')}`
-		: label;
-}
-
-function formatMenuOptionTitle(
-	category: string,
-	label: string,
-	active: boolean,
-): string {
-	return active
-		? `${category}: ${label}${t('menu.currentSuffix')}`
-		: `${category}: ${label}`;
-}
-
-function getTaskPriorityClassName(priority: number): string {
-	if (priority === 0) {
-		return 'ioto-tasks-center__task-priority--p0';
-	}
-
-	if (priority === 1) {
-		return 'ioto-tasks-center__task-priority--p1';
-	}
-
-	if (priority === 2) {
-		return 'ioto-tasks-center__task-priority--p2';
-	}
-
-	return 'ioto-tasks-center__task-priority--p3-plus';
-}
-
-function getWorkspaceLeafId(leaf: WorkspaceLeaf | null): string | null {
-	if (!leaf) {
-		return null;
-	}
-
-	const candidate = leaf as WorkspaceLeaf & { id?: unknown };
-	return typeof candidate.id === 'string' ? candidate.id : null;
-}
-
-function parseViewState(state: unknown): IOTOTasksCenterViewState {
-	if (!state || typeof state !== 'object') {
-		return {};
-	}
-
-	const candidate = state as Record<string, unknown>;
-	return {
-		selectedProject:
-			typeof candidate.selectedProject === 'string'
-				? candidate.selectedProject
-				: undefined,
-		taskSearchQuery:
-			typeof candidate.taskSearchQuery === 'string'
-				? candidate.taskSearchQuery
-				: undefined,
-		taskSearchInputValue:
-			typeof candidate.taskSearchInputValue === 'string'
-				? candidate.taskSearchInputValue
-				: undefined,
-		openedTaskPath:
-			typeof candidate.openedTaskPath === 'string'
-				? candidate.openedTaskPath
-				: undefined,
-		previewLeafId:
-			typeof candidate.previewLeafId === 'string'
-				? candidate.previewLeafId
-				: undefined,
-		activeTaskFilterTab: isTaskFilterTab(candidate.activeTaskFilterTab)
-			? candidate.activeTaskFilterTab
-			: undefined,
-	};
-}
-
-function isIncompleteTaskStatus(
-	statusKey: TaskFileEntry['status']['key'],
-): boolean {
-	return statusKey === 'todo' || statusKey === 'in-progress';
-}
-
-function getTaskDropValidationMessage(
-	reason: 'self' | 'descendant' | 'missing',
-): string {
-	switch (reason) {
-		case 'self':
-			return t('view.notice.invalidDropSelf');
-		case 'descendant':
-			return t('view.notice.invalidDropDescendant');
-		case 'missing':
-			return t('view.notice.invalidDropUnavailable');
+		return findLeafById(this, leafId);
 	}
 }
