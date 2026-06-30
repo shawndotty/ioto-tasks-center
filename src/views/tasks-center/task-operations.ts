@@ -7,7 +7,6 @@ import { trashTaskFile } from '../../tasks-center/task-deletion';
 import {
     setTaskFilePriority,
     clearTaskFilePriority,
-    TASK_PRIORITY_VALUES,
     type TaskPriorityValue,
 } from '../../tasks-center/task-priority';
 import {

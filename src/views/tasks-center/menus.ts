@@ -1,4 +1,4 @@
-import { Menu, Notice, TFile } from 'obsidian';
+import { Menu, Notice } from 'obsidian';
 
 import type { IOTOTasksCenterView } from '../iotoTasksCenterView';
 import { t } from '../../lang/helpter';
@@ -6,7 +6,7 @@ import type {
 	ProjectFolderEntry,
 	TaskFileEntry,
 } from '../../tasks-center/types';
-import { PROJECT_METADATA_FILE_NAME } from '../../tasks-center/project-metadata';
+
 import { TASK_PRIORITY_VALUES } from '../../tasks-center/task-priority';
 import type { TaskCreationType } from '../../tasks-center/task-template-config';
 import {
@@ -73,55 +73,7 @@ export function showProjectContextMenu(
 	menu.showAtMouseEvent(event);
 }
 
-export async function openProjectSpecByProject(
-	view: IOTOTasksCenterView,
-	project: ProjectFolderEntry,
-): Promise<void> {
-	const filePath = `${project.path}/${PROJECT_METADATA_FILE_NAME}`;
-	const abstractFile = view.app.vault.getAbstractFileByPath(filePath);
-	const file =
-		abstractFile instanceof TFile
-			? abstractFile
-			: await view.app.vault.create(
-					filePath,
-					'---\nIOTOProject:\n---\n',
-				);
-	const leaf = view.ensurePreviewLeaf();
-	await leaf.openFile(file, { active: true });
-}
 
-export async function showProjectSwitcherMenu(
-	view: IOTOTasksCenterView,
-	event: MouseEvent,
-): Promise<void> {
-	if (!view.canSwitchProjects()) {
-		return;
-	}
-
-	const menu = new Menu();
-	for (const project of view.projects) {
-		const isCurrentProject = project.name === view.selectedProject;
-		menu.addItem((item) =>
-			item
-				.setTitle(
-					isCurrentProject
-						? t('view.projectSwitcher.currentSuffix', [
-								project.name,
-							])
-						: project.name,
-				)
-				.onClick(() => {
-					if (isCurrentProject) {
-						return;
-					}
-
-					void view.selectProject(project.name);
-				}),
-		);
-	}
-
-	menu.showAtMouseEvent(event);
-}
 
 export function showProjectPresentationMenu(
 	view: IOTOTasksCenterView,

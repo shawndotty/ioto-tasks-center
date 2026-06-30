@@ -1,6 +1,4 @@
-import { setIcon } from 'obsidian';
 import type { IOTOTasksCenterView } from '../iotoTasksCenterView';
-import type { TaskFilterTab } from '../task-filter-tabs';
 import { t } from '../../lang/helpter';
 
 export function canSearchTasks(view: IOTOTasksCenterView): boolean {

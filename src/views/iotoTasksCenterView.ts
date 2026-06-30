@@ -10,46 +10,16 @@ import {
 	WorkspaceLeaf,
 } from 'obsidian';
 
-import {
-	getIncompleteChecklistItems,
-	listProjectFolders,
-	listProjectTaskFiles,
-} from '../tasks-center/data';
-import { createProjectFolder } from '../tasks-center/project-creation';
-import {
-	filterHiddenProjectEntries,
-	sortProjectEntries,
-} from '../tasks-center/project-sort';
-import {
-	getProjectMetadataFile,
-	PROJECT_METADATA_FILE_NAME,
-	readProjectMetadataFromFrontmatter,
-} from '../tasks-center/project-metadata';
-import { createTaskFile } from '../tasks-center/task-creation';
+import { getIncompleteChecklistItems } from '../tasks-center/data';
+import { PROJECT_METADATA_FILE_NAME } from '../tasks-center/project-metadata';
+
 import {
 	countTaskOutlinksByRootPaths,
 	groupTaskOutlinksByRootPaths,
 } from '../tasks-center/task-outlink-counts';
+import type { TaskPriorityValue } from '../tasks-center/task-priority';
+
 import {
-	clearTaskFilePriority,
-	setTaskFilePriority,
-	TASK_PRIORITY_VALUES,
-	type TaskPriorityValue,
-} from '../tasks-center/task-priority';
-import { trashTaskFile } from '../tasks-center/task-deletion';
-import {
-	clearTaskFileStarred,
-	setTaskFileStarred,
-} from '../tasks-center/task-starred';
-import {
-	assignUpTaskToFile,
-	removeUpTaskFromFile,
-} from '../tasks-center/up-task-assignment';
-import {
-	applyAffix,
-	buildBatchTaskTitleForUpTask,
-	parseBatchList,
-	resolveTaskTypeForLevel,
 	type BatchTaskItem,
 	type BatchTaskTemplate,
 	type BatchTemplateConfig,
@@ -66,8 +36,6 @@ import type {
 	TaskListSortMode,
 } from '../settings';
 import {
-	getProjectListGroupModeOptions,
-	getProjectListSortModeOptions,
 	getTaskListGroupModeOptions,
 	getTaskListSortModeOptions,
 } from '../settings';
@@ -89,15 +57,7 @@ import {
 	type TaskStatusChecklistPopoverItem,
 	truncateChecklistPreview,
 } from '../ui/task-status-checklist-popover';
-import { ConfirmModal } from '../ui/confirmModal';
-import { TaskCreationModal } from '../ui/taskCreationModal';
-import {
-	BatchCreateConfirmModal,
-	BatchNameAffixModal,
-	BatchTemplateSelectModal,
-} from '../ui/batchTaskModals';
 import { TaskSearchPopover } from '../ui/task-search-popover';
-import { TaskNameModal } from '../ui/taskNameModal';
 import {
 	resolveActiveTaskPath,
 	shouldSkipOpeningTask,
@@ -107,14 +67,12 @@ import {
 	handleTaskDragStart,
 	handleTaskDragOver,
 	handleTaskDragLeave,
-	handleTaskDrop,
 	setCurrentDropTarget,
 	clearTaskDragState,
 	getTaskRowElements,
 	findTaskRowByPath,
 	assignDraggedTaskToParent,
 	handleRemoveUpTaskDragOver,
-	handleRemoveUpTaskDragLeave,
 	handleRemoveUpTaskDrop,
 	clearCurrentTaskDropTargetClasses,
 	removeDraggedTaskParent,
@@ -122,7 +80,6 @@ import {
 import {
 	getTaskFilterCounts,
 	getTaskFilterTabs,
-	isTaskFilterTab,
 	matchesTaskFilterTab,
 	type TaskFilterTab,
 } from './task-filter-tabs';
@@ -130,23 +87,15 @@ import * as SearchController from './tasks-center/search-controller';
 import {
 	refreshFromVaultChange,
 	loadProjects,
-	resolveSelectedProject,
-	selectProject,
 	loadTasks,
 	getCachedTaskPath,
-	buildProjectIncompleteCounts,
-	buildProjectCategoryByName,
-	applyProjectSorting,
 } from './tasks-center/data-loader';
 import {
 	triggerBatchCreateFromTemplate,
 	executeBatchCreate,
 	canCreateTask,
 	getAddTaskButtonLabel,
-	canCreateProject,
-	getAddProjectButtonLabel,
 	handleCreateProject,
-	showTaskCreationMenu,
 	handleCreateTask,
 	handleCreateSubtask,
 	applyCreatedTaskSettings,
@@ -155,7 +104,6 @@ import {
 	updateTaskStarred,
 	clearTaskStarred,
 	confirmAndDeleteTask,
-	refreshCurrentProjectTasks,
 } from './tasks-center/task-operations';
 import { buildProjectListSections } from './project-list-group';
 import {
@@ -165,7 +113,6 @@ import {
 import {
 	captureTaskListScrollTop,
 	restoreTaskListScrollTop,
-	TASK_LIST_SELECTOR,
 } from './task-list-scroll';
 import {
 	buildDirectChildTasksByParentPath,
@@ -181,42 +128,25 @@ import {
 	sortTasksForPresentation,
 } from './task-list-presentation';
 import { filterTasksBySearchQuery } from './task-search';
-import { resolveCurrentTaskContext } from '../tasks-center/selected-text-subtask';
 import {
 	COMPACT_LAYOUT_BREAKPOINT,
 	getTaskDropValidationMessage,
 	getWorkspaceLeafId,
 	HOVER_PREVIEW_REFRESH_RETRY_MS,
-	isIncompleteTaskStatus,
 	parseViewState,
-	PROJECT_LIST_GROUP_MODE_ORDER,
-	PROJECT_LIST_SORT_MODE_ORDER,
-	TASK_LIST_GROUP_MODE_ORDER,
-	TASK_LIST_SORT_MODE_ORDER,
 } from './tasks-center/constants';
-import type { IOTOTasksCenterViewState } from './tasks-center/constants';
 import {
-	getActiveTaskPath,
-	getPreviewLeafFilePath,
-	activatePreviewLeaf,
-	ensurePreviewLeaf,
 	isLeafAvailable,
-	findReusablePreviewLeaf,
 	findLeafByFilePath,
 	findLeafById,
 } from './tasks-center/preview-leaf';
 import {
 	getTaskCreationOptions,
 	buildProjectGroupBodyId,
-	getTaskPriorityVisibilityOptions,
-	formatPriorityMenuTitle,
-	formatMenuOptionTitle,
 	getTaskPriorityClassName,
 } from './tasks-center/helpers';
 import {
 	showProjectContextMenu,
-	openProjectSpecByProject,
-	showProjectSwitcherMenu,
 	showProjectPresentationMenu,
 	showTaskPresentationMenu,
 	showTaskPriorityMenu,
@@ -482,22 +412,6 @@ export class IOTOTasksCenterView extends ItemView {
 
 	async loadProjects(preferredProject?: string | null): Promise<void> {
 		return loadProjects(this, preferredProject);
-	}
-
-	private resolveSelectedProject(preferredProject?: string | null): string {
-		if (
-			preferredProject &&
-			this.projects.some((project) => project.name === preferredProject)
-		) {
-			return preferredProject;
-		}
-
-		const fallbackProject = this.projects[0];
-		if (!fallbackProject) {
-			throw new Error('No project is available for selection.');
-		}
-
-		return fallbackProject.name;
 	}
 
 	async selectProject(
@@ -2353,60 +2267,6 @@ export class IOTOTasksCenterView extends ItemView {
 			t('view.search.emptyTitle'),
 			t('view.search.emptyDesc', [keyword]),
 			'is-empty',
-		);
-	}
-
-	private async buildProjectIncompleteCounts(
-		projects: ProjectFolderEntry[],
-	): Promise<Map<string, number>> {
-		const tasksRootPath = this.getTasksRootPath();
-		const entries = await Promise.all(
-			projects.map(async (project) => {
-				const result = await listProjectTaskFiles(
-					this.app,
-					tasksRootPath,
-					project.name,
-				);
-				const incompleteCount = result.tasks.filter((task) =>
-					isIncompleteTaskStatus(task.status.key),
-				).length;
-				return [project.name, incompleteCount] as const;
-			}),
-		);
-
-		return new Map(entries);
-	}
-
-	private buildProjectCategoryByName(
-		projects: ProjectFolderEntry[],
-	): Map<string, string> {
-		const tasksRootPath = this.getTasksRootPath();
-		const entries = projects.map((project) => {
-			const file = getProjectMetadataFile(
-				this.app,
-				tasksRootPath,
-				project.name,
-			);
-			if (!file) {
-				return [project.name, ''] as const;
-			}
-
-			const frontmatter =
-				this.app.metadataCache.getFileCache(file)?.frontmatter;
-			const metadata = readProjectMetadataFromFrontmatter(frontmatter);
-			const category =
-				typeof metadata?.category === 'string' ? metadata.category : '';
-			return [project.name, category] as const;
-		});
-
-		return new Map(entries);
-	}
-
-	private applyProjectSorting(): void {
-		this.projects = sortProjectEntries(
-			this.projects,
-			this.projectIncompleteCounts,
-			this.getProjectListSortMode(),
 		);
 	}
 
