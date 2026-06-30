@@ -103,9 +103,10 @@ const zhTW = {
 	'view.taskListSettings': '任務列表呈現設定',
 	'view.description.noneSelected': '目前未選中任何專案',
 	'view.description.currentProject':
-		'目前專案：{0}，共 {1} 個檔案，按{2}排序{3}{4}',
+		'目前專案：{0}，共 {1} 個檔案，按{2}排序{3}{4}{5}',
 	'view.description.groupPrefix': '，{0}',
 	'view.description.priorityVisible': '，顯示優先級',
+	'view.description.timeFilter': '，時間篩選：{0}',
 	'view.filter.current': '目前篩選',
 	'view.filter.emptyTitle': '目前篩選下暫無任務',
 	'view.filter.emptyDesc': '{0} 分頁下沒有可顯示的任務檔案。',

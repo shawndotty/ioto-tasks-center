@@ -155,6 +155,21 @@ export function getTaskListGroupModeOptions(): Record<
 	};
 }
 
+export function getTaskListTimeFilterOptions(): Record<
+	TaskListTimeFilter,
+	string
+> {
+	return {
+		none: t('menu.filter.none'),
+		'created-week': t('menu.filter.createdWeek'),
+		'created-two-weeks': t('menu.filter.createdTwoWeeks'),
+		'created-month': t('menu.filter.createdMonth'),
+		'updated-week': t('menu.filter.updatedWeek'),
+		'updated-two-weeks': t('menu.filter.updatedTwoWeeks'),
+		'updated-month': t('menu.filter.updatedMonth'),
+	};
+}
+
 export function getTaskLinkBadgeBackgroundModeOptions(): Record<
 	TaskLinkBadgeBackgroundMode,
 	string

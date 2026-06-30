@@ -114,9 +114,10 @@ const en = {
 	'view.taskListSettings': 'Task list presentation settings',
 	'view.description.noneSelected': 'No project is currently selected',
 	'view.description.currentProject':
-		'Current project: {0}, {1} files, sorted by {2}{3}{4}',
+		'Current project: {0}, {1} files, sorted by {2}{3}{4}{5}',
 	'view.description.groupPrefix': ', {0}',
 	'view.description.priorityVisible': ', show priority',
+	'view.description.timeFilter': ', time filter: {0}',
 	'view.filter.current': 'Current filter',
 	'view.filter.emptyTitle': 'No tasks in the current filter',
 	'view.filter.emptyDesc':

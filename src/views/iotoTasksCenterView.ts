@@ -39,6 +39,7 @@ import type {
 import {
 	getTaskListGroupModeOptions,
 	getTaskListSortModeOptions,
+	getTaskListTimeFilterOptions,
 } from '../settings';
 import { t } from '../lang/helpter';
 import type {
@@ -2216,12 +2217,19 @@ export class IOTOTasksCenterView extends ItemView {
 		const priorityDescription = this.getShowTaskPriority()
 			? t('view.description.priorityVisible')
 			: '';
+		const timeFilter = this.getTaskListTimeFilter();
+		const timeFilterOpts = getTaskListTimeFilterOptions();
+		const timeFilterDescription =
+			timeFilter !== 'none'
+				? t('view.description.timeFilter', [timeFilterOpts[timeFilter]])
+				: '';
 		return t('view.description.currentProject', [
 			this.selectedProject,
 			String(this.tasks.length),
 			sortDescription,
 			groupDescription,
 			priorityDescription,
+			timeFilterDescription,
 		]);
 	}
 

@@ -104,9 +104,10 @@ const zhCN = {
 	'view.taskListSettings': '任务列表呈现设置',
 	'view.description.noneSelected': '当前未选中任何项目',
 	'view.description.currentProject':
-		'当前项目：{0}，共 {1} 个文件，按{2}排序{3}{4}',
+		'当前项目：{0}，共 {1} 个文件，按{2}排序{3}{4}{5}',
 	'view.description.groupPrefix': '，{0}',
 	'view.description.priorityVisible': '，显示优先级',
+	'view.description.timeFilter': '，时间过滤：{0}',
 	'view.filter.current': '当前筛选',
 	'view.filter.emptyTitle': '当前筛选下暂无任务',
 	'view.filter.emptyDesc': '{0} 标签下没有可显示的任务文件。',
