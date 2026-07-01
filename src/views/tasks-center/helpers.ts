@@ -60,3 +60,14 @@ export function getTaskPriorityClassName(priority: number): string {
 
 	return 'ioto-tasks-center__task-priority--p3-plus';
 }
+
+export function toggleSetMember(
+	set: Set<string>,
+	key: string,
+): void {
+	if (set.has(key)) {
+		set.delete(key);
+	} else {
+		set.add(key);
+	}
+}

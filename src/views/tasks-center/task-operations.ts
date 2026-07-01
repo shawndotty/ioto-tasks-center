@@ -35,7 +35,7 @@ import {
     BatchTemplateSelectModal,
 } from '../../ui/batchTaskModals';
 import { TaskNameModal } from '../../ui/taskNameModal';
-import { t } from '../../lang/helpter';
+import { t, type TranslationKey } from '../../lang/helpter';
 
 // Function 1
 export async function triggerBatchCreateFromTemplate(view: IOTOTasksCenterView): Promise<void> {
@@ -595,11 +595,11 @@ export async function applyCreatedTaskSettings(
     }
 }
 
-// Function 12
-export async function updateTaskPriority(
+async function updateTaskProperty(
     view: IOTOTasksCenterView,
     task: TaskFileEntry,
-    priority: TaskPriorityValue,
+    action: (app: IOTOTasksCenterView['app'], file: TFile) => Promise<void>,
+    errorNoticeKey: TranslationKey,
 ): Promise<void> {
     const file = view.app.vault.getAbstractFileByPath(task.path);
     if (!(file instanceof TFile)) {
@@ -608,15 +608,27 @@ export async function updateTaskPriority(
     }
 
     try {
-        await setTaskFilePriority(view.app, file, priority);
+        await action(view.app, file);
         await refreshCurrentProjectTasks(view);
     } catch (error) {
         const message =
-            error instanceof Error
-                ? error.message
-                : t('view.notice.updateTaskPriorityFailed');
+            error instanceof Error ? error.message : t(errorNoticeKey);
         new Notice(message);
     }
+}
+
+// Function 12
+export async function updateTaskPriority(
+    view: IOTOTasksCenterView,
+    task: TaskFileEntry,
+    priority: TaskPriorityValue,
+): Promise<void> {
+    await updateTaskProperty(
+        view,
+        task,
+        (app, file) => setTaskFilePriority(app, file, priority),
+        'view.notice.updateTaskPriorityFailed',
+    );
 }
 
 // Function 13
@@ -624,22 +636,12 @@ export async function clearTaskPriority(
     view: IOTOTasksCenterView,
     task: TaskFileEntry,
 ): Promise<void> {
-    const file = view.app.vault.getAbstractFileByPath(task.path);
-    if (!(file instanceof TFile)) {
-        new Notice(t('view.notice.taskFileUnavailable'));
-        return;
-    }
-
-    try {
-        await clearTaskFilePriority(view.app, file);
-        await refreshCurrentProjectTasks(view);
-    } catch (error) {
-        const message =
-            error instanceof Error
-                ? error.message
-                : t('view.notice.clearTaskPriorityFailed');
-        new Notice(message);
-    }
+    await updateTaskProperty(
+        view,
+        task,
+        (app, file) => clearTaskFilePriority(app, file),
+        'view.notice.clearTaskPriorityFailed',
+    );
 }
 
 // Function 14
@@ -647,22 +649,12 @@ export async function updateTaskStarred(
     view: IOTOTasksCenterView,
     task: TaskFileEntry,
 ): Promise<void> {
-    const file = view.app.vault.getAbstractFileByPath(task.path);
-    if (!(file instanceof TFile)) {
-        new Notice(t('view.notice.taskFileUnavailable'));
-        return;
-    }
-
-    try {
-        await setTaskFileStarred(view.app, file);
-        await refreshCurrentProjectTasks(view);
-    } catch (error) {
-        const message =
-            error instanceof Error
-                ? error.message
-                : t('view.notice.updateTaskCoreFailed');
-        new Notice(message);
-    }
+    await updateTaskProperty(
+        view,
+        task,
+        (app, file) => setTaskFileStarred(app, file),
+        'view.notice.updateTaskCoreFailed',
+    );
 }
 
 // Function 15
@@ -670,22 +662,12 @@ export async function clearTaskStarred(
     view: IOTOTasksCenterView,
     task: TaskFileEntry,
 ): Promise<void> {
-    const file = view.app.vault.getAbstractFileByPath(task.path);
-    if (!(file instanceof TFile)) {
-        new Notice(t('view.notice.taskFileUnavailable'));
-        return;
-    }
-
-    try {
-        await clearTaskFileStarred(view.app, file);
-        await refreshCurrentProjectTasks(view);
-    } catch (error) {
-        const message =
-            error instanceof Error
-                ? error.message
-                : t('view.notice.clearTaskCoreFailed');
-        new Notice(message);
-    }
+    await updateTaskProperty(
+        view,
+        task,
+        (app, file) => clearTaskFileStarred(app, file),
+        'view.notice.clearTaskCoreFailed',
+    );
 }
 
 // Function 16

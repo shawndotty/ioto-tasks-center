@@ -6,7 +6,7 @@ import en from './locale/en';
 import zhCN from './locale/zh-cn';
 import zhTW from './locale/zh-tw';
 
-type TranslationKey = keyof typeof en;
+export type TranslationKey = keyof typeof en;
 type LocaleDictionary = Record<TranslationKey, string>;
 
 const localeMap: Record<string, Partial<LocaleDictionary>> = {
