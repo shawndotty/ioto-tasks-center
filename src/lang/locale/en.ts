@@ -92,7 +92,7 @@ const en = {
 	'view.group.collapse': 'Collapse {0} group',
 	'view.subtasks.collapse': 'Collapse subtasks',
 	'view.subtasks.expand': 'Expand subtasks',
-	'view.search.placeholder': 'Search task file names',
+	'view.search.placeholder': 'Search task file name and content',
 	'view.search.toggle': 'Search tasks',
 	'view.search.clear': 'Clear task search',
 	'view.search.clearShort': 'Clear search',

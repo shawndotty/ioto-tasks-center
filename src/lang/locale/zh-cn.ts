@@ -82,7 +82,7 @@ const zhCN = {
 	'view.group.collapse': '折叠{0}分组',
 	'view.subtasks.collapse': '折叠子任务',
 	'view.subtasks.expand': '展开子任务',
-	'view.search.placeholder': '搜索任务文件名',
+	'view.search.placeholder': '搜索任务文件名和内容',
 	'view.search.toggle': '搜索任务',
 	'view.search.clear': '清空任务搜索',
 	'view.search.clearShort': '清空搜索',

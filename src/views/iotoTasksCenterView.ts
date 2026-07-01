@@ -1301,10 +1301,40 @@ export class IOTOTasksCenterView extends ItemView {
 					file.path,
 				);
 			}
+
+			const query = this.taskSearchQuery.trim();
+			if (query) {
+				await this.scrollPreviewToFirstMatch(leaf, file, query);
+			}
 		} finally {
 			this.openingTaskPath = null;
 			this.render();
 		}
+	}
+
+	private async scrollPreviewToFirstMatch(
+		leaf: WorkspaceLeaf,
+		file: TFile,
+		query: string,
+	): Promise<void> {
+		const view = leaf.view;
+		if (!(view instanceof MarkdownView) || view.file?.path !== file.path) {
+			return;
+		}
+
+		const editor = view.editor;
+		const content = editor.getValue();
+		const normalizedQuery = query.toLocaleLowerCase();
+		const normalizedContent = content.toLocaleLowerCase();
+		const index = normalizedContent.indexOf(normalizedQuery);
+		if (index === -1) {
+			return;
+		}
+
+		const pos = editor.offsetToPos(index);
+		const endPos = editor.offsetToPos(index + query.length);
+		editor.setSelection(pos, endPos);
+		editor.scrollIntoView({ from: pos, to: endPos }, true);
 	}
 
 	getActiveTaskPath(): string | null {
