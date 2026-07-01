@@ -5,7 +5,7 @@ export function normalizeTaskSearchQuery(query: string): string {
 }
 
 export function matchesTaskSearchQuery(
-	task: Pick<TaskFileEntry, 'title' | 'basename'>,
+	task: Pick<TaskFileEntry, 'title' | 'basename' | 'content'>,
 	query: string,
 ): boolean {
 	const normalizedQuery = normalizeTaskSearchQuery(query);
@@ -13,7 +13,7 @@ export function matchesTaskSearchQuery(
 		return true;
 	}
 
-	return [task.title, task.basename].some((value) =>
+	return [task.title, task.basename, task.content].some((value) =>
 		value.toLocaleLowerCase().includes(normalizedQuery),
 	);
 }
@@ -27,5 +27,7 @@ export function filterTasksBySearchQuery(
 		return tasks;
 	}
 
-	return tasks.filter((task) => matchesTaskSearchQuery(task, normalizedQuery));
+	return tasks.filter((task) =>
+		matchesTaskSearchQuery(task, normalizedQuery),
+	);
 }

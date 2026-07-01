@@ -90,19 +90,34 @@ export async function listProjectTaskFiles(
 	);
 	const tasks: TaskFileEntry[] = (
 		await Promise.all(
-			markdownFiles.map(async (file) => ({
-				name: file.name,
-				basename: file.basename,
-				title: file.basename,
-				path: file.path,
-				mtime: file.stat.mtime,
-				ctime: file.stat.ctime,
-				size: file.stat.size,
-				starred: await getTaskFileStarred(app, file),
-				priority: await getTaskFilePriority(app, file),
-				status: await getTaskFileStatus(app, file),
-				upTaskTitles: await getUpTaskTitles(app, file),
-			})),
+			markdownFiles.map(async (file) => {
+				const content = await app.vault.cachedRead(file);
+				const metadataValue = (key: string): unknown =>
+					app.metadataCache.getFileCache(file)?.frontmatter?.[key];
+				return {
+					name: file.name,
+					basename: file.basename,
+					title: file.basename,
+					path: file.path,
+					mtime: file.stat.mtime,
+					ctime: file.stat.ctime,
+					size: file.stat.size,
+					starred: resolveStarredFromSources({
+						content,
+						metadataValue: metadataValue('Starred'),
+					}),
+					priority: resolvePriorityFromSources({
+						content,
+						metadataValue: metadataValue('Priority'),
+					}),
+					status: getTaskFileStatusFromContent(content),
+					upTaskTitles: resolveUpTaskTitlesFromSources({
+						content,
+						metadataValue: metadataValue('UpTask'),
+					}),
+					content,
+				};
+			}),
 		)
 	).sort((left, right) => {
 		const byModifiedTime = right.mtime - left.mtime;
@@ -128,51 +143,6 @@ export async function listProjectTaskFiles(
 		projectPath,
 		tasks,
 	};
-}
-
-async function getUpTaskTitles(app: App, file: TFile): Promise<string[]> {
-	try {
-		const content = await app.vault.cachedRead(file);
-		return resolveUpTaskTitlesFromSources({
-			content,
-			metadataValue:
-				app.metadataCache.getFileCache(file)?.frontmatter?.UpTask,
-		});
-	} catch {
-		const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
-		return parseUpTaskFrontmatterValue(frontmatter?.UpTask);
-	}
-}
-
-async function getTaskFilePriority(
-	app: App,
-	file: TFile,
-): Promise<number | undefined> {
-	try {
-		const content = await app.vault.cachedRead(file);
-		return resolvePriorityFromSources({
-			content,
-			metadataValue:
-				app.metadataCache.getFileCache(file)?.frontmatter?.Priority,
-		});
-	} catch {
-		const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
-		return parsePriorityFrontmatterValue(frontmatter?.Priority);
-	}
-}
-
-async function getTaskFileStarred(app: App, file: TFile): Promise<boolean> {
-	try {
-		const content = await app.vault.cachedRead(file);
-		return resolveStarredFromSources({
-			content,
-			metadataValue:
-				app.metadataCache.getFileCache(file)?.frontmatter?.Starred,
-		});
-	} catch {
-		const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
-		return parseStarredFrontmatterValue(frontmatter?.Starred);
-	}
 }
 
 export function parseUpTaskFrontmatterValue(value: unknown): string[] {
@@ -393,31 +363,6 @@ function stripMatchingQuotes(value: string): string {
 	}
 
 	return value;
-}
-
-async function getTaskFileStatus(
-	app: App,
-	file: TFile,
-): Promise<TaskFileStatus> {
-	try {
-		const content = await app.vault.cachedRead(file);
-		return getTaskFileStatusFromContent(content);
-	} catch {
-		return getTaskFileStatusFromMetadataCache(app, file);
-	}
-}
-
-function getTaskFileStatusFromMetadataCache(
-	app: App,
-	file: TFile,
-): TaskFileStatus {
-	const cache = app.metadataCache.getFileCache(file);
-	const taskItems =
-		cache?.listItems?.filter((item) => item.task !== undefined) ?? [];
-	const taskMarkers = taskItems.map((item) =>
-		item.task !== undefined && item.task !== ' ' ? 'x' : ' ',
-	);
-	return buildTaskFileStatus(taskMarkers);
 }
 
 export function getTaskFileStatusFromContent(content: string): TaskFileStatus {

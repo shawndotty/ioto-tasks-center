@@ -54,6 +54,7 @@ export interface TaskFileEntry {
 	status: TaskFileStatus;
 	upTaskTitles: string[];
 	indentLevel?: number;
+	content: string;
 }
 
 export interface TaskFileStatus {
