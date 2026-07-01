@@ -1290,9 +1290,21 @@ export class IOTOTasksCenterView extends ItemView {
 
 		try {
 			const leaf = this.ensurePreviewLeaf();
-			await leaf.openFile(file, {
-				active: true,
-			});
+			const query = this.taskSearchQuery.trim();
+			if (query) {
+				await leaf.setViewState({
+					type: 'markdown',
+					active: true,
+					state: {
+						file: file.path,
+						mode: 'source',
+					},
+				});
+			} else {
+				await leaf.openFile(file, {
+					active: true,
+				});
+			}
 			this.previewLeaf = leaf;
 			this.openedTaskPath = file.path;
 			if (this.selectedProject) {
@@ -1302,7 +1314,6 @@ export class IOTOTasksCenterView extends ItemView {
 				);
 			}
 
-			const query = this.taskSearchQuery.trim();
 			if (query) {
 				await this.scrollPreviewToFirstMatch(leaf, file, query);
 			}
@@ -1323,18 +1334,20 @@ export class IOTOTasksCenterView extends ItemView {
 		}
 
 		const editor = view.editor;
-		const content = editor.getValue();
 		const normalizedQuery = query.toLocaleLowerCase();
-		const normalizedContent = content.toLocaleLowerCase();
-		const index = normalizedContent.indexOf(normalizedQuery);
-		if (index === -1) {
-			return;
+		const lineCount = editor.lineCount();
+		for (let line = 0; line < lineCount; line++) {
+			const lineText = editor.getLine(line);
+			const ch = lineText.toLocaleLowerCase().indexOf(normalizedQuery);
+			if (ch !== -1) {
+				const from = { line, ch };
+				const to = { line, ch: ch + query.length };
+				editor.setSelection(from, to);
+				editor.scrollIntoView({ from, to }, true);
+				editor.focus();
+				return;
+			}
 		}
-
-		const pos = editor.offsetToPos(index);
-		const endPos = editor.offsetToPos(index + query.length);
-		editor.setSelection(pos, endPos);
-		editor.scrollIntoView({ from: pos, to: endPos }, true);
 	}
 
 	getActiveTaskPath(): string | null {
