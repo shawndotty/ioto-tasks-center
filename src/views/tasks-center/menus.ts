@@ -240,9 +240,25 @@ export function showTaskPresentationMenu(
 		{ key: 'created-week', label: t('menu.filter.createdWeek') },
 		{ key: 'created-two-weeks', label: t('menu.filter.createdTwoWeeks') },
 		{ key: 'created-month', label: t('menu.filter.createdMonth') },
+		{
+			key: 'created-calendar-week',
+			label: t('menu.filter.createdCalendarWeek'),
+		},
+		{
+			key: 'created-calendar-month',
+			label: t('menu.filter.createdCalendarMonth'),
+		},
 		{ key: 'updated-week', label: t('menu.filter.updatedWeek') },
 		{ key: 'updated-two-weeks', label: t('menu.filter.updatedTwoWeeks') },
 		{ key: 'updated-month', label: t('menu.filter.updatedMonth') },
+		{
+			key: 'updated-calendar-week',
+			label: t('menu.filter.updatedCalendarWeek'),
+		},
+		{
+			key: 'updated-calendar-month',
+			label: t('menu.filter.updatedCalendarMonth'),
+		},
 	];
 
 	for (const option of filterOptions) {

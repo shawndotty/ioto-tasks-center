@@ -1083,7 +1083,15 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private getTaskFilterCounts(): Record<TaskFilterTab, number> {
-		return getTaskFilterCounts(this.tasks);
+		const bySearch = filterTasksBySearchQuery(
+			this.tasks,
+			this.taskSearchQuery,
+		);
+		const filteredTasks = filterTasksByTime(
+			bySearch,
+			this.getTaskListTimeFilter(),
+		);
+		return getTaskFilterCounts(filteredTasks);
 	}
 
 	private matchesTaskFilterTab(

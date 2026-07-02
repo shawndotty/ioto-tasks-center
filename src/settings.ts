@@ -52,9 +52,13 @@ export type TaskListTimeFilter =
 	| 'created-week'
 	| 'created-two-weeks'
 	| 'created-month'
+	| 'created-calendar-week'
+	| 'created-calendar-month'
 	| 'updated-week'
 	| 'updated-two-weeks'
-	| 'updated-month';
+	| 'updated-month'
+	| 'updated-calendar-week'
+	| 'updated-calendar-month';
 export type TaskLinkBadgeBackgroundMode = 'multicolor' | 'monochrome';
 
 export interface IOTOTasksCenterSettings {
@@ -164,9 +168,13 @@ export function getTaskListTimeFilterOptions(): Record<
 		'created-week': t('menu.filter.createdWeek'),
 		'created-two-weeks': t('menu.filter.createdTwoWeeks'),
 		'created-month': t('menu.filter.createdMonth'),
+		'created-calendar-week': t('menu.filter.createdCalendarWeek'),
+		'created-calendar-month': t('menu.filter.createdCalendarMonth'),
 		'updated-week': t('menu.filter.updatedWeek'),
 		'updated-two-weeks': t('menu.filter.updatedTwoWeeks'),
 		'updated-month': t('menu.filter.updatedMonth'),
+		'updated-calendar-week': t('menu.filter.updatedCalendarWeek'),
+		'updated-calendar-month': t('menu.filter.updatedCalendarMonth'),
 	};
 }
 
