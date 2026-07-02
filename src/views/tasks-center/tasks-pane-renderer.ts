@@ -160,9 +160,7 @@ export function renderTasksPane(
 		view.renderState(
 			listEl,
 			t('view.state.projectMissingTitle'),
-			t('view.state.projectMissingDesc', [
-				view.taskResult.projectPath,
-			]),
+			t('view.state.projectMissingDesc', [view.taskResult.projectPath]),
 			'is-empty',
 		);
 		restoreTaskListScrollTop(listEl, view.taskListScrollTop);
@@ -183,7 +181,7 @@ export function renderTasksPane(
 	const tabVisibleTasks = view.getTasksForActiveTab();
 	const visibleTasks = view.getVisibleTasks();
 	if (visibleTasks.length === 0) {
-		if (tabVisibleTasks.length === 0) {
+		if (tabVisibleTasks.length === 0 || !view.taskSearchQuery.trim()) {
 			view.renderTaskFilterEmptyState(listEl);
 			restoreTaskListScrollTop(listEl, view.taskListScrollTop);
 			return;
@@ -193,8 +191,7 @@ export function renderTasksPane(
 		restoreTaskListScrollTop(listEl, view.taskListScrollTop);
 		return;
 	}
-	const presentationSections =
-		view.getTaskPresentationSections(visibleTasks);
+	const presentationSections = view.getTaskPresentationSections(visibleTasks);
 	view.syncCollapsedTaskGroups(presentationSections);
 	const activeTaskPath = view.getActiveTaskPath();
 	const removeZoneWrapperEl = listEl.createDiv({
