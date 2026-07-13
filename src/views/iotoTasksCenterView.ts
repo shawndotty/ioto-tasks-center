@@ -1350,6 +1350,21 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private async openFileInCurrentPaneTab(file: TFile): Promise<void> {
+		const existingLeaf = this.findLeafInCurrentTabGroupByFilePath(
+			file.path,
+		);
+		if (existingLeaf) {
+			this.openedTaskPath = file.path;
+			if (this.selectedProject) {
+				this.lastOpenedTaskByProject.set(
+					this.selectedProject,
+					file.path,
+				);
+			}
+			this.app.workspace.setActiveLeaf(existingLeaf, { focus: true });
+			return;
+		}
+
 		this.openingTaskPath = file.path;
 		this.render();
 
@@ -1357,7 +1372,6 @@ export class IOTOTasksCenterView extends ItemView {
 			const leaf = this.app.workspace.getLeaf('tab');
 			await leaf.openFile(file, {
 				active: true,
-				group: this.leaf,
 			});
 			this.openedTaskPath = file.path;
 			if (this.selectedProject) {
@@ -1372,6 +1386,38 @@ export class IOTOTasksCenterView extends ItemView {
 			this.openingTaskPath = null;
 			this.render();
 		}
+	}
+
+	private findLeafInCurrentTabGroupByFilePath(
+		filePath: string,
+	): WorkspaceLeaf | null {
+		const currentTabs = this.leaf.parent;
+		let matchedLeaf: WorkspaceLeaf | null = null;
+
+		this.app.workspace.iterateAllLeaves((leaf) => {
+			if (
+				matchedLeaf ||
+				leaf === this.leaf ||
+				leaf.parent !== currentTabs
+			) {
+				return;
+			}
+
+			const viewState = leaf.getViewState();
+			if (viewState.type !== 'markdown') {
+				return;
+			}
+
+			const candidatePath = viewState.state?.file;
+			if (
+				typeof candidatePath === 'string' &&
+				candidatePath === filePath
+			) {
+				matchedLeaf = leaf;
+			}
+		});
+
+		return matchedLeaf;
 	}
 
 	private async scrollPreviewToFirstMatch(
