@@ -200,6 +200,8 @@ const zhCN = {
 	'task.outlinks.popover.title.output': '输出出链',
 	'task.outlinks.popover.title.outcome': '成果出链',
 	'task.outlinks.popover.empty': '暂无出链。',
+	'task.priority.badge': '优先级：{0}',
+	'task.status.badge': '任务状态：{0}',
 	'task.subtasks.badge': '子任务：{0}',
 	'task.subtasks.popover.title': '子任务',
 	'task.subtasks.popover.empty': '暂无子任务。',

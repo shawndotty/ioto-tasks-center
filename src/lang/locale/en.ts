@@ -217,6 +217,8 @@ const en = {
 	'task.outlinks.popover.title.output': 'Output outlinks',
 	'task.outlinks.popover.title.outcome': 'Outcome outlinks',
 	'task.outlinks.popover.empty': 'No outgoing links.',
+	'task.priority.badge': 'Priority: {0}',
+	'task.status.badge': 'Task status: {0}',
 	'task.subtasks.badge': 'Subtasks: {0}',
 	'task.subtasks.popover.title': 'Subtasks',
 	'task.subtasks.popover.empty': 'No subtasks.',

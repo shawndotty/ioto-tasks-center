@@ -152,6 +152,8 @@ import {
 
 export const IOTO_TASKS_CENTER_VIEW_TYPE = 'IOTOTasksCenter';
 
+type TaskOpenTarget = 'adjacent-preview' | 'current-pane-tab';
+
 export class IOTOTasksCenterView extends ItemView {
 	projects: ProjectFolderEntry[] = [];
 	projectIncompleteCounts = new Map<string, number>();
@@ -1167,7 +1169,23 @@ export class IOTOTasksCenterView extends ItemView {
 		return getCachedTaskPath(this, projectName);
 	}
 
-	async openTaskFile(task: TaskFileEntry): Promise<void> {
+	async openTaskFile(
+		task: TaskFileEntry,
+		options?: {
+			target?: TaskOpenTarget;
+		},
+	): Promise<void> {
+		const target = options?.target ?? 'adjacent-preview';
+		if (target === 'current-pane-tab') {
+			const file = this.app.vault.getAbstractFileByPath(task.path);
+			if (!(file instanceof TFile)) {
+				return;
+			}
+
+			await this.openFileInCurrentPaneTab(file);
+			return;
+		}
+
 		const previewLeafAvailable = Boolean(
 			this.previewLeaf && this.isLeafAvailable(this.previewLeaf),
 		);
@@ -1325,6 +1343,31 @@ export class IOTOTasksCenterView extends ItemView {
 			if (query) {
 				await this.scrollPreviewToFirstMatch(leaf, file, query);
 			}
+		} finally {
+			this.openingTaskPath = null;
+			this.render();
+		}
+	}
+
+	private async openFileInCurrentPaneTab(file: TFile): Promise<void> {
+		this.openingTaskPath = file.path;
+		this.render();
+
+		try {
+			const leaf = this.app.workspace.getLeaf('tab');
+			await leaf.openFile(file, {
+				active: true,
+				group: this.leaf,
+			});
+			this.openedTaskPath = file.path;
+			if (this.selectedProject) {
+				this.lastOpenedTaskByProject.set(
+					this.selectedProject,
+					file.path,
+				);
+			}
+
+			this.app.workspace.setActiveLeaf(leaf, { focus: true });
 		} finally {
 			this.openingTaskPath = null;
 			this.render();

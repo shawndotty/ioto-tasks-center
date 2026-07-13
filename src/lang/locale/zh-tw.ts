@@ -199,6 +199,8 @@ const zhTW = {
 	'task.outlinks.popover.title.output': '輸出出鏈',
 	'task.outlinks.popover.title.outcome': '成果出鏈',
 	'task.outlinks.popover.empty': '暫無出鏈。',
+	'task.priority.badge': '優先級：{0}',
+	'task.status.badge': '任務狀態：{0}',
 	'task.subtasks.badge': '子任務：{0}',
 	'task.subtasks.popover.title': '子任務',
 	'task.subtasks.popover.empty': '暫無子任務。',

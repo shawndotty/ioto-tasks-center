@@ -1,8 +1,6 @@
 import type { IOTOTasksCenterView } from '../iotoTasksCenterView';
 import type { TaskFileEntry } from '../../tasks-center/types';
-import {
-	type TaskOutlinkCategory,
-} from '../../ui/task-outlink-popover';
+import { type TaskOutlinkCategory } from '../../ui/task-outlink-popover';
 import { countTaskOutlinksByRootPaths } from '../../tasks-center/task-outlink-counts';
 import { getTaskPriorityClassName } from './helpers';
 import { t } from '../../lang/helpter';
@@ -13,10 +11,7 @@ export function renderTaskRows(
 	container: HTMLElement,
 	tasks: TaskFileEntry[],
 	activeTaskPath: string | null,
-	directChildTasksByParentPath: ReadonlyMap<
-		string,
-		TaskFileEntry[]
-	> | null,
+	directChildTasksByParentPath: ReadonlyMap<string, TaskFileEntry[]> | null,
 ): void {
 	const collapsedIndentStack: number[] = [];
 	for (let i = 0; i < tasks.length; i++) {
@@ -50,10 +45,7 @@ export function renderTaskRows(
 		rowEl.type = 'button';
 		rowEl.draggable = !view.isUpdatingUpTask;
 		rowEl.dataset.taskPath = task.path;
-		rowEl.style.setProperty(
-			'--ioto-task-indent-level',
-			`${indentLevel}`,
-		);
+		rowEl.style.setProperty('--ioto-task-indent-level', `${indentLevel}`);
 		if (indentLevel > 0) {
 			rowEl.addClass('is-subtask');
 		}
@@ -135,9 +127,7 @@ export function renderTaskRows(
 					badgeEntries.push({
 						category: 'input',
 						value: counts.input,
-						label: t('task.outlinks.input', [
-							String(counts.input),
-						]),
+						label: t('task.outlinks.input', [String(counts.input)]),
 					});
 				}
 				if (showOutput && counts.output > 0) {
@@ -179,15 +169,14 @@ export function renderTaskRows(
 				}
 			}
 		}
-		if (
-			view.getShowTaskPriority() &&
-			typeof task.priority === 'number'
-		) {
+		if (view.getShowTaskPriority() && typeof task.priority === 'number') {
 			const priorityEl = rowEl.createSpan({
 				cls: `ioto-tasks-center__task-priority ${getTaskPriorityClassName(task.priority)}`,
 				text: `P${task.priority}`,
 			});
-			priorityEl.ariaLabel = `优先级：P${task.priority}`;
+			priorityEl.ariaLabel = t('task.priority.badge', [
+				`P${task.priority}`,
+			]);
 		}
 		if (task.starred) {
 			const coreBadgeEl = rowEl.createSpan({
@@ -201,16 +190,15 @@ export function renderTaskRows(
 			cls: `ioto-tasks-center__task-status ioto-tasks-center__task-status--${task.status.key}`,
 			text: task.status.label,
 		});
-		statusEl.ariaLabel = `任务状态：${task.status.label}`;
-		if (
-			task.status.key === 'todo' ||
-			task.status.key === 'in-progress'
-		) {
+		statusEl.ariaLabel = t('task.status.badge', [task.status.label]);
+		if (task.status.key === 'todo' || task.status.key === 'in-progress') {
 			view.bindTaskStatusChecklistPopover(statusEl, task);
 		}
 
-		rowEl.addEventListener('click', () => {
-			void view.openTaskFile(task);
+		rowEl.addEventListener('click', (event: MouseEvent) => {
+			void view.openTaskFile(task, {
+				target: event.altKey ? 'current-pane-tab' : 'adjacent-preview',
+			});
 		});
 		rowEl.addEventListener('mouseover', (event: MouseEvent) => {
 			const target = event.target;
