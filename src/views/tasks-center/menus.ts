@@ -457,6 +457,18 @@ export function showBatchPriorityMenu(
 export async function showBatchAssignUpTaskModal(
 	view: IOTOTasksCenterView,
 ): Promise<void> {
+	const selectedPaths = view.selectedTaskPaths;
+	const seen = new Set<string>();
+	const suggestions = view.tasks
+		.filter(
+			(task) =>
+				!selectedPaths.has(task.path) &&
+				task.title.length > 0 &&
+				!seen.has(task.title) &&
+				seen.add(task.title),
+		)
+		.map((task) => task.title);
+
 	const parentTitle = await new TaskNameModal(
 		view.app,
 		t('modal.batchAssignUpTask.title'),
@@ -464,6 +476,7 @@ export async function showBatchAssignUpTaskModal(
 		{
 			descriptionText: t('modal.batchAssignUpTask.desc'),
 			confirmButtonText: t('modal.batchAssignUpTask.confirm'),
+			suggestions,
 		},
 	).openAndGetValue();
 	if (!parentTitle) {

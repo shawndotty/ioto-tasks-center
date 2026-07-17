@@ -1325,6 +1325,31 @@ button:not(.clickable-icon).ioto-tasks-center__status-checklist-popover-item {
 	width: 100%;
 }
 
+.ioto-tasks-center__suggest-list {
+	max-height: 200px;
+	overflow-y: auto;
+	margin-top: 4px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+}
+
+.ioto-tasks-center__suggest-list.is-hidden {
+	display: none;
+}
+
+.ioto-tasks-center__suggest-item {
+	padding: 6px 12px;
+	cursor: pointer;
+	font-size: var(--font-ui-small);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.ioto-tasks-center__suggest-item:hover {
+	background-color: var(--background-modifier-hover);
+}
+
 .ioto-tasks-center__modal-actions {
 	display: flex;
 	justify-content: flex-end;
