@@ -46,6 +46,16 @@ import {
 	IOTOProjectCenterView,
 } from './views/iotoProjectCenterView';
 import { IOTO_TASKS_CENTER_TASK_HOVER_SOURCE_ID } from './views/task-hover-preview';
+import {
+	batchClearPriority,
+	batchRemoveUpTask,
+	batchSetStarred,
+	confirmAndBatchDeleteTasks,
+} from './views/tasks-center/batch-edit-operations';
+import {
+	showBatchAssignUpTaskModal,
+	showBatchPriorityMenu,
+} from './views/tasks-center/menus';
 
 export default class IOTOTasksCenter extends Plugin {
 	settings!: IOTOTasksCenterSettings;
@@ -178,6 +188,113 @@ export default class IOTOTasksCenter extends Plugin {
 				});
 			},
 		});
+
+		this.addCommand({
+			id: 'itc-toggle-batch-edit-mode',
+			name: t('command.toggleBatchEditMode'),
+			callback: () => {
+				const view = this.getTasksCenterView();
+				if (view) {
+					view.toggleBatchEditMode();
+					return;
+				}
+				void this.activateIOTOTasksCenterView().then(() => {
+					this.getTasksCenterView()?.toggleBatchEditMode();
+				});
+			},
+		});
+
+		// this.addCommand({
+		// 	id: 'itc-batch-select-all',
+		// 	name: t('command.batchSelectAll'),
+		// 	callback: () => {
+		// 		this.getTasksCenterView()?.selectAllVisibleTasks();
+		// 	},
+		// });
+
+		// this.addCommand({
+		// 	id: 'itc-batch-delete-tasks',
+		// 	name: t('command.batchDeleteTasks'),
+		// 	callback: () => {
+		// 		const view = this.getTasksCenterView();
+		// 		if (!view) {
+		// 			return;
+		// 		}
+		// 		void confirmAndBatchDeleteTasks(view);
+		// 	},
+		// });
+
+		// this.addCommand({
+		// 	id: 'itc-batch-set-priority',
+		// 	name: t('command.batchSetPriority'),
+		// 	callback: () => {
+		// 		const view = this.getTasksCenterView();
+		// 		if (!view) {
+		// 			return;
+		// 		}
+		// 		showBatchPriorityMenu(view);
+		// 	},
+		// });
+
+		// this.addCommand({
+		// 	id: 'itc-batch-clear-priority',
+		// 	name: t('command.batchClearPriority'),
+		// 	callback: () => {
+		// 		const view = this.getTasksCenterView();
+		// 		if (!view) {
+		// 			return;
+		// 		}
+		// 		void batchClearPriority(view);
+		// 	},
+		// });
+
+		// this.addCommand({
+		// 	id: 'itc-batch-set-starred',
+		// 	name: t('command.batchSetStarred'),
+		// 	callback: () => {
+		// 		const view = this.getTasksCenterView();
+		// 		if (!view) {
+		// 			return;
+		// 		}
+		// 		void batchSetStarred(view, true);
+		// 	},
+		// });
+
+		// this.addCommand({
+		// 	id: 'itc-batch-clear-starred',
+		// 	name: t('command.batchClearStarred'),
+		// 	callback: () => {
+		// 		const view = this.getTasksCenterView();
+		// 		if (!view) {
+		// 			return;
+		// 		}
+		// 		void batchSetStarred(view, false);
+		// 	},
+		// });
+
+		// this.addCommand({
+		// 	id: 'itc-batch-assign-up-task',
+		// 	name: t('command.batchAssignUpTask'),
+		// 	callback: () => {
+		// 		const view = this.getTasksCenterView();
+		// 		if (!view) {
+		// 			return;
+		// 		}
+		// 		void showBatchAssignUpTaskModal(view);
+		// 	},
+		// });
+
+		// this.addCommand({
+		// 	id: 'itc-batch-remove-up-task',
+		// 	name: t('command.batchRemoveUpTask'),
+		// 	callback: () => {
+		// 		const view = this.getTasksCenterView();
+		// 		if (!view) {
+		// 			return;
+		// 		}
+		// 		void batchRemoveUpTask(view);
+		// 	},
+		// });
 
 		this.addSettingTab(new IOTOTasksCenterSettingTab(this.app, this));
 		this.registerVaultRefreshEvents();
@@ -577,6 +694,14 @@ export default class IOTOTasksCenter extends Plugin {
 			IOTO_TASKS_CENTER_VIEW_TYPE,
 		)[0];
 		return existingLeaf ?? this.app.workspace.getLeaf(true);
+	}
+
+	private getTasksCenterView(): IOTOTasksCenterView | null {
+		const leaf = this.app.workspace.getLeavesOfType(
+			IOTO_TASKS_CENTER_VIEW_TYPE,
+		)[0];
+		const view = leaf?.view;
+		return view instanceof IOTOTasksCenterView ? view : null;
 	}
 
 	private getOrCreateIOTOProjectCenterLeaf(): WorkspaceLeaf {

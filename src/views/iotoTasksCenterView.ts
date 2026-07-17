@@ -199,6 +199,8 @@ export class IOTOTasksCenterView extends ItemView {
 	private readonly collapsedTaskGroups = new Set<string>();
 	private readonly collapsedProjectGroups = new Set<string>();
 	readonly collapsedSubtaskParents = new Set<string>();
+	public isBatchEditMode = false;
+	readonly selectedTaskPaths = new Set<string>();
 	projectListScrollTop = 0;
 	taskListScrollTop = 0;
 	refreshToken = 0;
@@ -1010,6 +1012,44 @@ export class IOTOTasksCenterView extends ItemView {
 
 	toggleSubtasksCollapsed(taskPath: string): void {
 		toggleSetMember(this.collapsedSubtaskParents, taskPath);
+		this.render();
+	}
+
+	toggleBatchEditMode(): void {
+		this.isBatchEditMode = !this.isBatchEditMode;
+		if (!this.isBatchEditMode) {
+			this.selectedTaskPaths.clear();
+		}
+		this.render();
+	}
+
+	toggleTaskSelected(taskPath: string): void {
+		toggleSetMember(this.selectedTaskPaths, taskPath);
+		this.render();
+	}
+
+	getSelectedTasks(): TaskFileEntry[] {
+		return this.tasks.filter((task) =>
+			this.selectedTaskPaths.has(task.path),
+		);
+	}
+
+	selectAllVisibleTasks(): void {
+		const visibleTasks = this.getVisibleTasks();
+		const allSelected = visibleTasks.every((task) =>
+			this.selectedTaskPaths.has(task.path),
+		);
+		this.selectedTaskPaths.clear();
+		if (!allSelected) {
+			for (const task of visibleTasks) {
+				this.selectedTaskPaths.add(task.path);
+			}
+		}
+		this.render();
+	}
+
+	clearSelection(): void {
+		this.selectedTaskPaths.clear();
 		this.render();
 	}
 

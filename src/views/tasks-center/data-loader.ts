@@ -107,6 +107,7 @@ export async function selectProject(
 	if (resetCollapsedSubtasks) {
 		view.collapsedSubtaskParents.clear();
 	}
+	view.selectedTaskPaths.clear();
 	view.isTasksLoading = true;
 	view.render();
 	await loadTasks(view, projectName);

@@ -10,6 +10,8 @@ import type {
 import { TASK_PRIORITY_VALUES } from '../../tasks-center/task-priority';
 import type { TaskCreationType } from '../../tasks-center/task-template-config';
 import type { TaskListTimeFilter } from '../../settings';
+import { TaskNameModal } from '../../ui/taskNameModal';
+import { batchAssignUpTask, batchSetPriority } from './batch-edit-operations';
 import {
 	getProjectListGroupModeOptions,
 	getProjectListSortModeOptions,
@@ -427,4 +429,45 @@ export function showTaskSubtaskTypeMenu(
 		x: event.clientX + 12,
 		y: event.clientY,
 	});
+}
+
+export function showBatchPriorityMenu(
+	view: IOTOTasksCenterView,
+	event?: MouseEvent,
+): void {
+	const menu = new Menu();
+	for (const priority of TASK_PRIORITY_VALUES) {
+		menu.addItem((item) =>
+			item.setTitle(formatPriorityMenuTitle(priority, false)).onClick(() => {
+				void batchSetPriority(view, priority);
+			}),
+		);
+	}
+	if (event) {
+		menu.showAtMouseEvent(event);
+	} else {
+		const rect = view.containerEl.getBoundingClientRect();
+		menu.showAtPosition({
+			x: rect.left + rect.width / 2,
+			y: rect.top + 40,
+		});
+	}
+}
+
+export async function showBatchAssignUpTaskModal(
+	view: IOTOTasksCenterView,
+): Promise<void> {
+	const parentTitle = await new TaskNameModal(
+		view.app,
+		t('modal.batchAssignUpTask.title'),
+		t('modal.batchAssignUpTask.placeholder'),
+		{
+			descriptionText: t('modal.batchAssignUpTask.desc'),
+			confirmButtonText: t('modal.batchAssignUpTask.confirm'),
+		},
+	).openAndGetValue();
+	if (!parentTitle) {
+		return;
+	}
+	await batchAssignUpTask(view, parentTitle);
 }

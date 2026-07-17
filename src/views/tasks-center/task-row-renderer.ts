@@ -66,13 +66,24 @@ export function renderTaskRows(
 			rowEl.addClass('is-drop-target');
 		}
 
-		if (task.path === view.invalidDropTargetTaskPath) {
-			rowEl.addClass('is-drop-invalid');
-		}
+	if (task.path === view.invalidDropTargetTaskPath) {
+		rowEl.addClass('is-drop-invalid');
+	}
 
-		const titleEl = rowEl.createDiv({
-			cls: 'ioto-tasks-center__task-title',
+	if (view.isBatchEditMode) {
+		const isSelected = view.selectedTaskPaths.has(task.path);
+		if (isSelected) {
+			rowEl.addClass('is-selected');
+		}
+		const checkboxEl = rowEl.createSpan({
+			cls: 'ioto-tasks-center__task-select',
 		});
+		setIcon(checkboxEl, isSelected ? 'check-square' : 'square');
+	}
+
+	const titleEl = rowEl.createDiv({
+		cls: 'ioto-tasks-center__task-title',
+	});
 		if (hasChildren) {
 			const toggleEl = titleEl.createSpan({
 				cls: 'ioto-tasks-center__subtask-toggle-icon',
@@ -195,23 +206,30 @@ export function renderTaskRows(
 			view.bindTaskStatusChecklistPopover(statusEl, task);
 		}
 
-		rowEl.addEventListener('click', (event: MouseEvent) => {
-			void view.openTaskFile(task, {
-				target: event.altKey ? 'current-pane-tab' : 'adjacent-preview',
-			});
+	rowEl.addEventListener('click', (event: MouseEvent) => {
+		if (view.isBatchEditMode) {
+			view.toggleTaskSelected(task.path);
+			return;
+		}
+		void view.openTaskFile(task, {
+			target: event.altKey ? 'current-pane-tab' : 'adjacent-preview',
 		});
-		rowEl.addEventListener('mouseover', (event: MouseEvent) => {
-			const target = event.target;
-			if (
-				target instanceof HTMLElement &&
-				(target.closest('.ioto-tasks-center__task-outlink-count') ||
-					target.closest('.ioto-tasks-center__task-status'))
-			) {
-				return;
-			}
+	});
+	rowEl.addEventListener('mouseover', (event: MouseEvent) => {
+		if (view.isBatchEditMode) {
+			return;
+		}
+		const target = event.target;
+		if (
+			target instanceof HTMLElement &&
+			(target.closest('.ioto-tasks-center__task-outlink-count') ||
+				target.closest('.ioto-tasks-center__task-status'))
+		) {
+			return;
+		}
 
-			view.triggerTaskHoverPreview(event, task, rowEl);
-		});
+		view.triggerTaskHoverPreview(event, task, rowEl);
+	});
 		rowEl.addEventListener('contextmenu', (event: MouseEvent) => {
 			event.preventDefault();
 			event.stopPropagation();

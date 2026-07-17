@@ -3,6 +3,16 @@ import { restoreTaskListScrollTop } from '../task-list-scroll';
 import { buildVisibleTaskHierarchy } from '../task-hierarchy';
 import { t } from '../../lang/helpter';
 import { setIcon } from 'obsidian';
+import {
+	showBatchAssignUpTaskModal,
+	showBatchPriorityMenu,
+} from './menus';
+import {
+	batchClearPriority,
+	batchRemoveUpTask,
+	batchSetStarred,
+	confirmAndBatchDeleteTasks,
+} from './batch-edit-operations';
 
 export function renderTasksPane(
 	view: IOTOTasksCenterView,
@@ -76,6 +86,73 @@ export function renderTasksPane(
 	addTaskButtonEl.addEventListener('click', (event) => {
 		void view.showTaskCreationMenu(event);
 	});
+
+	if (view.isBatchEditMode) {
+		const batchBarEl = container.createDiv({
+			cls: 'ioto-tasks-center__batch-bar',
+		});
+		batchBarEl.createSpan({
+			cls: 'ioto-tasks-center__batch-bar-count',
+			text: t('view.batchBar.count', [
+				String(view.selectedTaskPaths.size),
+			]),
+		});
+		const batchActionsEl = batchBarEl.createDiv({
+			cls: 'ioto-tasks-center__batch-bar-actions',
+		});
+
+		const addAction = (
+			label: string,
+			onClick: (event: MouseEvent) => void,
+		): void => {
+			const btn = batchActionsEl.createEl('button', {
+				cls: 'ioto-tasks-center__batch-bar-button',
+				text: label,
+			});
+			btn.type = 'button';
+			btn.addEventListener('click', (event: MouseEvent) => {
+				event.preventDefault();
+				event.stopPropagation();
+				onClick(event);
+			});
+		};
+
+		addAction(t('view.batchBar.selectAll'), () =>
+			view.selectAllVisibleTasks(),
+		);
+		addAction(t('view.batchBar.setPriority'), (event) =>
+			showBatchPriorityMenu(view, event),
+		);
+		addAction(t('view.batchBar.clearPriority'), () => {
+			void batchClearPriority(view);
+		});
+		addAction(t('view.batchBar.setStarred'), () => {
+			void batchSetStarred(view, true);
+		});
+		addAction(t('view.batchBar.clearStarred'), () => {
+			void batchSetStarred(view, false);
+		});
+		addAction(t('view.batchBar.assignUpTask'), () => {
+			void showBatchAssignUpTaskModal(view);
+		});
+		addAction(t('view.batchBar.removeUpTask'), () => {
+			void batchRemoveUpTask(view);
+		});
+		addAction(t('view.batchBar.delete'), () => {
+			void confirmAndBatchDeleteTasks(view);
+		});
+
+		const exitBtn = batchActionsEl.createEl('button', {
+			cls: 'ioto-tasks-center__batch-bar-button ioto-tasks-center__batch-bar-button--exit',
+			text: t('view.batchBar.exit'),
+		});
+		exitBtn.type = 'button';
+		exitBtn.addEventListener('click', (event: MouseEvent) => {
+			event.preventDefault();
+			event.stopPropagation();
+			view.toggleBatchEditMode();
+		});
+	}
 
 	const currentProjectText = view.getTaskListDescription();
 	container.createDiv({
