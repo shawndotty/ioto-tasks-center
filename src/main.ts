@@ -130,6 +130,12 @@ export default class IOTOTasksCenter extends Plugin {
 		this.addCommand({
 			id: 'convert-selected-text-to-subtask',
 			name: t('command.convertSelectedTextToSubtask'),
+			hotkeys: [
+				{
+					key: '3',
+					modifiers: ['Alt', 'Shift'],
+				},
+			],
 			editorCheckCallback: (checking, editor, ctx) => {
 				const canExecute = canConvertSelectedTextToSubtask(
 					ctx.file,
