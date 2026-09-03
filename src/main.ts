@@ -46,16 +46,16 @@ import {
 	IOTOProjectCenterView,
 } from './views/iotoProjectCenterView';
 import { IOTO_TASKS_CENTER_TASK_HOVER_SOURCE_ID } from './views/task-hover-preview';
-import {
-	batchClearPriority,
-	batchRemoveUpTask,
-	batchSetStarred,
-	confirmAndBatchDeleteTasks,
-} from './views/tasks-center/batch-edit-operations';
-import {
-	showBatchAssignUpTaskModal,
-	showBatchPriorityMenu,
-} from './views/tasks-center/menus';
+// import {
+// 	batchClearPriority,
+// 	batchRemoveUpTask,
+// 	batchSetStarred,
+// 	confirmAndBatchDeleteTasks,
+// } from './views/tasks-center/batch-edit-operations';
+// import {
+// 	showBatchAssignUpTaskModal,
+// 	showBatchPriorityMenu,
+// } from './views/tasks-center/menus';
 
 export default class IOTOTasksCenter extends Plugin {
 	settings!: IOTOTasksCenterSettings;
@@ -130,12 +130,6 @@ export default class IOTOTasksCenter extends Plugin {
 		this.addCommand({
 			id: 'convert-selected-text-to-subtask',
 			name: t('command.convertSelectedTextToSubtask'),
-			hotkeys: [
-				{
-					key: '3',
-					modifiers: ['Alt', 'Shift'],
-				},
-			],
 			editorCheckCallback: (checking, editor, ctx) => {
 				const canExecute = canConvertSelectedTextToSubtask(
 					ctx.file,
