@@ -111,6 +111,8 @@ const en = {
 	'view.projectSwitcher.default': 'Switch project',
 	'view.projectSwitcher.current': 'Current project: {0}',
 	'view.projectSwitcher.currentSuffix': '{0} (current)',
+	'view.taskFilterSwitcher.current': 'Filter: {0} ({1})',
+	'view.taskFilterSwitcher.menuItem': '{0} ({1})',
 	'view.taskListSettings': 'Task list presentation settings',
 	'view.description.noneSelected': 'No project is currently selected',
 	'view.description.currentProject':

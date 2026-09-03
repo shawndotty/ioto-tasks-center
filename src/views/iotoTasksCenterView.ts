@@ -917,41 +917,46 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	renderTaskTabs(container: HTMLElement): void {
-		const taskFilterTabs = getTaskFilterTabs();
 		const tabBarEl = container.createDiv({
 			cls: 'ioto-tasks-center__tabs-bar',
 		});
-		const tabListEl = tabBarEl.createDiv({
-			cls: 'ioto-tasks-center__tabs ioto-tasks-center__tabs-list',
-		});
-		const counts = this.getTaskFilterCounts();
 
-		for (const tab of taskFilterTabs) {
-			const tabButtonEl = tabListEl.createEl('button', {
-				cls: 'ioto-tasks-center__tab',
+		if (this.isCompactLayout) {
+			this.renderCompactTaskFilterSwitcher(tabBarEl);
+		} else {
+			const taskFilterTabs = getTaskFilterTabs();
+			const tabListEl = tabBarEl.createDiv({
+				cls: 'ioto-tasks-center__tabs ioto-tasks-center__tabs-list',
 			});
-			tabButtonEl.type = 'button';
-			tabButtonEl.createSpan({
-				cls: 'ioto-tasks-center__tab-label',
-				text: tab.label,
-			});
-			tabButtonEl.createSpan({
-				cls: 'ioto-tasks-center__tab-count',
-				text: `${counts[tab.key]}`,
-			});
+			const counts = this.getTaskFilterCounts();
 
-			if (tab.key === this.activeTaskFilterTab) {
-				tabButtonEl.addClass('is-active');
-			}
+			for (const tab of taskFilterTabs) {
+				const tabButtonEl = tabListEl.createEl('button', {
+					cls: 'ioto-tasks-center__tab',
+				});
+				tabButtonEl.type = 'button';
+				tabButtonEl.createSpan({
+					cls: 'ioto-tasks-center__tab-label',
+					text: tab.label,
+				});
+				tabButtonEl.createSpan({
+					cls: 'ioto-tasks-center__tab-count',
+					text: `${counts[tab.key]}`,
+				});
 
-			tabButtonEl.addEventListener('click', () => {
 				if (tab.key === this.activeTaskFilterTab) {
-					return;
+					tabButtonEl.addClass('is-active');
 				}
 
-				this.activeTaskFilterTab = tab.key;
-				this.render();
-			});
+				tabButtonEl.addEventListener('click', () => {
+					if (tab.key === this.activeTaskFilterTab) {
+						return;
+					}
+
+					this.activeTaskFilterTab = tab.key;
+					this.render();
+				});
+			}
 		}
 
 		const settingsContainerEl = tabBarEl.createDiv({
@@ -967,6 +972,57 @@ export class IOTOTasksCenterView extends ItemView {
 		settingsButtonEl.addEventListener('click', (event: MouseEvent) => {
 			this.showTaskPresentationMenu(event);
 		});
+	}
+
+	private renderCompactTaskFilterSwitcher(tabBarEl: HTMLElement): void {
+		const taskFilterTabs = getTaskFilterTabs();
+		const counts = this.getTaskFilterCounts();
+		const activeTab = taskFilterTabs.find(
+			(tab) => tab.key === this.activeTaskFilterTab,
+		);
+		const buttonLabel = t('view.taskFilterSwitcher.current', [
+			activeTab?.label ?? t('view.filter.current'),
+			String(activeTab ? counts[activeTab.key] : 0),
+		]);
+		const switcherEl = tabBarEl.createEl('button', {
+			cls: 'ioto-tasks-center__task-filter-switcher',
+			text: buttonLabel,
+		});
+		switcherEl.type = 'button';
+		switcherEl.ariaLabel = buttonLabel;
+		switcherEl.title = buttonLabel;
+		switcherEl.addEventListener('click', (event: MouseEvent) => {
+			this.showTaskFilterSwitcherMenu(event);
+		});
+	}
+
+	private showTaskFilterSwitcherMenu(event: MouseEvent): void {
+		const counts = this.getTaskFilterCounts();
+		const menu = new Menu();
+		for (const tab of getTaskFilterTabs()) {
+			const isActive = tab.key === this.activeTaskFilterTab;
+			menu.addItem((item) => {
+				item.setTitle(
+					t('view.taskFilterSwitcher.menuItem', [
+						tab.label,
+						String(counts[tab.key]),
+					]),
+				);
+				if (isActive) {
+					item.setIcon('check');
+				}
+				item.onClick(() => {
+					if (isActive) {
+						return;
+					}
+
+					this.activeTaskFilterTab = tab.key;
+					this.render();
+				});
+			});
+		}
+
+		menu.showAtMouseEvent(event);
 	}
 
 	getTasksForActiveTab(): TaskFileEntry[] {

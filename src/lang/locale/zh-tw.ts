@@ -100,6 +100,8 @@ const zhTW = {
 	'view.projectSwitcher.default': '切換專案',
 	'view.projectSwitcher.current': '目前專案：{0}',
 	'view.projectSwitcher.currentSuffix': '{0}（目前）',
+	'view.taskFilterSwitcher.current': '目前篩選：{0}（{1}）',
+	'view.taskFilterSwitcher.menuItem': '{0}（{1}）',
 	'view.taskListSettings': '任務列表呈現設定',
 	'view.description.noneSelected': '目前未選中任何專案',
 	'view.description.currentProject':

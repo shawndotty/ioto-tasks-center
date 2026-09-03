@@ -101,6 +101,8 @@ const zhCN = {
 	'view.projectSwitcher.default': '切换项目',
 	'view.projectSwitcher.current': '当前项目：{0}',
 	'view.projectSwitcher.currentSuffix': '{0}（当前）',
+	'view.taskFilterSwitcher.current': '当前筛选：{0}（{1}）',
+	'view.taskFilterSwitcher.menuItem': '{0}（{1}）',
 	'view.taskListSettings': '任务列表呈现设置',
 	'view.description.noneSelected': '当前未选中任何项目',
 	'view.description.currentProject':

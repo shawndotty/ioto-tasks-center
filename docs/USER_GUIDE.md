@@ -119,6 +119,7 @@ Version `2.1.1` focuses on task-list workflow improvements:
   - Incomplete
   - Completed
   - All
+- In compact layouts (mobile or a narrow pane), the filter tabs collapse into a dropdown switcher that shows the active filter and opens a menu with all filters and their counts
 - Search popover with focus, clear, and keyboard support
 - Task sorting:
   - created time
