@@ -30,10 +30,9 @@ export function renderTasksPane(
 		cls: 'ioto-tasks-center__section-actions',
 	});
 	const shouldShowSearchIcon = view.shouldShowTaskSearchIcon();
-	let searchToggleButtonEl: HTMLButtonElement | null = null;
 	if (shouldShowSearchIcon) {
 		const keyword = view.taskSearchQuery.trim();
-		if (!view.isTaskSearchPopoverOpen && keyword) {
+		if (!view.isTaskSearchModalOpen && keyword) {
 			const hintEl = actionsEl.createDiv({
 				cls: 'ioto-tasks-center__task-search-hint',
 			});
@@ -55,23 +54,18 @@ export function renderTasksPane(
 			});
 		}
 
-		searchToggleButtonEl = actionsEl.createEl('button', {
+		const searchToggleButtonEl = actionsEl.createEl('button', {
 			cls: 'ioto-tasks-center__icon-button',
 		});
 		searchToggleButtonEl.type = 'button';
 		searchToggleButtonEl.ariaLabel = t('view.search.toggle');
 		searchToggleButtonEl.title = t('view.search.toggle');
 		setIcon(searchToggleButtonEl, 'search');
-		searchToggleButtonEl.addEventListener('click', (event) => {
-			const anchorEl = event.currentTarget;
-			if (!(anchorEl instanceof HTMLElement)) {
-				return;
-			}
-
-			view.toggleTaskSearchPopover(anchorEl);
+		searchToggleButtonEl.addEventListener('click', () => {
+			view.toggleTaskSearchModal();
 		});
 	} else {
-		view.closeTaskSearchPopover();
+		view.closeTaskSearchModal();
 	}
 	const addTaskButtonEl = actionsEl.createEl('button', {
 		cls: 'ioto-tasks-center__add-task-button',
@@ -160,11 +154,6 @@ export function renderTasksPane(
 		text: currentProjectText,
 	});
 
-	if (shouldShowSearchIcon && view.isTaskSearchPopoverOpen) {
-		if (searchToggleButtonEl) {
-			view.openTaskSearchPopover(searchToggleButtonEl, false);
-		}
-	}
 	view.renderTaskTabs(container);
 
 	const listEl = container.createDiv({

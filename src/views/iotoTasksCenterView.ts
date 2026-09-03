@@ -47,7 +47,7 @@ import {
 	type TaskOutlinkCategory,
 } from '../ui/task-outlink-popover';
 import { TaskStatusChecklistPopover } from '../ui/task-status-checklist-popover';
-import { TaskSearchPopover } from '../ui/task-search-popover';
+import { TaskSearchModal } from '../ui/task-search-modal';
 import { shouldSkipOpeningTask } from './task-preview-state';
 import {
 	handleTaskDragStart,
@@ -164,8 +164,7 @@ export class IOTOTasksCenterView extends ItemView {
 	activeTaskFilterTab: TaskFilterTab = 'core';
 	public taskSearchQuery = '';
 	public taskSearchInputValue = '';
-	public isTaskSearchPopoverOpen = false;
-	public shouldFocusTaskSearchPopover = false;
+	public isTaskSearchModalOpen = false;
 	openedTaskPath: string | null = null;
 	openingTaskPath: string | null = null;
 	draggingTaskPath: string | null = null;
@@ -180,7 +179,7 @@ export class IOTOTasksCenterView extends ItemView {
 		};
 	outlinkPopover: TaskOutlinkPopover | null = null;
 	taskStatusChecklistPopover: TaskStatusChecklistPopover | null = null;
-	public taskSearchPopover: TaskSearchPopover | null = null;
+	public taskSearchModal: TaskSearchModal | null = null;
 	readonly pendingOutlinkBadgeUpdates = new Set<string>();
 	outlinkBadgeUpdateTimer: number | null = null;
 	pendingVaultRefresh = false;
@@ -345,9 +344,7 @@ export class IOTOTasksCenterView extends ItemView {
 		this.taskStatusChecklistPopover = new TaskStatusChecklistPopover(
 			this.contentEl.ownerDocument,
 		);
-		this.taskSearchPopover = new TaskSearchPopover(
-			this.contentEl.ownerDocument,
-		);
+		this.taskSearchModal = new TaskSearchModal(this.app);
 		this.registerEvent(
 			this.app.metadataCache.on('changed', (file) => {
 				if (!this.getShowTaskOutlinkCounts()) {
@@ -370,10 +367,9 @@ export class IOTOTasksCenterView extends ItemView {
 		this.outlinkPopover = null;
 		this.taskStatusChecklistPopover?.destroy();
 		this.taskStatusChecklistPopover = null;
-		this.taskSearchPopover?.destroy();
-		this.taskSearchPopover = null;
-		this.isTaskSearchPopoverOpen = false;
-		this.shouldFocusTaskSearchPopover = false;
+		this.isTaskSearchModalOpen = false;
+		this.taskSearchModal?.close();
+		this.taskSearchModal = null;
 		if (this.outlinkBadgeUpdateTimer !== null) {
 			window.clearTimeout(this.outlinkBadgeUpdateTimer);
 			this.outlinkBadgeUpdateTimer = null;
@@ -673,16 +669,16 @@ export class IOTOTasksCenterView extends ItemView {
 		return SearchController.shouldShowTaskSearchIcon(this);
 	}
 
-	toggleTaskSearchPopover(anchorEl: HTMLElement): void {
-		SearchController.toggleTaskSearchPopover(this, anchorEl);
+	toggleTaskSearchModal(): void {
+		SearchController.toggleTaskSearchModal(this);
 	}
 
-	openTaskSearchPopover(anchorEl: HTMLElement, forceFocus: boolean): void {
-		SearchController.openTaskSearchPopover(this, anchorEl, forceFocus);
+	openTaskSearchModal(): void {
+		SearchController.openTaskSearchModal(this);
 	}
 
-	closeTaskSearchPopover(): void {
-		SearchController.closeTaskSearchPopover(this);
+	closeTaskSearchModal(): void {
+		SearchController.closeTaskSearchModal(this);
 	}
 
 	private applyTaskSearchQuery(): void {

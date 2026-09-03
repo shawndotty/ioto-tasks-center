@@ -4,59 +4,41 @@ import { t } from '../../lang/helpter';
 export function canSearchTasks(view: IOTOTasksCenterView): boolean {
 	return Boolean(
 		view.selectedProject &&
-		!view.isTasksLoading &&
-		view.taskResult &&
-		view.taskResult.status === 'success',
+			!view.isTasksLoading &&
+			view.taskResult &&
+			view.taskResult.status === 'success',
 	);
 }
 
 export function shouldShowTaskSearchIcon(view: IOTOTasksCenterView): boolean {
 	return Boolean(
 		view.selectedProject &&
-		view.taskResult &&
-		view.taskResult.status === 'success' &&
-		view.tasks.length > 0,
+			view.taskResult &&
+			view.taskResult.status === 'success' &&
+			view.tasks.length > 0,
 	);
 }
 
-export function toggleTaskSearchPopover(
-	view: IOTOTasksCenterView,
-	anchorEl: HTMLElement,
-): void {
-	if (view.isTaskSearchPopoverOpen) {
-		closeTaskSearchPopover(view);
-		view.render();
+export function toggleTaskSearchModal(view: IOTOTasksCenterView): void {
+	if (view.isTaskSearchModalOpen) {
+		closeTaskSearchModal(view);
 		return;
 	}
 
-	view.isTaskSearchPopoverOpen = true;
-	view.shouldFocusTaskSearchPopover = true;
+	openTaskSearchModal(view);
+}
+
+export function openTaskSearchModal(view: IOTOTasksCenterView): void {
+	const modal = view.taskSearchModal;
+	if (!modal || !shouldShowTaskSearchIcon(view)) {
+		return;
+	}
+
+	view.isTaskSearchModalOpen = true;
 	view.contentEl
 		.querySelector('.ioto-tasks-center__task-search-hint')
 		?.remove();
-	openTaskSearchPopover(view, anchorEl, true);
-}
-
-export function openTaskSearchPopover(
-	view: IOTOTasksCenterView,
-	anchorEl: HTMLElement,
-	forceFocus: boolean,
-): void {
-	const popover = view.taskSearchPopover;
-	if (!popover) {
-		return;
-	}
-
-	if (!shouldShowTaskSearchIcon(view)) {
-		closeTaskSearchPopover(view);
-		return;
-	}
-
-	const shouldFocus = forceFocus || view.shouldFocusTaskSearchPopover;
-	view.shouldFocusTaskSearchPopover = false;
-
-	popover.open({
-		anchorEl,
+	modal.openSearch({
 		placeholder: t('view.search.placeholder'),
 		value: view.taskSearchInputValue,
 		canSearch: canSearchTasks(view),
@@ -76,32 +58,29 @@ export function openTaskSearchPopover(
 		onClear: () => {
 			clearTaskSearch(view);
 		},
-		onClose: () => {
-			view.isTaskSearchPopoverOpen = false;
-			view.shouldFocusTaskSearchPopover = false;
-			view.render();
+		onClosed: () => {
+			handleTaskSearchModalClosed(view);
 		},
-		shouldFocus,
 	});
 }
 
-export function closeTaskSearchPopover(view: IOTOTasksCenterView): void {
-	view.taskSearchPopover?.close();
-	view.isTaskSearchPopoverOpen = false;
-	view.shouldFocusTaskSearchPopover = false;
+export function closeTaskSearchModal(view: IOTOTasksCenterView): void {
+	view.taskSearchModal?.close();
+	view.isTaskSearchModalOpen = false;
 }
 
-export function applyTaskSearchQuery(view: IOTOTasksCenterView): void {
-	const nextQuery = view.taskSearchInputValue;
-	if (nextQuery === view.taskSearchQuery) {
+function handleTaskSearchModalClosed(view: IOTOTasksCenterView): void {
+	if (!view.isTaskSearchModalOpen) {
 		return;
 	}
 
-	view.taskSearchQuery = nextQuery;
-	if (view.isTaskSearchPopoverOpen) {
-		view.shouldFocusTaskSearchPopover = true;
-	}
+	view.isTaskSearchModalOpen = false;
 	view.render();
+}
+
+export function applyTaskSearchQuery(view: IOTOTasksCenterView): void {
+	view.taskSearchQuery = view.taskSearchInputValue;
+	closeTaskSearchModal(view);
 }
 
 export function clearTaskSearch(view: IOTOTasksCenterView): void {
@@ -111,8 +90,5 @@ export function clearTaskSearch(view: IOTOTasksCenterView): void {
 
 	view.taskSearchInputValue = '';
 	view.taskSearchQuery = '';
-	if (view.isTaskSearchPopoverOpen) {
-		view.shouldFocusTaskSearchPopover = true;
-	}
 	view.render();
 }
