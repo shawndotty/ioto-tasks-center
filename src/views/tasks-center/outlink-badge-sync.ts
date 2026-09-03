@@ -26,7 +26,7 @@ export function updateTaskOutlinkBadges(
 	view: IOTOTasksCenterView,
 	taskPath: string,
 ): void {
-	if (!view.getShowTaskOutlinkCounts()) {
+	if (!view.getShowTaskOutlinkCounts() || view.isNarrowLayout) {
 		return;
 	}
 

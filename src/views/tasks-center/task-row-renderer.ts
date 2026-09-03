@@ -103,7 +103,7 @@ export function renderTaskRows(
 			cls: 'ioto-tasks-center__task-title-text',
 			text: task.title,
 		});
-		if (view.getShowTaskSubtaskCount()) {
+		if (!view.isCompactLayout && view.getShowTaskSubtaskCount()) {
 			const childTasks =
 				directChildTasksByParentPath?.get(task.path) ?? [];
 			if (childTasks.length > 0) {
@@ -117,7 +117,7 @@ export function renderTaskRows(
 				view.bindTaskSubtaskPopover(badgeEl, childTasks);
 			}
 		}
-		if (view.getShowTaskOutlinkCounts()) {
+		if (!view.isNarrowLayout && view.getShowTaskOutlinkCounts()) {
 			const showInput = view.getShowTaskInputOutlinkCount();
 			const showOutput = view.getShowTaskOutputOutlinkCount();
 			const showOutcome = view.getShowTaskOutcomeOutlinkCount();
@@ -180,7 +180,11 @@ export function renderTaskRows(
 				}
 			}
 		}
-		if (view.getShowTaskPriority() && typeof task.priority === 'number') {
+		if (
+			!view.isCompactLayout &&
+			view.getShowTaskPriority() &&
+			typeof task.priority === 'number'
+		) {
 			const priorityEl = rowEl.createSpan({
 				cls: `ioto-tasks-center__task-priority ${getTaskPriorityClassName(task.priority)}`,
 				text: `P${task.priority}`,
@@ -189,7 +193,7 @@ export function renderTaskRows(
 				`P${task.priority}`,
 			]);
 		}
-		if (task.starred) {
+		if (!view.isCompactLayout && task.starred) {
 			const coreBadgeEl = rowEl.createSpan({
 				cls: 'ioto-tasks-center__task-core-badge',
 				text: '⭐',
@@ -197,13 +201,18 @@ export function renderTaskRows(
 			coreBadgeEl.ariaLabel = t('view.taskCoreBadge.label');
 			coreBadgeEl.title = t('view.taskCoreBadge.label');
 		}
-		const statusEl = rowEl.createSpan({
-			cls: `ioto-tasks-center__task-status ioto-tasks-center__task-status--${task.status.key}`,
-			text: task.status.label,
-		});
-		statusEl.ariaLabel = t('task.status.badge', [task.status.label]);
-		if (task.status.key === 'todo' || task.status.key === 'in-progress') {
-			view.bindTaskStatusChecklistPopover(statusEl, task);
+		if (!view.isNarrowLayout) {
+			const statusEl = rowEl.createSpan({
+				cls: `ioto-tasks-center__task-status ioto-tasks-center__task-status--${task.status.key}`,
+				text: task.status.label,
+			});
+			statusEl.ariaLabel = t('task.status.badge', [task.status.label]);
+			if (
+				task.status.key === 'todo' ||
+				task.status.key === 'in-progress'
+			) {
+				view.bindTaskStatusChecklistPopover(statusEl, task);
+			}
 		}
 
 	rowEl.addEventListener('click', (event: MouseEvent) => {

@@ -118,6 +118,7 @@ import {
 	COMPACT_LAYOUT_BREAKPOINT,
 	getWorkspaceLeafId,
 	HOVER_PREVIEW_REFRESH_RETRY_MS,
+	NARROW_LAYOUT_BREAKPOINT,
 	parseViewState,
 } from './tasks-center/constants';
 import {
@@ -195,7 +196,8 @@ export class IOTOTasksCenterView extends ItemView {
 	isCreatingProject = false;
 	isCreatingTask = false;
 	isUpdatingUpTask = false;
-	private isCompactLayout = false;
+	isCompactLayout = false;
+	isNarrowLayout = false;
 	private readonly collapsedTaskGroups = new Set<string>();
 	private readonly collapsedProjectGroups = new Set<string>();
 	readonly collapsedSubtaskParents = new Set<string>();
@@ -906,11 +908,16 @@ export class IOTOTasksCenterView extends ItemView {
 		}
 
 		const nextCompactLayout = width <= COMPACT_LAYOUT_BREAKPOINT;
-		if (this.isCompactLayout === nextCompactLayout) {
+		const nextNarrowLayout = width < NARROW_LAYOUT_BREAKPOINT;
+		if (
+			this.isCompactLayout === nextCompactLayout &&
+			this.isNarrowLayout === nextNarrowLayout
+		) {
 			return;
 		}
 
 		this.isCompactLayout = nextCompactLayout;
+		this.isNarrowLayout = nextNarrowLayout;
 		if (this.contentEl.isConnected) {
 			this.render();
 		}

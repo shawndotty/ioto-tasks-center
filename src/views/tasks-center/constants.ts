@@ -11,6 +11,7 @@ import { isTaskFilterTab } from '../task-filter-tabs';
 import { t } from '../../lang/helpter';
 
 export const COMPACT_LAYOUT_BREAKPOINT = 720;
+export const NARROW_LAYOUT_BREAKPOINT = 480;
 export const HOVER_PREVIEW_REFRESH_RETRY_MS = 150;
 
 export interface IOTOTasksCenterViewState {

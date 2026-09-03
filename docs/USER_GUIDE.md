@@ -100,6 +100,7 @@ Version `2.1.1` focuses on task-list workflow improvements:
   - No tasks
 - Hover popover for incomplete checklist items on active-status tasks
 - Click a checklist item in the popover to open the source note and select that checklist line
+- When the view is narrower than 480px (mobile or a very narrow pane), task rows only show the task name, indent, and subtask expand toggle; count, outlink, status, priority, and core badges are hidden
 
 ### Outlink insights
 
