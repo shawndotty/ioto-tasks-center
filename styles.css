@@ -432,15 +432,31 @@ button:not(.clickable-icon).ioto-tasks-center__tab-settings-button {
 	justify-content: center;
 }
 
+.ioto-tasks-center__task-search-modal-container .modal-header-button,
+.is-phone .ioto-tasks-center__task-search-modal-container .modal-header-button {
+	display: none;
+}
+
 .ioto-tasks-center__task-search-modal,
 .is-phone .ioto-tasks-center__task-search-modal {
 	width: min(560px, calc(100vw - 32px));
 	margin-top: 25vh;
+	min-height: 0;
 	padding: 12px;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 12px;
 	background: var(--background-primary);
 	box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+}
+
+.ioto-tasks-center__task-search-modal .modal-header,
+.ioto-tasks-center__task-search-modal .modal-close-button {
+	display: none;
+}
+
+.ioto-tasks-center__task-search-modal .modal-content {
+	flex: 0 0 auto;
+	padding: 0;
 }
 
 .ioto-tasks-center__task-search-modal:focus-within {
@@ -530,6 +546,10 @@ button:not(.clickable-icon).ioto-tasks-center__tab-settings-button {
 .ioto-tasks-center__task-search-clear-button:disabled {
 	opacity: 0.65;
 	cursor: not-allowed;
+}
+
+.ioto-tasks-center__task-search-clear-button.is-hidden {
+	display: none;
 }
 
 .ioto-tasks-center__task-search-button {
