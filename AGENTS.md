@@ -1,269 +1,229 @@
-# Obsidian community plugin
+# IOTO Tasks Center — Obsidian community plugin
 
 ## Project overview
 
-- Target: Obsidian Community Plugin (TypeScript → bundled JavaScript).
-- Entry point: `src/main.ts` compiled to `main.js` and loaded by Obsidian.
-- Required release artifacts: `main.js`, `manifest.json`, and optional `styles.css`.
+- Obsidian Community Plugin (TypeScript → bundled JavaScript via esbuild).
+
+- **Purpose**: manage Markdown task files organized by project folders. Provides a **Tasks center** view for execution (project list, task list, preview, search, filters) and a **Project center** view for project metadata (category, dates, archive state, task counts). All data stays as plain Markdown notes in the vault.
+
+- Plugin metadata (`manifest.json`):
+
+  - `id`: `ioto-tasks-center` (matches folder name; never change)
+
+  - `name`: `IOTO Tasks Center`
+
+  - `version`: `2.3.6`, `minAppVersion`: `1.1.0`
+
+  - `author`: Johnny Learns
+
+  - `isDesktopOnly`: `false` — must stay mobile-compatible (no Node/Electron-only APIs)
+
+- Release artifacts: `main.js`, `manifest.json`, `styles.css` at the plugin root.
+
+## Core domain concepts
+
+- **Tasks root path**: configurable vault folder containing project folders (default `3-任务`). Each project folder contains task Markdown files.
+
+- **Outlink roots**: `1-输入` (input), `2-输出` (output), `4-成果` (outcome) — used for outlink count badges on tasks (see `src/tasks-center/task-outlink-counts.ts`).
+
+- **Task metadata** (frontmatter/derived): `Project`, `Status`, `Priority`, `Starred`, `UpTask` (parent task), subtask hierarchy, input/output/outcome links.
+
+- **Task status** is derived from checklist items in the note: `todo` | `in-progress` | `completed` | `empty` (see `src/tasks-center/types.ts`).
+
+- **Task creation types**: `normal`, `date`, `topic`, `plan` — each with its own configurable template (`taskTemplateConfigs`), plus a separate batch template (`batchTemplateConfig`).
+
+- Vault events (`create`/`delete`/`modify`/`rename`) trigger view refresh only when the affected path is under the tasks root.
 
 ## Environment & tooling
 
-- Node.js: use current LTS (Node 18+ recommended).
-- **Package manager: npm** (required for this sample - `package.json` defines npm scripts and dependencies).
-- **Bundler: esbuild** (required for this sample - `esbuild.config.mjs` and build scripts depend on it). Alternative bundlers like Rollup or webpack are acceptable for other projects if they bundle all external dependencies into `main.js`.
-- Types: `obsidian` type definitions.
+- **Package manager: npm**. **Bundler: esbuild** (`esbuild.config.mjs`). Types: `obsidian` package.
 
-**Note**: This sample project has specific technical dependencies on npm and esbuild. If you're creating a plugin from scratch, you can choose different tools, but you'll need to replace the build configuration accordingly.
-
-### Install
+- TypeScript strict mode.
 
 ```bash
-npm install
+npm install        # install dependencies
+npm run dev        # esbuild watch mode (dev sourcemaps)
+npm run build      # typecheck (tsc -noEmit -skipLibCheck) + esbuild production
+npm test           # node --test tests/**/*.test.mjs
+npm run lint       # eslint .
+npm run version    # version-bump.mjs; updates manifest.json + versions.json
 ```
 
-### Dev (watch)
+## Source structure
 
-```bash
-npm run dev
+```
+src/
+  main.ts                        # Plugin entry: IOTOTasksCenter lifecycle only
+  settings.ts                    # Settings interface, defaults, normalizers, settings tab
+  tasks-center/                  # Core domain logic (no DOM/UI)
+    types.ts                     # Shared types, default root paths, path normalizers
+    task-creation.ts             # Task file creation, templates, frontmatter helpers
+    task-deletion.ts             # Task deletion
+    task-priority.ts             # Priority read/write
+    task-starred.ts              # Starred read/write
+    up-task-assignment.ts        # UpTask (parent) assignment
+    selected-text-subtask.ts     # Editor command: selection → subtask
+    task-template-config.ts      # Per-type template configs
+    batch-task-template.ts       # Batch creation template
+    project-creation.ts          # Project folder creation
+    project-metadata.ts          # Project frontmatter metadata
+    project-sort.ts              # Project sorting
+    date-task-format.ts          # Date task file name format (default YYYY-MM-DD)
+    task-outlink-counts.ts       # Input/output/outcome outlink counts
+    enabled-task-creation-types.ts
+    data.ts                      # Vault data loading
+  views/                         # View layer
+    iotoTasksCenterView.ts       # Tasks center view (IOTO_TASKS_CENTER_VIEW_TYPE)
+    iotoProjectCenterView.ts     # Project center view (IOTO_PROJECT_CENTER_VIEW_TYPE)
+    task-hover-preview.ts        # Hover link source registration
+    task-drag.ts, task-hierarchy.ts, task-search.ts, task-filter-tabs.ts,
+    task-list-presentation.ts, task-list-scroll.ts, task-preview-state.ts,
+    project-center-scroll.ts, project-center-search.ts, project-center-sort.ts,
+    project-list-group.ts, project-list-scroll.ts
+    tasks-center/                # Tasks center view submodules
+      constants.ts, data-loader.ts, helpers.ts
+      projects-pane-renderer.ts, tasks-pane-renderer.ts, task-row-renderer.ts
+      drag-controller.ts, search-controller.ts, popover-controller.ts
+      batch-edit-operations.ts, menus.ts, task-operations.ts
+      task-time-filter.ts, outlink-badge-sync.ts, preview-leaf.ts
+  ui/                            # Modals and popovers
+    taskCreationModal.ts, taskNameModal.ts, batchTaskModals.ts,
+    batchTemplateEditModal.ts, confirmModal.ts, tabbed-settings.ts,
+    task-outlink-popover.ts, task-search-popover.ts, task-status-checklist-popover.ts
+  modals/ImportModal.ts          # Import dialog
+  lang/                          # i18n
+    helpter.ts                   # t(), getCurrentLang(); TranslationKey = keyof typeof en
+    locale/en.ts, zh-cn.ts, zh-tw.ts
+  typings/obsidian-ex.d.ts       # Obsidian type extensions
 ```
 
-### Production build
+Other folders/files:
 
-```bash
-npm run build
-```
+- `tests/` — unit tests (`*.test.mjs`, node:test + jiti to import TS modules). Feature modules are expected to have matching tests.
 
-## Linting
+- `docs/` — user guide (English + Simplified Chinese).
 
-- ESLint is preconfigured with `eslint-plugin-obsidianmd` for Obsidian-specific rules.
-- Run `npm run lint` to lint the project.
-- A GitHub Action automatically lints every commit on all branches.
+- `plans/` — design docs for larger features (Chinese).
 
-## File & folder conventions
+- `styles.css` — plugin styles (single file, shipped as release artifact).
 
-- **Organize code into multiple files**: Split functionality across separate modules rather than putting everything in `main.ts`.
-- Source lives in `src/`. Keep `main.ts` small and focused on plugin lifecycle (loading, unloading, registering commands).
-- **Example file structure**:
-    ```
-    src/
-      main.ts           # Plugin entry point, lifecycle management
-      settings.ts       # Settings interface and defaults
-      commands/         # Command implementations
-        command1.ts
-        command2.ts
-      ui/              # UI components, modals, views
-        modal.ts
-        view.ts
-      utils/           # Utility functions, helpers
-        helpers.ts
-        constants.ts
-      types.ts         # TypeScript interfaces and types
-    ```
-- **Do not commit build artifacts**: Never commit `node_modules/`, `main.js`, or other generated files to version control.
-- Keep the plugin small. Avoid large dependencies. Prefer browser-compatible packages.
-- Generated output should be placed at the plugin root or `dist/` depending on your build setup. Release artifacts must end up at the top level of the plugin folder in the vault (`main.js`, `manifest.json`, `styles.css`).
+- `eslint.config.mts` — ESLint 9 flat config with `eslint-plugin-obsidianmd` recommended rules.
 
-## Manifest rules (`manifest.json`)
+- `.github/workflows/` — `lint.yml` (lints every commit), `release.yml`.
 
-- Must include (non-exhaustive):
-    - `id` (plugin ID; for local dev it should match the folder name)
-    - `name`
-    - `version` (Semantic Versioning `x.y.z`)
-    - `minAppVersion`
-    - `description`
-    - `isDesktopOnly` (boolean)
-    - Optional: `author`, `authorUrl`, `fundingUrl` (string or map)
-- Never change `id` after release. Treat it as stable API.
-- Keep `minAppVersion` accurate when using newer APIs.
-- Canonical requirements are coded here: https://github.com/obsidianmd/obsidian-releases/blob/master/.github/workflows/validate-plugin-entry.yml
+## Architecture patterns (follow these)
+
+### main.ts stays minimal
+
+`main.ts` only handles lifecycle: load/save settings, register views, commands, hover link source, settings tab, and vault refresh events. All feature logic lives in `tasks-center/` (domain), `views/` (UI), and `ui/` (modals/popovers).
+
+### Dependency-injected views
+
+Views are constructed in `main.ts` with **getter callbacks** for reading settings and **update callbacks** for persisting changes (see `registerView` calls in `src/main.ts`). This keeps views decoupled from the plugin instance. New view settings should follow the same pattern: add getter + updater, never import the plugin singleton into views.
+
+### Settings lifecycle
+
+- Every setting has a `normalize*` function applied on load (`loadSettings`) and on update (see `src/settings.ts` and `src/tasks-center/*`).
+
+- Update methods follow the pattern: normalize → skip if unchanged → `saveSettings()` → `applySettingsToOpenViews()`.
+
+- Persist via `this.loadData()` / `this.saveData()` only.
+
+- Legacy settings migration happens in `loadSettings` (e.g., `resultRootPath` → `outcomeRootPath`, `taskTemplatePath` → `taskTemplateConfigs`).
+
+### i18n is mandatory for user-facing strings
+
+- Use `t('key')` from `src/lang/helpter.ts`. Never hardcode UI strings.
+
+- `TranslationKey` is `keyof typeof en`, so adding a key requires updating **all three** locale files: `locale/en.ts`, `locale/zh-cn.ts`, `locale/zh-tw.ts`.
+
+### Commands
+
+Registered in `main.ts` with stable IDs (don't rename once released). Current active commands:
+
+- `open-tasks-center-view` — open the Tasks center
+
+- `open-project-center-view` — open the Project center
+
+- `convert-selected-text-to-subtask` — editor command (Alt+Shift+3), uses `editorCheckCallback`
+
+- `batch-create-tasks-from-template`
+
+- `itc-toggle-batch-edit-mode`
+
+Some batch commands are currently commented out in `main.ts`; keep them there unless asked otherwise.
 
 ## Testing
 
-- Manual install for testing: copy `main.js`, `manifest.json`, `styles.css` (if any) to:
-    ```
-    <Vault>/.obsidian/plugins/<plugin-id>/
-    ```
-- Reload Obsidian and enable the plugin in **Settings → Community plugins**.
+- Tests use `node:test` + `jiti` to import TypeScript modules directly (no build step needed). See any file in `tests/` for the pattern.
 
-## Commands & settings
+- When adding/changing logic in `src/tasks-center/` or pure helpers in `src/views/`, add or update the matching `tests/*.test.mjs`.
 
-- Any user-facing commands should be added via `this.addCommand(...)`.
-- If the plugin has configuration, provide a settings tab and sensible defaults.
-- Persist settings using `this.loadData()` / `this.saveData()`.
-- Use stable command IDs; avoid renaming once released.
-
-## Versioning & releases
-
-- Bump `version` in `manifest.json` (SemVer) and update `versions.json` to map plugin version → minimum app version.
-- Create a GitHub release whose tag exactly matches `manifest.json`'s `version`. Do not use a leading `v`.
-- Attach `manifest.json`, `main.js`, and `styles.css` (if present) to the release as individual assets.
-- After the initial release, follow the process to add/update your plugin in the community catalog as required.
-
-## Security, privacy, and compliance
-
-Follow Obsidian's **Developer Policies** and **Plugin Guidelines**. In particular:
-
-- Default to local/offline operation. Only make network requests when essential to the feature.
-- No hidden telemetry. If you collect optional analytics or call third-party services, require explicit opt-in and document clearly in `README.md` and in settings.
-- Never execute remote code, fetch and eval scripts, or auto-update plugin code outside of normal releases.
-- Minimize scope: read/write only what's necessary inside the vault. Do not access files outside the vault.
-- Clearly disclose any external services used, data sent, and risks.
-- Respect user privacy. Do not collect vault contents, filenames, or personal information unless absolutely necessary and explicitly consented.
-- Avoid deceptive patterns, ads, or spammy notifications.
-- Register and clean up all DOM, app, and interval listeners using the provided `register*` helpers so the plugin unloads safely.
-
-## UX & copy guidelines (for UI text, commands, settings)
-
-- Prefer sentence case for headings, buttons, and titles.
-- Use clear, action-oriented imperatives in step-by-step copy.
-- Use **bold** to indicate literal UI labels. Prefer "select" for interactions.
-- Use arrow notation for navigation: **Settings → Community plugins**.
-- Keep in-app strings short, consistent, and free of jargon.
-
-## Performance
-
-- Keep startup light. Defer heavy work until needed.
-- Avoid long-running tasks during `onload`; use lazy initialization.
-- Batch disk access and avoid excessive vault scans.
-- Debounce/throttle expensive operations in response to file system events.
+- Run `npm test` before finishing any change.
 
 ## Coding conventions
 
-- TypeScript with `"strict": true` preferred.
-- **Keep `main.ts` minimal**: Focus only on plugin lifecycle (onload, onunload, addCommand calls). Delegate all feature logic to separate modules.
-- **Split large files**: If any file exceeds ~200-300 lines, consider breaking it into smaller, focused modules.
-- **Use clear module boundaries**: Each file should have a single, well-defined responsibility.
-- Bundle everything into `main.js` (no unbundled runtime deps).
-- Avoid Node/Electron APIs if you want mobile compatibility; set `isDesktopOnly` accordingly.
-- Prefer `async/await` over promise chains; handle errors gracefully.
+- TypeScript with `"strict": true`.
 
-## Mobile
+- Split large files: if a file exceeds \~200-300 lines, break it into focused modules.
 
-- Where feasible, test on iOS and Android.
-- Don't assume desktop-only behavior unless `isDesktopOnly` is `true`.
-- Avoid large in-memory structures; be mindful of memory and storage constraints.
+- `tasks-center/` modules must stay UI-free and testable; DOM rendering belongs in `views/` or `ui/`.
 
-## Agent do/don't
+- Prefer `async/await`; handle errors with user-visible `Notice` where appropriate.
 
-**Do**
+- Register all DOM/app/interval listeners with `this.register*` helpers so reload/unload is safe.
 
-- Add commands with stable IDs (don't rename once released).
-- Provide defaults and validation in settings.
-- Write idempotent code paths so reload/unload doesn't leak listeners or intervals.
-- Use `this.register*` helpers for everything that needs cleanup.
+- Keep startup light: heavy work is deferred to view opening, not `onload`.
 
-**Don't**
+## Linting
 
-- Introduce network calls without an obvious user-facing reason and documentation.
-- Ship features that require cloud services without clear disclosure and explicit opt-in.
-- Store or transmit vault contents unless essential and consented.
+- ESLint 9 flat config (`eslint.config.mts`) with `eslint-plugin-obsidianmd` recommended rules.
 
-## Common tasks
+- Run `npm run lint` before committing; CI lints every commit on all branches.
 
-### Organize code across multiple files
+## Versioning & releases
 
-**main.ts** (minimal, lifecycle only):
+- Bump `version` in `manifest.json` (SemVer) and update `versions.json` (plugin version → minimum app version). `npm run version` automates this.
 
-```ts
-import { Plugin } from 'obsidian';
-import { MySettings, DEFAULT_SETTINGS } from './settings';
-import { registerCommands } from './commands';
+- Create a GitHub release whose tag exactly matches `manifest.json`'s `version` (no leading `v`). Attach `manifest.json`, `main.js`, and `styles.css` as individual assets.
 
-export default class IOTOTasksCenter extends Plugin {
-	settings!: MySettings;
+- Update `docs/USER_GUIDE.md` (+ Chinese version) and the README version/changelog sections when shipping user-facing changes.
 
-	async onload() {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			(await this.loadData()) as Partial<MySettings>,
-		);
-		registerCommands(this);
-	}
-}
-```
+## UX & copy guidelines
 
-**settings.ts**:
+- Prefer sentence case for headings, buttons, and titles.
 
-```ts
-export interface MySettings {
-	enabled: boolean;
-	apiKey: string;
-}
+- Use **bold** for literal UI labels and arrow notation for navigation: **Settings → Community plugins**.
 
-export const DEFAULT_SETTINGS: MySettings = {
-	enabled: true,
-	apiKey: '',
-};
-```
+- Keep in-app strings short, consistent, jargon-free — in all three locales.
 
-**commands/index.ts**:
+## Security, privacy, and compliance
 
-```ts
-import { Plugin } from 'obsidian';
-import { doSomething } from './my-command';
+- Plugin is fully local/offline. Do not add network requests, telemetry, or remote code execution.
 
-export function registerCommands(plugin: Plugin) {
-	plugin.addCommand({
-		id: 'do-something',
-		name: 'Do something',
-		callback: () => doSomething(plugin),
-	});
-}
-```
+- Read/write only within the vault, and preferably only under the configured root paths.
 
-### Add a command
+- Follow Obsidian Developer Policies and Plugin Guidelines (<https://docs.obsidian.md/Developer+policies>).
 
-```ts
-this.addCommand({
-	id: 'your-command-id',
-	name: 'Do the thing',
-	callback: () => this.doTheThing(),
-});
-```
+## Manual testing in a vault
 
-### Persist settings
-
-```ts
-interface MySettings { enabled: boolean }
-const DEFAULT_SETTINGS: MySettings = { enabled: true };
-
-async onload() {
-  this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<MySettings>);
-  await this.saveData(this.settings);
-}
-```
-
-### Register listeners safely
-
-```ts
-this.registerEvent(
-	this.app.workspace.on('file-open', (f) => {
-		/* ... */
-	}),
-);
-this.registerDomEvent(activeWindow, 'resize', () => {
-	/* ... */
-});
-this.registerInterval(
-	window.setInterval(() => {
-		/* ... */
-	}, 1000),
-);
-```
+Copy `main.js`, `manifest.json`, `styles.css` into `<Vault>/.obsidian/plugins/ioto-tasks-center/`, reload Obsidian, enable in **Settings → Community plugins**, then run **IOTO Tasks Center: Open tasks center view**.
 
 ## Troubleshooting
 
-- Plugin doesn't load after build: ensure `main.js` and `manifest.json` are at the top level of the plugin folder under `<Vault>/.obsidian/plugins/<plugin-id>/`.
-- Build issues: if `main.js` is missing, run `npm run build` or `npm run dev` to compile your TypeScript source code.
-- Commands not appearing: verify `addCommand` runs after `onload` and IDs are unique.
-- Settings not persisting: ensure `loadData`/`saveData` are awaited and you re-render the UI after changes.
-- Mobile-only issues: confirm you're not using desktop-only APIs; check `isDesktopOnly` and adjust.
+- Plugin doesn't load: ensure `main.js` + `manifest.json` are at the top level of the plugin folder; run `npm run build`.
+
+- Commands not appearing: verify `addCommand` runs in `onload` and IDs are unique.
+
+- Settings not persisting: ensure `loadData`/`saveData` are awaited and `applySettingsToOpenViews()` runs after changes.
+
+- View not refreshing: vault-change refresh only fires for paths under `tasksRootPath`; check `shouldRefreshTasksCenter` in `src/main.ts`.
 
 ## References
 
-- Obsidian sample plugin: https://github.com/obsidianmd/obsidian-sample-plugin
-- API documentation: https://docs.obsidian.md
-- Developer policies: https://docs.obsidian.md/Developer+policies
-- Plugin guidelines: https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines
-- Style guide: https://help.obsidian.md/style-guide
+- User guide: [docs/USER\_GUIDE.md](docs/USER_GUIDE.md)
+
+- Obsidian API docs: <https://docs.obsidian.md>
+
+- Plugin guidelines: <https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines>
+
