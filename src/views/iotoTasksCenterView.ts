@@ -28,6 +28,7 @@ import type {
 	TaskListGroupMode,
 	TaskListSortMode,
 	TaskListTimeFilter,
+	TaskSearchEntryMode,
 } from '../settings';
 import {
 	getTaskListGroupModeOptions,
@@ -68,6 +69,7 @@ import {
 import {
 	getTaskFilterCounts,
 	getTaskFilterTabs,
+	isTaskFilterTab,
 	matchesTaskFilterTab,
 	type TaskFilterTab,
 } from './task-filter-tabs';
@@ -113,7 +115,6 @@ import {
 	buildTaskPresentationSections,
 	sortTasksForPresentation,
 } from './task-list-presentation';
-import { filterTasksBySearchQuery } from './task-search';
 import {
 	COMPACT_LAYOUT_BREAKPOINT,
 	getWorkspaceLeafId,
@@ -121,6 +122,16 @@ import {
 	NARROW_LAYOUT_BREAKPOINT,
 	parseViewState,
 } from './tasks-center/constants';
+import { createTaskSearchSession } from './tasks-center/task-search-session';
+import {
+	buildTaskSearchStamp,
+	orderTasksBySearchHits,
+	type TaskSearchHit,
+} from './tasks-center/task-search-index';
+import {
+	renderTaskSearchRow as renderTaskSearchRowFn,
+	updateTaskSearchCountText,
+} from './tasks-center/task-search-row';
 import {
 	getActiveTaskPath as getActiveTaskPathFn,
 	getPreviewLeafFilePath as getPreviewLeafFilePathFn,
@@ -138,7 +149,10 @@ import {
 	showTaskSubtaskTypeMenu,
 } from './tasks-center/menus';
 import { renderProjectsPane } from './tasks-center/projects-pane-renderer';
-import { renderTasksPane as renderTasksPaneFn } from './tasks-center/tasks-pane-renderer';
+import {
+	renderTaskListBody as renderTaskListBodyFn,
+	renderTasksPane as renderTasksPaneFn,
+} from './tasks-center/tasks-pane-renderer';
 import { renderTaskRows as renderTaskRowsFn } from './tasks-center/task-row-renderer';
 import { toggleSetMember } from './tasks-center/helpers';
 import {
@@ -153,6 +167,15 @@ import {
 
 export const IOTO_TASKS_CENTER_VIEW_TYPE = 'IOTOTasksCenter';
 
+const TASK_LIST_CLASS = 'ioto-tasks-center__task-list';
+const TASK_ROW_CLASS = 'ioto-tasks-center__task-row';
+const TAB_BUTTON_SELECTOR = '.ioto-tasks-center__tab';
+const TAB_COUNT_SELECTOR = '.ioto-tasks-center__tab-count';
+const TASK_FILTER_SWITCHER_SELECTOR =
+	'.ioto-tasks-center__task-filter-switcher';
+const TASK_LIST_DESC_SELECTOR =
+	'.ioto-tasks-center__pane--tasks .ioto-tasks-center__task-list-desc';
+
 type TaskOpenTarget = 'adjacent-preview' | 'current-pane-tab';
 
 export class IOTOTasksCenterView extends ItemView {
@@ -164,6 +187,8 @@ export class IOTOTasksCenterView extends ItemView {
 	activeTaskFilterTab: TaskFilterTab = 'core';
 	public taskSearchQuery = '';
 	public taskSearchInputValue = '';
+	public taskSearchInputEl: HTMLInputElement | null = null;
+	public taskSearchCountEl: HTMLElement | null = null;
 	public isTaskSearchModalOpen = false;
 	openedTaskPath: string | null = null;
 	openingTaskPath: string | null = null;
@@ -249,6 +274,12 @@ export class IOTOTasksCenterView extends ItemView {
 		hidden: boolean,
 	) => Promise<void>;
 	readonly getBatchTemplateConfig: () => BatchTemplateConfig;
+	readonly getTaskSearchEntryMode: () => TaskSearchEntryMode;
+	private readonly taskSearchSession = createTaskSearchSession();
+	private taskFilterCountsCache: {
+		key: string;
+		counts: Record<TaskFilterTab, number>;
+	} | null = null;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -289,6 +320,7 @@ export class IOTOTasksCenterView extends ItemView {
 			hidden: boolean,
 		) => Promise<void>,
 		getBatchTemplateConfig: () => BatchTemplateConfig,
+		getTaskSearchEntryMode: () => TaskSearchEntryMode,
 	) {
 		super(leaf);
 		this.navigation = true;
@@ -320,6 +352,7 @@ export class IOTOTasksCenterView extends ItemView {
 		this.getDateTaskDateFormat = getDateTaskDateFormat;
 		this.setProjectHidden = setProjectHidden;
 		this.getBatchTemplateConfig = getBatchTemplateConfig;
+		this.getTaskSearchEntryMode = getTaskSearchEntryMode;
 	}
 
 	getViewType(): string {
@@ -438,6 +471,9 @@ export class IOTOTasksCenterView extends ItemView {
 	public render(): void {
 		this.outlinkPopover?.close();
 		this.taskStatusChecklistPopover?.close();
+		this.taskSearchInputEl = null;
+		this.taskSearchCountEl = null;
+		this.taskFilterCountsCache = null;
 		this.projectListScrollTop = captureProjectListScrollTop(
 			this.contentEl,
 			this.projectListScrollTop,
@@ -509,6 +545,147 @@ export class IOTOTasksCenterView extends ItemView {
 
 	renderTasksPane(container: HTMLElement): void {
 		renderTasksPaneFn(this, container);
+	}
+
+	isTaskSearchInline(): boolean {
+		return this.getTaskSearchEntryMode() === 'inline';
+	}
+
+	renderTaskSearchRow(container: HTMLElement): void {
+		renderTaskSearchRowFn(this, container);
+	}
+
+	/**
+	 * 只重绘任务列表，不触碰搜索行与 header —— 保证输入过程中焦点与输入法 composition 不中断。
+	 */
+	public renderTaskListIncremental(): void {
+		const listEl = this.contentEl.querySelector<HTMLElement>(
+			`.${TASK_LIST_CLASS}`,
+		);
+		if (!listEl) {
+			this.render();
+			return;
+		}
+
+		this.outlinkPopover?.close();
+		this.taskStatusChecklistPopover?.close();
+		renderTaskListBodyFn(this, listEl);
+		this.updateTaskTabCounts();
+		this.updateTaskListDescriptionText();
+		this.syncTaskSearchCount();
+	}
+
+	public setTaskSearchQuery(value: string): void {
+		const query = value.trim();
+		if (
+			this.taskSearchQuery === query &&
+			this.taskSearchInputValue === value
+		) {
+			return;
+		}
+
+		this.taskSearchInputValue = value;
+		this.taskSearchQuery = query;
+		this.taskListScrollTop = 0;
+		this.renderTaskListIncremental();
+	}
+
+	syncTaskSearchCount(): void {
+		updateTaskSearchCountText(this, this.taskSearchCountEl);
+	}
+
+	focusTaskSearch(): void {
+		const inputEl = this.taskSearchInputEl;
+		if (!inputEl?.isConnected) {
+			this.openTaskSearchModal();
+			return;
+		}
+
+		inputEl.focus();
+		inputEl.select();
+	}
+
+	focusFirstTaskRow(): void {
+		const rowEl = this.contentEl.querySelector<HTMLElement>(
+			`.${TASK_ROW_CLASS}`,
+		);
+		rowEl?.focus();
+	}
+
+	getTaskSearchSummary(): { matched: number; total: number } | null {
+		if (!this.taskSearchQuery.trim()) {
+			return null;
+		}
+
+		const timeFilter = this.getTaskListTimeFilter();
+		const total = filterTasksByTime(
+			this.getTasksForActiveTab(),
+			timeFilter,
+		).length;
+		return {
+			matched: this.getVisibleTasks().length,
+			total,
+		};
+	}
+
+	getTaskSearchHit(taskPath: string): TaskSearchHit | null {
+		return (
+			this.taskSearchSession.resolve(this.tasks, this.taskSearchQuery)?.get(
+				taskPath,
+			) ?? null
+		);
+	}
+
+	private applyTaskSearch(tasks: TaskFileEntry[]): TaskFileEntry[] {
+		return orderTasksBySearchHits(
+			tasks,
+			this.taskSearchSession.resolve(this.tasks, this.taskSearchQuery),
+		);
+	}
+
+	private updateTaskTabCounts(): void {
+		const counts = this.getTaskFilterCounts();
+		const tabButtonEls =
+			this.contentEl.querySelectorAll<HTMLElement>(TAB_BUTTON_SELECTOR);
+		for (const tabButtonEl of Array.from(tabButtonEls)) {
+			const tabKey = tabButtonEl.dataset.tabKey;
+			if (!isTaskFilterTab(tabKey)) {
+				continue;
+			}
+
+			const countEl = tabButtonEl.querySelector<HTMLElement>(
+				TAB_COUNT_SELECTOR,
+			);
+			countEl?.setText(`${counts[tabKey]}`);
+		}
+
+		const switcherEl = this.contentEl.querySelector<HTMLElement>(
+			TASK_FILTER_SWITCHER_SELECTOR,
+		);
+		if (switcherEl) {
+			const label = this.getTaskFilterSwitcherLabel();
+			switcherEl.setText(label);
+			switcherEl.ariaLabel = label;
+			switcherEl.title = label;
+		}
+	}
+
+	private updateTaskListDescriptionText(): void {
+		const descEl = this.contentEl.querySelector<HTMLElement>(
+			TASK_LIST_DESC_SELECTOR,
+		);
+		descEl?.setText(this.getTaskListDescription());
+	}
+
+	private getTaskFilterSwitcherLabel(): string {
+		const counts = this.getTaskFilterCounts();
+		const activeTab = getTaskFilterTabs().find(
+			(tab) => tab.key === this.activeTaskFilterTab,
+		);
+		return t('view.taskFilterSwitcher.current', [
+			activeTab?.label ?? t('view.filter.current'),
+			String(activeTab ? counts[activeTab.key] : 0),
+		]);
 	}
 
 	renderTaskRows(
@@ -938,6 +1115,7 @@ export class IOTOTasksCenterView extends ItemView {
 					cls: 'ioto-tasks-center__tab',
 				});
 				tabButtonEl.type = 'button';
+				tabButtonEl.dataset.tabKey = tab.key;
 				tabButtonEl.createSpan({
 					cls: 'ioto-tasks-center__tab-label',
 					text: tab.label,
@@ -978,15 +1156,7 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	private renderCompactTaskFilterSwitcher(tabBarEl: HTMLElement): void {
-		const taskFilterTabs = getTaskFilterTabs();
-		const counts = this.getTaskFilterCounts();
-		const activeTab = taskFilterTabs.find(
-			(tab) => tab.key === this.activeTaskFilterTab,
-		);
-		const buttonLabel = t('view.taskFilterSwitcher.current', [
-			activeTab?.label ?? t('view.filter.current'),
-			String(activeTab ? counts[activeTab.key] : 0),
-		]);
+		const buttonLabel = this.getTaskFilterSwitcherLabel();
 		const switcherEl = tabBarEl.createEl('button', {
 			cls: 'ioto-tasks-center__task-filter-switcher',
 			text: buttonLabel,
@@ -1036,13 +1206,15 @@ export class IOTOTasksCenterView extends ItemView {
 
 	getVisibleTasks(): TaskFileEntry[] {
 		const byTab = this.getTasksForActiveTab();
-		const bySearch = filterTasksBySearchQuery(byTab, this.taskSearchQuery);
+		const bySearch = this.applyTaskSearch(byTab);
 		return filterTasksByTime(bySearch, this.getTaskListTimeFilter());
 	}
 
 	getTaskPresentationSections(tasks: TaskFileEntry[]) {
 		return buildTaskPresentationSections(tasks, {
-			sortMode: this.getTaskListSortMode(),
+			sortMode: this.taskSearchQuery.trim()
+				? 'relevance'
+				: this.getTaskListSortMode(),
 			groupMode: this.getTaskListGroupMode(),
 		});
 	}
@@ -1173,26 +1345,39 @@ export class IOTOTasksCenterView extends ItemView {
 			timeFilter !== 'none'
 				? t('view.description.timeFilter', [timeFilterOpts[timeFilter]])
 				: '';
-		return t('view.description.currentProject', [
+		const searchSummary = this.getTaskSearchSummary();
+		const searchDescription = searchSummary
+			? t('view.description.search', [
+					String(searchSummary.matched),
+					String(searchSummary.total),
+				])
+			: '';
+		return `${t('view.description.currentProject', [
 			this.selectedProject,
 			String(this.tasks.length),
 			sortDescription,
 			groupDescription,
 			priorityDescription,
 			timeFilterDescription,
-		]);
+		])}${searchDescription}`;
 	}
 
 	private getTaskFilterCounts(): Record<TaskFilterTab, number> {
-		const bySearch = filterTasksBySearchQuery(
-			this.tasks,
+		const timeFilter = this.getTaskListTimeFilter();
+		const key = [
+			buildTaskSearchStamp(this.tasks),
 			this.taskSearchQuery,
+			timeFilter,
+		].join('|');
+		if (this.taskFilterCountsCache?.key === key) {
+			return this.taskFilterCountsCache.counts;
+		}
+
+		const counts = getTaskFilterCounts(
+			filterTasksByTime(this.applyTaskSearch(this.tasks), timeFilter),
 		);
-		const filteredTasks = filterTasksByTime(
-			bySearch,
-			this.getTaskListTimeFilter(),
-		);
-		return getTaskFilterCounts(filteredTasks);
+		this.taskFilterCountsCache = { key, counts };
+		return counts;
 	}
 
 	private matchesTaskFilterTab(

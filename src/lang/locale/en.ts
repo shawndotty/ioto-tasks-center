@@ -98,6 +98,7 @@ const en = {
 	'view.search.clearShort': 'Clear search',
 	'view.search.button': 'Search',
 	'view.search.run': 'Run task search',
+	'view.search.resultCount': '{0} / {1} matched',
 	'view.taskCoreMenu.set': 'Mark as core task',
 	'view.taskCoreMenu.clear': 'Clear core task mark',
 	'view.taskCoreBadge.label': 'Core task',
@@ -120,13 +121,14 @@ const en = {
 	'view.description.groupPrefix': ', {0}',
 	'view.description.priorityVisible': ', show priority',
 	'view.description.timeFilter': ', time filter: {0}',
+	'view.description.search': ', {0} / {1} matched',
 	'view.filter.current': 'Current filter',
 	'view.filter.emptyTitle': 'No tasks in the current filter',
 	'view.filter.emptyDesc':
 		'There are no visible task files under the {0} tab.',
 	'view.search.emptyTitle': 'No matching tasks',
 	'view.search.emptyDesc':
-		'No task files in the current project match "{0}" in their file name.',
+		'No task files in the current project match "{0}" in their file name or content.',
 	'view.notice.draggedTaskMissing': 'The dragged task file was not found.',
 	'view.notice.updateUpTaskFailed': 'Failed to update UpTask.',
 	'view.notice.removeUpTaskFailed': 'Failed to remove UpTask.',
@@ -208,6 +210,7 @@ const en = {
 	'task.sort.nameDesc': 'File name (Z to A)',
 	'task.sort.priorityDesc': 'Priority (high to low)',
 	'task.sort.priorityAsc': 'Priority (low to high)',
+	'task.sort.relevance': 'Search relevance',
 	'task.group.none': 'No grouping',
 	'task.group.status': 'Group by status',
 	'task.group.priority': 'Group by priority',
@@ -306,6 +309,11 @@ const en = {
 		'Choose multicolor or monochrome backgrounds for subtask and task outlink badges.',
 	'settings.taskLinkBadges.backgroundMode.multicolor': 'Multicolor',
 	'settings.taskLinkBadges.backgroundMode.monochrome': 'Monochrome',
+	'settings.taskSearchEntryMode.name': 'Task search entry',
+	'settings.taskSearchEntryMode.desc':
+		'Show a persistent inline search field above the task list (filters as you type), or use the legacy search dialog.',
+	'settings.taskSearchEntryMode.inline': 'Inline field (recommended)',
+	'settings.taskSearchEntryMode.modal': 'Search dialog',
 	'settings.heading.subtasks': 'Subtasks',
 	'settings.subtasks.showCount.name': 'Show subtask count',
 	'settings.subtasks.showCount.desc':
@@ -449,6 +457,8 @@ const en = {
 	'notice.batchCreate.parentAssignFailed':
 		'Failed to link subtask "{0}" to its parent.',
 	'command.toggleBatchEditMode': 'Toggle batch edit mode',
+	'command.focusTaskSearch': 'Focus task search field',
+	'command.clearTaskSearch': 'Clear task search',
 	'command.batchSelectAll': 'Select all visible tasks',
 	'command.batchDeleteTasks': 'Batch delete selected tasks',
 	'command.batchSetPriority': 'Batch set task priority',

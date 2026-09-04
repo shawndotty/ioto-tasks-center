@@ -22,6 +22,7 @@ import {
 	TaskListGroupMode,
 	TaskListSortMode,
 	TaskListTimeFilter,
+	TaskSearchEntryMode,
 	normalizeConfiguredInputRootPath,
 	normalizeConfiguredOutcomeRootPath,
 	normalizeConfiguredOutputRootPath,
@@ -31,6 +32,7 @@ import {
 	normalizeProjectCategoryOptions,
 	normalizeProjectListGroupMode,
 	normalizeProjectListSortMode,
+	normalizeTaskSearchEntryMode,
 } from './settings';
 import {
 	areBatchTemplateConfigsEqual,
@@ -100,6 +102,7 @@ export default class IOTOTasksCenter extends Plugin {
 					(projectName, hidden) =>
 						this.setProjectHidden(projectName, hidden),
 					() => this.settings.batchTemplateConfig,
+					() => this.settings.taskSearchEntryMode,
 				),
 		);
 		this.registerView(
@@ -201,6 +204,30 @@ export default class IOTOTasksCenter extends Plugin {
 				void this.activateIOTOTasksCenterView().then(() => {
 					this.getTasksCenterView()?.toggleBatchEditMode();
 				});
+			},
+		});
+
+		this.addCommand({
+			id: 'itc-focus-task-search',
+			name: t('command.focusTaskSearch'),
+			callback: () => {
+				const view = this.getTasksCenterView();
+				if (view) {
+					view.focusTaskSearch();
+					return;
+				}
+
+				void this.activateIOTOTasksCenterView().then(() => {
+					this.getTasksCenterView()?.focusTaskSearch();
+				});
+			},
+		});
+
+		this.addCommand({
+			id: 'itc-clear-task-search',
+			name: t('command.clearTaskSearch'),
+			callback: () => {
+				this.getTasksCenterView()?.clearTaskSearch();
 			},
 		});
 
@@ -354,6 +381,9 @@ export default class IOTOTasksCenter extends Plugin {
 		this.settings.batchTemplateConfig = normalizeBatchTemplateConfig(
 			loadedData?.batchTemplateConfig,
 		);
+		this.settings.taskSearchEntryMode = normalizeTaskSearchEntryMode(
+			loadedData?.taskSearchEntryMode,
+		);
 	}
 
 	async saveSettings() {
@@ -430,6 +460,18 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.showTaskOutlinkCounts = show;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateTaskSearchEntryMode(
+		mode: TaskSearchEntryMode,
+	): Promise<void> {
+		if (this.settings.taskSearchEntryMode === mode) {
+			return;
+		}
+
+		this.settings.taskSearchEntryMode = mode;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}

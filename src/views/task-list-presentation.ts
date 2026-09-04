@@ -114,6 +114,10 @@ function compareTasks(
 			return (
 				comparePriority(left, right, 'asc') || compareName(left, right)
 			);
+		case 'relevance':
+			// 相关性排序由搜索阶段 (orderTasksBySearchHits) 预先完成，
+			// 此处保持传入顺序，不再二次排序。
+			return 0;
 	}
 }
 

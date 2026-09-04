@@ -61,7 +61,7 @@ test('特殊字符按普通字符匹配', () => {
 	);
 });
 
-test('搜索结果只过滤不改变原有顺序', () => {
+test('搜索结果按相关度排序，标题前缀命中排在中间命中之前', () => {
 	const tasks = [
 		createTask('发布方案'),
 		createTask('项目A-发布复盘'),
@@ -70,7 +70,19 @@ test('搜索结果只过滤不改变原有顺序', () => {
 
 	assert.deepEqual(
 		filterTasksBySearchQuery(tasks, '发布').map((task) => task.title),
-		['发布方案', '项目A-发布复盘', '发布检查清单'],
+		['发布方案', '发布检查清单', '项目A-发布复盘'],
+	);
+});
+
+test('搜索结果在相关度相同时保持原有顺序', () => {
+	const tasks = [
+		createTask('发布检查清单'),
+		createTask('发布方案'),
+	];
+
+	assert.deepEqual(
+		filterTasksBySearchQuery(tasks, '发布').map((task) => task.title),
+		['发布检查清单', '发布方案'],
 	);
 });
 

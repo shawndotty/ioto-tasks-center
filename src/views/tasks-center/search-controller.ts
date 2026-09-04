@@ -79,7 +79,8 @@ function handleTaskSearchModalClosed(view: IOTOTasksCenterView): void {
 }
 
 export function applyTaskSearchQuery(view: IOTOTasksCenterView): void {
-	view.taskSearchQuery = view.taskSearchInputValue;
+	view.taskSearchQuery = view.taskSearchInputValue.trim();
+	view.taskListScrollTop = 0;
 	closeTaskSearchModal(view);
 }
 
@@ -90,5 +91,14 @@ export function clearTaskSearch(view: IOTOTasksCenterView): void {
 
 	view.taskSearchInputValue = '';
 	view.taskSearchQuery = '';
+	view.taskListScrollTop = 0;
+
+	const inputEl = view.taskSearchInputEl;
+	if (inputEl?.isConnected) {
+		inputEl.value = '';
+		view.renderTaskListIncremental();
+		return;
+	}
+
 	view.render();
 }

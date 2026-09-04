@@ -44,8 +44,13 @@ export type TaskListSortMode =
 	| 'name-asc'
 	| 'name-desc'
 	| 'priority-desc'
-	| 'priority-asc';
+	| 'priority-asc'
+	/** 仅在搜索时生效：按命中相关度排列，不作为可持久化的排序设置。 */
+	| 'relevance';
 export type TaskListGroupMode = 'none' | 'status' | 'priority';
+
+/** 任务搜索的入口形态：常驻内联输入框（默认）或旧的弹窗。 */
+export type TaskSearchEntryMode = 'inline' | 'modal';
 
 export type TaskListTimeFilter =
 	| 'none'
@@ -84,6 +89,7 @@ export interface IOTOTasksCenterSettings {
 	taskTemplateConfigs: TaskTemplateConfigMap;
 	dateTaskDateFormat: string;
 	batchTemplateConfig: BatchTemplateConfig;
+	taskSearchEntryMode: TaskSearchEntryMode;
 }
 
 export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
@@ -109,6 +115,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	taskTemplateConfigs: createDefaultTaskTemplateConfigMap(),
 	dateTaskDateFormat: DEFAULT_DATE_TASK_DATE_FORMAT,
 	batchTemplateConfig: { ...DEFAULT_BATCH_TEMPLATE_CONFIG },
+	taskSearchEntryMode: 'inline',
 };
 
 export { normalizeEnabledTaskCreationTypes } from './tasks-center/enabled-task-creation-types';
@@ -145,7 +152,30 @@ export function getTaskListSortModeOptions(): Record<TaskListSortMode, string> {
 		'name-desc': t('task.sort.nameDesc'),
 		'priority-desc': t('task.sort.priorityDesc'),
 		'priority-asc': t('task.sort.priorityAsc'),
+		relevance: t('task.sort.relevance'),
 	};
+}
+
+export function getTaskSearchEntryModeOptions(): Record<
+	TaskSearchEntryMode,
+	string
+> {
+	return {
+		inline: t('settings.taskSearchEntryMode.inline'),
+		modal: t('settings.taskSearchEntryMode.modal'),
+	};
+}
+
+export function isTaskSearchEntryMode(
+	value: string,
+): value is TaskSearchEntryMode {
+	return value === 'inline' || value === 'modal';
+}
+
+export function normalizeTaskSearchEntryMode(
+	value: unknown,
+): TaskSearchEntryMode {
+	return value === 'modal' ? 'modal' : 'inline';
 }
 
 export function getTaskListGroupModeOptions(): Record<
@@ -268,6 +298,7 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 		const projectSortModeOptions = getProjectListSortModeOptions();
 		const taskLinkBadgeBackgroundModeOptions =
 			getTaskLinkBadgeBackgroundModeOptions();
+		const taskSearchEntryModeOptions = getTaskSearchEntryModeOptions();
 
 		containerEl.empty();
 
@@ -376,6 +407,27 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 							await this.plugin.updateDateTaskDateFormat(value);
 						}),
 				);
+
+			new Setting(containerEl)
+				.setName(t('settings.taskSearchEntryMode.name'))
+				.setDesc(t('settings.taskSearchEntryMode.desc'))
+				.addDropdown((dropdown) => {
+					for (const [value, label] of Object.entries(
+						taskSearchEntryModeOptions,
+					)) {
+						dropdown.addOption(value, label);
+					}
+
+					dropdown
+						.setValue(this.plugin.settings.taskSearchEntryMode)
+						.onChange(async (value) => {
+							if (!isTaskSearchEntryMode(value)) {
+								return;
+							}
+
+							await this.plugin.updateTaskSearchEntryMode(value);
+						});
+				});
 
 			new Setting(containerEl)
 				.setName(t('settings.heading.taskOutlinks'))

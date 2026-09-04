@@ -1,8 +1,15 @@
 import type { TaskFileEntry } from '../tasks-center/types';
+import {
+	buildTaskSearchDoc,
+	buildTaskSearchDocs,
+	matchesTaskSearchDoc,
+	normalizeTaskSearchQuery,
+	orderTasksBySearchHits,
+	searchTaskIndex,
+} from './tasks-center/task-search-index';
 
-export function normalizeTaskSearchQuery(query: string): string {
-	return query.trim().toLocaleLowerCase();
-}
+export { normalizeTaskSearchQuery };
+export type { TaskSearchHit } from './tasks-center/task-search-index';
 
 export function matchesTaskSearchQuery(
 	task: Pick<TaskFileEntry, 'title' | 'basename' | 'content'>,
@@ -13,8 +20,13 @@ export function matchesTaskSearchQuery(
 		return true;
 	}
 
-	return [task.title, task.basename, task.content].some((value) =>
-		value.toLocaleLowerCase().includes(normalizedQuery),
+	return matchesTaskSearchDoc(
+		buildTaskSearchDoc({
+			path: '',
+			title: task.title,
+			content: task.content,
+		}),
+		normalizedQuery,
 	);
 }
 
@@ -27,7 +39,6 @@ export function filterTasksBySearchQuery(
 		return tasks;
 	}
 
-	return tasks.filter((task) =>
-		matchesTaskSearchQuery(task, normalizedQuery),
-	);
+	const hits = searchTaskIndex(buildTaskSearchDocs(tasks), normalizedQuery);
+	return orderTasksBySearchHits(tasks, hits);
 }

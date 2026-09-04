@@ -13,12 +13,12 @@ import {
 	batchSetStarred,
 	confirmAndBatchDeleteTasks,
 } from './batch-edit-operations';
+import { renderTaskSearchRow } from './task-search-row';
 
 export function renderTasksPane(
 	view: IOTOTasksCenterView,
 	container: HTMLElement,
 ): void {
-	const tasksRootPath = view.getTasksRootPath();
 	const headerEl = container.createDiv({
 		cls: 'ioto-tasks-center__section-header',
 	});
@@ -29,7 +29,8 @@ export function renderTasksPane(
 	const actionsEl = headerEl.createDiv({
 		cls: 'ioto-tasks-center__section-actions',
 	});
-	const shouldShowSearchIcon = view.shouldShowTaskSearchIcon();
+	const shouldShowSearchIcon =
+		!view.isTaskSearchInline() && view.shouldShowTaskSearchIcon();
 	if (shouldShowSearchIcon) {
 		const keyword = view.taskSearchQuery.trim();
 		if (!view.isTaskSearchModalOpen && keyword) {
@@ -148,14 +149,24 @@ export function renderTasksPane(
 		});
 	}
 
-	const currentProjectText = view.getTaskListDescription();
 	container.createDiv({
-		cls: 'ioto-tasks-center__section-desc',
-		text: currentProjectText,
+		cls: 'ioto-tasks-center__section-desc ioto-tasks-center__task-list-desc',
+		text: view.getTaskListDescription(),
 	});
+
+	if (view.isTaskSearchInline()) {
+		renderTaskSearchRow(view, container);
+	}
 
 	view.renderTaskTabs(container);
 
+	renderTaskListBody(view, createTaskListElement(view, container));
+}
+
+export function createTaskListElement(
+	view: IOTOTasksCenterView,
+	container: HTMLElement,
+): HTMLElement {
 	const listEl = container.createDiv({
 		cls: 'ioto-tasks-center__task-list',
 	});
@@ -170,6 +181,19 @@ export function renderTasksPane(
 	listEl.addEventListener('scroll', () => {
 		view.taskListScrollTop = listEl.scrollTop;
 	});
+	return listEl;
+}
+
+/**
+ * 只重建列表内部，供全量 `render()` 与搜索时的增量重绘共用，避免两份逻辑分叉。
+ * 搜索行 / 分组头所在的 header 不参与重绘，从而保住输入框焦点与输入法 composition。
+ */
+export function renderTaskListBody(
+	view: IOTOTasksCenterView,
+	listEl: HTMLElement,
+): void {
+	const tasksRootPath = view.getTasksRootPath();
+	listEl.empty();
 	listEl.toggleClass(
 		'has-remove-up-task-drop-zone',
 		Boolean(view.draggingTaskPath),
