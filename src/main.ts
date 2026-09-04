@@ -79,6 +79,7 @@ export default class IOTOTasksCenter extends Plugin {
 					() => this.settings.taskListSortMode,
 					() => this.settings.taskListGroupMode,
 					() => this.settings.showTaskPriority,
+					() => this.settings.colorTaskTitleByPriority,
 					() => this.settings.inputRootPath,
 					() => this.settings.outputRootPath,
 					() => this.settings.outcomeRootPath,
@@ -440,6 +441,16 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.showTaskPriority = show;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateColorTaskTitleByPriority(color: boolean): Promise<void> {
+		if (this.settings.colorTaskTitleByPriority === color) {
+			return;
+		}
+
+		this.settings.colorTaskTitleByPriority = color;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}

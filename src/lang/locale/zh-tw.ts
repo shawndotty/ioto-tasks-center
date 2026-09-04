@@ -294,6 +294,10 @@ const zhTW = {
 		'設定子任務和任務出鏈 Badge 使用多彩配色或單色背景。',
 	'settings.taskLinkBadges.backgroundMode.multicolor': '多彩配色',
 	'settings.taskLinkBadges.backgroundMode.monochrome': '單色背景',
+	'settings.heading.priority': '優先級',
+	'settings.priority.colorTaskTitle.name': '任務標題使用優先級顏色',
+	'settings.priority.colorTaskTitle.desc':
+		'讓設定了 Priority 的任務標題使用對應優先級 Badge 的顏色，不顯示優先級 Badge 時也能看出任務優先級。',
 	'settings.heading.subtasks': '子任務',
 	'settings.subtasks.showCount.name': '顯示子任務數量',
 	'settings.subtasks.showCount.desc':

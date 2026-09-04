@@ -314,6 +314,10 @@ const en = {
 		'Choose multicolor or monochrome backgrounds for subtask and task outlink badges.',
 	'settings.taskLinkBadges.backgroundMode.multicolor': 'Multicolor',
 	'settings.taskLinkBadges.backgroundMode.monochrome': 'Monochrome',
+	'settings.heading.priority': 'Priority',
+	'settings.priority.colorTaskTitle.name': 'Color task title by priority',
+	'settings.priority.colorTaskTitle.desc':
+		'Color the title of tasks that have a Priority with the matching priority badge color, so priority stays visible even when the badge is hidden.',
 	'settings.taskSearchEntryMode.name': 'Task search entry',
 	'settings.taskSearchEntryMode.desc':
 		'Show a persistent inline search field above the task list (filters as you type), or use the legacy search dialog.',

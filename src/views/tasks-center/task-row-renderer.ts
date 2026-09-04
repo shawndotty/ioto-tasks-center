@@ -99,10 +99,17 @@ export function renderTaskRows(
 				view.toggleSubtasksCollapsed(task.path);
 			});
 		}
-		titleEl.createSpan({
+		const titleTextEl = titleEl.createSpan({
 			cls: 'ioto-tasks-center__task-title-text',
 			text: task.title,
 		});
+		if (
+			view.getColorTaskTitleByPriority() &&
+			typeof task.priority === 'number'
+		) {
+			titleTextEl.addClass(getTaskPriorityClassName(task.priority));
+			titleTextEl.addClass('is-priority-colored');
+		}
 		if (!view.isCompactLayout && view.getShowTaskSubtaskCount()) {
 			const childTasks =
 				directChildTasksByParentPath?.get(task.path) ?? [];

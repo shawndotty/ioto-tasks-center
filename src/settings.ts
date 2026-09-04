@@ -77,6 +77,7 @@ export interface IOTOTasksCenterSettings {
 	taskListGroupMode: TaskListGroupMode;
 	taskListTimeFilter: TaskListTimeFilter;
 	showTaskPriority: boolean;
+	colorTaskTitleByPriority: boolean;
 	showTaskSubtaskCount: boolean;
 	taskLinkBadgeBackgroundMode: TaskLinkBadgeBackgroundMode;
 	showTaskOutlinkCounts: boolean;
@@ -103,6 +104,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	taskListGroupMode: 'none',
 	taskListTimeFilter: 'none',
 	showTaskPriority: false,
+	colorTaskTitleByPriority: true,
 	showTaskSubtaskCount: true,
 	taskLinkBadgeBackgroundMode: 'multicolor',
 	showTaskOutlinkCounts: false,
@@ -515,6 +517,25 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 							);
 						});
 				});
+
+			new Setting(containerEl)
+				.setName(t('settings.heading.priority'))
+				.setHeading();
+
+			new Setting(containerEl)
+				.setName(t('settings.priority.colorTaskTitle.name'))
+				.setDesc(t('settings.priority.colorTaskTitle.desc'))
+				.addToggle((toggle) =>
+					toggle
+						.setValue(
+							this.plugin.settings.colorTaskTitleByPriority,
+						)
+						.onChange(async (value) => {
+							await this.plugin.updateColorTaskTitleByPriority(
+								value,
+							);
+						}),
+				);
 
 			new Setting(containerEl)
 				.setName(t('settings.heading.subtasks'))

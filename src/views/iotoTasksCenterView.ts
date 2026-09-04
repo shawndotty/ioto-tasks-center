@@ -247,6 +247,7 @@ export class IOTOTasksCenterView extends ItemView {
 		filter: TaskListTimeFilter,
 	) => Promise<void>;
 	readonly getShowTaskPriority: () => boolean;
+	readonly getColorTaskTitleByPriority: () => boolean;
 	readonly getInputRootPath: () => string;
 	readonly getOutputRootPath: () => string;
 	readonly getOutcomeRootPath: () => string;
@@ -295,6 +296,7 @@ export class IOTOTasksCenterView extends ItemView {
 		getTaskListSortMode: () => TaskListSortMode,
 		getTaskListGroupMode: () => TaskListGroupMode,
 		getShowTaskPriority: () => boolean,
+		getColorTaskTitleByPriority: () => boolean,
 		getInputRootPath: () => string,
 		getOutputRootPath: () => string,
 		getOutcomeRootPath: () => string,
@@ -336,6 +338,7 @@ export class IOTOTasksCenterView extends ItemView {
 		this.getTaskListSortMode = getTaskListSortMode;
 		this.getTaskListGroupMode = getTaskListGroupMode;
 		this.getShowTaskPriority = getShowTaskPriority;
+		this.getColorTaskTitleByPriority = getColorTaskTitleByPriority;
 		this.getInputRootPath = getInputRootPath;
 		this.getOutputRootPath = getOutputRootPath;
 		this.getOutcomeRootPath = getOutcomeRootPath;

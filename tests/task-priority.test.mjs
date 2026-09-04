@@ -14,6 +14,9 @@ const {
 	setTaskFilePriority,
 	TASK_PRIORITY_VALUES,
 } = await jiti.import('../src/tasks-center/task-priority.ts');
+const { getTaskPriorityClassName } = await jiti.import(
+	'../src/views/tasks-center/helpers.ts',
+);
 
 test('Priority 整数值可正常解析', () => {
 	assert.equal(parsePriorityFrontmatterValue(0), 0);
@@ -110,6 +113,29 @@ test('取消 Priority 时会移除该属性且保留其他 frontmatter', async (
 	assert.equal(
 		app.state.content,
 		'---\nProject:\n  - "项目A"\nUpTask:\n  - "父任务"\n---\n# 任务\n',
+	);
+});
+
+test('优先级等级类名与 CSS 规则一一对应', () => {
+	assert.equal(
+		getTaskPriorityClassName(0),
+		'ioto-tasks-center__task-priority--p0',
+	);
+	assert.equal(
+		getTaskPriorityClassName(1),
+		'ioto-tasks-center__task-priority--p1',
+	);
+	assert.equal(
+		getTaskPriorityClassName(2),
+		'ioto-tasks-center__task-priority--p2',
+	);
+	assert.equal(
+		getTaskPriorityClassName(3),
+		'ioto-tasks-center__task-priority--p3-plus',
+	);
+	assert.equal(
+		getTaskPriorityClassName(5),
+		'ioto-tasks-center__task-priority--p3-plus',
 	);
 });
 

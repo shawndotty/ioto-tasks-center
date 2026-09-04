@@ -294,6 +294,10 @@ const zhCN = {
 		'设置子任务和任务出链 Badge 使用多彩配色或单色背景。',
 	'settings.taskLinkBadges.backgroundMode.multicolor': '多彩配色',
 	'settings.taskLinkBadges.backgroundMode.monochrome': '单色背景',
+	'settings.heading.priority': '优先级',
+	'settings.priority.colorTaskTitle.name': '任务标题使用优先级颜色',
+	'settings.priority.colorTaskTitle.desc':
+		'让设置了 Priority 的任务标题使用对应优先级 Badge 的颜色，不显示优先级 Badge 时也能看出任务优先级。',
 	'settings.heading.subtasks': '子任务',
 	'settings.subtasks.showCount.name': '显示子任务数量',
 	'settings.subtasks.showCount.desc':
