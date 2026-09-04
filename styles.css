@@ -28,6 +28,12 @@
 
 /* 移动端键盘弹出时，避免可视视口收缩导致任务列表面板边框被压扁。
    使用 100lvh 以键盘收起时的大视口为最小高度基准，保持面板尺寸稳定。 */
+
+
+
+
+
+
 .is-phone .ioto-tasks-center-view {
 	min-height: 100vh;
 	min-height: 100lvh;
@@ -1499,6 +1505,12 @@ button:not(.clickable-icon).ioto-tasks-center__status-checklist-popover-item {
 	height: 100%;
 	min-height: 0;
 }
+
+.is-phone .ioto-project-center-view {
+	min-height: 100lvh;
+	min-height: 100vh;
+}
+
 
 .ioto-project-center__header {
 	display: flex;
