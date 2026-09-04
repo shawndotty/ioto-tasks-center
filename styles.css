@@ -552,6 +552,37 @@ button:not(.clickable-icon).ioto-tasks-center__tab-settings-button {
 	display: none;
 }
 
+.ioto-tasks-center__task-search-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 12px;
+}
+
+.ioto-tasks-center__task-search-field {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.ioto-tasks-center__task-search-count {
+	flex: 0 0 auto;
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: var(--background-secondary);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	line-height: 1.6;
+	white-space: nowrap;
+}
+
+.ioto-tasks-center__task-search-count.is-hidden {
+	display: none;
+}
+
+.is-phone .ioto-tasks-center__task-search-row {
+	margin-bottom: 10px;
+}
+
 .ioto-tasks-center__task-search-button {
 	flex: 0 0 auto;
 	padding: 8px 14px;
