@@ -28,9 +28,10 @@ interface TouchGestureState {
  * 移动端 / 紧凑布局下的统一手势引擎（Pointer Events）。
  *
  * 判定规则（见优化方案）：
- * - 按住不动超过阈值 → 弹出任务属性菜单（替代桌面右键）。
- * - 按住并位移超过阈值 → 进入拖拽（重设父任务），并取消菜单定时器。
- * - 没到菜单、几乎没动 → 视为普通点击（沿用既有 click 打开任务文件）。
+ * - 任务属性菜单由行尾"⋯"按钮负责，不再通过长按弹出，避免与拖拽设父任务冲突。
+ * - 按住不动超过阈值：仅作为"预留拖拽"手势，吞掉随后的 click，不再弹菜单。
+ * - 按住并位移超过阈值 → 进入拖拽（重设父任务），并取消定时器。
+ * - 没到阈值、几乎没动 → 视为普通点击（沿用既有 click 打开任务文件）。
  * - 列表原生滚动 / pointercancel → 取消手势、清理拖拽态。
  *
  * 该函数仅在 `view.isMobileTaskListLayout()` 为 true 时由 `task-row-renderer` 调用，
@@ -149,15 +150,9 @@ export function attachTouchGesture(
 		state.longPressTimer = window.setTimeout(() => {
 			state.longPressTimer = null;
 			state.longPressFired = true;
+			// 行尾已有"⋯"按钮负责属性菜单，长按不再弹菜单，仅吞掉随后的
+			// click，把"按住不动"保留为拖拽手势的一部分，避免与 drag 冲突。
 			rowEl.dataset.iotoSuppressClick = '1';
-			// 长按静止 → 弹出属性菜单（用按下时的坐标构造合成事件）。
-			const syntheticEvent = new MouseEvent('contextmenu', {
-				clientX: state.startX,
-				clientY: state.startY,
-				bubbles: false,
-				cancelable: true,
-			});
-			view.showTaskPriorityMenu(syntheticEvent, task);
 		}, TASK_ROW_LONG_PRESS_MS);
 	});
 
