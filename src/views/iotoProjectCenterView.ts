@@ -73,6 +73,7 @@ export class IOTOProjectCenterView extends ItemView {
 	private resizeObserver: ResizeObserver | null = null;
 	private headerEl: HTMLElement | null = null;
 	private contentContainerEl: HTMLElement | null = null;
+	private createProjectButtonEl: HTMLButtonElement | null = null;
 	private lastHeaderSearchVisible: boolean | null = null;
 	private lastHeaderSearchHasQuery = false;
 
@@ -120,6 +121,7 @@ export class IOTOProjectCenterView extends ItemView {
 		this.contentEl.empty();
 		this.headerEl = null;
 		this.contentContainerEl = null;
+		this.createProjectButtonEl = null;
 	}
 
 	private startResizeObserver(): void {
@@ -272,6 +274,10 @@ export class IOTOProjectCenterView extends ItemView {
 		root.toggleClass('is-compact-layout', this.isCompactLayout);
 		root.toggleClass('is-narrow-layout', this.isNarrowLayout);
 
+		if (this.createProjectButtonEl) {
+			this.createProjectButtonEl.disabled = !this.canCreateProject();
+		}
+
 		this.renderProjectList(this.contentContainerEl!);
 		restoreProjectCenterScrollPosition(
 			this.contentContainerEl!,
@@ -398,6 +404,7 @@ export class IOTOProjectCenterView extends ItemView {
 		createProjectButtonEl.addEventListener('click', () => {
 			void this.handleCreateProject();
 		});
+		this.createProjectButtonEl = createProjectButtonEl;
 	}
 
 	private renderProjectList(container: HTMLElement): void {
