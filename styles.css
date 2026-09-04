@@ -26,6 +26,13 @@
 	min-height: 0;
 }
 
+/* 移动端键盘弹出时，避免可视视口收缩导致任务列表面板边框被压扁。
+   使用 100lvh 以键盘收起时的大视口为最小高度基准，保持面板尺寸稳定。 */
+.is-phone .ioto-tasks-center-view {
+	min-height: 100vh;
+	min-height: 100lvh;
+}
+
 .ioto-tasks-center__shell {
 	display: flex;
 	flex: 1 1 auto;
@@ -60,6 +67,10 @@
 
 .ioto-tasks-center__pane--tasks {
 	min-width: 0;
+}
+
+.is-phone .ioto-tasks-center__pane--tasks {
+	min-height: 220px;
 }
 
 .ioto-tasks-center__section-title {
@@ -447,6 +458,13 @@ button:not(.clickable-icon).ioto-tasks-center__tab-settings-button {
 	border-radius: 12px;
 	background: var(--background-primary);
 	box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+}
+
+/* 移动端键盘弹出时 25vh 会变小，导致搜索弹窗上移、边框显得被压缩。
+   改用固定顶部偏移，保持弹窗位置稳定。 */
+.is-phone .ioto-tasks-center__task-search-modal {
+	width: calc(100% - 32px);
+	margin-top: max(12px, env(safe-area-inset-top, 0px));
 }
 
 .ioto-tasks-center__task-search-modal .modal-header,
