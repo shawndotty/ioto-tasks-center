@@ -91,10 +91,7 @@
 	justify-content: space-between;
 	gap: 12px;
 	flex-wrap: wrap;
-}
-
-.ioto-tasks-center__section-header .ioto-tasks-center__section-title {
-	margin-bottom: 0;
+    margin-bottom: 6px;
 }
 
 .ioto-tasks-center__section-actions {
@@ -439,8 +436,7 @@ button:not(.clickable-icon).ioto-tasks-center__tab-settings-button {
 .ioto-tasks-center__section-desc {
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
-	margin-bottom: 16px;
-	margin-top: 8px;
+	margin-bottom: 6px;
 }
 
 .ioto-tasks-center__task-search-modal-container,
