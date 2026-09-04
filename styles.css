@@ -236,17 +236,24 @@
 	cursor: not-allowed;
 }
 
-.ioto-tasks-center__icon-button {
+/* 图标按钮统一视觉：与列表的过滤/排序控件（__task-filter-switcher + __tab-settings-button）
+   同一套语言 —— 无边框圆形、透明底、hover 才出背景。
+   覆盖：搜索、眼睛折叠开关、添加任务（图标态）、列表排序设置。 */
+.ioto-tasks-center__icon-button,
+.ioto-tasks-center__add-task-button--icon,
+.ioto-tasks-center__tab-settings-button {
 	appearance: none;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 28px;
-	height: 28px;
+	box-sizing: border-box;
+	width: 34px;
+	height: 34px;
 	padding: 0;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
+	border: none;
+	border-radius: 999px;
 	background: transparent;
+	box-shadow: none;
 	color: var(--text-muted);
 	font-size: var(--font-ui-medium);
 	font-weight: 600;
@@ -254,32 +261,39 @@
 	cursor: pointer;
 	transition:
 		background-color 120ms ease,
-		border-color 120ms ease,
 		color 120ms ease;
 }
 
-.ioto-tasks-center__icon-button:hover:not(:disabled) {
+.ioto-tasks-center__icon-button:hover:not(:disabled),
+.ioto-tasks-center__add-task-button--icon:hover:not(:disabled),
+.ioto-tasks-center__tab-settings-button:hover {
 	background: var(--background-modifier-hover);
-	border-color: var(--interactive-accent);
 	color: var(--text-normal);
 }
 
-.ioto-tasks-center__icon-button:disabled {
+.ioto-tasks-center__icon-button:disabled,
+.ioto-tasks-center__add-task-button--icon:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
 }
 
-.ioto-tasks-center__icon-button svg {
+.ioto-tasks-center__icon-button svg,
+.ioto-tasks-center__add-task-button--icon svg,
+.ioto-tasks-center__tab-settings-button svg {
 	width: 16px;
 	height: 16px;
 }
 
-.is-phone .ioto-tasks-center__icon-button {
-	width: 32px;
-	height: 32px;
+.is-phone .ioto-tasks-center__icon-button,
+.is-phone .ioto-tasks-center__add-task-button--icon,
+.is-phone .ioto-tasks-center__tab-settings-button {
+	width: 36px;
+	height: 36px;
 }
 
-.is-phone .ioto-tasks-center__icon-button svg {
+.is-phone .ioto-tasks-center__icon-button svg,
+.is-phone .ioto-tasks-center__add-task-button--icon svg,
+.is-phone .ioto-tasks-center__tab-settings-button svg {
 	width: 18px;
 	height: 18px;
 }
@@ -359,35 +373,6 @@
 button:not(.clickable-icon).ioto-tasks-center__tab-settings-button {
 	background: transparent;
 	box-shadow: none;
-}
-
-.ioto-tasks-center__tab-settings-button {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 34px;
-	height: 34px;
-	padding: 0;
-	border: none;
-	border-radius: 999px;
-	background: transparent;
-	color: var(--text-muted);
-	cursor: pointer;
-	transition:
-		background-color 120ms ease,
-		border-color 120ms ease,
-		color 120ms ease;
-}
-
-.ioto-tasks-center__tab-settings-button:hover {
-	background: var(--background-modifier-hover);
-	border-color: var(--interactive-accent);
-	color: var(--text-normal);
-}
-
-.ioto-tasks-center__tab-settings-button svg {
-	width: 16px;
-	height: 16px;
 }
 
 .ioto-tasks-center__tab {
@@ -1482,12 +1467,12 @@ button:not(.clickable-icon).ioto-tasks-center__status-checklist-popover-item {
 	width: 100%;
 }
 
-.ioto-tasks-center--compact .ioto-tasks-center__add-task-button {
+/* 图标态不参与"拉满整行"，尺寸交给上面的图标按钮统一规则。 */
+.ioto-tasks-center--compact
+	.ioto-tasks-center__add-task-button:not(
+		.ioto-tasks-center__add-task-button--icon
+	) {
 	width: 100%;
-}
-
-.ioto-tasks-center--compact .ioto-tasks-center__add-task-button--icon {
-	width: auto;
 }
 
 .ioto-tasks-center--compact .ioto-tasks-center__task-row {
