@@ -280,7 +280,7 @@ export class IOTOProjectCenterView extends ItemView {
 
 		this.renderProjectList(this.contentContainerEl!);
 		restoreProjectCenterScrollPosition(
-			this.contentContainerEl!,
+			this.contentContainerEl,
 			this.contentScroll,
 		);
 	}
