@@ -1,11 +1,70 @@
 import { Notice, TFile } from 'obsidian';
 import type { IOTOTasksCenterView } from '../iotoTasksCenterView';
-import { validateTaskParentDrop } from '../task-drag';
+import {
+	validateTaskParentDrop,
+	type TaskDropValidationResult,
+} from '../task-drag';
 import { assignUpTaskToFile, removeUpTaskFromFile } from '../../tasks-center/up-task-assignment';
 import { t } from '../../lang/helpter';
 import type { TaskFileEntry } from '../../tasks-center/types';
 import { getTaskDropValidationMessage } from './constants';
 import { TASK_LIST_SELECTOR } from '../task-list-scroll';
+
+/**
+ * 进入"重设父任务"流程的共享入口，与事件类型无关。
+ * 桌面原生拖拽与移动端 Pointer 拖拽都通过它来初始化拖拽状态。
+ * 返回 false 表示当前不处于可拖拽状态（如正在更新 UpTask）。
+ */
+export function beginTaskDragState(
+	view: IOTOTasksCenterView,
+	task: TaskFileEntry,
+	rowEl: HTMLButtonElement,
+	options?: { showRemoveDropZone?: boolean },
+): boolean {
+	if (view.isUpdatingUpTask) {
+		return false;
+	}
+
+	view.draggingTaskPath = task.path;
+	view.dropTargetTaskPath = null;
+	view.invalidDropTargetTaskPath = null;
+	view.isRemoveUpTaskDropTarget = false;
+	if (options?.showRemoveDropZone !== false) {
+		view.contentEl
+			.querySelector(TASK_LIST_SELECTOR)
+			?.addClass('has-remove-up-task-drop-zone');
+	}
+	rowEl.addClass('is-dragging');
+	return true;
+}
+
+/**
+ * 在指针/拖拽移动到某个目标行时，验证并把该行标记为合法或非法放置目标。
+ * 与事件类型无关，供桌面 `dragover` 与移动端 Pointer 手势复用。
+ * 返回 null 表示尚未进入拖拽；否则返回校验结果（已同步高亮状态）。
+ */
+export function updateTaskDropTarget(
+	view: IOTOTasksCenterView,
+	task: TaskFileEntry,
+	rowEl: HTMLButtonElement,
+): TaskDropValidationResult | null {
+	if (!view.draggingTaskPath || view.isUpdatingUpTask) {
+		return null;
+	}
+
+	const validation = validateTaskParentDrop(
+		view.tasks,
+		view.draggingTaskPath,
+		task.path,
+	);
+	if (!validation.valid) {
+		setCurrentDropTarget(view, task.path, true, rowEl);
+		return validation;
+	}
+
+	setCurrentDropTarget(view, task.path, false, rowEl);
+	return validation;
+}
 
 export function handleTaskDragStart(
 	view: IOTOTasksCenterView,
@@ -18,14 +77,12 @@ export function handleTaskDragStart(
 		return;
 	}
 
-	view.draggingTaskPath = task.path;
-	view.dropTargetTaskPath = null;
-	view.invalidDropTargetTaskPath = null;
-	view.isRemoveUpTaskDropTarget = false;
-	view.contentEl
-		.querySelector(TASK_LIST_SELECTOR)
-		?.addClass('has-remove-up-task-drop-zone');
-	rowEl.addClass('is-dragging');
+	const started = beginTaskDragState(view, task, rowEl);
+	if (!started) {
+		event.preventDefault();
+		return;
+	}
+
 	if (event.dataTransfer) {
 		event.dataTransfer.effectAllowed = 'move';
 		event.dataTransfer.setData('text/plain', task.path);
@@ -38,17 +95,8 @@ export function handleTaskDragOver(
 	task: TaskFileEntry,
 	rowEl: HTMLButtonElement,
 ): void {
-	if (!view.draggingTaskPath || view.isUpdatingUpTask) {
-		return;
-	}
-
-	const validation = validateTaskParentDrop(
-		view.tasks,
-		view.draggingTaskPath,
-		task.path,
-	);
-	if (!validation.valid) {
-		setCurrentDropTarget(view, task.path, true, rowEl);
+	const validation = updateTaskDropTarget(view, task, rowEl);
+	if (!validation || !validation.valid) {
 		return;
 	}
 
@@ -56,7 +104,6 @@ export function handleTaskDragOver(
 	if (event.dataTransfer) {
 		event.dataTransfer.dropEffect = 'move';
 	}
-	setCurrentDropTarget(view, task.path, false, rowEl);
 }
 
 export function handleTaskDragLeave(

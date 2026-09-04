@@ -102,6 +102,8 @@ const zhCN = {
 	'view.taskPriorityMenu.currentSuffix': '（当前）',
 	'view.taskMenu.addSubtask': '添加子任务',
 	'view.taskMenu.delete': '删除任务',
+	'view.taskMenu.removeParent': '移除上级任务',
+	'view.taskMoreButton.ariaLabel': '更多操作',
 	'view.projectSwitcher.loadingProjects': '项目加载中...',
 	'view.projectSwitcher.loadingTasks': '任务加载中...',
 	'view.projectSwitcher.default': '切换项目',

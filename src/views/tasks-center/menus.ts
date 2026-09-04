@@ -12,6 +12,7 @@ import type { TaskCreationType } from '../../tasks-center/task-template-config';
 import type { TaskListTimeFilter } from '../../settings';
 import { TaskNameModal } from '../../ui/taskNameModal';
 import { batchAssignUpTask, batchSetPriority } from './batch-edit-operations';
+import { removeDraggedTaskParent } from './drag-controller';
 import {
 	getProjectListGroupModeOptions,
 	getProjectListSortModeOptions,
@@ -370,6 +371,19 @@ export function showTaskPriorityMenu(
 		}
 	});
 	menu.addSeparator();
+
+	// 已有父任务时，提供"移除父任务"（重设父子关系）入口：
+	// 桌面端免去拖到专属放置区的操作，移动端此前根本无此能力。
+	if (task.upTaskTitles.length > 0) {
+		menu.addItem((item) =>
+			item
+				.setTitle(t('view.taskMenu.removeParent'))
+				.onClick(() => {
+					void removeDraggedTaskParent(view, task.path);
+				}),
+		);
+		menu.addSeparator();
+	}
 
 	if (typeof task.priority === 'number') {
 		menu.addItem((item) =>

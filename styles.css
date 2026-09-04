@@ -1073,6 +1073,52 @@ button:not(.clickable-icon).ioto-tasks-center__task-row.is-active {
 	opacity: 0.72;
 }
 
+/* 移动端 / 紧凑布局的"⋯"更多按钮（打开任务属性菜单的显式入口）。 */
+.ioto-tasks-center__task-more {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	margin: -8px -6px -8px 4px;
+	border-radius: 8px;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+.ioto-tasks-center__task-more:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.ioto-tasks-center__task-more svg {
+	width: 18px;
+	height: 18px;
+}
+
+/* 移动端 Pointer 拖拽时跟随手指的幽灵元素。 */
+.ioto-tasks-center__drag-ghost {
+	position: fixed;
+	top: 0;
+	left: 0;
+	z-index: 9999;
+	max-width: 80vw;
+	padding: 10px 14px;
+	border-radius: 10px;
+	background: var(--background-primary);
+	border: 1px solid var(--interactive-accent);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	pointer-events: none;
+	opacity: 0.95;
+	will-change: transform;
+}
+
 .ioto-tasks-center__task-row.is-subtask .ioto-tasks-center__task-title {
 	color: var(--text-normal);
 }

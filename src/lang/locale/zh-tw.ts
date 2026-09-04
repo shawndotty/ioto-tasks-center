@@ -101,6 +101,8 @@ const zhTW = {
 	'view.taskPriorityMenu.currentSuffix': '（目前）',
 	'view.taskMenu.addSubtask': '添加子任務',
 	'view.taskMenu.delete': '刪除任務',
+	'view.taskMenu.removeParent': '移除上級任務',
+	'view.taskMoreButton.ariaLabel': '更多操作',
 	'view.projectSwitcher.loadingProjects': '專案載入中...',
 	'view.projectSwitcher.loadingTasks': '任務載入中...',
 	'view.projectSwitcher.default': '切換專案',

@@ -3,6 +3,7 @@ import type { TaskFileEntry } from '../../tasks-center/types';
 import { type TaskOutlinkCategory } from '../../ui/task-outlink-popover';
 import { countTaskOutlinksByRootPaths } from '../../tasks-center/task-outlink-counts';
 import { getTaskPriorityClassName } from './helpers';
+import { attachTouchGesture } from './touch-gesture';
 import { t } from '../../lang/helpter';
 import { setIcon } from 'obsidian';
 
@@ -43,7 +44,10 @@ export function renderTaskRows(
 			cls: 'ioto-tasks-center__task-row',
 		});
 		rowEl.type = 'button';
-		rowEl.draggable = !view.isUpdatingUpTask;
+		const isMobileLayout = view.isMobileTaskListLayout();
+		// 移动端 / 紧凑布局下用 Pointer 手势引擎接管拖拽与菜单，
+		// 必须关闭原生 draggable，否则浏览器会抢占 pointer / 触发原生拖拽。
+		rowEl.draggable = !isMobileLayout && !view.isUpdatingUpTask;
 		rowEl.dataset.taskPath = task.path;
 		rowEl.style.setProperty('--ioto-task-indent-level', `${indentLevel}`);
 		if (indentLevel > 0) {
@@ -222,7 +226,29 @@ export function renderTaskRows(
 			}
 		}
 
+	if (isMobileLayout) {
+		// 显式"⋯"按钮：零歧义打开属性菜单，不依赖长按推断，且对读屏/键盘友好。
+		const moreBtn = rowEl.createSpan({
+			cls: 'ioto-tasks-center__task-more',
+		});
+		setIcon(moreBtn, 'more-vertical');
+		moreBtn.ariaLabel = t('view.taskMoreButton.ariaLabel');
+		moreBtn.addEventListener('pointerdown', (event: PointerEvent) => {
+			event.stopPropagation();
+		});
+		moreBtn.addEventListener('click', (event: MouseEvent) => {
+			event.preventDefault();
+			event.stopPropagation();
+			view.showTaskPriorityMenu(event, task);
+		});
+	}
+
 	rowEl.addEventListener('click', (event: MouseEvent) => {
+		// 移动端长按弹菜单或拖拽后，屏蔽紧随其后的 click，避免误打开文件。
+		if (rowEl.dataset.iotoSuppressClick === '1') {
+			rowEl.dataset.iotoSuppressClick = '';
+			return;
+		}
 		if (view.isBatchEditMode) {
 			view.toggleTaskSelected(task.path);
 			return;
@@ -246,26 +272,31 @@ export function renderTaskRows(
 
 		view.triggerTaskHoverPreview(event, task, rowEl);
 	});
-		rowEl.addEventListener('contextmenu', (event: MouseEvent) => {
-			event.preventDefault();
-			event.stopPropagation();
-			view.showTaskPriorityMenu(event, task);
-		});
-		rowEl.addEventListener('dragstart', (event: DragEvent) => {
-			view.handleTaskDragStart(event, task, rowEl);
-		});
-		rowEl.addEventListener('dragover', (event: DragEvent) => {
-			view.handleTaskDragOver(event, task, rowEl);
-		});
-		rowEl.addEventListener('dragleave', (event: DragEvent) => {
-			view.handleTaskDragLeave(event, task, rowEl);
-		});
-		rowEl.addEventListener('drop', (event: DragEvent) => {
-			void view.handleTaskDrop(event, task, rowEl);
-		});
-		rowEl.addEventListener('dragend', () => {
-			view.clearTaskDragState();
-		});
+		if (isMobileLayout) {
+			// 移动端：Pointer 手势引擎接管（长按出菜单 / 长按拖拽重设父任务）。
+			attachTouchGesture(view, rowEl, task);
+		} else {
+			rowEl.addEventListener('contextmenu', (event: MouseEvent) => {
+				event.preventDefault();
+				event.stopPropagation();
+				view.showTaskPriorityMenu(event, task);
+			});
+			rowEl.addEventListener('dragstart', (event: DragEvent) => {
+				view.handleTaskDragStart(event, task, rowEl);
+			});
+			rowEl.addEventListener('dragover', (event: DragEvent) => {
+				view.handleTaskDragOver(event, task, rowEl);
+			});
+			rowEl.addEventListener('dragleave', (event: DragEvent) => {
+				view.handleTaskDragLeave(event, task, rowEl);
+			});
+			rowEl.addEventListener('drop', (event: DragEvent) => {
+				void view.handleTaskDrop(event, task, rowEl);
+			});
+			rowEl.addEventListener('dragend', () => {
+				view.clearTaskDragState();
+			});
+		}
 
 		if (hasChildren && subtasksCollapsed) {
 			collapsedIndentStack.push(indentLevel);

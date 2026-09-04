@@ -112,6 +112,8 @@ const en = {
 	'view.taskPriorityMenu.currentSuffix': ' (current)',
 	'view.taskMenu.addSubtask': 'Add subtask',
 	'view.taskMenu.delete': 'Delete task',
+	'view.taskMenu.removeParent': 'Remove parent task',
+	'view.taskMoreButton.ariaLabel': 'More actions',
 	'view.projectSwitcher.loadingProjects': 'Loading projects...',
 	'view.projectSwitcher.loadingTasks': 'Loading tasks...',
 	'view.projectSwitcher.default': 'Switch project',

@@ -14,6 +14,12 @@ export const COMPACT_LAYOUT_BREAKPOINT = 720;
 export const NARROW_LAYOUT_BREAKPOINT = 480;
 export const HOVER_PREVIEW_REFRESH_RETRY_MS = 150;
 
+// 移动端 / 紧凑布局下的统一手势引擎参数（见 touch-gesture.ts）。
+// 长按超过该时长且手指未移动 → 弹出任务属性菜单（替代桌面右键）。
+export const TASK_ROW_LONG_PRESS_MS = 400;
+// 手指位移超过该阈值（px）→ 判定为拖拽（重设父任务），并取消菜单定时器。
+export const TASK_ROW_DRAG_MOVE_THRESHOLD = 10;
+
 export interface IOTOTasksCenterViewState {
 	selectedProject?: string;
 	activeTaskFilterTab?: TaskFilterTab;
