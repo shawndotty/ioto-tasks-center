@@ -20,6 +20,10 @@ import {
 } from './project-center-sort';
 import { filterProjectCenterRowsByQuery } from './project-center-search';
 import {
+	COMPACT_LAYOUT_BREAKPOINT,
+	NARROW_LAYOUT_BREAKPOINT,
+} from './tasks-center/constants';
+import {
 	captureProjectCenterScrollPosition,
 	restoreProjectCenterScrollPosition,
 	type ScrollPosition,
@@ -64,6 +68,14 @@ export class IOTOProjectCenterView extends ItemView {
 	) => Promise<void>;
 	private readonly refreshTokenParent: { token: number } = { token: 0 };
 
+	private isCompactLayout = false;
+	private isNarrowLayout = false;
+	private resizeObserver: ResizeObserver | null = null;
+	private headerEl: HTMLElement | null = null;
+	private contentContainerEl: HTMLElement | null = null;
+	private lastHeaderSearchVisible: boolean | null = null;
+	private lastHeaderSearchHasQuery = false;
+
 	constructor(
 		leaf: WorkspaceLeaf,
 		getTasksRootPath: () => string,
@@ -99,11 +111,60 @@ export class IOTOProjectCenterView extends ItemView {
 	async onOpen(): Promise<void> {
 		this.contentEl.empty();
 		this.contentEl.addClass('ioto-project-center-view');
+		this.startResizeObserver();
 		await this.refreshFromVaultChange();
 	}
 
 	async onClose(): Promise<void> {
+		this.stopResizeObserver();
 		this.contentEl.empty();
+		this.headerEl = null;
+		this.contentContainerEl = null;
+	}
+
+	private startResizeObserver(): void {
+		if (
+			this.resizeObserver ||
+			typeof ResizeObserver === 'undefined'
+		) {
+			this.syncCompactLayout(this.contentEl.clientWidth);
+			return;
+		}
+
+		this.resizeObserver = new ResizeObserver((entries) => {
+			const entry = entries[0];
+			this.syncCompactLayout(
+				entry?.contentRect.width ?? this.contentEl.clientWidth,
+			);
+		});
+		this.resizeObserver.observe(this.contentEl);
+		this.syncCompactLayout(this.contentEl.clientWidth);
+	}
+
+	private stopResizeObserver(): void {
+		this.resizeObserver?.disconnect();
+		this.resizeObserver = null;
+	}
+
+	private syncCompactLayout(width: number): void {
+		if (width <= 0) {
+			return;
+		}
+
+		const nextCompactLayout = width <= COMPACT_LAYOUT_BREAKPOINT;
+		const nextNarrowLayout = width < NARROW_LAYOUT_BREAKPOINT;
+		if (
+			this.isCompactLayout === nextCompactLayout &&
+			this.isNarrowLayout === nextNarrowLayout
+		) {
+			return;
+		}
+
+		this.isCompactLayout = nextCompactLayout;
+		this.isNarrowLayout = nextNarrowLayout;
+		if (this.contentEl.isConnected) {
+			this.render();
+		}
 	}
 
 	getState(): Record<string, unknown> {
@@ -184,9 +245,41 @@ export class IOTOProjectCenterView extends ItemView {
 			root,
 			this.contentScroll,
 		);
-		root.empty();
 
-		const headerEl = root.createDiv({ cls: 'ioto-project-center__header' });
+		const hasQuery = Boolean(
+			this.projectSearchInputValue || this.projectSearchQuery,
+		);
+		const needRebuildHeader =
+			!this.headerEl ||
+			this.contentContainerEl === null ||
+			this.lastHeaderSearchVisible !== this.isProjectSearchVisible ||
+			(this.isProjectSearchVisible &&
+				this.lastHeaderSearchHasQuery !== hasQuery);
+
+		if (needRebuildHeader) {
+			root.empty();
+			this.headerEl = root.createDiv({
+				cls: 'ioto-project-center__header',
+			});
+			this.buildHeader(this.headerEl);
+			this.contentContainerEl = root.createDiv({
+				cls: 'ioto-project-center__content',
+			});
+			this.lastHeaderSearchVisible = this.isProjectSearchVisible;
+			this.lastHeaderSearchHasQuery = hasQuery;
+		}
+
+		root.toggleClass('is-compact-layout', this.isCompactLayout);
+		root.toggleClass('is-narrow-layout', this.isNarrowLayout);
+
+		this.renderProjectList(this.contentContainerEl!);
+		restoreProjectCenterScrollPosition(
+			this.contentContainerEl!,
+			this.contentScroll,
+		);
+	}
+
+	private buildHeader(headerEl: HTMLElement): void {
 		const headerLeftEl = headerEl.createDiv({
 			cls: 'ioto-project-center__header-left',
 		});
@@ -212,6 +305,10 @@ export class IOTOProjectCenterView extends ItemView {
 			});
 			searchInputEl.placeholder = t('projectCenter.search.placeholder');
 			searchInputEl.value = this.projectSearchInputValue;
+			searchInputEl.setAttribute('enterkeyhint', 'search');
+			searchInputEl.setAttribute('autocapitalize', 'off');
+			searchInputEl.setAttribute('autocomplete', 'off');
+			searchInputEl.spellcheck = false;
 			searchInputEl.addEventListener('input', () => {
 				this.projectSearchInputValue = searchInputEl.value;
 			});
@@ -227,11 +324,11 @@ export class IOTOProjectCenterView extends ItemView {
 			if (this.projectSearchInputValue || this.projectSearchQuery) {
 				const clearButtonEl = searchInputWrapperEl.createEl('button', {
 					cls: 'ioto-project-center__search-clear-button',
-					text: 'X',
 				});
 				clearButtonEl.type = 'button';
 				clearButtonEl.ariaLabel = t('projectCenter.search.clear');
 				clearButtonEl.title = t('projectCenter.search.clearShort');
+				setIcon(clearButtonEl, 'x');
 				clearButtonEl.addEventListener('click', () => {
 					this.clearProjectSearch();
 				});
@@ -301,31 +398,30 @@ export class IOTOProjectCenterView extends ItemView {
 		createProjectButtonEl.addEventListener('click', () => {
 			void this.handleCreateProject();
 		});
+	}
 
-		const contentEl = root.createDiv({
-			cls: 'ioto-project-center__content',
-		});
+	private renderProjectList(container: HTMLElement): void {
+		container.empty();
+
 		if (this.status === 'loading') {
 			this.renderState(
-				contentEl,
+				container,
 				t('projectCenter.state.loadingTitle'),
 				t('projectCenter.state.loadingDesc', [this.getTasksRootPath()]),
 				'is-loading',
 			);
-			restoreProjectCenterScrollPosition(contentEl, this.contentScroll);
 			return;
 		}
 
 		if (this.status === 'root-missing') {
 			this.renderState(
-				contentEl,
+				container,
 				t('projectCenter.state.rootMissingTitle'),
 				t('projectCenter.state.rootMissingDesc', [
 					this.getTasksRootPath(),
 				]),
 				'is-empty',
 			);
-			restoreProjectCenterScrollPosition(contentEl, this.contentScroll);
 			return;
 		}
 
@@ -337,30 +433,28 @@ export class IOTOProjectCenterView extends ItemView {
 			const keyword = this.projectSearchQuery.trim();
 			if (keyword) {
 				this.renderState(
-					contentEl,
+					container,
 					t('projectCenter.search.emptyTitle'),
 					t('projectCenter.search.emptyDesc', [keyword]),
 					'is-empty',
-				);
-				restoreProjectCenterScrollPosition(
-					contentEl,
-					this.contentScroll,
 				);
 				return;
 			}
 
 			this.renderState(
-				contentEl,
+				container,
 				t('projectCenter.state.emptyTitle'),
 				t('projectCenter.state.emptyDesc', [this.getTasksRootPath()]),
 				'is-empty',
 			);
-			restoreProjectCenterScrollPosition(contentEl, this.contentScroll);
 			return;
 		}
 
-		this.renderTable(contentEl, filteredRows);
-		restoreProjectCenterScrollPosition(contentEl, this.contentScroll);
+		if (this.isCompactLayout) {
+			this.renderCards(container, filteredRows);
+		} else {
+			this.renderTable(container, filteredRows);
+		}
 	}
 
 	private canCreateProject(): boolean {
@@ -476,9 +570,218 @@ export class IOTOProjectCenterView extends ItemView {
 
 			this.renderTaskCountCell(rowEl, row);
 			this.renderArchivedCell(rowEl, row);
-			this.renderDateCell(rowEl, row, 'startDate');
-			this.renderDateCell(rowEl, row, 'dueDate');
+		this.renderDateCell(rowEl, row, 'startDate');
+		this.renderDateCell(rowEl, row, 'dueDate');
 		}
+	}
+
+	private renderCards(
+		container: HTMLElement,
+		rows: ProjectCenterRow[],
+	): void {
+		const listEl = container.createDiv({
+			cls: 'ioto-project-center__cards',
+		});
+		this.renderCardSortControl(listEl);
+		for (const row of sortProjectCenterRows(
+			rows,
+			this.sortKey,
+			this.sortDirection,
+		)) {
+			this.renderCard(listEl, row);
+		}
+	}
+
+	private renderCardSortControl(container: HTMLElement): void {
+		const barEl = container.createDiv({
+			cls: 'ioto-project-center__card-sort',
+		});
+		const sortKeys: ProjectCenterSortKey[] = [
+			'projectName',
+			'category',
+			'taskCount',
+			'archived',
+			'startDate',
+			'dueDate',
+		];
+		const labels: Record<ProjectCenterSortKey, string> = {
+			projectName: t('projectCenter.columns.projectName'),
+			category: t('projectCenter.columns.category'),
+			taskCount: t('projectCenter.columns.taskCount'),
+			archived: t('projectCenter.columns.archived'),
+			startDate: t('projectCenter.columns.startDate'),
+			dueDate: t('projectCenter.columns.dueDate'),
+		};
+		for (const key of sortKeys) {
+			const chipEl = barEl.createEl('button', {
+				cls: 'ioto-project-center__sort-chip',
+			});
+			chipEl.type = 'button';
+			chipEl.createSpan({ text: labels[key] });
+			if (this.sortKey === key) {
+				chipEl.addClass('is-active');
+				chipEl.createSpan({
+					cls: 'ioto-project-center__sort-indicator',
+					text: this.sortDirection === 'asc' ? '▲' : '▼',
+				});
+			}
+			chipEl.addEventListener('click', () => {
+				this.handleSortClick(key);
+			});
+		}
+	}
+
+	private renderCard(
+		container: HTMLElement,
+		row: ProjectCenterRow,
+	): void {
+		const cardEl = container.createDiv({
+			cls: 'ioto-project-center__card',
+		});
+
+		const topEl = cardEl.createDiv({
+			cls: 'ioto-project-center__card-top',
+		});
+		topEl.createDiv({
+			cls: 'ioto-project-center__card-title',
+			text: row.name,
+		});
+		const editButtonEl = topEl.createEl('button', {
+			cls: 'ioto-project-center__icon-button',
+		});
+		editButtonEl.type = 'button';
+		editButtonEl.ariaLabel = t('projectCenter.columns.editSpec');
+		editButtonEl.title = t('projectCenter.columns.editSpec');
+		setIcon(editButtonEl, 'file-edit');
+		editButtonEl.addEventListener('click', () => {
+			void this.openProjectSpec(row);
+		});
+
+		const metaEl = cardEl.createDiv({
+			cls: 'ioto-project-center__card-meta',
+		});
+		const category =
+			typeof row.metadata.category === 'string' &&
+			row.metadata.category.length > 0
+				? row.metadata.category
+				: t('projectCenter.category.empty');
+		metaEl.createSpan({
+			cls: 'ioto-project-center__card-badge',
+			text: category,
+		});
+		metaEl.createSpan({
+			text: `${t('projectCenter.columns.taskCount')}: ${row.taskCount}`,
+		});
+		const startDate =
+			typeof row.metadata.startDate === 'string'
+				? row.metadata.startDate
+				: '';
+		const dueDate =
+			typeof row.metadata.dueDate === 'string'
+				? row.metadata.dueDate
+				: '';
+		if (startDate || dueDate) {
+			metaEl.createSpan({
+				text: `${startDate}${startDate && dueDate ? ' – ' : ''}${dueDate}`,
+			});
+		}
+
+		const archiveButtonEl = cardEl.createEl('button', {
+			cls: 'ioto-project-center__card-archive',
+		});
+		archiveButtonEl.type = 'button';
+		setIcon(
+			archiveButtonEl,
+			row.archived ? 'archive-restore' : 'archive',
+		);
+		archiveButtonEl.createSpan({
+			text: row.archived
+				? t('projectCenter.action.unarchive')
+				: t('projectCenter.action.archive'),
+		});
+		archiveButtonEl.addEventListener('click', () => {
+			void this.handleArchivedToggle(row, !row.archived);
+		});
+
+		const currentCategory =
+			typeof row.metadata.category === 'string'
+				? row.metadata.category
+				: '';
+		const categoryFieldEl = cardEl.createDiv({
+			cls: 'ioto-project-center__card-field',
+		});
+		categoryFieldEl.createDiv({
+			cls: 'ioto-project-center__card-field-label',
+			text: t('projectCenter.columns.category'),
+		});
+		const selectEl = categoryFieldEl.createEl('select', {
+			cls: 'ioto-project-center__select',
+		});
+		const categoryOptions = [
+			'',
+			...collectCategoryOptions(
+				this.getProjectCategoryOptions(),
+				this.rows.map((item) => item.metadata.category),
+			),
+		];
+		for (const option of categoryOptions) {
+			const optionEl = selectEl.createEl('option', {
+				value: option,
+				text:
+					option.length > 0
+						? option
+						: t('projectCenter.category.empty'),
+			});
+			if (option === currentCategory) {
+				optionEl.selected = true;
+			}
+		}
+		selectEl.createEl('option', {
+			value: '__ioto_add__',
+			text: t('projectCenter.category.addNew'),
+		});
+		selectEl.addEventListener('change', () => {
+			void this.handleCategoryChange(row, selectEl, currentCategory);
+		});
+
+		const datesEl = cardEl.createDiv({
+			cls: 'ioto-project-center__card-dates',
+		});
+		const startDateFieldEl = datesEl.createDiv({
+			cls: 'ioto-project-center__card-field',
+		});
+		startDateFieldEl.createDiv({
+			cls: 'ioto-project-center__card-field-label',
+			text: t('projectCenter.columns.startDate'),
+		});
+		const startDateInputEl = startDateFieldEl.createEl('input', {
+			cls: 'ioto-project-center__date',
+			type: 'date',
+		});
+		startDateInputEl.value = startDate;
+		startDateInputEl.addEventListener('change', () => {
+			void this.persistMetadataPatch(row, {
+				startDate: startDateInputEl.value || null,
+			});
+		});
+
+		const dueDateFieldEl = datesEl.createDiv({
+			cls: 'ioto-project-center__card-field',
+		});
+		dueDateFieldEl.createDiv({
+			cls: 'ioto-project-center__card-field-label',
+			text: t('projectCenter.columns.dueDate'),
+		});
+		const dueDateInputEl = dueDateFieldEl.createEl('input', {
+			cls: 'ioto-project-center__date',
+			type: 'date',
+		});
+		dueDateInputEl.value = dueDate;
+		dueDateInputEl.addEventListener('change', () => {
+			void this.persistMetadataPatch(row, {
+				dueDate: dueDateInputEl.value || null,
+			});
+		});
 	}
 
 	private applyProjectSearchQuery(): void {
