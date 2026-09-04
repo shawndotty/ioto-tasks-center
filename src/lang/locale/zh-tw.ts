@@ -50,6 +50,8 @@ const zhTW = {
 	'view.tasksPane.addTaskReady': '在 {0} 專案下新增任務',
 	'view.tasksPane.addTaskSelectProject': '請先選擇一個專案',
 	'view.tasksPane.addTaskLoading': '任務列表載入完成後才能建立',
+	'view.tasksPane.showHeaderExtras': '顯示描述與搜尋框',
+	'view.tasksPane.hideHeaderExtras': '隱藏描述與搜尋框',
 	'view.projectsPane.addProject': '新增專案',
 	'view.projectsPane.addProjectCreating': '正在建立專案',
 	'view.projectsPane.addProjectLoading': '專案列表載入完成後才能建立',

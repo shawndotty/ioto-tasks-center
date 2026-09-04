@@ -3,6 +3,7 @@ import {
 	ItemView,
 	MarkdownView,
 	Menu,
+	Platform,
 	setIcon,
 	TFile,
 	WorkspaceLeaf,
@@ -175,6 +176,10 @@ const TASK_FILTER_SWITCHER_SELECTOR =
 	'.ioto-tasks-center__task-filter-switcher';
 const TASK_LIST_DESC_SELECTOR =
 	'.ioto-tasks-center__pane--tasks .ioto-tasks-center__task-list-desc';
+const TASK_SEARCH_ROW_SELECTOR =
+	'.ioto-tasks-center__pane--tasks .ioto-tasks-center__task-search-row';
+const HEADER_TOGGLE_BUTTON_SELECTOR =
+	'.ioto-tasks-center__pane--tasks .ioto-tasks-center__header-toggle-button';
 
 type TaskOpenTarget = 'adjacent-preview' | 'current-pane-tab';
 
@@ -222,6 +227,7 @@ export class IOTOTasksCenterView extends ItemView {
 	isUpdatingUpTask = false;
 	isCompactLayout = false;
 	isNarrowLayout = false;
+	public isTaskListHeaderExpanded = false;
 	private readonly collapsedTaskGroups = new Set<string>();
 	private readonly collapsedProjectGroups = new Set<string>();
 	readonly collapsedSubtaskParents = new Set<string>();
@@ -424,6 +430,7 @@ export class IOTOTasksCenterView extends ItemView {
 			taskSearchInputValue: this.taskSearchInputValue || undefined,
 			openedTaskPath: this.openedTaskPath ?? undefined,
 			previewLeafId: getWorkspaceLeafId(this.previewLeaf) ?? undefined,
+			taskListHeaderExpanded: this.isTaskListHeaderExpanded,
 		};
 	}
 
@@ -439,6 +446,8 @@ export class IOTOTasksCenterView extends ItemView {
 			(viewState.previewLeafId
 				? this.findLeafById(viewState.previewLeafId)
 				: null) ?? null;
+		this.isTaskListHeaderExpanded =
+			viewState.taskListHeaderExpanded ?? false;
 		await this.refreshFromVaultChange();
 	}
 
@@ -549,6 +558,52 @@ export class IOTOTasksCenterView extends ItemView {
 
 	isTaskSearchInline(): boolean {
 		return this.getTaskSearchEntryMode() === 'inline';
+	}
+
+	/**
+	 * 移动端判定：手机端宽度必然 ≤ 720，与既有 `isCompactLayout` 一致；
+	 * 桌面把面板拖窄时同样缺空间，一起生效更符合"省空间"的初衷。
+	 */
+	public isMobileTaskListLayout(): boolean {
+		return Platform.isMobile || this.isCompactLayout;
+	}
+
+	public toggleTaskListHeaderExpanded(): void {
+		this.isTaskListHeaderExpanded = !this.isTaskListHeaderExpanded;
+		this.applyTaskListHeaderCollapsed();
+		this.app.workspace.requestSaveLayout();
+	}
+
+	/**
+	 * 只切换现有 DOM 的 class 与图标，不触发 `render()`，
+	 * 避免滚动位置跳动与搜索框失焦。
+	 */
+	public applyTaskListHeaderCollapsed(): void {
+		// `modal` 搜索模式下没有搜索行，也不渲染开关，此时描述保持可见。
+		const collapsed =
+			this.isMobileTaskListLayout()
+			&& this.isTaskSearchInline()
+			&& !this.isTaskListHeaderExpanded;
+		this.contentEl
+			.querySelector<HTMLElement>(TASK_LIST_DESC_SELECTOR)
+			?.toggleClass('is-hidden', collapsed);
+		this.contentEl
+			.querySelector<HTMLElement>(TASK_SEARCH_ROW_SELECTOR)
+			?.toggleClass('is-hidden', collapsed);
+
+		const toggleEl = this.contentEl.querySelector<HTMLElement>(
+			HEADER_TOGGLE_BUTTON_SELECTOR,
+		);
+		if (!toggleEl) {
+			return;
+		}
+
+		setIcon(toggleEl, collapsed ? 'eye-off' : 'eye');
+		const label = collapsed
+			? t('view.tasksPane.showHeaderExtras')
+			: t('view.tasksPane.hideHeaderExtras');
+		toggleEl.ariaLabel = label;
+		toggleEl.title = label;
 	}
 
 	renderTaskSearchRow(container: HTMLElement): void {

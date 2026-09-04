@@ -21,6 +21,7 @@ export interface IOTOTasksCenterViewState {
 	taskSearchInputValue?: string;
 	openedTaskPath?: string;
 	previewLeafId?: string;
+	taskListHeaderExpanded?: boolean;
 }
 
 export const PROJECT_LIST_SORT_MODE_ORDER: ProjectListSortMode[] = [
@@ -91,6 +92,10 @@ export function parseViewState(state: unknown): IOTOTasksCenterViewState {
 		activeTaskFilterTab: isTaskFilterTab(candidate.activeTaskFilterTab)
 			? candidate.activeTaskFilterTab
 			: undefined,
+		taskListHeaderExpanded:
+			typeof candidate.taskListHeaderExpanded === 'boolean'
+				? candidate.taskListHeaderExpanded
+				: undefined,
 	};
 }
 

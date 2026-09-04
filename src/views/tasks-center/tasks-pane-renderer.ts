@@ -68,19 +68,51 @@ export function renderTasksPane(
 	} else {
 		view.closeTaskSearchModal();
 	}
-	const addTaskButtonEl = actionsEl.createEl('button', {
-		cls: 'ioto-tasks-center__add-task-button',
-		text: view.isCreatingTask
-			? t('view.tasksPane.addTaskCreating')
-			: t('view.tasksPane.addTask'),
-	});
-	addTaskButtonEl.type = 'button';
-	addTaskButtonEl.disabled = !view.canCreateTask();
-	addTaskButtonEl.ariaLabel = view.getAddTaskButtonLabel();
-	addTaskButtonEl.title = view.getAddTaskButtonLabel();
-	addTaskButtonEl.addEventListener('click', (event) => {
-		void view.showTaskCreationMenu(event);
-	});
+	if (view.isMobileTaskListLayout() && view.isTaskSearchInline()) {
+		const expanded = view.isTaskListHeaderExpanded;
+		const headerToggleButtonEl = actionsEl.createEl('button', {
+			cls: 'ioto-tasks-center__icon-button ioto-tasks-center__header-toggle-button',
+		});
+		headerToggleButtonEl.type = 'button';
+		setIcon(headerToggleButtonEl, expanded ? 'eye' : 'eye-off');
+		headerToggleButtonEl.ariaLabel = expanded
+			? t('view.tasksPane.hideHeaderExtras')
+			: t('view.tasksPane.showHeaderExtras');
+		headerToggleButtonEl.title = headerToggleButtonEl.ariaLabel;
+		headerToggleButtonEl.addEventListener('click', () => {
+			view.toggleTaskListHeaderExpanded();
+		});
+	}
+
+	if (view.isMobileTaskListLayout()) {
+		const addTaskIconEl = actionsEl.createEl('button', {
+			cls: 'ioto-tasks-center__add-task-button'
+				+ ' ioto-tasks-center__add-task-button--icon'
+				+ ' ioto-tasks-center__icon-button',
+		});
+		addTaskIconEl.type = 'button';
+		addTaskIconEl.disabled = !view.canCreateTask() || view.isCreatingTask;
+		addTaskIconEl.ariaLabel = view.getAddTaskButtonLabel();
+		addTaskIconEl.title = view.getAddTaskButtonLabel();
+		setIcon(addTaskIconEl, 'plus');
+		addTaskIconEl.addEventListener('click', (event) => {
+			void view.showTaskCreationMenu(event);
+		});
+	} else {
+		const addTaskButtonEl = actionsEl.createEl('button', {
+			cls: 'ioto-tasks-center__add-task-button',
+			text: view.isCreatingTask
+				? t('view.tasksPane.addTaskCreating')
+				: t('view.tasksPane.addTask'),
+		});
+		addTaskButtonEl.type = 'button';
+		addTaskButtonEl.disabled = !view.canCreateTask();
+		addTaskButtonEl.ariaLabel = view.getAddTaskButtonLabel();
+		addTaskButtonEl.title = view.getAddTaskButtonLabel();
+		addTaskButtonEl.addEventListener('click', (event) => {
+			void view.showTaskCreationMenu(event);
+		});
+	}
 
 	if (view.isBatchEditMode) {
 		const batchBarEl = container.createDiv({
@@ -157,6 +189,8 @@ export function renderTasksPane(
 	if (view.isTaskSearchInline()) {
 		renderTaskSearchRow(view, container);
 	}
+
+	view.applyTaskListHeaderCollapsed();
 
 	view.renderTaskTabs(container);
 

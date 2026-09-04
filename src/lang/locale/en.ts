@@ -57,6 +57,8 @@ const en = {
 	'view.tasksPane.addTaskReady': 'Add task in {0}',
 	'view.tasksPane.addTaskSelectProject': 'Select a project first',
 	'view.tasksPane.addTaskLoading': 'Wait for the task list to finish loading',
+	'view.tasksPane.showHeaderExtras': 'Show description and search',
+	'view.tasksPane.hideHeaderExtras': 'Hide description and search',
 	'view.projectsPane.addProject': 'Add project',
 	'view.projectsPane.addProjectCreating': 'Creating project...',
 	'view.projectsPane.addProjectLoading':

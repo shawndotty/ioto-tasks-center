@@ -51,6 +51,8 @@ const zhCN = {
 	'view.tasksPane.addTaskReady': '在 {0} 项目下添加任务',
 	'view.tasksPane.addTaskSelectProject': '请先选择一个项目',
 	'view.tasksPane.addTaskLoading': '任务列表加载完成后才能创建',
+	'view.tasksPane.showHeaderExtras': '显示描述与搜索框',
+	'view.tasksPane.hideHeaderExtras': '隐藏描述与搜索框',
 	'view.projectsPane.addProject': '添加项目',
 	'view.projectsPane.addProjectCreating': '正在创建项目',
 	'view.projectsPane.addProjectLoading': '项目列表加载完成后才能创建',
