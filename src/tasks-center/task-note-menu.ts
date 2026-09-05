@@ -43,6 +43,11 @@ export function buildTaskNoteMenu(options: {
 		return;
 	}
 
+	// 点击子菜单条目后需要关闭的是「整棵根菜单」，而不是子菜单本身：在移动端
+	// Obsidian 不会像桌面端那样在点击子菜单项时自动折叠根菜单，若只隐藏子菜单，
+	// 根菜单会残留、标题栏「⋯」再次点击也无法反映新状态。
+	const rootMenu = menu;
+
 	let flattenToParentMenu = false;
 
 	menu.addItem((item) => {
@@ -56,7 +61,7 @@ export function buildTaskNoteMenu(options: {
 		}
 
 		try {
-			appendTaskNoteMenuItems(options, item.setSubmenu());
+			appendTaskNoteMenuItems(options, item.setSubmenu(), rootMenu);
 		} catch {
 			flattenToParentMenu = true;
 			item.setDisabled(true);
@@ -64,7 +69,7 @@ export function buildTaskNoteMenu(options: {
 	});
 
 	if (flattenToParentMenu) {
-		appendTaskNoteMenuItems(options, menu);
+		appendTaskNoteMenuItems(options, menu, rootMenu);
 	}
 }
 
@@ -87,19 +92,22 @@ function appendTaskNoteMenuItems(
 		priority?: number;
 	},
 	target: Menu,
+	rootMenu: Menu,
 ): void {
 	const { app, file, settings, starred, priority } = options;
 
-	// 菜单项点击后立即把整棵菜单（含子菜单）关掉，等菜单完全关闭、触发源（笔记标题栏
+	// 菜单项点击后立即把整棵根菜单关掉，等菜单完全关闭、触发源（笔记标题栏
 	// 的「⋯」按钮）的选中态被清除后，再把写入延后执行。否则写入会同步触发 vault 的
 	// modify 事件，使任务中心列表（或正在编辑的笔记）立即重渲染并销毁作为菜单锚点的
 	// 行元素，导致菜单浮层无法正常卸载，标题栏「⋯」陷入无法再次点击的选中状态。
+	// 注意：必须隐藏 rootMenu（根菜单）而非 target（子菜单），否则在移动端根菜单会
+	// 残留、点击后不消失，也无法反映设置后的新状态。
 	function triggerTaskNoteAction(
 		action: (app: App, file: TFile) => Promise<void>,
 		errorNoticeKey: TranslationKey,
 	): void {
-		if (typeof target.hide === 'function') {
-			target.hide();
+		if (typeof rootMenu.hide === 'function') {
+			rootMenu.hide();
 		}
 		scheduleTaskNoteAction(() =>
 			runTaskNoteAction(app, file, action, errorNoticeKey),

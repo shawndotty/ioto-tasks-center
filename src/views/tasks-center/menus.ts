@@ -32,8 +32,12 @@ import {
 	formatMenuOptionTitle,
 } from './helpers';
 
-// 菜单项点击后，把实际的 vault 写入延后到菜单完全关闭之后再执行，避免写入同步触发的
-// modify 事件把作为菜单锚点的行元素立即销毁，导致菜单浮层无法卸载、行尾「⋯」卡死。
+// 菜单项点击后，把"关闭菜单 + 实际 vault 写入"整体延后到本次点按完整结束之后再执行。
+// 两个原因：
+//  1) 移动端点按菜单项时若同步移除浮层，本次点按会"穿透"到下方的「⋯」按钮，使菜单
+//     以旧状态被重新打开（表现：设置已生效，但菜单不消失、且仍显示旧状态）。
+//  2) 写入触发的 modify 事件会销毁作为菜单锚点的行元素，若菜单仍打开会导致浮层无法
+//     卸载、行尾「⋯」卡死。
 const MENU_ACTION_DEFER_DELAY_MS = 50;
 
 export function showProjectContextMenu(
@@ -307,14 +311,24 @@ export function showTaskPriorityMenu(
 			? enabledTypes
 			: getTaskCreationOptions().map((option) => option.key);
 
-	// 菜单项点击后立即关闭菜单，并把实际的 vault 写入延后到菜单完全关闭之后执行。
-	// 否则写入会同步触发 vault 的 modify 事件，使任务中心列表立即重渲染并销毁作为
-	// 菜单锚点的行元素，导致菜单浮层无法正常卸载，行尾「⋯」陷入无法再次点击的选中态。
+	// 菜单项点击后，先让本次点按完整结束，再关闭菜单并执行真正的 vault 写入。
+	// 关键：不能在点击回调里同步关闭菜单——移动端移除浮层会让点按"穿透"到下方「⋯」
+	// 按钮，导致菜单以旧状态被重新打开（设置已生效但菜单不消失、显示旧状态）。
+	// 延后关闭既避免穿透，也保证 vault 写入时菜单已不在，行元素重渲染不会卡住浮层。
 	const runMenuAction = (run: () => void): void => {
-		if (typeof menu.hide === 'function') {
-			menu.hide();
-		}
-		window.setTimeout(() => run(), MENU_ACTION_DEFER_DELAY_MS);
+		window.setTimeout(() => {
+			if (typeof menu.hide === 'function') {
+				menu.hide();
+			}
+			// 兜底：移动端 Obsidian 的 Menu.hide() 有时不会把浮层从 DOM 中移除，
+			// 这里显式 detach 容器，确保菜单一定消失。
+			const el = (menu as unknown as { containerEl?: HTMLElement })
+				.containerEl;
+			if (el && el.isShown()) {
+				el.detach();
+			}
+			run();
+		}, MENU_ACTION_DEFER_DELAY_MS);
 	};
 
 	menu.addItem((item) =>
