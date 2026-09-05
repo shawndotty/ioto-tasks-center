@@ -201,7 +201,7 @@ test('点击优先级项会写入 frontmatter', async () => {
 		(entry) => entry.title === 'P1',
 	);
 	p1Item.item.click();
-	await new Promise((resolve) => setImmediate(resolve));
+	await new Promise((resolve) => setTimeout(resolve, 80));
 
 	assert.equal(
 		state.content,
@@ -231,7 +231,7 @@ test('点击核心任务项会写入 Starred', async () => {
 	});
 
 	menu.items[0].item.submenu.items[0].item.click();
-	await new Promise((resolve) => setImmediate(resolve));
+	await new Promise((resolve) => setTimeout(resolve, 80));
 
 	assert.equal(
 		state.content,

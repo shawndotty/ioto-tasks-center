@@ -99,15 +99,17 @@ function appendTaskNoteMenuItems(
 						: t('view.taskCoreMenu.set'),
 				)
 				.onClick(() => {
-					void runTaskNoteAction(
-						app,
-						file,
-						starred
-							? clearTaskFileStarred
-							: setTaskFileStarred,
-						starred
-							? 'view.notice.clearTaskCoreFailed'
-							: 'view.notice.updateTaskCoreFailed',
+					scheduleTaskNoteAction(() =>
+						runTaskNoteAction(
+							app,
+							file,
+							starred
+								? clearTaskFileStarred
+								: setTaskFileStarred,
+							starred
+								? 'view.notice.clearTaskCoreFailed'
+								: 'view.notice.updateTaskCoreFailed',
+						),
 					);
 				}),
 		);
@@ -124,11 +126,13 @@ function appendTaskNoteMenuItems(
 	if (typeof priority === 'number') {
 		target.addItem((item) =>
 			item.setTitle(t('view.taskPriorityMenu.clear')).onClick(() => {
-				void runTaskNoteAction(
-					app,
-					file,
-					clearTaskFilePriority,
-					'view.notice.clearTaskPriorityFailed',
+				scheduleTaskNoteAction(() =>
+					runTaskNoteAction(
+						app,
+						file,
+						clearTaskFilePriority,
+						'view.notice.clearTaskPriorityFailed',
+					),
 				);
 			}),
 		);
@@ -142,12 +146,14 @@ function appendTaskNoteMenuItems(
 					formatPriorityMenuTitle(priorityValue, priority === priorityValue),
 				)
 				.onClick(() => {
-					void runTaskNoteAction(
-						app,
-						file,
-						(taskApp, taskFile) =>
-							setTaskFilePriority(taskApp, taskFile, priorityValue),
-						'view.notice.updateTaskPriorityFailed',
+					scheduleTaskNoteAction(() =>
+						runTaskNoteAction(
+							app,
+							file,
+							(taskApp, taskFile) =>
+								setTaskFilePriority(taskApp, taskFile, priorityValue),
+							'view.notice.updateTaskPriorityFailed',
+						),
 					);
 				}),
 		);
@@ -166,4 +172,15 @@ async function runTaskNoteAction(
 		const message = error instanceof Error ? error.message : t(errorNoticeKey);
 		new Notice(message);
 	}
+}
+
+// 菜单项点击回调里直接对“当前正在打开的笔记”做 vault 写入会让 Obsidian 在菜单关闭
+// 动画/视图销毁尚未完成时就把文件重新加载，导致标题栏的“⋯”按钮（文件菜单触发源）陷入
+// 无法再次点击的状态。把写入延后到菜单完全关闭之后执行即可规避。
+const MENU_ACTION_DEFER_DELAY_MS = 50;
+
+function scheduleTaskNoteAction(run: () => Promise<void>): void {
+	window.setTimeout(() => {
+		void run();
+	}, MENU_ACTION_DEFER_DELAY_MS);
 }
