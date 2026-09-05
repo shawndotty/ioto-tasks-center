@@ -18,6 +18,11 @@ import {
 } from './task-creation';
 import type { TaskTemplateConfig } from './task-template-config';
 import { assignUpTaskToFile } from './up-task-assignment';
+import {
+	isPathInsideRoot,
+	isTaskFileInsideTasksRoot,
+	normalizeVaultPath,
+} from './task-path';
 
 export interface ConvertSelectedTextToSubtaskOptions {
 	app: App;
@@ -236,27 +241,6 @@ function resolveSourceLeaf(
 	}
 
 	return null;
-}
-
-function isTaskFileInsideTasksRoot(file: TFile, tasksRootPath: string): boolean {
-	return isPathInsideRoot(file.path, tasksRootPath);
-}
-
-function isPathInsideRoot(path: string, tasksRootPath: string): boolean {
-	const normalizedPath = normalizeVaultPath(path);
-	const normalizedTasksRootPath = normalizeVaultPath(tasksRootPath);
-	return (
-		normalizedPath === normalizedTasksRootPath ||
-		normalizedPath.startsWith(`${normalizedTasksRootPath}/`)
-	);
-}
-
-function normalizeVaultPath(path: string): string {
-	return path
-		.replace(/\\/g, '/')
-		.replace(/\/{2,}/g, '/')
-		.replace(/^\.\//, '')
-		.replace(/\/+$/g, '');
 }
 
 export function resolveSelectedSubtaskTargetPath(options: {

@@ -79,6 +79,8 @@ export interface IOTOTasksCenterSettings {
 	showTaskPriority: boolean;
 	colorTaskTitleByPriority: boolean;
 	showTaskSubtaskCount: boolean;
+	showTaskNoteCoreMenu: boolean;
+	showTaskNotePriorityMenu: boolean;
 	taskLinkBadgeBackgroundMode: TaskLinkBadgeBackgroundMode;
 	showTaskOutlinkCounts: boolean;
 	showTaskInputOutlinkCount: boolean;
@@ -106,6 +108,8 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	showTaskPriority: false,
 	colorTaskTitleByPriority: true,
 	showTaskSubtaskCount: true,
+	showTaskNoteCoreMenu: true,
+	showTaskNotePriorityMenu: true,
 	taskLinkBadgeBackgroundMode: 'multicolor',
 	showTaskOutlinkCounts: false,
 	showTaskInputOutlinkCount: true,
@@ -549,6 +553,32 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 						.setValue(this.plugin.settings.showTaskSubtaskCount)
 						.onChange(async (value) => {
 							await this.plugin.updateShowTaskSubtaskCount(value);
+						}),
+				);
+
+			new Setting(containerEl)
+				.setName(t('settings.heading.taskNoteMenu'))
+				.setHeading();
+
+			new Setting(containerEl)
+				.setName(t('settings.taskNoteMenu.showCore.name'))
+				.setDesc(t('settings.taskNoteMenu.showCore.desc'))
+				.addToggle((toggle) =>
+					toggle
+						.setValue(this.plugin.settings.showTaskNoteCoreMenu)
+						.onChange(async (value) => {
+							await this.plugin.updateShowTaskNoteCoreMenu(value);
+						}),
+				);
+
+			new Setting(containerEl)
+				.setName(t('settings.taskNoteMenu.showPriority.name'))
+				.setDesc(t('settings.taskNoteMenu.showPriority.desc'))
+				.addToggle((toggle) =>
+					toggle
+						.setValue(this.plugin.settings.showTaskNotePriorityMenu)
+						.onChange(async (value) => {
+							await this.plugin.updateShowTaskNotePriorityMenu(value);
 						}),
 				);
 

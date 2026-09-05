@@ -146,9 +146,9 @@ function createPriorityApp(initialContent) {
 	return {
 		state,
 		vault: {
-			read: async () => state.content,
-			modify: async (_file, nextContent) => {
-				state.content = nextContent;
+			process: async (_file, transform) => {
+				state.content = transform(state.content);
+				return state.content;
 			},
 		},
 	};

@@ -1,5 +1,9 @@
 import { Notice, Plugin, TAbstractFile, WorkspaceLeaf } from 'obsidian';
 import { t } from './lang/helpter';
+import {
+	resolvePriorityFromSources,
+	resolveStarredFromSources,
+} from './tasks-center/data';
 import { normalizeDateTaskDateFormat } from './tasks-center/date-task-format';
 import {
 	canConvertSelectedTextToSubtask,
@@ -39,6 +43,7 @@ import {
 	normalizeBatchTemplateConfig,
 	type BatchTemplateConfig,
 } from './tasks-center/batch-task-template';
+import { isTaskNoteFile, buildTaskNoteMenu } from './tasks-center/task-note-menu';
 import {
 	IOTO_TASKS_CENTER_VIEW_TYPE,
 	IOTOTasksCenterView,
@@ -326,6 +331,7 @@ export default class IOTOTasksCenter extends Plugin {
 
 		this.addSettingTab(new IOTOTasksCenterSettingTab(this.app, this));
 		this.registerVaultRefreshEvents();
+		this.registerTaskNoteMenuEvent();
 	}
 
 	async loadSettings() {
@@ -443,6 +449,25 @@ export default class IOTOTasksCenter extends Plugin {
 		this.settings.showTaskPriority = show;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
+	}
+
+	// 这两个开关只在下次打开菜单时生效，不影响已渲染的视图，无需刷新。
+	async updateShowTaskNoteCoreMenu(show: boolean): Promise<void> {
+		if (this.settings.showTaskNoteCoreMenu === show) {
+			return;
+		}
+
+		this.settings.showTaskNoteCoreMenu = show;
+		await this.saveSettings();
+	}
+
+	async updateShowTaskNotePriorityMenu(show: boolean): Promise<void> {
+		if (this.settings.showTaskNotePriorityMenu === show) {
+			return;
+		}
+
+		this.settings.showTaskNotePriorityMenu = show;
+		await this.saveSettings();
 	}
 
 	async updateColorTaskTitleByPriority(color: boolean): Promise<void> {
@@ -722,6 +747,43 @@ export default class IOTOTasksCenter extends Plugin {
 		this.registerEvent(
 			this.app.vault.on('rename', (file, oldPath) => {
 				void this.handleVaultChange(file, oldPath);
+			}),
+		);
+	}
+
+	// 让用户在文件列表右键、标签页右键、笔记标题栏 ⋯ 菜单以及内部链接右键中，
+	// 直接给任务笔记设置核心任务与优先级，无需回到任务中心。
+	private registerTaskNoteMenuEvent(): void {
+		this.registerEvent(
+			this.app.workspace.on('file-menu', (menu, file) => {
+				if (
+					!this.settings.showTaskNoteCoreMenu &&
+					!this.settings.showTaskNotePriorityMenu
+				) {
+					return;
+				}
+
+				if (!isTaskNoteFile(file, this.settings.tasksRootPath)) {
+					return;
+				}
+
+				const frontmatter =
+					this.app.metadataCache.getFileCache(file)?.frontmatter;
+				buildTaskNoteMenu({
+					app: this.app,
+					file,
+					menu,
+					settings: {
+						showCore: this.settings.showTaskNoteCoreMenu,
+						showPriority: this.settings.showTaskNotePriorityMenu,
+					},
+					starred: resolveStarredFromSources({
+						metadataValue: frontmatter?.['Starred'],
+					}),
+					priority: resolvePriorityFromSources({
+						metadataValue: frontmatter?.['Priority'],
+					}),
+				});
 			}),
 		);
 	}

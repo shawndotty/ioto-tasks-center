@@ -110,6 +110,9 @@ const en = {
 	'view.taskPriorityMenu.clear': 'Clear priority',
 	'view.taskPriorityMenu.set': 'Set to {0}',
 	'view.taskPriorityMenu.currentSuffix': ' (current)',
+	'view.taskNoteMenu.title.coreAndPriority': 'Core task and priority',
+	'view.taskNoteMenu.title.core': 'Core task',
+	'view.taskNoteMenu.title.priority': 'Priority',
 	'view.taskMenu.addSubtask': 'Add subtask',
 	'view.taskMenu.delete': 'Delete task',
 	'view.taskMenu.removeParent': 'Remove parent task',
@@ -329,6 +332,13 @@ const en = {
 	'settings.subtasks.showCount.name': 'Show subtask count',
 	'settings.subtasks.showCount.desc':
 		'Show direct subtask counts in the task list and display subtasks in a hover popover.',
+	'settings.heading.taskNoteMenu': 'Task note menu',
+	'settings.taskNoteMenu.showCore.name': 'Show core task toggle',
+	'settings.taskNoteMenu.showCore.desc':
+		'Add a "Mark as core task" entry to the right-click / long-press menu of task notes, including the ⋯ menu of an open note.',
+	'settings.taskNoteMenu.showPriority.name': 'Show priority menu',
+	'settings.taskNoteMenu.showPriority.desc':
+		'Add P0–P3 and "Clear priority" entries to the right-click / long-press menu of task notes, including the ⋯ menu of an open note.',
 	'settings.heading.projectSort': 'Project list sorting',
 	'settings.projectSort.name': 'Sorting rule',
 	'settings.projectSort.desc':

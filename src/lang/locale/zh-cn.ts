@@ -100,6 +100,9 @@ const zhCN = {
 	'view.taskPriorityMenu.clear': '取消优先级',
 	'view.taskPriorityMenu.set': '设置为 {0}',
 	'view.taskPriorityMenu.currentSuffix': '（当前）',
+	'view.taskNoteMenu.title.coreAndPriority': '核心任务与优先级',
+	'view.taskNoteMenu.title.core': '核心任务',
+	'view.taskNoteMenu.title.priority': '优先级',
 	'view.taskMenu.addSubtask': '添加子任务',
 	'view.taskMenu.delete': '删除任务',
 	'view.taskMenu.removeParent': '移除上级任务',
@@ -304,6 +307,13 @@ const zhCN = {
 	'settings.subtasks.showCount.name': '显示子任务数量',
 	'settings.subtasks.showCount.desc':
 		'在任务列表中显示每个任务的直接子任务数量，并在悬浮时展示子任务列表。',
+	'settings.heading.taskNoteMenu': '任务笔记菜单',
+	'settings.taskNoteMenu.showCore.name': '显示核心任务开关',
+	'settings.taskNoteMenu.showCore.desc':
+		'在任务笔记的右键/长按菜单中加入「标记为核心任务」，包括已打开笔记的 ⋯ 菜单。',
+	'settings.taskNoteMenu.showPriority.name': '显示优先级菜单',
+	'settings.taskNoteMenu.showPriority.desc':
+		'在任务笔记的右键/长按菜单中加入 P0–P3 与「取消优先级」，包括已打开笔记的 ⋯ 菜单。',
 	'settings.heading.projectSort': '项目列表排序',
 	'settings.projectSort.name': '排序规则',
 	'settings.projectSort.desc':

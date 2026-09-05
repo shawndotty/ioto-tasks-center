@@ -99,6 +99,9 @@ const zhTW = {
 	'view.taskPriorityMenu.clear': '取消優先級',
 	'view.taskPriorityMenu.set': '設定為 {0}',
 	'view.taskPriorityMenu.currentSuffix': '（目前）',
+	'view.taskNoteMenu.title.coreAndPriority': '核心任務與優先級',
+	'view.taskNoteMenu.title.core': '核心任務',
+	'view.taskNoteMenu.title.priority': '優先級',
 	'view.taskMenu.addSubtask': '添加子任務',
 	'view.taskMenu.delete': '刪除任務',
 	'view.taskMenu.removeParent': '移除上級任務',
@@ -304,6 +307,13 @@ const zhTW = {
 	'settings.subtasks.showCount.name': '顯示子任務數量',
 	'settings.subtasks.showCount.desc':
 		'在任務列表中顯示每個任務的直接子任務數量，並在懸浮時顯示子任務列表。',
+	'settings.heading.taskNoteMenu': '任務筆記選單',
+	'settings.taskNoteMenu.showCore.name': '顯示核心任務開關',
+	'settings.taskNoteMenu.showCore.desc':
+		'在任務筆記的右鍵/長按選單中加入「標記為核心任務」，包含已開啟筆記的 ⋯ 選單。',
+	'settings.taskNoteMenu.showPriority.name': '顯示優先級選單',
+	'settings.taskNoteMenu.showPriority.desc':
+		'在任務筆記的右鍵/長按選單中加入 P0–P3 與「取消優先級」，包含已開啟筆記的 ⋯ 選單。',
 	'settings.heading.projectSort': '專案列表排序',
 	'settings.projectSort.name': '排序規則',
 	'settings.projectSort.desc':
