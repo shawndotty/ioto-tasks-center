@@ -1380,11 +1380,11 @@ button:not(.clickable-icon).ioto-tasks-center__status-checklist-popover-item {
 }
 
 .ioto-tasks-center__task-priority--p2 {
-	--ioto-task-priority-color: var(--color-blue);
+	--ioto-task-priority-color: var(--color-green);
 }
 
 .ioto-tasks-center__task-priority--p3-plus {
-	--ioto-task-priority-color: var(--color-green);
+	--ioto-task-priority-color: var(--color-blue);
 }
 
 .ioto-tasks-center__task-core-badge {
