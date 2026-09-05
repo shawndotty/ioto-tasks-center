@@ -29,11 +29,6 @@
 /* 移动端键盘弹出时，避免可视视口收缩导致任务列表面板边框被压扁。
    使用 100lvh 以键盘收起时的大视口为最小高度基准，保持面板尺寸稳定。 */
 
-
-
-
-
-
 .is-phone .ioto-tasks-center-view {
 	min-height: 100vh;
 	min-height: 100lvh;
@@ -44,7 +39,6 @@
 	flex: 1 1 auto;
 	flex-direction: column;
 	min-height: 0;
-	gap: 12px;
 }
 
 .ioto-tasks-center {
@@ -53,7 +47,7 @@
 	grid-template-columns: minmax(220px, 20%) minmax(0, 1fr);
 	gap: 16px;
 	min-height: 0;
-	padding: 16px;
+	padding: 16px 8px;
 	box-sizing: border-box;
 }
 
@@ -300,7 +294,7 @@
 
 .ioto-tasks-center__compact-toolbar {
 	flex: 0 0 auto;
-	padding: 16px 16px 0;
+	padding: 0px 8px 0;
 }
 
 .ioto-tasks-center__project-switcher,
@@ -1541,7 +1535,10 @@ button:not(.clickable-icon).ioto-tasks-center__status-checklist-popover-item {
 }
 
 @media (max-width: 900px) {
-	.ioto-tasks-center {
+	
+
+
+.ioto-tasks-center {
 		gap: 12px;
 		padding: 12px;
 	}
