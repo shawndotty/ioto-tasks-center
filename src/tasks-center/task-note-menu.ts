@@ -90,6 +90,22 @@ function appendTaskNoteMenuItems(
 ): void {
 	const { app, file, settings, starred, priority } = options;
 
+	// 菜单项点击后立即把整棵菜单（含子菜单）关掉，等菜单完全关闭、触发源（笔记标题栏
+	// 的「⋯」按钮）的选中态被清除后，再把写入延后执行。否则写入会同步触发 vault 的
+	// modify 事件，使任务中心列表（或正在编辑的笔记）立即重渲染并销毁作为菜单锚点的
+	// 行元素，导致菜单浮层无法正常卸载，标题栏「⋯」陷入无法再次点击的选中状态。
+	function triggerTaskNoteAction(
+		action: (app: App, file: TFile) => Promise<void>,
+		errorNoticeKey: TranslationKey,
+	): void {
+		if (typeof target.hide === 'function') {
+			target.hide();
+		}
+		scheduleTaskNoteAction(() =>
+			runTaskNoteAction(app, file, action, errorNoticeKey),
+		);
+	}
+
 	if (settings.showCore) {
 		target.addItem((item) =>
 			item
@@ -99,17 +115,13 @@ function appendTaskNoteMenuItems(
 						: t('view.taskCoreMenu.set'),
 				)
 				.onClick(() => {
-					scheduleTaskNoteAction(() =>
-						runTaskNoteAction(
-							app,
-							file,
-							starred
-								? clearTaskFileStarred
-								: setTaskFileStarred,
-							starred
-								? 'view.notice.clearTaskCoreFailed'
-								: 'view.notice.updateTaskCoreFailed',
-						),
+					triggerTaskNoteAction(
+						starred
+							? clearTaskFileStarred
+							: setTaskFileStarred,
+						starred
+							? 'view.notice.clearTaskCoreFailed'
+							: 'view.notice.updateTaskCoreFailed',
 					);
 				}),
 		);
@@ -126,13 +138,9 @@ function appendTaskNoteMenuItems(
 	if (typeof priority === 'number') {
 		target.addItem((item) =>
 			item.setTitle(t('view.taskPriorityMenu.clear')).onClick(() => {
-				scheduleTaskNoteAction(() =>
-					runTaskNoteAction(
-						app,
-						file,
-						clearTaskFilePriority,
-						'view.notice.clearTaskPriorityFailed',
-					),
+				triggerTaskNoteAction(
+					clearTaskFilePriority,
+					'view.notice.clearTaskPriorityFailed',
 				);
 			}),
 		);
@@ -146,14 +154,10 @@ function appendTaskNoteMenuItems(
 					formatPriorityMenuTitle(priorityValue, priority === priorityValue),
 				)
 				.onClick(() => {
-					scheduleTaskNoteAction(() =>
-						runTaskNoteAction(
-							app,
-							file,
-							(taskApp, taskFile) =>
-								setTaskFilePriority(taskApp, taskFile, priorityValue),
-							'view.notice.updateTaskPriorityFailed',
-						),
+					triggerTaskNoteAction(
+						(taskApp, taskFile) =>
+							setTaskFilePriority(taskApp, taskFile, priorityValue),
+						'view.notice.updateTaskPriorityFailed',
 					);
 				}),
 		);

@@ -32,6 +32,10 @@ import {
 	formatMenuOptionTitle,
 } from './helpers';
 
+// 菜单项点击后，把实际的 vault 写入延后到菜单完全关闭之后再执行，避免写入同步触发的
+// modify 事件把作为菜单锚点的行元素立即销毁，导致菜单浮层无法卸载、行尾「⋯」卡死。
+const MENU_ACTION_DEFER_DELAY_MS = 50;
+
 export function showProjectContextMenu(
 	view: IOTOTasksCenterView,
 	event: MouseEvent,
@@ -303,6 +307,16 @@ export function showTaskPriorityMenu(
 			? enabledTypes
 			: getTaskCreationOptions().map((option) => option.key);
 
+	// 菜单项点击后立即关闭菜单，并把实际的 vault 写入延后到菜单完全关闭之后执行。
+	// 否则写入会同步触发 vault 的 modify 事件，使任务中心列表立即重渲染并销毁作为
+	// 菜单锚点的行元素，导致菜单浮层无法正常卸载，行尾「⋯」陷入无法再次点击的选中态。
+	const runMenuAction = (run: () => void): void => {
+		if (typeof menu.hide === 'function') {
+			menu.hide();
+		}
+		window.setTimeout(() => run(), MENU_ACTION_DEFER_DELAY_MS);
+	};
+
 	menu.addItem((item) =>
 		item
 			.setTitle(
@@ -311,12 +325,14 @@ export function showTaskPriorityMenu(
 					: t('view.taskCoreMenu.set'),
 			)
 			.onClick(() => {
-				if (task.starred) {
-					void view.clearTaskStarred(task);
-					return;
-				}
+				runMenuAction(() => {
+					if (task.starred) {
+						void view.clearTaskStarred(task);
+						return;
+					}
 
-				void view.updateTaskStarred(task);
+					void view.updateTaskStarred(task);
+				});
 			}),
 	);
 	menu.addSeparator();
@@ -388,7 +404,7 @@ export function showTaskPriorityMenu(
 	if (typeof task.priority === 'number') {
 		menu.addItem((item) =>
 			item.setTitle(t('view.taskPriorityMenu.clear')).onClick(() => {
-				void view.clearTaskPriority(task);
+				runMenuAction(() => void view.clearTaskPriority(task));
 			}),
 		);
 		menu.addSeparator();
@@ -404,7 +420,9 @@ export function showTaskPriorityMenu(
 					),
 				)
 				.onClick(() => {
-					void view.updateTaskPriority(task, priority);
+					runMenuAction(() =>
+						void view.updateTaskPriority(task, priority),
+					);
 				}),
 		);
 	}
