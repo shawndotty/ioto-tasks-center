@@ -20,6 +20,7 @@ interface TouchGestureState {
 	longPressTimer: number | null;
 	longPressFired: boolean;
 	dragging: boolean;
+	scrollAborted: boolean;
 	ghostEl: HTMLElement | null;
 	lastTargetPath: string | null;
 }
@@ -49,6 +50,7 @@ export function attachTouchGesture(
 		longPressTimer: null,
 		longPressFired: false,
 		dragging: false,
+		scrollAborted: false,
 		ghostEl: null,
 		lastTargetPath: null,
 	};
@@ -73,6 +75,7 @@ export function attachTouchGesture(
 		destroyGhost();
 		state.longPressFired = false;
 		state.dragging = false;
+		state.scrollAborted = false;
 		state.lastTargetPath = null;
 		rowEl.removeClass('is-pointer-dragging');
 	};
@@ -85,6 +88,15 @@ export function attachTouchGesture(
 	};
 
 	const beginDrag = (): boolean => {
+		// 真正进入拖拽时才捕获指针，保证拖到行外仍能续传事件，
+		// 同时不影响正常滑动时的原生滚动。
+		if (state.pointerId !== null && typeof rowEl.setPointerCapture === 'function') {
+			try {
+				rowEl.setPointerCapture(state.pointerId);
+			} catch {
+				// 某些环境下 setPointerCapture 可能抛错，忽略即可。
+			}
+		}
 		const started = beginTaskDragState(view, task, rowEl, {
 			showRemoveDropZone: false,
 		});
@@ -137,15 +149,11 @@ export function attachTouchGesture(
 		state.startY = event.clientY;
 		state.longPressFired = false;
 		state.dragging = false;
+		state.scrollAborted = false;
 		state.lastTargetPath = null;
 		rowEl.dataset.iotoSuppressClick = '';
-		if (typeof rowEl.setPointerCapture === 'function') {
-			try {
-				rowEl.setPointerCapture(event.pointerId);
-			} catch {
-				// 某些环境下 setPointerCapture 可能抛错，忽略即可。
-			}
-		}
+		// 注意：此处不再立即 setPointerCapture，保留默认 touch-action，
+		// 让正常滑动时列表可原生滚动；仅在真正进入 beginDrag 时再捕获。
 		clearTimer();
 		state.longPressTimer = window.setTimeout(() => {
 			state.longPressTimer = null;
@@ -160,6 +168,10 @@ export function attachTouchGesture(
 		if (state.pointerId === null || event.pointerId !== state.pointerId) {
 			return;
 		}
+		// 本次触摸已判定为"滑动滚动"，整次触摸不再尝试拖拽，交还原生滚动。
+		if (state.scrollAborted) {
+			return;
+		}
 		const dist = Math.hypot(
 			event.clientX - state.startX,
 			event.clientY - state.startY,
@@ -170,7 +182,21 @@ export function attachTouchGesture(
 				// 仍在"按住中"，尚未超过位移阈值，不做任何处理（允许滚动）。
 				return;
 			}
-			// 超过位移阈值 → 取消菜单定时器，进入拖拽候选。
+			// 超过位移阈值。设计约定：必须"先长按再移动"才进入拖拽。
+			// 未触发长按即为正常的列表滑动 → 放弃本次手势、交还原生滚动。
+			if (!state.longPressFired) {
+				state.scrollAborted = true;
+				clearTimer();
+				if (typeof rowEl.releasePointerCapture === 'function') {
+					try {
+						rowEl.releasePointerCapture(event.pointerId);
+					} catch {
+						// 忽略释放失败。
+					}
+				}
+				return;
+			}
+			// 已触发长按 → 取消菜单定时器，进入拖拽。
 			clearTimer();
 			if (view.isUpdatingUpTask) {
 				resetGesture(false);
