@@ -203,6 +203,7 @@ const zhCN = {
 	'task.sort.nameDesc': '文件名（Z到A）',
 	'task.sort.priorityDesc': '优先级（高到低）',
 	'task.sort.priorityAsc': '优先级（低到高）',
+	'task.sort.relevance': '按搜索相关度',
 	'task.group.none': '不分组',
 	'task.group.status': '按任务状态分组',
 	'task.group.priority': '按优先级分组',
@@ -303,6 +304,11 @@ const zhCN = {
 	'settings.priority.colorTaskTitle.name': '任务标题使用优先级颜色',
 	'settings.priority.colorTaskTitle.desc':
 		'让设置了 Priority 的任务标题使用对应优先级 Badge 的颜色，不显示优先级 Badge 时也能看出任务优先级。',
+	'settings.taskSearchEntryMode.name': '任务搜索入口',
+	'settings.taskSearchEntryMode.desc':
+		'在任务列表上方显示常驻内联搜索框（输入即筛选），或使用旧版搜索对话框。',
+	'settings.taskSearchEntryMode.inline': '内联字段（推荐）',
+	'settings.taskSearchEntryMode.modal': '搜索对话框',
 	'settings.heading.subtasks': '子任务',
 	'settings.subtasks.showCount.name': '显示子任务数量',
 	'settings.subtasks.showCount.desc':
@@ -432,6 +438,8 @@ const zhCN = {
 	'notice.batchCreate.failed': '批量创建失败：{0}',
 	'notice.batchCreate.parentAssignFailed': '子任务「{0}」关联父任务失败。',
 	'command.toggleBatchEditMode': '切换批量编辑模式',
+	'command.focusTaskSearch': '聚焦任务搜索框',
+	'command.clearTaskSearch': '清空任务搜索',
 	'command.batchSelectAll': '全选可见任务',
 	'command.batchDeleteTasks': '批量删除选中任务',
 	'command.batchSetPriority': '批量设置任务优先级',

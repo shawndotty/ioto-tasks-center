@@ -36,6 +36,7 @@ const zhTW = {
 	'projectCenter.notice.updateArchivedFailed': '更新封存狀態失敗。',
 	'projectCenter.notice.updateMetadataFailed': '更新專案元資料失敗。',
 	'projectCenter.notice.createProjectFailed': '建立專案失敗。',
+	'projectCenter.notice.specNotFound': '未找到專案規範檔案。',
 	'view.title': '任務中心',
 	'view.projectsPaneTitle': '專案列表',
 	'view.tasksPaneTitle': '任務列表',
@@ -202,6 +203,7 @@ const zhTW = {
 	'task.sort.nameDesc': '檔名（Z到A）',
 	'task.sort.priorityDesc': '優先級（高到低）',
 	'task.sort.priorityAsc': '優先級（低到高）',
+	'task.sort.relevance': '按搜尋相關度',
 	'task.group.none': '不分組',
 	'task.group.status': '按任務狀態分組',
 	'task.group.priority': '按優先級分組',
@@ -303,6 +305,11 @@ const zhTW = {
 	'settings.priority.colorTaskTitle.name': '任務標題使用優先級顏色',
 	'settings.priority.colorTaskTitle.desc':
 		'讓設定了 Priority 的任務標題使用對應優先級 Badge 的顏色，不顯示優先級 Badge 時也能看出任務優先級。',
+	'settings.taskSearchEntryMode.name': '任務搜尋入口',
+	'settings.taskSearchEntryMode.desc':
+		'在任務清單上方顯示常駐內聯搜尋框（輸入即篩選），或使用舊版搜尋對話框。',
+	'settings.taskSearchEntryMode.inline': '內聯欄位（推薦）',
+	'settings.taskSearchEntryMode.modal': '搜尋對話框',
 	'settings.heading.subtasks': '子任務',
 	'settings.subtasks.showCount.name': '顯示子任務數量',
 	'settings.subtasks.showCount.desc':
@@ -432,6 +439,8 @@ const zhTW = {
 	'notice.batchCreate.failed': '批次建立失敗：{0}',
 	'notice.batchCreate.parentAssignFailed': '子任務「{0}」關聯父任務失敗。',
 	'command.toggleBatchEditMode': '切換批次編輯模式',
+	'command.focusTaskSearch': '聚焦任務搜尋框',
+	'command.clearTaskSearch': '清空任務搜尋',
 	'command.batchSelectAll': '全選可見任務',
 	'command.batchDeleteTasks': '批次刪除選取任務',
 	'command.batchSetPriority': '批次設定任務優先級',
