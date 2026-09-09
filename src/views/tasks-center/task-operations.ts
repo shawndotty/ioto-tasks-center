@@ -1,7 +1,10 @@
 import { Menu, Notice, TFile } from 'obsidian';
 import type { IOTOTasksCenterView } from '../iotoTasksCenterView';
 import { getTaskCreationOptions } from './helpers';
-import { createTaskFile } from '../../tasks-center/task-creation';
+import {
+    createTaskFile,
+    upsertListProperty,
+} from '../../tasks-center/task-creation';
 import { createProjectFolder } from '../../tasks-center/project-creation';
 import { trashTaskFile } from '../../tasks-center/task-deletion';
 import {
@@ -15,7 +18,13 @@ import {
 } from '../../tasks-center/task-starred';
 import {
     assignUpTaskToFile,
+    buildUpTaskWikilink,
 } from '../../tasks-center/up-task-assignment';
+import {
+    removeScalarProperty,
+    rewriteTaskFrontmatter,
+    upsertScalarProperty,
+} from '../../tasks-center/frontmatter-properties';
 import {
     applyAffix,
     buildBatchTaskTitleForUpTask,
@@ -524,16 +533,23 @@ export async function handleCreateSubtask(
             sourceLeaf: view.leaf,
         });
         if (type !== 'date') {
-            await applyCreatedTaskSettings(view, result.file, {
+            // 关键修复（方案 §6.3）：把 Starred / Priority / UpTask 三步写入
+            // 收敛到一次原子的 vault.process，消除多次读写之间的竞态窗口，
+            // 避免偶发丢失 UpTask 或 Starred 属性。
+            await applyCreatedSubtaskProperties(view, result.file, {
                 priority: createdPriority,
                 starred: createdStarred,
+                parentTaskTitle: currentTaskContext.parentTaskTitle,
             });
+        } else {
+            await rewriteTaskFrontmatter(view.app, result.file, (content) =>
+                upsertListProperty(
+                    content,
+                    'UpTask',
+                    buildUpTaskWikilink(currentTaskContext.parentTaskTitle),
+                ),
+            );
         }
-        await assignUpTaskToFile(
-            view.app,
-            result.file,
-            currentTaskContext.parentTaskTitle,
-        );
         view.previewLeaf = previewLeaf;
         view.lastOpenedTaskByProject.set(
             currentTaskContext.projectName,
@@ -591,6 +607,45 @@ export async function applyCreatedTaskSettings(
             error instanceof Error
                 ? error.message
                 : t('view.notice.updateTaskCoreFailed');
+        new Notice(message);
+    }
+}
+
+async function applyCreatedSubtaskProperties(
+    view: IOTOTasksCenterView,
+    file: TFile,
+    settings: {
+        priority: TaskPriorityValue | null;
+        starred: boolean;
+        parentTaskTitle: string;
+    },
+): Promise<void> {
+    try {
+        await rewriteTaskFrontmatter(view.app, file, (content) => {
+            let next = content;
+            next = settings.starred
+                ? upsertScalarProperty(next, 'Starred', 'true')
+                : removeScalarProperty(next, 'Starred');
+            next =
+                settings.priority === null
+                    ? removeScalarProperty(next, 'Priority')
+                    : upsertScalarProperty(
+                            next,
+                            'Priority',
+                            `${settings.priority}`,
+                        );
+            next = upsertListProperty(
+                next,
+                'UpTask',
+                buildUpTaskWikilink(settings.parentTaskTitle),
+            );
+            return next;
+        });
+    } catch (error) {
+        const message =
+            error instanceof Error
+                ? error.message
+                : t('view.notice.createSubtaskFailed');
         new Notice(message);
     }
 }

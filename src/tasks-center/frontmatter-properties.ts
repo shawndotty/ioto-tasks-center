@@ -1,5 +1,7 @@
 import type { App, TFile } from 'obsidian';
 
+import { removeListProperty, upsertListProperty } from './task-creation';
+
 /**
  * 原子地读改写任务笔记的 frontmatter：把 `vault.read + vault.modify` 换成
  * `vault.process`，避免两次操作之间被其它写入覆盖。
@@ -10,6 +12,44 @@ export async function rewriteTaskFrontmatter(
 	transform: (content: string) => string,
 ): Promise<void> {
 	await app.vault.process(file, transform);
+}
+
+/**
+ * 原子地 upsert 一个列表型属性（如 `UpTask`/`Project`/`Subject`/`Plan`）。
+ * 内部走 `vault.process`，读到的永远是最新内容，不会被其它写入插空覆盖。
+ * 返回内容是否真的发生了变化。
+ */
+export async function rewriteTaskListProperty(
+	app: App,
+	file: TFile,
+	propertyName: string,
+	value: string,
+): Promise<boolean> {
+	let changed = false;
+	await app.vault.process(file, (content) => {
+		const next = upsertListProperty(content, propertyName, value);
+		changed = next !== content;
+		return next;
+	});
+	return changed;
+}
+
+/**
+ * 原子地移除一个列表型属性。同样走 `vault.process`，避免读改写之间的竞态窗口。
+ * 返回内容是否真的发生了变化。
+ */
+export async function removeTaskListProperty(
+	app: App,
+	file: TFile,
+	propertyName: string,
+): Promise<boolean> {
+	let changed = false;
+	await app.vault.process(file, (content) => {
+		const next = removeListProperty(content, propertyName);
+		changed = next !== content;
+		return next;
+	});
+	return changed;
 }
 
 export function upsertScalarProperty(

@@ -550,26 +550,27 @@ async function applyTaskPropertiesToFile(
 	},
 ): Promise<void> {
 	const { projectName, type, customName } = options;
-	let nextContent = await app.vault.read(file);
+	// 原子地一次性完成 Project / Subject / Plan 的 upsert / remove。
+	// 用单个 vault.process 替代原先“二次读取 + 条件 modify”的非原子写法，
+	// 避免两次读取之间文件被其它写入覆盖而造成丢更新（见方案 §3.2）。
+	await app.vault.process(file, (content) => {
+		let next = content;
+		next = upsertListProperty(next, 'Project', projectName);
 
-	nextContent = upsertListProperty(nextContent, 'Project', projectName);
+		for (const propertyName of getPropertiesToRemove(type)) {
+			next = removeListProperty(next, propertyName);
+		}
 
-	for (const propertyName of getPropertiesToRemove(type)) {
-		nextContent = removeListProperty(nextContent, propertyName);
-	}
+		if (type === 'topic' && customName) {
+			next = upsertListProperty(next, 'Subject', customName);
+		}
 
-	if (type === 'topic' && customName) {
-		nextContent = upsertListProperty(nextContent, 'Subject', customName);
-	}
+		if (type === 'plan' && customName) {
+			next = upsertListProperty(next, 'Plan', customName);
+		}
 
-	if (type === 'plan' && customName) {
-		nextContent = upsertListProperty(nextContent, 'Plan', customName);
-	}
-
-	const currentContent = await app.vault.read(file);
-	if (nextContent !== currentContent) {
-		await app.vault.modify(file, nextContent);
-	}
+		return next;
+	});
 }
 
 export async function waitForFileContentToStabilize(

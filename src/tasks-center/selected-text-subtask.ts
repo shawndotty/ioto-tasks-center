@@ -18,6 +18,7 @@ import {
 } from './task-creation';
 import type { TaskTemplateConfig } from './task-template-config';
 import { assignUpTaskToFile } from './up-task-assignment';
+import { rewriteTaskFrontmatter } from './frontmatter-properties';
 import {
 	isPathInsideRoot,
 	isTaskFileInsideTasksRoot,
@@ -189,15 +190,11 @@ async function copyProjectPropertyFromSourceToTarget(
 	);
 	const nextProjectValues =
 		projectValues.length > 0 ? projectValues : [fallbackProjectName];
-	const targetContent = await app.vault.read(targetFile);
-	const nextContent = upsertListPropertyValues(
-		targetContent,
-		'Project',
-		nextProjectValues,
+	// 原子读改写：用单个 vault.process 把 Project 写入目标文件，
+	// 避免 read + modify 之间的竞态窗口（见方案 §6.2）。
+	await rewriteTaskFrontmatter(app, targetFile, (content) =>
+		upsertListPropertyValues(content, 'Project', nextProjectValues),
 	);
-	if (nextContent !== targetContent) {
-		await app.vault.modify(targetFile, nextContent);
-	}
 }
 
 async function restoreSourceEditorContext(
