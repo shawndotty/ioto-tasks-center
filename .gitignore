@@ -22,3 +22,7 @@ data.json
 .DS_Store
 
 ioto-tasks-center.zip
+
+# Exclude release tokens
+.env
+.gitee-token

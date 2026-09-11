@@ -47,6 +47,7 @@ npm run build      # typecheck (tsc -noEmit -skipLibCheck) + esbuild production
 npm test           # node --test tests/**/*.test.mjs
 npm run lint       # eslint .
 npm run version    # version-bump.mjs; updates manifest.json + versions.json
+npm run build:deploy  # build + zip + tag + release to GitHub & Gitee (see "Versioning & releases")
 ```
 
 ## Source structure
@@ -109,7 +110,9 @@ Other folders/files:
 
 - `eslint.config.mts` — ESLint 9 flat config with `eslint-plugin-obsidianmd` recommended rules.
 
-- `.github/workflows/` — `lint.yml` (lints every commit), `release.yml`.
+- `scripts/` — `deploy-release.mjs`, the one-command release script (`npm run build:deploy`).
+
+- `.github/workflows/` — `lint.yml` (lints every commit on all branches). Releases are produced locally by `npm run build:deploy`, not by CI.
 
 ## Architecture patterns (follow these)
 
@@ -183,9 +186,9 @@ Some batch commands are currently commented out in `main.ts`; keep them there un
 
 ## Versioning & releases
 
-- Bump `version` in `manifest.json` (SemVer) and update `versions.json` (plugin version → minimum app version). `npm run version` automates this.
+- Bump `version` in `manifest.json` (SemVer) and update `versions.json` (plugin version → minimum app version). `npm run version` automates this; commit the bump before releasing (the release script does not commit).
 
-- Create a GitHub release whose tag exactly matches `manifest.json`'s `version` (no leading `v`). Attach `manifest.json`, `main.js`, and `styles.css` as individual assets.
+- Publish with `npm run build:deploy`: it runs `npm run build`, packs `main.js` / `manifest.json` / `styles.css` into `ioto-tasks-center.zip`, creates and pushes the tag `v<version>` (matching `manifest.json`'s `version`, with a leading `v`), then creates a Release on GitHub and Gitee, each with all 4 assets attached. GitHub reuses the logged-in `gh`; Gitee needs `GITEE_TOKEN` (or a local `.gitee-token` file). Flags: `--dry-run` / `--github-only` / `--gitee-only` / `--force` / `--notes` / `--notes-file`. Releases are created by this script, not by CI.
 
 - Update `docs/USER_GUIDE.md` (+ Chinese version) and the README version/changelog sections when shipping user-facing changes.
 
