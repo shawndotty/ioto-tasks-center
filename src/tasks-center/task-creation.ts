@@ -2,6 +2,10 @@ import { App, Notice, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
 import { t } from '../lang/helpter';
 
 import {
+	resolveCursorMarkerSearchStart,
+	stripCursorMarkers,
+} from './cursor-marker';
+import {
 	formatDateByPattern,
 	normalizeDateTaskDateFormat,
 } from './date-task-format';
@@ -29,6 +33,15 @@ export interface CreateTaskFileResult {
 	file: TFile;
 	created: boolean;
 	templaterApplied: boolean;
+	/**
+	 * 模板中 `%%Cursor%%` 被剥离后，首个标记**相对正文起始（frontmatter 之后）**
+	 * 的偏移；无标记时为 `null`。仅新建文件时可能非空（见方案 §3、§5.2）。
+	 *
+	 * 之所以用「正文相对」而非绝对偏移：创建后、打开前调用方还会往 frontmatter
+	 * 写入 Starred / Priority / UpTask（见 task-operations.ts），frontmatter 变长
+	 * 会使整段正文后移；只有相对正文的偏移在打开时重新折算成绝对位置才依然准确。
+	 */
+	cursorOffset: number | null;
 }
 
 interface TemplaterPlugin {
@@ -343,6 +356,7 @@ export async function createTaskFile(
 			file: existingFile,
 			created: false,
 			templaterApplied: false,
+			cursorOffset: null,
 		};
 	}
 
@@ -353,7 +367,7 @@ export async function createTaskFile(
 	const file = await app.vault.create(targetPath, '');
 	const resolvedTemplateSource = resolveTaskTemplateSource(templateConfig);
 	if (resolvedTemplateSource.kind === 'none') {
-		await applyTaskPropertiesToFile(app, file, {
+		const cursorOffset = await applyTaskPropertiesToFile(app, file, {
 			projectName,
 			type,
 			customName: normalizedCustomName,
@@ -362,6 +376,7 @@ export async function createTaskFile(
 			file,
 			created: true,
 			templaterApplied: false,
+			cursorOffset,
 		};
 	}
 
@@ -379,7 +394,7 @@ export async function createTaskFile(
 					targetLeaf,
 					sourceLeaf,
 				);
-	await applyTaskPropertiesToFile(app, file, {
+	const cursorOffset = await applyTaskPropertiesToFile(app, file, {
 		projectName,
 		type,
 		customName: normalizedCustomName,
@@ -388,6 +403,7 @@ export async function createTaskFile(
 		file,
 		created: true,
 		templaterApplied,
+		cursorOffset,
 	};
 }
 
@@ -540,6 +556,14 @@ function getTemplaterPlugin(app: App): TemplaterPlugin | null {
 	return plugin ?? null;
 }
 
+/**
+ * 原子地写入 Project / Subject / Plan，并在返回最终内容前剥离 `%%Cursor%%`。
+ *
+ * 偏移必须在写入属性之后计算：upsert 可能在正文前插入 frontmatter，使正文字符
+ * 整体后移；只有基于「写完属性后的最终内容」计算才准确（见方案 §4）。
+ *
+ * @returns 首个 `%%Cursor%%` 相对正文起始的偏移；无标记时为 `null`。
+ */
 async function applyTaskPropertiesToFile(
 	app: App,
 	file: TFile,
@@ -548,8 +572,10 @@ async function applyTaskPropertiesToFile(
 		type: TaskCreationType;
 		customName: string | null;
 	},
-): Promise<void> {
+): Promise<number | null> {
 	const { projectName, type, customName } = options;
+	// vault.process 冲突时会重试回调，用对象持有偏移以取最后一次结果，语义正确。
+	const capturedCursor: { offset: number | null } = { offset: null };
 	// 原子地一次性完成 Project / Subject / Plan 的 upsert / remove。
 	// 用单个 vault.process 替代原先“二次读取 + 条件 modify”的非原子写法，
 	// 避免两次读取之间文件被其它写入覆盖而造成丢更新（见方案 §3.2）。
@@ -569,8 +595,18 @@ async function applyTaskPropertiesToFile(
 			next = upsertListProperty(next, 'Plan', customName);
 		}
 
-		return next;
+		const { content: strippedContent, firstOffset } =
+			stripCursorMarkers(next);
+		// 折算为正文相对偏移，避免后续 frontmatter 变长导致定位漂移。
+		capturedCursor.offset =
+			firstOffset === null
+				? null
+				: firstOffset -
+					resolveCursorMarkerSearchStart(strippedContent);
+		return strippedContent;
 	});
+
+	return capturedCursor.offset;
 }
 
 export async function waitForFileContentToStabilize(

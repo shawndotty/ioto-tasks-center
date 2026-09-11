@@ -129,6 +129,7 @@ export async function executeBatchCreate(
     let successCount = 0;
     let failureCount = 0;
     let firstCreatedFile: TFile | null = null;
+    let firstCursorOffset: number | null = null;
 
     try {
         const previewLeaf = view.ensurePreviewLeaf();
@@ -156,6 +157,7 @@ export async function executeBatchCreate(
                 createdFiles.push({ file: result.file, item });
                 if (!firstCreatedFile) {
                     firstCreatedFile = result.file;
+                    firstCursorOffset = result.cursorOffset;
                 }
                 successCount += 1;
             } catch (error) {
@@ -206,7 +208,9 @@ export async function executeBatchCreate(
         await view.refreshFromVaultChange();
 
         if (firstCreatedFile) {
-            await view.openFileInPreview(firstCreatedFile);
+            await view.openFileInPreview(firstCreatedFile, {
+                cursorOffset: firstCursorOffset,
+            });
         }
 
         if (failureCount === 0) {
@@ -446,7 +450,9 @@ export async function handleCreateTask(view: IOTOTasksCenterView, type: TaskCrea
         view.previewLeaf = previewLeaf;
         view.lastOpenedTaskByProject.set(projectName, result.file.path);
         await view.refreshFromVaultChange();
-        await view.openFileInPreview(result.file);
+        await view.openFileInPreview(result.file, {
+            cursorOffset: result.cursorOffset,
+        });
     } catch (error) {
         const message =
             error instanceof Error
@@ -558,7 +564,9 @@ export async function handleCreateSubtask(
         view.deferVaultRefreshForSubtaskCreation = false;
         view.clearDeferredVaultRefreshState();
         await view.refreshFromVaultChange();
-        await view.openFileInPreview(result.file);
+        await view.openFileInPreview(result.file, {
+            cursorOffset: result.cursorOffset,
+        });
     } catch (error) {
         const message =
             error instanceof Error

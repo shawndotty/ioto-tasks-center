@@ -10,6 +10,7 @@ import {
 } from 'obsidian';
 
 import { PROJECT_METADATA_FILE_NAME } from '../tasks-center/project-metadata';
+import { resolveCursorMarkerSearchStart } from '../tasks-center/cursor-marker';
 
 import type { TaskPriorityValue } from '../tasks-center/task-priority';
 
@@ -1652,7 +1653,10 @@ export class IOTOTasksCenterView extends ItemView {
 		await this.loadTasks(this.selectedProject);
 	}
 
-	async openFileInPreview(file: TFile): Promise<void> {
+	async openFileInPreview(
+		file: TFile,
+		options?: { cursorOffset?: number | null },
+	): Promise<void> {
 		this.openingTaskPath = file.path;
 		this.render();
 
@@ -1685,9 +1689,72 @@ export class IOTOTasksCenterView extends ItemView {
 			if (query) {
 				await this.scrollPreviewToFirstMatch(leaf, file, query);
 			}
+
+			const cursorOffset = options?.cursorOffset;
+			if (typeof cursorOffset === 'number') {
+				await this.focusPreviewEditorAtOffset(
+					leaf,
+					file,
+					cursorOffset,
+				);
+			}
 		} finally {
 			this.openingTaskPath = null;
 			this.render();
+		}
+	}
+
+	/**
+	 * 把预览叶子切到源码模式并把光标落到正文指定偏移。
+	 *
+	 * `bodyOffset` 是相对正文起始（frontmatter 之后）的偏移；打开时用当前内容的
+	 * frontmatter 长度折算成绝对位置，因此创建后 frontmatter 再变长也不会漂移。
+	 * 仅在创建任务笔记命中 `%%Cursor%%` 且该文件会留给用户时调用；无标记时
+	 * 完全不触发，因此默认打开模式不受影响（见方案 §3.5、§5.3）。
+	 */
+	private async focusPreviewEditorAtOffset(
+		leaf: WorkspaceLeaf,
+		file: TFile,
+		bodyOffset: number,
+	): Promise<void> {
+		try {
+			let view: MarkdownView | null =
+				leaf.view instanceof MarkdownView ? leaf.view : null;
+			const needsSourceMode =
+				!view ||
+				view.file?.path !== file.path ||
+				view.getMode() !== 'source';
+			if (needsSourceMode) {
+				await leaf.setViewState({
+					type: 'markdown',
+					active: true,
+					state: {
+						file: file.path,
+						mode: 'source',
+					},
+				});
+				view = leaf.view instanceof MarkdownView ? leaf.view : null;
+			}
+
+			if (!view || view.file?.path !== file.path) {
+				return;
+			}
+
+			this.app.workspace.setActiveLeaf(leaf, { focus: true });
+			const editor = view.editor;
+			const content = editor.getValue();
+			const absoluteOffset =
+				resolveCursorMarkerSearchStart(content) + bodyOffset;
+			const clampedOffset = Math.max(
+				0,
+				Math.min(absoluteOffset, content.length),
+			);
+			const position = editor.offsetToPos(clampedOffset);
+			editor.setCursor(position);
+			editor.scrollIntoView({ from: position, to: position }, true);
+			editor.focus();
+		} catch {
+			// 标记已在创建阶段被剥离，聚焦失败不应影响创建流程。
 		}
 	}
 

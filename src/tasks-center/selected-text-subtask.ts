@@ -79,6 +79,8 @@ export async function convertSelectedTextToSubtask(
 		head: editor.getCursor('head'),
 	};
 
+	// 模板中的 `%%Cursor%%` 已在 createTaskFile 的创建阶段被剥离；
+	// 此入口不把新笔记留给用户，故忽略 result.cursorOffset、不抢焦点（方案 §3.6）。
 	const result = await createTaskFile({
 		app,
 		tasksRootPath,
