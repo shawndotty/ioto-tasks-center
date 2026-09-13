@@ -28,6 +28,13 @@ export function getTaskPriorityVisibilityOptions() {
 	] as const;
 }
 
+export function getTaskHierarchyVisibilityOptions() {
+	return [
+		{ show: true, label: t('menu.hierarchy.show') },
+		{ show: false, label: t('menu.hierarchy.hide') },
+	] as const;
+}
+
 export function formatPriorityMenuTitle(priority: number, active: boolean): string {
 	const label = `P${priority}`;
 	return active

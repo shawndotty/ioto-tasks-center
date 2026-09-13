@@ -83,6 +83,7 @@ export default class IOTOTasksCenter extends Plugin {
 					() => this.settings.projectListGroupMode,
 					() => this.settings.taskListSortMode,
 					() => this.settings.taskListGroupMode,
+					() => this.settings.showTaskHierarchy,
 					() => this.settings.showTaskPriority,
 					() => this.settings.colorTaskTitleByPriority,
 					() => this.settings.inputRootPath,
@@ -100,6 +101,7 @@ export default class IOTOTasksCenter extends Plugin {
 					(groupMode) => this.updateProjectListGroupMode(groupMode),
 					(sortMode) => this.updateTaskListSortMode(sortMode),
 					(groupMode) => this.updateTaskListGroupMode(groupMode),
+					(show) => this.updateShowTaskHierarchy(show),
 					(show) => this.updateShowTaskPriority(show),
 					() => this.settings.taskListTimeFilter,
 					(filter) => this.updateTaskListTimeFilter(filter),
@@ -437,6 +439,16 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.taskListGroupMode = groupMode;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateShowTaskHierarchy(show: boolean): Promise<void> {
+		if (this.settings.showTaskHierarchy === show) {
+			return;
+		}
+
+		this.settings.showTaskHierarchy = show;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}

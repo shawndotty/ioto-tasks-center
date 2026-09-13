@@ -76,6 +76,7 @@ export interface IOTOTasksCenterSettings {
 	taskListSortMode: TaskListSortMode;
 	taskListGroupMode: TaskListGroupMode;
 	taskListTimeFilter: TaskListTimeFilter;
+	showTaskHierarchy: boolean;
 	showTaskPriority: boolean;
 	colorTaskTitleByPriority: boolean;
 	showTaskSubtaskCount: boolean;
@@ -105,6 +106,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	taskListSortMode: 'created-desc',
 	taskListGroupMode: 'none',
 	taskListTimeFilter: 'none',
+	showTaskHierarchy: true,
 	showTaskPriority: false,
 	colorTaskTitleByPriority: true,
 	showTaskSubtaskCount: true,

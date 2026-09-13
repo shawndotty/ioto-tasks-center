@@ -247,6 +247,7 @@ export class IOTOTasksCenterView extends ItemView {
 	readonly updateTaskListTimeFilter: (
 		filter: TaskListTimeFilter,
 	) => Promise<void>;
+	readonly getShowTaskHierarchy: () => boolean;
 	readonly getShowTaskPriority: () => boolean;
 	readonly getColorTaskTitleByPriority: () => boolean;
 	readonly getInputRootPath: () => string;
@@ -272,6 +273,7 @@ export class IOTOTasksCenterView extends ItemView {
 	readonly updateTaskListGroupMode: (
 		groupMode: TaskListGroupMode,
 	) => Promise<void>;
+	readonly updateShowTaskHierarchy: (show: boolean) => Promise<void>;
 	readonly updateShowTaskPriority: (show: boolean) => Promise<void>;
 	readonly getTaskTemplateConfig: (
 		type: TaskCreationType,
@@ -296,6 +298,7 @@ export class IOTOTasksCenterView extends ItemView {
 		getProjectListGroupMode: () => ProjectListGroupMode,
 		getTaskListSortMode: () => TaskListSortMode,
 		getTaskListGroupMode: () => TaskListGroupMode,
+		getShowTaskHierarchy: () => boolean,
 		getShowTaskPriority: () => boolean,
 		getColorTaskTitleByPriority: () => boolean,
 		getInputRootPath: () => string,
@@ -319,6 +322,7 @@ export class IOTOTasksCenterView extends ItemView {
 		updateTaskListGroupMode: (
 			groupMode: TaskListGroupMode,
 		) => Promise<void>,
+		updateShowTaskHierarchy: (show: boolean) => Promise<void>,
 		updateShowTaskPriority: (show: boolean) => Promise<void>,
 		getTaskListTimeFilter: () => TaskListTimeFilter,
 		updateTaskListTimeFilter: (filter: TaskListTimeFilter) => Promise<void>,
@@ -338,6 +342,7 @@ export class IOTOTasksCenterView extends ItemView {
 		this.getProjectListGroupMode = getProjectListGroupMode;
 		this.getTaskListSortMode = getTaskListSortMode;
 		this.getTaskListGroupMode = getTaskListGroupMode;
+		this.getShowTaskHierarchy = getShowTaskHierarchy;
 		this.getShowTaskPriority = getShowTaskPriority;
 		this.getColorTaskTitleByPriority = getColorTaskTitleByPriority;
 		this.getInputRootPath = getInputRootPath;
@@ -355,6 +360,7 @@ export class IOTOTasksCenterView extends ItemView {
 		this.updateProjectListGroupMode = updateProjectListGroupMode;
 		this.updateTaskListSortMode = updateTaskListSortMode;
 		this.updateTaskListGroupMode = updateTaskListGroupMode;
+		this.updateShowTaskHierarchy = updateShowTaskHierarchy;
 		this.updateShowTaskPriority = updateShowTaskPriority;
 		this.getTaskListTimeFilter = getTaskListTimeFilter;
 		this.updateTaskListTimeFilter = updateTaskListTimeFilter;

@@ -1,6 +1,6 @@
 import type { IOTOTasksCenterView } from '../iotoTasksCenterView';
 import { restoreTaskListScrollTop } from '../task-list-scroll';
-import { buildVisibleTaskHierarchy } from '../task-hierarchy';
+import { buildTaskListForPresentation } from '../task-hierarchy';
 import { t } from '../../lang/helpter';
 import { setIcon } from 'obsidian';
 import {
@@ -341,6 +341,7 @@ export function renderTaskListBody(
 	const directChildTasksByParentPath = view.getShowTaskSubtaskCount()
 		? view.buildDirectChildTasksForCurrentProject()
 		: null;
+	const showTaskHierarchy = view.getShowTaskHierarchy();
 
 	for (const section of presentationSections) {
 		const sectionEl = listEl.createDiv({
@@ -349,7 +350,7 @@ export function renderTaskListBody(
 		if (!section.label) {
 			view.renderTaskRows(
 				sectionEl,
-				buildVisibleTaskHierarchy(section.tasks),
+				buildTaskListForPresentation(section.tasks, showTaskHierarchy),
 				activeTaskPath,
 				directChildTasksByParentPath,
 			);
@@ -401,7 +402,7 @@ export function renderTaskListBody(
 
 		view.renderTaskRows(
 			groupBodyEl,
-			buildVisibleTaskHierarchy(section.tasks),
+			buildTaskListForPresentation(section.tasks, showTaskHierarchy),
 			activeTaskPath,
 			directChildTasksByParentPath,
 		);

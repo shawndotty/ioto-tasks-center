@@ -99,6 +99,23 @@ export function buildVisibleTaskHierarchy(
 	return orderedTasks;
 }
 
+/**
+ * 按「是否显示层级」决定任务列表的呈现形态：
+ * - 显示层级（默认）：沿用 buildVisibleTaskHierarchy，父任务在前、子任务缩进。
+ * - 不显示层级：沿用同一父子顺序，但把 indentLevel 全部归零，实现全量扁平化。
+ */
+export function buildTaskListForPresentation(
+	tasks: TaskFileEntry[],
+	showHierarchy: boolean,
+): TaskFileEntry[] {
+	const orderedTasks = buildVisibleTaskHierarchy(tasks);
+	if (showHierarchy) {
+		return orderedTasks;
+	}
+
+	return orderedTasks.map((task) => ({ ...task, indentLevel: 0 }));
+}
+
 function resolveParentPath(
 	task: TaskFileEntry,
 	firstTaskPathByTitle: ReadonlyMap<string, string>,

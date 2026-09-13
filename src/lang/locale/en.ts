@@ -158,6 +158,8 @@ const en = {
 	'view.notice.updateTaskPriorityDisplayFailed':
 		'Failed to update task priority visibility.',
 	'view.notice.updateTimeFilterFailed': 'Failed to update time filter',
+	'view.notice.updateTaskHierarchyFailed':
+		'Failed to update task hierarchy display.',
 	'view.notice.taskFileUnavailable': 'The task file is unavailable.',
 	'view.notice.updateTaskCoreFailed': 'Failed to update core task mark.',
 	'view.notice.clearTaskCoreFailed': 'Failed to clear core task mark.',
@@ -173,6 +175,7 @@ const en = {
 	'menu.category.sort': 'Sort',
 	'menu.category.group': 'Group',
 	'menu.category.priority': 'Priority',
+	'menu.category.hierarchy': 'Hierarchy',
 	'menu.category.filter': 'Filter',
 	'menu.filter.none': 'None',
 	'menu.filter.createdWeek': 'Created: last week',
@@ -188,6 +191,8 @@ const en = {
 	'menu.currentSuffix': ' (current)',
 	'menu.priority.show': 'Show',
 	'menu.priority.hide': 'Hide',
+	'menu.hierarchy.show': 'Show',
+	'menu.hierarchy.hide': 'Hide',
 	'project.group.none': 'No grouping',
 	'project.group.category': 'Group by category',
 	'project.group.uncategorized': 'Uncategorized',

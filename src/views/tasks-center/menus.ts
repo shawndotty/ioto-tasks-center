@@ -28,6 +28,7 @@ import {
 import {
 	getTaskCreationOptions,
 	getTaskPriorityVisibilityOptions,
+	getTaskHierarchyVisibilityOptions,
 	formatPriorityMenuTitle,
 	formatMenuOptionTitle,
 } from './helpers';
@@ -160,6 +161,7 @@ export function showTaskPresentationMenu(
 	const currentSortMode = view.getTaskListSortMode();
 	const currentGroupMode = view.getTaskListGroupMode();
 	const currentShowTaskPriority = view.getShowTaskPriority();
+	const currentShowTaskHierarchy = view.getShowTaskHierarchy();
 
 	for (const sortMode of TASK_LIST_SORT_MODE_ORDER) {
 		const label = taskListSortModeOptions[sortMode];
@@ -233,6 +235,33 @@ export function showTaskPresentationMenu(
 									? error.message
 									: t(
 											'view.notice.updateTaskPriorityDisplayFailed',
+										);
+							new Notice(message);
+						});
+				}),
+		);
+	}
+
+	menu.addSeparator();
+	for (const hierarchyOption of getTaskHierarchyVisibilityOptions()) {
+		menu.addItem((item) =>
+			item
+				.setTitle(
+					formatMenuOptionTitle(
+						t('menu.category.hierarchy'),
+						hierarchyOption.label,
+						hierarchyOption.show === currentShowTaskHierarchy,
+					),
+				)
+				.onClick(() => {
+					void view
+						.updateShowTaskHierarchy(hierarchyOption.show)
+						.catch((error: unknown) => {
+							const message =
+								error instanceof Error
+									? error.message
+									: t(
+											'view.notice.updateTaskHierarchyFailed',
 										);
 							new Notice(message);
 						});
