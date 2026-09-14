@@ -12,7 +12,7 @@
 
   - `name`: `IOTO Tasks Center`
 
-  - `version`: `2.3.6`, `minAppVersion`: `1.1.0`
+  - `version`: `2.4.5`, `minAppVersion`: `1.1.0`
 
   - `author`: Johnny Learns
 
@@ -31,6 +31,12 @@
 - **Task status** is derived from checklist items in the note: `todo` | `in-progress` | `completed` | `empty` (see `src/tasks-center/types.ts`).
 
 - **Task creation types**: `normal`, `date`, `topic`, `plan` — each with its own configurable template (`taskTemplateConfigs`), plus a separate batch template (`batchTemplateConfig`).
+
+- **Cursor marker**: templates may contain `%%Cursor%%` (case-insensitive); it is stripped on creation and the editor cursor lands at that offset (see `src/tasks-center/cursor-marker.ts`).
+
+- **Task search**: two entry modes (`taskSearchEntryMode`: `inline` or `modal`), backed by a cached search index and Obsidian's internal fuzzy-match API (`src/views/tasks-center/task-search-*.ts`, `fuzzy-match.ts`).
+
+- Task notes also integrate with Obsidian's native **file menu** (core/priority/starred items, configurable via `showTaskNoteCoreMenu` / `showTaskNotePriorityMenu`); see `src/tasks-center/task-note-menu.ts`.
 
 - Vault events (`create`/`delete`/`modify`/`rename`) trigger view refresh only when the affected path is under the tasks root.
 
@@ -66,6 +72,10 @@ src/
     selected-text-subtask.ts     # Editor command: selection → subtask
     task-template-config.ts      # Per-type template configs
     batch-task-template.ts       # Batch creation template
+    cursor-marker.ts             # %%Cursor%% template placeholder stripping/offset
+    frontmatter-properties.ts    # Atomic frontmatter rewrite via vault.process
+    task-note-menu.ts            # Native file-menu items for task notes
+    task-path.ts                 # Path normalization, isPathInsideRoot
     project-creation.ts          # Project folder creation
     project-metadata.ts          # Project frontmatter metadata
     project-sort.ts              # Project sorting
@@ -87,10 +97,13 @@ src/
       drag-controller.ts, search-controller.ts, popover-controller.ts
       batch-edit-operations.ts, menus.ts, task-operations.ts
       task-time-filter.ts, outlink-badge-sync.ts, preview-leaf.ts
+      task-search-index.ts, task-search-session.ts, task-search-row.ts,
+      fuzzy-match.ts             # Fuzzy search: index cache + Obsidian internal API wrapper
+      touch-gesture.ts           # Mobile long-press drag gestures
   ui/                            # Modals and popovers
     taskCreationModal.ts, taskNameModal.ts, batchTaskModals.ts,
     batchTemplateEditModal.ts, confirmModal.ts, tabbed-settings.ts,
-    task-outlink-popover.ts, task-search-popover.ts, task-status-checklist-popover.ts
+    task-outlink-popover.ts, task-search-modal.ts, task-status-checklist-popover.ts
   modals/ImportModal.ts          # Import dialog
   lang/                          # i18n
     helpter.ts                   # t(), getCurrentLang(); TranslationKey = keyof typeof en
@@ -118,7 +131,7 @@ Other folders/files:
 
 ### main.ts stays minimal
 
-`main.ts` only handles lifecycle: load/save settings, register views, commands, hover link source, settings tab, and vault refresh events. All feature logic lives in `tasks-center/` (domain), `views/` (UI), and `ui/` (modals/popovers).
+`main.ts` only handles lifecycle: load/save settings, register views, commands, hover link source, task note file-menu, settings tab, and vault refresh events. All feature logic lives in `tasks-center/` (domain), `views/` (UI), and `ui/` (modals/popovers).
 
 ### Dependency-injected views
 
@@ -154,11 +167,17 @@ Registered in `main.ts` with stable IDs (don't rename once released). Current ac
 
 - `itc-toggle-batch-edit-mode`
 
+- `itc-focus-task-search` — focus the task search entry (opens the Tasks center first if needed)
+
+- `itc-clear-task-search` — clear the active task search
+
 Some batch commands are currently commented out in `main.ts`; keep them there unless asked otherwise.
 
 ## Testing
 
-- Tests use `node:test` + `jiti` to import TypeScript modules directly (no build step needed). See any file in `tests/` for the pattern.
+- Tests use `node:test` + `jiti` to import TypeScript modules directly (no build step needed). See any file in `tests/` for the pattern; `tests/stubs/obsidian.mjs` stubs the `obsidian` module for tests that need it.
+
+- `tests/locale-key-alignment.test.mjs` enforces that `en`, `zh-cn`, `zh-tw` locale keys stay in sync — run it after any i18n change.
 
 - When adding/changing logic in `src/tasks-center/` or pure helpers in `src/views/`, add or update the matching `tests/*.test.mjs`.
 
@@ -173,6 +192,8 @@ Some batch commands are currently commented out in `main.ts`; keep them there un
 - `tasks-center/` modules must stay UI-free and testable; DOM rendering belongs in `views/` or `ui/`.
 
 - Prefer `async/await`; handle errors with user-visible `Notice` where appropriate.
+
+- For read-modify-write of note content, use `vault.process` (atomic) via `src/tasks-center/frontmatter-properties.ts` instead of `vault.read` + `vault.modify`.
 
 - Register all DOM/app/interval listeners with `this.register*` helpers so reload/unload is safe.
 
