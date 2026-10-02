@@ -38,6 +38,8 @@ import {
 	getTaskListTimeFilterOptions,
 } from '../settings';
 import { t } from '../lang/helpter';
+import { isTaskNoteFile } from '../tasks-center/task-note-menu';
+import { IOTO_TASK_VIEW_TYPE } from './iotoTaskView';
 import type {
 	IncompleteChecklistItem,
 	ProjectFolderEntry,
@@ -1669,6 +1671,8 @@ export class IOTOTasksCenterView extends ItemView {
 		try {
 			const leaf = this.ensurePreviewLeaf();
 			const query = this.taskSearchQuery.trim();
+			const cursorOffset = options?.cursorOffset;
+			const hasCursorOffset = typeof cursorOffset === 'number';
 			if (query) {
 				await leaf.setViewState({
 					type: 'markdown',
@@ -1676,6 +1680,19 @@ export class IOTOTasksCenterView extends ItemView {
 					state: {
 						file: file.path,
 						mode: 'source',
+					},
+				});
+			} else if (
+				!hasCursorOffset &&
+				isTaskNoteFile(file, this.getTasksRootPath())
+			) {
+				// 任务笔记「打开即任务视图」；带搜索词或光标标记时仍走 markdown，
+				// 因为滚动到命中与落光标都依赖 MarkdownView 的 CodeMirror。
+				await leaf.setViewState({
+					type: IOTO_TASK_VIEW_TYPE,
+					active: true,
+					state: {
+						file: file.path,
 					},
 				});
 			} else {
@@ -1696,8 +1713,7 @@ export class IOTOTasksCenterView extends ItemView {
 				await this.scrollPreviewToFirstMatch(leaf, file, query);
 			}
 
-			const cursorOffset = options?.cursorOffset;
-			if (typeof cursorOffset === 'number') {
+			if (hasCursorOffset) {
 				await this.focusPreviewEditorAtOffset(
 					leaf,
 					file,

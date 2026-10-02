@@ -480,6 +480,14 @@ const zhCN = {
 	'notice.batchEdit.removeUpTaskDone': '已移除 {0} 个任务的上级任务。',
 	'notice.batchEdit.deleteDone': '已删除 {0} 个任务。',
 	'notice.batchEdit.deleteFailed': '{0} 个任务删除失败。',
+	'command.openAsIOTOTask': '以 IOTO 任务视图打开',
+	'command.openAsMarkdown': '以 Markdown 打开',
+	'menu.openAsIOTOTask': '以 IOTO 任务视图打开',
+	'menu.openAsMarkdown': '切回 Markdown',
+	'view.iotoTaskView.fallbackTitle': '任务视图',
+	'view.iotoTaskView.sectionToggle': '折叠/展开章节：{0}',
+	'notice.openAsIOTOTaskNoFile': '当前没有打开任务文件。',
+	'notice.openAsIOTOTaskNotTaskNote': '该文件不是任务笔记。',
 } as const;
 
 export default zhCN;

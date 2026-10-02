@@ -2098,3 +2098,193 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 .ioto-tasks-center__batch-level-types .ioto-tasks-center__settings-hint{
 	padding: 0;
 }
+
+
+/* ============================================================
+   IOTOTask 视图（把任务笔记渲染成 Section → Block → 卡片）
+   - 自成一体：不依赖 vault 里的 CSS 片段是否启用。
+   - 视觉与 IOTO-task-cards.css 同族（浅底 + 左侧强调线 + 圆角）。
+   ============================================================ */
+
+.ioto-task-view {
+	--ioto-tv-bg: var(--background-secondary);
+	--ioto-tv-bg-done: var(--background-primary);
+	--ioto-tv-border: var(--background-modifier-border);
+	--ioto-tv-accent: var(--interactive-accent);
+	--ioto-tv-radius: var(--radius-m);
+	--ioto-tv-pad-x: 12px;
+	--ioto-tv-pad-y: 8px;
+	--ioto-tv-gap: 8px;
+	--ioto-tv-indent: var(--list-indent, 2.25em);
+	--ioto-tv-done-opacity: 0.7;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.ioto-task-view__scroll {
+	flex: 1 1 auto;
+	overflow-y: auto;
+	padding: var(--size-4-4, 16px);
+	display: flex;
+	flex-direction: column;
+	gap: var(--ioto-tv-gap);
+}
+
+.ioto-task-view__section {
+	border: 1px solid var(--ioto-tv-border);
+	border-radius: var(--ioto-tv-radius);
+	background: var(--background-primary);
+}
+
+.ioto-task-view__section-header {
+	position: sticky;
+	top: calc(-1 * var(--size-4-4, 16px));
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: var(--ioto-tv-pad-y) var(--ioto-tv-pad-x);
+	background: var(--background-primary);
+	border-bottom: 1px solid var(--ioto-tv-border);
+	border-start-start-radius: var(--ioto-tv-radius);
+	border-start-end-radius: var(--ioto-tv-radius);
+}
+
+.ioto-task-view__section-toggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2px;
+	background: transparent;
+	border: none;
+	box-shadow: none;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+.ioto-task-view__section-toggle:hover {
+	color: var(--text-normal);
+}
+
+.ioto-task-view__section-title {
+	margin: 0;
+	font-size: var(--font-ui-medium);
+	font-weight: var(--font-semibold);
+	color: var(--text-normal);
+}
+
+.ioto-task-view__section-actions {
+	margin-inline-start: auto;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.ioto-task-view__section-body {
+	padding: var(--ioto-tv-pad-y) var(--ioto-tv-pad-x);
+	display: flex;
+	flex-direction: column;
+	gap: var(--ioto-tv-gap);
+}
+
+.ioto-task-view__section.is-collapsed .ioto-task-view__section-header {
+	border-bottom: none;
+}
+
+.ioto-task-view__checklist {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--ioto-tv-gap);
+}
+
+.ioto-task-view__card {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	padding: var(--ioto-tv-pad-y) var(--ioto-tv-pad-x);
+	background: var(--ioto-tv-bg);
+	border: 1px solid var(--ioto-tv-border);
+	border-inline-start: 3px solid var(--ioto-tv-accent);
+	border-radius: var(--ioto-tv-radius);
+}
+
+.ioto-task-view__card[data-task="x"],
+.ioto-task-view__card[data-task="X"] {
+	background: var(--ioto-tv-bg-done);
+	border-inline-start-color: var(--ioto-tv-border);
+	opacity: var(--ioto-tv-done-opacity);
+}
+
+.ioto-task-view__card-checkbox {
+	display: inline-flex;
+	align-items: center;
+	color: var(--text-muted);
+	flex: 0 0 auto;
+	margin-top: 2px;
+}
+
+.ioto-task-view__card-text {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.ioto-task-view__card-text > :first-child {
+	margin-top: 0;
+}
+
+.ioto-task-view__card-text > :last-child {
+	margin-bottom: 0;
+}
+
+.ioto-task-view__card-actions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	flex: 0 0 auto;
+}
+
+.ioto-task-view__card[data-indent="1"] {
+	margin-inline-start: var(--ioto-tv-indent);
+}
+
+.ioto-task-view__card[data-indent="2"] {
+	margin-inline-start: calc(var(--ioto-tv-indent) * 2);
+}
+
+.ioto-task-view__card[data-indent="3"] {
+	margin-inline-start: calc(var(--ioto-tv-indent) * 3);
+}
+
+.ioto-task-view__card[data-indent="4"] {
+	margin-inline-start: calc(var(--ioto-tv-indent) * 4);
+}
+
+.ioto-task-view__card[data-indent="5"] {
+	margin-inline-start: calc(var(--ioto-tv-indent) * 5);
+}
+
+.ioto-task-view__md > :first-child {
+	margin-top: 0;
+}
+
+.ioto-task-view__md > :last-child {
+	margin-bottom: 0;
+}
+
+.is-phone .ioto-task-view {
+	--ioto-tv-indent: 1.5em;
+	--ioto-tv-pad-x: 10px;
+	--ioto-tv-pad-y: 10px;
+}
+
+.is-phone .ioto-task-view__section-toggle {
+	padding: 6px;
+}
+
+.is-phone .ioto-task-view__scroll {
+	padding: var(--size-4-2, 8px);
+}

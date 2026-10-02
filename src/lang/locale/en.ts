@@ -522,6 +522,14 @@ const en = {
 	'notice.batchEdit.removeUpTaskDone': 'Removed parent task from {0} task(s).',
 	'notice.batchEdit.deleteDone': 'Deleted {0} task(s).',
 	'notice.batchEdit.deleteFailed': 'Failed to delete {0} task(s).',
+	'command.openAsIOTOTask': 'Open as IOTO task view',
+	'command.openAsMarkdown': 'Open as Markdown',
+	'menu.openAsIOTOTask': 'Open as IOTO task view',
+	'menu.openAsMarkdown': 'Open as Markdown',
+	'view.iotoTaskView.fallbackTitle': 'Task view',
+	'view.iotoTaskView.sectionToggle': 'Toggle section: {0}',
+	'notice.openAsIOTOTaskNoFile': 'No task file is open.',
+	'notice.openAsIOTOTaskNotTaskNote': 'This file is not a task note.',
 } as const;
 
 export default en;

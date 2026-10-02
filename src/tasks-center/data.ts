@@ -11,8 +11,10 @@ import {
 	TaskFileStatus,
 } from './types';
 import { PROJECT_METADATA_FILE_NAME } from './project-metadata';
-
-const TASK_LINE_PATTERN = /^\s*(?:[-*+]|\d+\.)\s+\[([ xX])\](.*)$/;
+import {
+	TASK_LINE_PATTERN,
+	stripCommentContentFromLine,
+} from './note-structure';
 
 export function isProjectTaskMarkdownFileName(fileName: string): boolean {
 	return (
@@ -460,86 +462,6 @@ function collectChecklistEntries(content: string): ParsedChecklistEntry[] {
 	}
 
 	return entries;
-}
-
-function stripCommentContentFromLine(
-	line: string,
-	state: {
-		inObsidianComment: boolean;
-		inHtmlComment: boolean;
-	},
-): {
-	sanitized: string;
-	nextInObsidianComment: boolean;
-	nextInHtmlComment: boolean;
-} {
-	let sanitized = '';
-	let cursor = 0;
-	let nextInObsidianComment = state.inObsidianComment;
-	let nextInHtmlComment = state.inHtmlComment;
-
-	while (cursor < line.length) {
-		if (nextInObsidianComment) {
-			const commentEnd = line.indexOf('%%', cursor);
-			if (commentEnd === -1) {
-				return {
-					sanitized,
-					nextInObsidianComment: true,
-					nextInHtmlComment,
-				};
-			}
-			cursor = commentEnd + 2;
-			nextInObsidianComment = false;
-			continue;
-		}
-
-		if (nextInHtmlComment) {
-			const commentEnd = line.indexOf('-->', cursor);
-			if (commentEnd === -1) {
-				return {
-					sanitized,
-					nextInObsidianComment,
-					nextInHtmlComment: true,
-				};
-			}
-			cursor = commentEnd + 3;
-			nextInHtmlComment = false;
-			continue;
-		}
-
-		const nextObsidianComment = line.indexOf('%%', cursor);
-		const nextHtmlComment = line.indexOf('<!--', cursor);
-		const hasObsidianComment = nextObsidianComment !== -1;
-		const hasHtmlComment = nextHtmlComment !== -1;
-
-		if (!hasObsidianComment && !hasHtmlComment) {
-			sanitized += line.slice(cursor);
-			break;
-		}
-
-		const nextCommentStart =
-			hasObsidianComment && hasHtmlComment
-				? Math.min(nextObsidianComment, nextHtmlComment)
-				: hasObsidianComment
-					? nextObsidianComment
-					: nextHtmlComment;
-
-		sanitized += line.slice(cursor, nextCommentStart);
-		if (nextCommentStart === nextObsidianComment) {
-			cursor = nextCommentStart + 2;
-			nextInObsidianComment = true;
-			continue;
-		}
-
-		cursor = nextCommentStart + 4;
-		nextInHtmlComment = true;
-	}
-
-	return {
-		sanitized,
-		nextInObsidianComment,
-		nextInHtmlComment,
-	};
 }
 
 function buildTaskFileStatus(taskMarkers: string[]): TaskFileStatus {

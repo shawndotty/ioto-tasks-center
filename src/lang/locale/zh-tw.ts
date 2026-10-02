@@ -481,6 +481,14 @@ const zhTW = {
 	'notice.batchEdit.removeUpTaskDone': '已移除 {0} 個任務的上級任務。',
 	'notice.batchEdit.deleteDone': '已刪除 {0} 個任務。',
 	'notice.batchEdit.deleteFailed': '{0} 個任務刪除失敗。',
+	'command.openAsIOTOTask': '以 IOTO 任務檢視開啟',
+	'command.openAsMarkdown': '以 Markdown 開啟',
+	'menu.openAsIOTOTask': '以 IOTO 任務檢視開啟',
+	'menu.openAsMarkdown': '切回 Markdown',
+	'view.iotoTaskView.fallbackTitle': '任務檢視',
+	'view.iotoTaskView.sectionToggle': '折疊/展開章節：{0}',
+	'notice.openAsIOTOTaskNoFile': '目前沒有開啟任務檔案。',
+	'notice.openAsIOTOTaskNotTaskNote': '該檔案不是任務筆記。',
 } as const;
 
 export default zhTW;

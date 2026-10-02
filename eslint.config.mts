@@ -11,6 +11,7 @@ export default tseslint.config(
 		'tests/stubs/**',
 		'esbuild.config.mjs',
 		'version-bump.mjs',
+		'scripts/**',
 		'versions.json',
 		'main.js',
 		'package.json',

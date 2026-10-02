@@ -1,4 +1,11 @@
-import { Notice, Plugin, TAbstractFile, WorkspaceLeaf } from 'obsidian';
+import {
+	Menu,
+	Notice,
+	Plugin,
+	TAbstractFile,
+	TFile,
+	WorkspaceLeaf,
+} from 'obsidian';
 import { t } from './lang/helpter';
 import {
 	resolvePriorityFromSources,
@@ -52,6 +59,10 @@ import {
 	IOTO_PROJECT_CENTER_VIEW_TYPE,
 	IOTOProjectCenterView,
 } from './views/iotoProjectCenterView';
+import {
+	IOTO_TASK_VIEW_TYPE,
+	IOTOTaskView,
+} from './views/iotoTaskView';
 import { IOTO_TASKS_CENTER_TASK_HOVER_SOURCE_ID } from './views/task-hover-preview';
 // import {
 // 	batchClearPriority,
@@ -126,6 +137,48 @@ export default class IOTOTasksCenter extends Plugin {
 					(category) => this.addProjectCategoryOption(category),
 				),
 		);
+		this.registerView(
+			IOTO_TASK_VIEW_TYPE,
+			(leaf) => new IOTOTaskView(leaf),
+		);
+
+		this.addCommand({
+			id: 'itc-open-as-ioto-task',
+			name: t('command.openAsIOTOTask'),
+			checkCallback: (checking) => {
+				const file = this.app.workspace.getActiveFile();
+				if (
+					!file ||
+					!isTaskNoteFile(file, this.settings.tasksRootPath)
+				) {
+					return false;
+				}
+
+				if (!checking) {
+					void this.openFileAsIOTOTask(file);
+				}
+
+				return true;
+			},
+		});
+		this.addCommand({
+			id: 'itc-open-as-markdown',
+			name: t('command.openAsMarkdown'),
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(
+					IOTOTaskView,
+				);
+				if (!view) {
+					return false;
+				}
+
+				if (!checking) {
+					void this.setLeafToMarkdown(view.leaf);
+				}
+
+				return true;
+			},
+		});
 
 		this.addCommand({
 			id: 'open-tasks-center-view',
@@ -767,15 +820,19 @@ export default class IOTOTasksCenter extends Plugin {
 	// 直接给任务笔记设置核心任务与优先级，无需回到任务中心。
 	private registerTaskNoteMenuEvent(): void {
 		this.registerEvent(
-			this.app.workspace.on('file-menu', (menu, file) => {
+			this.app.workspace.on('file-menu', (menu, file, _source, leaf) => {
+				if (!isTaskNoteFile(file, this.settings.tasksRootPath)) {
+					return;
+				}
+
+				// 「以 IOTO 任务视图打开 / 切回 Markdown」是移动端唯一的互切入口
+				// （本插件 isDesktopOnly: false，移动端没有 contextmenu）。
+				this.appendTaskViewMenuItems(menu, file, leaf);
+
 				if (
 					!this.settings.showTaskNoteCoreMenu &&
 					!this.settings.showTaskNotePriorityMenu
 				) {
-					return;
-				}
-
-				if (!isTaskNoteFile(file, this.settings.tasksRootPath)) {
 					return;
 				}
 
@@ -798,6 +855,85 @@ export default class IOTOTasksCenter extends Plugin {
 				});
 			}),
 		);
+	}
+
+	private appendTaskViewMenuItems(
+		menu: Menu,
+		file: TFile,
+		leaf?: WorkspaceLeaf,
+	): void {
+		menu.addItem((item) =>
+			item
+				.setTitle(t('menu.openAsIOTOTask'))
+				.setIcon('list-todo')
+				.onClick(() => {
+					void this.openFileAsIOTOTask(file, leaf);
+				}),
+		);
+
+		const taskLeaf = this.findIOTOTaskLeafForFile(file.path);
+		if (!taskLeaf) {
+			return;
+		}
+
+		menu.addItem((item) =>
+			item
+				.setTitle(t('menu.openAsMarkdown'))
+				.setIcon('file-text')
+				.onClick(() => {
+					void this.setLeafToMarkdown(taskLeaf);
+				}),
+		);
+	}
+
+	private async openFileAsIOTOTask(
+		file: TFile,
+		targetLeaf?: WorkspaceLeaf,
+	): Promise<void> {
+		if (!isTaskNoteFile(file, this.settings.tasksRootPath)) {
+			new Notice(t('notice.openAsIOTOTaskNotTaskNote'));
+			return;
+		}
+
+		const leaf = targetLeaf ?? this.app.workspace.getLeaf(false);
+		await leaf.setViewState({
+			type: IOTO_TASK_VIEW_TYPE,
+			active: true,
+			state: { file: file.path },
+		});
+	}
+
+	private async setLeafToMarkdown(leaf: WorkspaceLeaf): Promise<void> {
+		const view = leaf.view;
+		const file = view instanceof IOTOTaskView ? view.file : null;
+		if (!file) {
+			new Notice(t('notice.openAsIOTOTaskNoFile'));
+			return;
+		}
+
+		await leaf.setViewState({
+			type: 'markdown',
+			active: true,
+			state: {
+				file: file.path,
+				mode: 'source',
+			},
+		});
+	}
+
+	private findIOTOTaskLeafForFile(path: string): WorkspaceLeaf | null {
+		let matchedLeaf: WorkspaceLeaf | null = null;
+		this.app.workspace.iterateAllLeaves((leaf) => {
+			if (matchedLeaf) {
+				return;
+			}
+			const view = leaf.view;
+			if (view instanceof IOTOTaskView && view.file?.path === path) {
+				matchedLeaf = leaf;
+			}
+		});
+
+		return matchedLeaf;
 	}
 
 	async activateIOTOTasksCenterView(): Promise<void> {
