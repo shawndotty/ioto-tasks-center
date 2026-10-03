@@ -2203,7 +2203,8 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 
 .ioto-task-view__card {
 	display: flex;
-	align-items: flex-start;
+	flex-wrap: wrap; /* 允许动作区折到下一行（底栏独占一行） */
+	align-items: center; /* 勾选框相对正文块垂直居中（Plan-20261003-191547） */
 	gap: 8px;
 	padding: var(--ioto-tv-pad-y) var(--ioto-tv-pad-x);
 	background: var(--ioto-tv-bg);
@@ -2224,7 +2225,8 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	align-items: center;
 	color: var(--text-muted);
 	flex: 0 0 auto;
-	margin-top: 2px;
+	order: 1; /* 视觉顺序：正文(默认 0) → 勾选框(1) → 底栏(2)（Plan-20261003-191547） */
+	margin-top: 0;
 	/* 从只读 span 升级成可真按钮：重置 UA 样式 + hover/focus 可见环 */
 	background: none;
 	border: none;
@@ -2273,7 +2275,7 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 }
 
 .ioto-task-view__card-text {
-	flex: 1 1 auto;
+	flex: 1 1 0; /* basis 0 → 与勾选框同处第一行，并由 grow 吃满剩余空间（Plan-20261003-191547） */
 	min-width: 0;
 	/* 空条目：保证有可见且可命中的正文区（与 __card-editor 的 1.6em 对齐） */
 	min-height: 1.6em;
@@ -2289,9 +2291,16 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 
 .ioto-task-view__card-actions {
 	display: flex;
+	flex-wrap: wrap; /* 徽章过多时在底栏内换行，不横向溢出卡片 */
 	align-items: center;
 	gap: 4px;
-	flex: 0 0 auto;
+	flex: 1 1 100%; /* basis 100% → 必然折到正文下一行；grow 1 → 占满卡片内容宽 */
+	order: 2; /* 排在勾选框之后，仍是卡片最后一行（底栏）（Plan-20261003-191547） */
+}
+
+/* 无控制项的卡片：动作区为空 → 不产生空底栏，也不引入多余行间距 */
+.ioto-task-view__card-actions:empty {
+	display: none;
 }
 
 .ioto-task-view__badge {
@@ -2367,7 +2376,7 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 /* 移动端（本期不做真机验证）：加大 checkbox 与卡片的触控热区 */
 .is-phone .ioto-task-view__card-checkbox {
 	padding: 6px;
-	margin-top: -4px;
+	margin: 0; /* 居中后不能再把勾选框整体上移（Plan-20261003-191547） */
 }
 
 .is-phone .ioto-task-view__card-text {

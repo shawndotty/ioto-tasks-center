@@ -301,7 +301,9 @@ function renderChecklistGroup(options: {
 			if (target.closest('.ioto-task-view__card-checkbox')) {
 				return;
 			}
-			if (target.closest('.ioto-task-view__card-actions')) {
+			// 动作区改为整行底栏后，只排除「可交互的徽章本体」；底栏空白仍应可点进编辑，
+			// 否则会比改前多出一整条「点不进编辑」的空白带（改前动作区只占徽章宽）。
+			if (target.closest('.ioto-task-view__badge')) {
 				return;
 			}
 			// 编辑中不重复进入
