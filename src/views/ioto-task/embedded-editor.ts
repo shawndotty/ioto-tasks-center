@@ -109,7 +109,8 @@ export interface EmbeddedEditorHandle {
 	destroy(): void;
 }
 
-export interface EmbeddedEditorKeyboardHandlers {
+/** 内嵌编辑器的宿主回调。不只键盘：还有文档变更（自动落盘用）。 */
+export interface EmbeddedEditorHandlers {
 	/** Enter：返回 true 表示已接管（提交 / 新建），false 放行给核心 */
 	onEnter: (cm: EditorView) => boolean;
 	/** 正文为空时的 Backspace：返回 true 表示已接管（删除该行） */
@@ -120,6 +121,8 @@ export interface EmbeddedEditorKeyboardHandlers {
 	onEscape: (cm: EditorView) => void;
 	/** 失焦：触发提交 */
 	onBlur: () => void;
+	/** 文档内容变化（不含 IME 组字中间态）：宿主据此排一次自动落盘 */
+	onChange: () => void;
 }
 
 export interface MountEmbeddedEditorOptions {
@@ -130,7 +133,7 @@ export interface MountEmbeddedEditorOptions {
 	component: Component;
 	file: TFile;
 	initialValue: string;
-	handlers: EmbeddedEditorKeyboardHandlers;
+	handlers: EmbeddedEditorHandlers;
 }
 
 /**
@@ -306,8 +309,27 @@ export async function mountEmbeddedEditor(
 								}, 0);
 								return false;
 							},
+							// IME 组字结束：补排一次（组字期间的 docChanged 已被下面挡掉）
+							compositionend: () => {
+								handlers.onChange();
+								return false;
+							},
 						}),
 					),
+				);
+
+				// 自动落盘的变更源：只在**非组字**的文档变更时排期，
+				// 否则中文输入的中间态（裸拼音）会被写进笔记。
+				extensions.push(
+					EditorView.updateListener.of((update) => {
+						if (!update.docChanged || destroyed) {
+							return;
+						}
+						if (update.view.composing) {
+							return;
+						}
+						handlers.onChange();
+					}),
 				);
 
 				return [...extensions, ...coreExtensions];

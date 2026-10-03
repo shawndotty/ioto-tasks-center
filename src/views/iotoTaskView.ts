@@ -25,6 +25,7 @@ import type { EditorView } from '@codemirror/view';
 import {
 	MarkdownRenderer,
 	Notice,
+	Platform,
 	setIcon,
 	TextFileView,
 	type TFile,
@@ -53,6 +54,10 @@ import {
 	type TaskLineTransform,
 } from './ioto-task/commit-task-line';
 import {
+	createAutosaveScheduler,
+	type AutosaveScheduler,
+} from './ioto-task/edit-autosave';
+import {
 	mountEmbeddedEditor,
 	type EmbeddedEditorHandle,
 } from './ioto-task/embedded-editor';
@@ -68,6 +73,9 @@ import {
 import { IOTO_TASK_VIEW_TYPE } from './ioto-task/item-control-bridge';
 
 export { IOTO_TASK_VIEW_TYPE };
+
+/** 自动落盘窗口：与核心 2000ms 对齐；移动端 I/O 与电量敏感，放宽一档。 */
+const AUTOSAVE_INTERVAL_MS = Platform.isMobile ? 4000 : 2000;
 
 /** IOTOTask 视图供「条目控制」桥接读写当前编辑卡片的宿主（见 item-control-bridge.ts）。 */
 export interface ItemControlBridgeHost {
@@ -110,6 +118,15 @@ export class IOTOTaskView extends TextFileView {
 	private editingOriginalLine = '';
 	private editingHandle: EmbeddedEditorHandle | null = null;
 	private pendingCommit: Promise<void> | null = null;
+	/** 自动落盘节流器（视图级单例，编辑期间复用） */
+	private readonly autosave: AutosaveScheduler = createAutosaveScheduler(
+		() => {
+			void this.autosaveEdit();
+		},
+		AUTOSAVE_INTERVAL_MS,
+	);
+	/** 自动落盘进行中：与 `pendingCommit`（blur 提交）互斥，避免并发写同一行 */
+	private autosaveRunning = false;
 	private readonly supportsInlineEdit: () => boolean;
 	private readonly appearanceStyleProvider: () => TaskViewAppearanceStyle;
 
@@ -163,6 +180,7 @@ export class IOTOTaskView extends TextFileView {
 
 	onunload(): void {
 		this.destroyActiveEditor();
+		this.autosave.dispose();
 		super.onunload();
 	}
 
@@ -534,6 +552,8 @@ export class IOTOTaskView extends TextFileView {
 	}
 
 	private destroyActiveEditor(): void {
+		// 编辑器没了，待写的那次也就没意义了（blur 提交会写最终值）
+		this.autosave.cancel();
 		const handle = this.editingHandle;
 		// 先置空，保证随后触发的 blur 走到 commitEdit 时直接短路，不会递归。
 		this.editingHandle = null;
@@ -600,7 +620,12 @@ export class IOTOTaskView extends TextFileView {
 				onIndent: (delta) => this.onEditorIndent(delta),
 				onEscape: () => this.onEditorEscape(),
 				onBlur: () => {
+					// blur 提交会写同一行的最终值，先撤掉待写的那次（内容相同，属无效写）
+					this.autosave.cancel();
 					void this.commitEdit();
+				},
+				onChange: () => {
+					this.autosave.schedule();
 				},
 			},
 		});
@@ -683,6 +708,58 @@ export class IOTOTaskView extends TextFileView {
 		// 纯文本提交「行数 / 缩进 / 其它卡片」全都没变，就地刷新单卡即可：
 		// 既不会跳顶，也不会因整树重建吞掉正在进行的第二次点击（[[Plan-20261003-094145]] §5.3）。
 		this.refreshCard(line);
+	}
+
+	/**
+	 * 编辑态自动落盘：**只写盘，不退出编辑态**（与 `commitEdit()` 并列，不复用）。
+	 *
+	 * 与 `doCommitEdit()` 的三点区别：
+	 * 1. 不调 `destroyActiveEditor()` —— 编辑器、光标、滚动位置、选中态全部保留；
+	 * 2. 不 `refreshCard` / `renderNote` —— 纯正文变更不改变行数 / 缩进 / 其它卡片；
+	 * 3. conflict 静默跳过（不 Notice、不重建），交给最终 blur 提交统一处理。
+	 *
+	 * 🔴 红线：成功后必须刷新 `editingOriginalLine`，否则下一次落盘的
+	 * `lines[index] === originalLine` 校验失配 → 判 conflict → 整树重建冲掉编辑态。
+	 */
+	private async autosaveEdit(): Promise<void> {
+		const handle = this.editingHandle;
+		const line = this.editingLine;
+		const file = this.file;
+		if (!handle || line === null || !file) {
+			return;
+		}
+		// 与 blur 提交 / 上一次落盘互斥
+		if (this.pendingCommit !== null || this.autosaveRunning) {
+			return;
+		}
+
+		const nextBody = handle.getValue();
+		// 与 `doCommitEdit` 同一守卫：换行会破坏任务行结构，交给最终提交去弹提示
+		if (nextBody.includes('\n')) {
+			return;
+		}
+
+		this.autosaveRunning = true;
+		try {
+			const outcome = await commitTaskText(this.app, file, {
+				line,
+				originalLine: this.editingOriginalLine,
+				nextBody,
+			});
+
+			// 落盘期间已退出编辑（blur / 卸载 / `clear()`）：磁盘与内存都以随后那次
+			// 提交的 outcome 为准，这里不再改内存，也不再动 `editingOriginalLine`
+			//（它可能已被重置或指向另一行）。
+			if (this.editingHandle !== handle || this.editingLine !== line) {
+				return;
+			}
+			this.syncCommittedContent(outcome);
+			if (outcome.status === 'ok') {
+				this.editingOriginalLine = this.lineAt(line);
+			}
+		} finally {
+			this.autosaveRunning = false;
+		}
 	}
 
 	/**
@@ -875,12 +952,18 @@ export class IOTOTaskView extends TextFileView {
 	}
 
 	private applyOutcome(outcome: CommitOutcome): void {
+		if (outcome.status === 'conflict') {
+			new Notice(t('notice.iotoTaskView.commitConflict'));
+		}
+		this.syncCommittedContent(outcome);
+	}
+
+	/** 🔴 红线：写盘成功后 `data` 与 `lastLoadedText` 必须一起更新，
+	 * 否则 `getViewData()` 会返回过期字节、被 TextFileView 写回去。 */
+	private syncCommittedContent(outcome: CommitOutcome): void {
 		if (outcome.status === 'ok') {
-			// 🔴 红线：data 与 lastLoadedText 必须一起更新
 			this.data = outcome.content;
 			this.lastLoadedText = outcome.content;
-		} else if (outcome.status === 'conflict') {
-			new Notice(t('notice.iotoTaskView.commitConflict'));
 		}
 	}
 
