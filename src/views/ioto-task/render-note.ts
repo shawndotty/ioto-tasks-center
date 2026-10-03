@@ -40,6 +40,11 @@ export interface TaskNoteEditing {
 	delete(line: number): void;
 	/** 进入卡片正文内联编辑（同时会提交上一张正在编辑的卡片） */
 	beginEdit(line: number): void;
+	/**
+	 * 选择态 `Shift+Enter`：在 `line` 下方插入一张同级空卡片，并进入其编辑态。
+	 * 与编辑态 `Enter` 的「新建同级」同源，只是不拆分当前正文。
+	 */
+	insertSibling(line: number): void;
 	/** 3a 勾选：点 checkbox ↔ 行内 `[ ]` / `[x]`（乐观更新由调用方负责） */
 	toggleTask(line: number, cardEl: HTMLElement): void;
 }
@@ -380,6 +385,17 @@ function renderChecklistGroup(options: {
 				);
 				switch (event.key) {
 					case 'Enter': {
+						// Shift+Enter：在选中卡片下方新建一张同级空卡并直接开编；
+						// 纯修饰键排除，避免抢占 Ctrl/Cmd/Alt+Shift+Enter 等组合。
+						if (
+							event.shiftKey &&
+							!event.ctrlKey &&
+							!event.metaKey &&
+							!event.altKey
+						) {
+							editing.insertSibling(item.line);
+							break;
+						}
 						editing.beginEdit(item.line);
 						break;
 					}

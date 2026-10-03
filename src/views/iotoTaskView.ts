@@ -289,6 +289,9 @@ export class IOTOTaskView extends TextFileView {
 			beginEdit: (line) => {
 				void this.beginEdit(line);
 			},
+			insertSibling: (line) => {
+				void this.insertSibling(line);
+			},
 			toggleTask: (line, cardEl) => {
 				void this.toggleTask(line, cardEl);
 			},
@@ -379,6 +382,27 @@ export class IOTOTaskView extends TextFileView {
 		if (nextLine !== null) {
 			this.queryCard(nextLine)?.focus({ preventScroll: true });
 		}
+	}
+
+	/**
+	 * 选择态 `Shift+Enter`：在选中卡片**下方**插入一张同级空卡片
+	 * （同 indent / 同列表符号 / 未勾选 / 不继承控制项），随后自动进入其编辑态。
+	 *
+	 * 复用 `runLineAction`：写盘 → 同步 `data`/`lastLoadedText` → 整树重建（带滚动
+	 * 快照）→ `beginEdit(line + 1)`，冲突处理与选中回填全部沿用既有链路。
+	 * 原行不变，故新行恒为 `line + 1`。
+	 */
+	private async insertSibling(line: number): Promise<void> {
+		const originalLine = this.lineAt(line);
+		await this.runLineAction(
+			line,
+			originalLine,
+			(raw) => {
+				const sibling = buildSiblingTaskLine(raw, '');
+				return sibling === null ? null : [raw, sibling];
+			},
+			line + 1,
+		);
 	}
 
 	/**
