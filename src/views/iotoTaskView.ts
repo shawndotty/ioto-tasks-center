@@ -28,6 +28,7 @@ import {
 	Platform,
 	setIcon,
 	TextFileView,
+	type HoverPopover,
 	type TFile,
 	type ViewStateResult,
 	type WorkspaceLeaf,
@@ -69,7 +70,12 @@ import {
 	renderCardActions,
 	renderTaskNote,
 	type TaskNoteEditing,
+	type TaskNoteLinks,
 } from './ioto-task/render-note';
+import {
+	IOTO_TASK_VIEW_HOVER_SOURCE_ID,
+	type TaskHoverPreviewPayload,
+} from './task-hover-preview';
 import { IOTO_TASK_VIEW_TYPE } from './ioto-task/item-control-bridge';
 
 export { IOTO_TASK_VIEW_TYPE };
@@ -129,6 +135,14 @@ export class IOTOTaskView extends TextFileView {
 	private autosaveRunning = false;
 	private readonly supportsInlineEdit: () => boolean;
 	private readonly appearanceStyleProvider: () => TaskViewAppearanceStyle;
+	/**
+	 * 视图级稳定对象：否则弹窗无法复用 / 关闭
+	 * （与 `iotoTasksCenterView` 同一口径，[[Plan-20261004-004408]] §3.2 ④）。
+	 */
+	private readonly hoverPreviewParent: { hoverPopover: HoverPopover | null } =
+		{
+			hoverPopover: null,
+		};
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -287,6 +301,7 @@ export class IOTOTaskView extends TextFileView {
 					this.renderNote(this.data);
 				},
 				editing: this.buildEditingController(),
+				links: this.buildLinkController(),
 			});
 			restoreIotoTaskScroll(this.contentEl, snapshot);
 			// 回填选中类：整树重建后 `selectedLine` 仍在，但不 `focus()`——
@@ -335,6 +350,46 @@ export class IOTOTaskView extends TextFileView {
 			},
 			toggleTask: (line, cardEl) => {
 				void this.toggleTask(line, cardEl);
+			},
+		};
+	}
+
+	/* ------------------------------------------------------------------ *
+	 * 双链：点击打开 + hover 预览（[[Plan-20261004-004408]] §3.2 ④）
+	 * ------------------------------------------------------------------ */
+
+	/**
+	 * 卡片正文 / Section markdown 里双链的接管方。
+	 *
+	 * 渲染层只产 HTML，点击与 hover 是视图自己的职责
+	 * （[[Research-20261004-001616]] §四）。
+	 */
+	private buildLinkController(): TaskNoteLinks {
+		return {
+			open: (linktext, newTab) => {
+				const sourcePath = this.file?.path ?? '';
+				void (async () => {
+					// 编辑态点**别的卡片**的链接：mousedown 的 blur 已提交过一次，
+					// 这里是幂等兜底；成功后只 `refreshCard`，不整树重建，
+					// 被点的 `<a>` 仍在 DOM 上，本次点击照常派发。
+					await this.commitEdit();
+					await this.app.workspace.openLinkText(
+						linktext,
+						sourcePath,
+						// false = 当前叶子（与阅读模式一致）；'tab' = 新标签页
+						newTab ? 'tab' : false,
+					);
+				})();
+			},
+			hover: (event, linktext, targetEl) => {
+				this.app.workspace.trigger('hover-link', {
+					event,
+					source: IOTO_TASK_VIEW_HOVER_SOURCE_ID,
+					hoverParent: this.hoverPreviewParent,
+					targetEl,
+					linktext,
+					sourcePath: this.file?.path ?? '',
+				} satisfies TaskHoverPreviewPayload);
 			},
 		};
 	}

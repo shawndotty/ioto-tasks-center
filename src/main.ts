@@ -66,7 +66,10 @@ import {
 } from './views/iotoTaskView';
 import { probeEmbeddedEditorSupport } from './views/ioto-task/embedded-editor';
 import { installItemControlBridge } from './views/ioto-task/item-control-bridge';
-import { IOTO_TASKS_CENTER_TASK_HOVER_SOURCE_ID } from './views/task-hover-preview';
+import {
+	IOTO_TASK_VIEW_HOVER_SOURCE_ID,
+	IOTO_TASKS_CENTER_TASK_HOVER_SOURCE_ID,
+} from './views/task-hover-preview';
 // import {
 // 	batchClearPriority,
 // 	batchRemoveUpTask,
@@ -88,6 +91,12 @@ export default class IOTOTasksCenter extends Plugin {
 		this.supportsInlineEdit = probeEmbeddedEditorSupport(this.app);
 		this.registerHoverLinkSource(IOTO_TASKS_CENTER_TASK_HOVER_SOURCE_ID, {
 			display: 'IOTO Tasks Center',
+			defaultMod: true,
+		});
+		// IOTO Task View 里卡片正文 / Section markdown 的双链也走核心 hover 预览
+		// （[[Plan-20261004-004408]] §3.2 ②）。
+		this.registerHoverLinkSource(IOTO_TASK_VIEW_HOVER_SOURCE_ID, {
+			display: 'IOTO Task View',
 			defaultMod: true,
 		});
 		this.registerView(

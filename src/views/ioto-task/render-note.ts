@@ -23,6 +23,7 @@ import {
 	pickAdjacentLine,
 	pickEdgeLine,
 } from './card-navigation';
+import { shouldTriggerTaskHoverPreview } from '../task-hover-preview';
 
 /** 编辑交互回调（由 `IOTOTaskView` 注入；只读态 `enabled = false`）。 */
 export interface TaskNoteEditing {
@@ -50,6 +51,14 @@ export interface TaskNoteEditing {
 	toggleTask(line: number, cardEl: HTMLElement): void;
 }
 
+/** 链接交互回调（由 `IOTOTaskView` 注入；只读态同样生效）。 */
+export interface TaskNoteLinks {
+	/** 打开双链：`newTab` = 按了 Cmd/Ctrl */
+	open(linktext: string, newTab: boolean): void;
+	/** 触发核心 hover 预览（修饰键判断交给核心） */
+	hover(event: MouseEvent, linktext: string, targetEl: HTMLElement): void;
+}
+
 export interface RenderTaskNoteOptions {
 	app: App;
 	containerEl: HTMLElement;
@@ -60,6 +69,8 @@ export interface RenderTaskNoteOptions {
 	collapsedSections: Set<string>;
 	onToggleSection: (key: string) => void;
 	editing: TaskNoteEditing;
+	/** 卡片正文与 Section markdown 里双链的点击 / hover 接管方 */
+	links: TaskNoteLinks;
 }
 
 interface RenderSectionOptions {
@@ -83,10 +94,54 @@ export function renderTaskNote(options: RenderTaskNoteOptions): void {
 	const { containerEl, content } = options;
 	const sections = parseSections(content);
 	const scrollEl = containerEl.createDiv({ cls: 'ioto-task-view__scroll' });
+	attachTaskNoteLinkDelegates(scrollEl, options.links);
 
 	for (const section of getTopLevelSections(sections)) {
 		renderSection({ ...options, scrollEl, section });
 	}
+}
+
+/**
+ * 只读态 / 选中态的双链：点击打开 + hover 预览。
+ *
+ * 一次委托挂在滚动容器上，同时覆盖 `.ioto-task-view__card-text`（卡片正文）与
+ * `.ioto-task-view__md`（Section markdown）两处 `MarkdownRenderer` 产物
+ * —— 核心不为自定义视图装这套处理（[[Research-20261004-001616]]）。
+ * `renderTaskNote` 每次整树重建都会新建 `scrollEl` 并重新挂监听，旧的随 DOM 丢弃：
+ * 无泄漏、无累积、不受重绘影响（[[Plan-20261004-004408]] §3.2 ③）。
+ */
+function attachTaskNoteLinkDelegates(
+	scrollEl: HTMLElement,
+	links: TaskNoteLinks,
+): void {
+	const findLink = (target: EventTarget | null): HTMLAnchorElement | null =>
+		target instanceof HTMLElement ? target.closest('a.internal-link') : null;
+
+	scrollEl.addEventListener('click', (event) => {
+		const link = findLink(event.target);
+		const linktext = link?.getAttribute('data-href');
+		if (!linktext) {
+			return;
+		}
+		// 挡掉 <a target="_blank"> 的 window.open 默认行为
+		event.preventDefault();
+		// 不再冒泡到卡片的选择 / 编辑逻辑（卡片本体 click 对 a 早退是双保险）
+		event.stopPropagation();
+		links.open(linktext, hasCommandModifier(event));
+	});
+
+	scrollEl.addEventListener('mouseover', (event) => {
+		const link = findLink(event.target);
+		const linktext = link?.getAttribute('data-href');
+		if (!link || !linktext) {
+			return;
+		}
+		// 复用现成的 relatedTarget 去重
+		if (!shouldTriggerTaskHoverPreview(event, link)) {
+			return;
+		}
+		links.hover(event, linktext, link);
+	});
 }
 
 /**
@@ -262,7 +317,7 @@ function renderSectionBody(options: {
  * 与核心「Cmd/Ctrl+Enter 切换勾选」的口径一致，故两者同义，不做平台分支
  * （[[Plan-20261003-222709]] §四.2b）。
  */
-function hasCommandModifier(event: KeyboardEvent): boolean {
+function hasCommandModifier(event: MouseEvent | KeyboardEvent): boolean {
 	return event.metaKey || event.ctrlKey;
 }
 

@@ -3,6 +3,9 @@ import type { HoverPopover } from 'obsidian';
 export const IOTO_TASKS_CENTER_TASK_HOVER_SOURCE_ID =
 	'ioto-tasks-center-task-list';
 
+/** `IOTOTask` 视图（任务笔记视图）自己的 hover 源，与任务中心列表互不干扰。 */
+export const IOTO_TASK_VIEW_HOVER_SOURCE_ID = 'ioto-task-view';
+
 export interface TaskHoverPreviewPayload {
 	event: MouseEvent;
 	source: string;
