@@ -487,6 +487,12 @@ const zhTW = {
 	'menu.openAsMarkdown': '切回 Markdown',
 	'view.iotoTaskView.fallbackTitle': '任務檢視',
 	'view.iotoTaskView.sectionToggle': '折疊/展開章節：{0}',
+	'view.iotoTaskView.checkboxToggle': '切換任務完成狀態：{0}',
+	'view.iotoTaskView.editCardHint': '點擊編輯',
+	'notice.iotoTaskView.commitConflict': '檔案在編輯期間被外部修改，本次變更已捨棄。',
+	'notice.iotoTaskView.inlineEditUnavailable':
+		'目前 Obsidian 版本不支援內嵌編輯，請在 Markdown 中編輯。',
+	'notice.iotoTaskView.bodyMultilineRejected': '任務正文不支援換行。',
 	'notice.openAsIOTOTaskNoFile': '目前沒有開啟任務檔案。',
 	'notice.openAsIOTOTaskNotTaskNote': '該檔案不是任務筆記。',
 } as const;

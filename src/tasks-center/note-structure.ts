@@ -243,26 +243,50 @@ export function parseSections(content: string): NoteSection[] {
 	return sections;
 }
 
-export function parseChecklistItems(content: string): NoteChecklistItem[] {
-	return collectChecklistItems(content, 0, Number.POSITIVE_INFINITY);
+export interface ParseChecklistOptions {
+	/**
+	 * 是否把「正文为空」的 checklist 行也当作条目。
+	 * 默认 `false`（与 v1 语义 / 任务状态统计一致）；IOTOTask 视图传 `true`，
+	 * 这样 `Enter` 新建的空卡片才有 DOM 可落脚、光标能进得去。
+	 */
+	includeEmpty?: boolean;
+}
+
+export function parseChecklistItems(
+	content: string,
+	options?: ParseChecklistOptions,
+): NoteChecklistItem[] {
+	return collectChecklistItems(
+		content,
+		0,
+		Number.POSITIVE_INFINITY,
+		options?.includeEmpty ?? false,
+	);
 }
 
 export function parseChecklistItemsInRange(
 	content: string,
 	startLine: number,
 	endLine: number,
+	options?: ParseChecklistOptions,
 ): NoteChecklistItem[] {
 	if (endLine < startLine) {
 		return [];
 	}
 
-	return collectChecklistItems(content, startLine, endLine);
+	return collectChecklistItems(
+		content,
+		startLine,
+		endLine,
+		options?.includeEmpty ?? false,
+	);
 }
 
 function collectChecklistItems(
 	content: string,
 	startLine: number,
 	endLine: number,
+	includeEmpty: boolean,
 ): NoteChecklistItem[] {
 	const lines = content.split(/\r?\n/);
 	const items: NoteChecklistItem[] = [];
@@ -316,7 +340,7 @@ function collectChecklistItems(
 		}
 
 		const rawText = match[2] ?? '';
-		if (rawText.trim().length === 0) {
+		if (!includeEmpty && rawText.trim().length === 0) {
 			continue;
 		}
 
@@ -364,10 +388,157 @@ function splitDisplayText(rawTaskContent: string): {
 
 function computeIndentLevel(line: string): number {
 	const leadingWhitespace = line.match(/^[ \t]*/)?.[0] ?? '';
+	return indentLevelOf(leadingWhitespace);
+}
+
+/* ------------------------------------------------------------------ *
+ * 编辑原语（[[Plan-20261003-073911]] §5.1）
+ *
+ * 全部是纯字符串函数：`line → line | null`，`null` 表示「不是任务行 / 不匹配」。
+ * 与解析层共用同一套缩进口径（`indentLevelOf`），保证「Tab 一次」与视图里
+ * 看到的层级不会漂。
+ * ------------------------------------------------------------------ */
+
+/** 一行任务拆成可无损重组的 7 段。 */
+export interface TaskLineParts {
+	/** 前导空白，原样保留（Tab 也原样保留） */
+	indent: string;
+	/** 列表符号（含其后空白）：`- ` / `* ` / `+ ` / `1. ` */
+	listMarker: string;
+	/** 勾选态 */
+	checked: ' ' | 'x' | 'X';
+	/** `]` 之后的空白 */
+	gap: string;
+	/** 展示正文（已剥离 metaTags），两侧 trim */
+	body: string;
+	/** 行尾 `#ioto/*` 控制标签 */
+	metaTags: string[];
+	/** 行尾空白（含 CRLF 的 `\r`），原样保留 */
+	trail: string;
+}
+
+const TASK_LINE_PARTS_PATTERN =
+	/^([ \t]*)((?:[-*+]|\d+\.)[ \t]+)\[([ xX])\]([ \t]*)([\s\S]*)$/;
+
+/** 缩进宽度换算：每 2 空格或 1 个 Tab 记 1 级（与解析层一致）。 */
+export function indentLevelOf(indent: string): number {
 	let width = 0;
-	for (const char of leadingWhitespace) {
+	for (const char of indent) {
 		width += char === '\t' ? 2 : 1;
 	}
 
 	return Math.floor(width / 2);
+}
+
+function indentStringForLevel(level: number): string {
+	return '  '.repeat(Math.max(0, level));
+}
+
+/** 把一行任务拆成可无损重组的 7 段；不是任务行时返回 `null`。 */
+export function splitTaskLine(line: string): TaskLineParts | null {
+	const match = line.match(TASK_LINE_PARTS_PATTERN);
+	if (!match) {
+		return null;
+	}
+
+	const rest = match[5] ?? '';
+	const trailMatch = rest.match(/[ \t\r]*$/);
+	const trail = trailMatch ? trailMatch[0] : '';
+	const core = rest.slice(0, rest.length - trail.length);
+	const { text, metaTags } = splitDisplayText(core);
+
+	return {
+		indent: match[1] ?? '',
+		listMarker: match[2] ?? '',
+		checked: (match[3] ?? ' ') as ' ' | 'x' | 'X',
+		gap: match[4] ?? '',
+		body: text,
+		metaTags,
+		trail,
+	};
+}
+
+/** `splitTaskLine` 的逆运算。 */
+export function composeTaskLine(parts: TaskLineParts): string {
+	const meta =
+		parts.metaTags.length > 0
+			? `${parts.body.length > 0 ? ' ' : ''}${parts.metaTags.join(' ')}`
+			: '';
+	return `${parts.indent}${parts.listMarker}[${parts.checked}]${parts.gap}${parts.body}${meta}${parts.trail}`;
+}
+
+/**
+ * 3b 提交：只换正文，原样保留 indent / listMarker / checked / gap / trail，
+ * 并把原行行尾的 `#ioto/*` 标签拼回正文之后。正文含换行时拒绝（返回 `null`）。
+ */
+export function replaceTaskBody(line: string, nextBody: string): string | null {
+	if (nextBody.includes('\n')) {
+		return null;
+	}
+
+	const parts = splitTaskLine(line);
+	if (!parts) {
+		return null;
+	}
+
+	return composeTaskLine({ ...parts, body: nextBody.trim() });
+}
+
+/** 3a 勾选：`' '` ↔ `'x'`，`'X'` 视作已勾选 → 切到 `' '`，其余字节一律不动。 */
+export function toggleTaskMarker(line: string): string | null {
+	const parts = splitTaskLine(line);
+	if (!parts) {
+		return null;
+	}
+
+	const checked: ' ' | 'x' = parts.checked.toLowerCase() === 'x' ? ' ' : 'x';
+	return composeTaskLine({ ...parts, checked });
+}
+
+/**
+ * 3c-3 缩进：`delta = ±1` 级，clamp 到 `[0, maxLevel]`。
+ * 输出统一为「每级 2 空格」（Tab 会被规整，属已知取舍）；缩进一律**重算**
+ * 而不是在原字符串上加/减，避免混用导致层级错乱。
+ */
+export function setTaskIndent(
+	line: string,
+	delta: number,
+	maxLevel = 8,
+): string | null {
+	const parts = splitTaskLine(line);
+	if (!parts) {
+		return null;
+	}
+
+	const upper = Math.max(0, maxLevel);
+	const nextLevel = Math.min(
+		Math.max(indentLevelOf(parts.indent) + delta, 0),
+		upper,
+	);
+	return composeTaskLine({
+		...parts,
+		indent: indentStringForLevel(nextLevel),
+	});
+}
+
+/**
+ * 3c-1 新建同级：给定参考行，产出「同 indent / 同列表符号 / 同 trail」的新行；
+ * `text` 为空则返回纯骨架；不继承 `#ioto/*` 标签。
+ */
+export function buildSiblingTaskLine(
+	referenceLine: string,
+	text: string,
+	marker: ' ' | 'x' = ' ',
+): string | null {
+	const parts = splitTaskLine(referenceLine);
+	if (!parts) {
+		return null;
+	}
+
+	return composeTaskLine({
+		...parts,
+		checked: marker,
+		body: text.trim(),
+		metaTags: [],
+	});
 }

@@ -16,6 +16,15 @@ import {
 	type NoteSection,
 } from '../../tasks-center/note-structure';
 
+/** 编辑交互回调（由 `IOTOTaskView` 注入；只读态 `enabled = false`）。 */
+export interface TaskNoteEditing {
+	readonly enabled: boolean;
+	/** 进入卡片正文内联编辑（同时会提交上一张正在编辑的卡片） */
+	beginEdit(line: number): void;
+	/** 3a 勾选：点 checkbox ↔ 行内 `[ ]` / `[x]`（乐观更新由调用方负责） */
+	toggleTask(line: number, cardEl: HTMLElement): void;
+}
+
 export interface RenderTaskNoteOptions {
 	app: App;
 	containerEl: HTMLElement;
@@ -25,6 +34,7 @@ export interface RenderTaskNoteOptions {
 	component: Component;
 	collapsedSections: Set<string>;
 	onToggleSection: (key: string) => void;
+	editing: TaskNoteEditing;
 }
 
 interface RenderSectionOptions {
@@ -36,6 +46,7 @@ interface RenderSectionOptions {
 	section: NoteSection;
 	collapsedSections: Set<string>;
 	onToggleSection: (key: string) => void;
+	editing: TaskNoteEditing;
 }
 
 /** Section 折叠状态的稳定 key（Level + 起始行 + 标题，重排后不会错位）。 */
@@ -125,6 +136,7 @@ function renderSection(options: RenderSectionOptions): void {
 		sourcePath,
 		component,
 		section,
+		editing: options.editing,
 	});
 }
 
@@ -166,8 +178,10 @@ function renderSectionBody(options: {
 	sourcePath: string;
 	component: Component;
 	section: NoteSection;
+	editing: TaskNoteEditing;
 }): void {
-	const { app, bodyEl, content, sourcePath, component, section } = options;
+	const { app, bodyEl, content, sourcePath, component, section, editing } =
+		options;
 	const lines = content.split(/\r?\n/);
 	const bodyStartLine =
 		section.level === 0 ? section.startLine : section.startLine + 1;
@@ -175,6 +189,7 @@ function renderSectionBody(options: {
 		content,
 		bodyStartLine,
 		section.endLine,
+		{ includeEmpty: true },
 	);
 	const itemByLine = new Map(items.map((item) => [item.line, item]));
 
@@ -197,6 +212,7 @@ function renderSectionBody(options: {
 				items: group,
 				sourcePath,
 				component,
+				editing,
 			});
 			continue;
 		}
@@ -222,11 +238,13 @@ function renderChecklistGroup(options: {
 	items: NoteChecklistItem[];
 	sourcePath: string;
 	component: Component;
+	editing: TaskNoteEditing;
 }): void {
-	const { app, bodyEl, items, sourcePath, component } = options;
+	const { app, bodyEl, items, sourcePath, component, editing } = options;
 	const listEl = bodyEl.createEl('ul', { cls: 'ioto-task-view__checklist' });
 
 	for (const item of items) {
+		const done = item.marker.toLowerCase() === 'x';
 		const cardEl = listEl.createEl('li', {
 			cls: 'ioto-task-view__card',
 			attr: {
@@ -236,16 +254,27 @@ function renderChecklistGroup(options: {
 			},
 		});
 
-		const checkboxEl = cardEl.createSpan({
+		const checkboxEl = cardEl.createEl('button', {
 			cls: 'ioto-task-view__card-checkbox',
-			attr: { 'aria-hidden': 'true' },
+			attr: {
+				type: 'button',
+				'aria-pressed': done ? 'true' : 'false',
+				'aria-label': t('view.iotoTaskView.checkboxToggle', [
+					truncateLabel(item.text),
+				]),
+			},
 		});
-		setIcon(
-			checkboxEl,
-			item.marker.toLowerCase() === 'x' ? 'check-square' : 'square',
-		);
+		setIcon(checkboxEl, done ? 'check-square' : 'square');
+		checkboxEl.addEventListener('click', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			editing.toggleTask(item.line, cardEl);
+		});
 
-		const textEl = cardEl.createDiv({ cls: 'ioto-task-view__card-text' });
+		const textEl = cardEl.createDiv({
+			cls: 'ioto-task-view__card-text',
+			attr: { title: t('view.iotoTaskView.editCardHint') },
+		});
 		void MarkdownRenderer.render(
 			app,
 			item.text,
@@ -253,9 +282,26 @@ function renderChecklistGroup(options: {
 			sourcePath,
 			component,
 		);
+		textEl.addEventListener('click', (event) => {
+			// 点 wikilink / 标签等交互元素时让核心处理，不进入编辑
+			const target = event.target as HTMLElement | null;
+			if (target?.closest('a')) {
+				return;
+			}
+			editing.beginEdit(item.line);
+		});
 
 		cardEl.createDiv({ cls: 'ioto-task-view__card-actions' });
 	}
+}
+
+function truncateLabel(text: string, maxLength = 40): string {
+	const trimmed = text.trim();
+	if (trimmed.length <= maxLength) {
+		return trimmed;
+	}
+
+	return `${trimmed.slice(0, maxLength)}…`;
 }
 
 function renderMarkdownChunk(options: {

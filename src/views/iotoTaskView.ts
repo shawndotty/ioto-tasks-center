@@ -1,18 +1,49 @@
 /**
- * `IOTOTask`：把任务笔记（.md）以「Section → Block → 任务卡片」呈现的只读视图。
+ * `IOTOTask`：把任务笔记（.md）以「Section → Block → 任务卡片」呈现的视图。
  *
  * 之所以用 `TextFileView` 而不是 `ItemView`：`TextFileView → EditableFileView → FileView`，
  * `FileView.file` 会被设置，`workspace.getActiveFile()` 因此能返回该任务文件 —— 这是
  * ioto-settings「AI 执行任务」主链路（resolveActiveFile → isTaskNote → vault.process）
  * 照常工作的前提（见 [[Research-20261002-192145]] 第二节）。
  *
- * v1 只读：永远不改 `this.data`，`getViewData()` 原样返回，关闭视图最多写入相同字节。
+ * v1 只读；本期（[[Plan-20261003-073911]]）增加行级编辑：
+ * - 3a 勾选：点 checkbox ↔ 行内 `[ ]` / `[x]`（单行 `vault.process`，乐观更新）；
+ * - 3b 卡片正文内联编辑：借用核心编辑器（`embedded-editor.ts`），失焦提交；
+ * - 3c `Enter` 新建同级 / 空卡片 `Backspace` 删除 / `Tab` `Shift+Tab` 缩进 / `Esc` 取消。
+ *
+ * 🔴 红线：写盘成功后必须同步 `this.data` 与 `this.lastLoadedText`，否则 `getViewData()`
+ * 会返回过期字节，`TextFileView` 的保存路径会把用户的编辑写回去。编辑期间用
+ * `editingLine` 抑制位挡住外部写入触发的重绘，避免编辑器被冲掉。
  */
 
-import { TextFileView, type ViewStateResult, type WorkspaceLeaf } from 'obsidian';
+import type { EditorView } from '@codemirror/view';
+import {
+	Notice,
+	setIcon,
+	TextFileView,
+	type ViewStateResult,
+	type WorkspaceLeaf,
+} from 'obsidian';
 
 import { t } from '../lang/helpter';
-import { renderTaskNote } from './ioto-task/render-note';
+import {
+	buildSiblingTaskLine,
+	parseChecklistItems,
+	replaceTaskBody,
+	setTaskIndent,
+	toggleTaskMarker,
+} from '../tasks-center/note-structure';
+import {
+	commitTaskLineAction,
+	commitTaskText,
+	type CommitOutcome,
+	type TaskLineTransform,
+} from './ioto-task/commit-task-line';
+import {
+	mountEmbeddedEditor,
+	type EmbeddedEditorHandle,
+} from './ioto-task/embedded-editor';
+import { renderTaskNote, type TaskNoteEditing } from './ioto-task/render-note';
 
 export const IOTO_TASK_VIEW_TYPE = 'IOTOTask';
 
@@ -20,10 +51,16 @@ export class IOTOTaskView extends TextFileView {
 	private collapsedSections = new Set<string>();
 	private lastLoadedText = '';
 	private isRendering = false;
+	private editingLine: number | null = null;
+	private editingOriginalLine = '';
+	private editingHandle: EmbeddedEditorHandle | null = null;
+	private pendingCommit: Promise<void> | null = null;
+	private readonly supportsInlineEdit: () => boolean;
 
-	constructor(leaf: WorkspaceLeaf) {
+	constructor(leaf: WorkspaceLeaf, supportsInlineEdit: () => boolean) {
 		super(leaf);
 		this.allowNoFile = false;
+		this.supportsInlineEdit = supportsInlineEdit;
 	}
 
 	getViewType(): string {
@@ -53,10 +90,18 @@ export class IOTOTaskView extends TextFileView {
 	}
 
 	clear(): void {
+		this.destroyActiveEditor();
+		this.editingLine = null;
+		this.editingOriginalLine = '';
 		this.contentEl.empty();
 		this.data = '';
 		this.lastLoadedText = '';
 		this.collapsedSections.clear();
+	}
+
+	onunload(): void {
+		this.destroyActiveEditor();
+		super.onunload();
 	}
 
 	getState(): Record<string, unknown> {
@@ -86,7 +131,7 @@ export class IOTOTaskView extends TextFileView {
 		this.contentEl.empty();
 		this.contentEl.addClass('ioto-task-view');
 
-		// 外部写入（含 Phase 2 的 AI 回写）→ 重读重绘。
+		// 外部写入（含 Phase 2 的 AI 回写）→ 重读重绘；编辑期间由 editingLine 抑制。
 		this.registerEvent(
 			this.app.vault.on('modify', (file) => {
 				if (!this.file || file.path !== this.file.path) {
@@ -100,6 +145,11 @@ export class IOTOTaskView extends TextFileView {
 	private async reloadFromVault(): Promise<void> {
 		const file = this.file;
 		if (!file) {
+			return;
+		}
+
+		// 编辑期间忽略外部写入，避免编辑器被重绘冲掉（只挡重绘，不挡写盘）。
+		if (this.editingLine !== null) {
 			return;
 		}
 
@@ -136,9 +186,331 @@ export class IOTOTaskView extends TextFileView {
 					}
 					this.renderNote(this.data);
 				},
+				editing: this.buildEditingController(),
 			});
 		} finally {
 			this.isRendering = false;
+		}
+	}
+
+	/* ------------------------------------------------------------------ *
+	 * 编辑：对外接口（渲染层通过回调调用）
+	 * ------------------------------------------------------------------ */
+
+	private buildEditingController(): TaskNoteEditing {
+		return {
+			enabled: this.supportsInlineEdit(),
+			beginEdit: (line) => {
+				void this.beginEdit(line);
+			},
+			toggleTask: (line, cardEl) => {
+				void this.toggleTask(line, cardEl);
+			},
+		};
+	}
+
+	private lineAt(index: number): string {
+		return this.data.split('\n')[index] ?? '';
+	}
+
+	private queryCard(line: number): HTMLElement | null {
+		return this.contentEl.querySelector<HTMLElement>(
+			`.ioto-task-view__card[data-line="${line}"]`,
+		);
+	}
+
+	private destroyActiveEditor(): void {
+		const handle = this.editingHandle;
+		// 先置空，保证随后触发的 blur 走到 commitEdit 时直接短路，不会递归。
+		this.editingHandle = null;
+		if (handle) {
+			try {
+				handle.destroy();
+			} catch {
+				/* ignore */
+			}
+		}
+	}
+
+	private async beginEdit(line: number): Promise<void> {
+		if (!this.supportsInlineEdit() || !this.file) {
+			new Notice(t('notice.iotoTaskView.inlineEditUnavailable'));
+			return;
+		}
+
+		if (this.editingLine === line && this.editingHandle) {
+			return;
+		}
+
+		// 切换卡片：先提交上一个
+		await this.commitEdit();
+
+		const file = this.file;
+		if (!file) {
+			return;
+		}
+
+		const cardEl = this.queryCard(line);
+		if (!cardEl) {
+			return;
+		}
+
+		const item = parseChecklistItems(this.data, {
+			includeEmpty: true,
+		}).find((entry) => entry.line === line);
+		if (!item) {
+			return;
+		}
+
+		const textEl = cardEl.querySelector<HTMLElement>(
+			'.ioto-task-view__card-text',
+		);
+		if (!textEl) {
+			return;
+		}
+
+		const hostEl = textEl.createDiv({
+			cls: 'ioto-task-view__card-editor',
+		});
+		const originalLine = this.lineAt(line);
+
+		const handle = await mountEmbeddedEditor({
+			app: this.app,
+			hostEl,
+			component: this,
+			file,
+			initialValue: item.text,
+			handlers: {
+				onEnter: (cm) => this.onEditorEnter(cm),
+				onDeleteEmpty: () => this.onEditorDeleteEmpty(),
+				onIndent: (delta) => this.onEditorIndent(delta),
+				onEscape: () => this.onEditorEscape(),
+				onBlur: () => {
+					void this.commitEdit();
+				},
+			},
+		});
+
+		if (!handle) {
+			hostEl.remove();
+			new Notice(t('notice.iotoTaskView.inlineEditUnavailable'));
+			return;
+		}
+
+		this.editingLine = line;
+		this.editingOriginalLine = originalLine;
+		this.editingHandle = handle;
+		cardEl.addClass('is-editing');
+		handle.focus();
+	}
+
+	private async commitEdit(): Promise<void> {
+		if (this.pendingCommit) {
+			await this.pendingCommit;
+			return;
+		}
+
+		if (
+			this.editingHandle === null ||
+			this.editingLine === null ||
+			!this.file
+		) {
+			return;
+		}
+
+		this.pendingCommit = this.doCommitEdit();
+		try {
+			await this.pendingCommit;
+		} finally {
+			this.pendingCommit = null;
+		}
+	}
+
+	private async doCommitEdit(): Promise<void> {
+		const handle = this.editingHandle;
+		const line = this.editingLine;
+		const originalLine = this.editingOriginalLine;
+		const file = this.file;
+		if (!handle || line === null || !file) {
+			return;
+		}
+
+		const nextBody = handle.getValue();
+		this.destroyActiveEditor();
+
+		if (nextBody.includes('\n')) {
+			new Notice(t('notice.iotoTaskView.bodyMultilineRejected'));
+			this.editingLine = null;
+			await this.reloadFromVault();
+			this.renderNote(this.data);
+			return;
+		}
+
+		const outcome = await commitTaskText(this.app, file, {
+			line,
+			originalLine,
+			nextBody,
+		});
+		this.editingLine = null;
+		this.applyOutcome(outcome);
+		await this.reloadFromVault();
+		// 强制重绘：清掉 `.is-editing` 与空的 editor 容器
+		this.renderNote(this.data);
+	}
+
+	private onEditorEscape(): void {
+		if (this.editingHandle === null) {
+			return;
+		}
+		this.destroyActiveEditor();
+		this.editingLine = null;
+		this.renderNote(this.data);
+	}
+
+	private onEditorEnter(cm: EditorView): boolean {
+		const handle = this.editingHandle;
+		const line = this.editingLine;
+		if (!handle || line === null) {
+			return false;
+		}
+
+		const text = handle.getValue();
+		const selection = cm.state.selection.main;
+		const head = Math.min(Math.max(selection.head, 0), text.length);
+		const before = text.slice(0, head);
+		const after = text.slice(head);
+		const originalLine = this.editingOriginalLine;
+
+		// 延后一拍执行，避免在核心编辑器自己的 keymap 回调里同步卸载它。
+		window.setTimeout(() => {
+			void this.runLineAction(
+				line,
+				originalLine,
+				(raw) => {
+					const first = replaceTaskBody(raw, before);
+					const sibling = buildSiblingTaskLine(raw, after);
+					if (first === null || sibling === null) {
+						return null;
+					}
+					return [first, sibling];
+				},
+				line + 1,
+			);
+		}, 0);
+		return true;
+	}
+
+	private onEditorDeleteEmpty(): boolean {
+		const line = this.editingLine;
+		if (line === null) {
+			return false;
+		}
+		const originalLine = this.editingOriginalLine;
+		window.setTimeout(() => {
+			void this.runLineAction(
+				line,
+				originalLine,
+				() => '',
+				line > 0 ? line - 1 : null,
+			);
+		}, 0);
+		return true;
+	}
+
+	private onEditorIndent(delta: number): boolean {
+		const line = this.editingLine;
+		if (line === null) {
+			return false;
+		}
+		const originalLine = this.editingOriginalLine;
+		window.setTimeout(() => {
+			void this.runLineAction(
+				line,
+				originalLine,
+				(raw) => setTaskIndent(raw, delta),
+				line,
+			);
+		}, 0);
+		return true;
+	}
+
+	private async runLineAction(
+		line: number,
+		originalLine: string,
+		transform: TaskLineTransform,
+		nextEditLine: number | null,
+	): Promise<void> {
+		const file = this.file;
+		if (!file) {
+			return;
+		}
+
+		this.destroyActiveEditor();
+		const outcome = await commitTaskLineAction(this.app, file, {
+			line,
+			originalLine,
+			transform,
+		});
+		this.editingLine = null;
+		this.applyOutcome(outcome);
+		await this.reloadFromVault();
+		this.renderNote(this.data);
+
+		if (outcome.status !== 'conflict' && nextEditLine !== null) {
+			await this.beginEdit(nextEditLine);
+		}
+	}
+
+	private applyOutcome(outcome: CommitOutcome): void {
+		if (outcome.status === 'ok') {
+			// 🔴 红线：data 与 lastLoadedText 必须一起更新
+			this.data = outcome.content;
+			this.lastLoadedText = outcome.content;
+		} else if (outcome.status === 'conflict') {
+			new Notice(t('notice.iotoTaskView.commitConflict'));
+		}
+	}
+
+	private async toggleTask(line: number, cardEl: HTMLElement): Promise<void> {
+		const file = this.file;
+		if (!file) {
+			return;
+		}
+
+		const currentMarker = cardEl.getAttribute('data-task') ?? ' ';
+		const nextMarker: ' ' | 'x' =
+			currentMarker.toLowerCase() === 'x' ? ' ' : 'x';
+
+		// 乐观更新：先改 DOM，不等 vault.process 返回，保证点击手感。
+		cardEl.setAttribute('data-task', nextMarker);
+		const checkboxEl = cardEl.querySelector<HTMLElement>(
+			'.ioto-task-view__card-checkbox',
+		);
+		if (checkboxEl) {
+			setIcon(
+				checkboxEl,
+				nextMarker === 'x' ? 'check-square' : 'square',
+			);
+			checkboxEl.setAttribute(
+				'aria-pressed',
+				nextMarker === 'x' ? 'true' : 'false',
+			);
+		}
+
+		const originalLine = this.lineAt(line);
+		const outcome = await commitTaskLineAction(this.app, file, {
+			line,
+			originalLine,
+			transform: toggleTaskMarker,
+		});
+
+		if (outcome.status === 'ok') {
+			this.data = outcome.content;
+			this.lastLoadedText = outcome.content;
+		} else if (outcome.status === 'conflict') {
+			new Notice(t('notice.iotoTaskView.commitConflict'));
+			await this.reloadFromVault();
+			this.renderNote(this.data);
 		}
 	}
 }

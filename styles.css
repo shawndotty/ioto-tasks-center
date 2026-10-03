@@ -2225,6 +2225,51 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	color: var(--text-muted);
 	flex: 0 0 auto;
 	margin-top: 2px;
+	/* 从只读 span 升级成可真按钮：重置 UA 样式 + hover/focus 可见环 */
+	background: none;
+	border: none;
+	box-shadow: none;
+	padding: 0;
+	cursor: pointer;
+	border-radius: var(--radius-s);
+}
+
+.ioto-task-view__card-checkbox:hover {
+	color: var(--text-normal);
+}
+
+.ioto-task-view__card-checkbox:focus-visible {
+	outline: 2px solid var(--ioto-tv-accent);
+	outline-offset: 2px;
+}
+
+/* 编辑态：左侧强调线加宽 + 换 accent 色 + 轻微抬升 */
+.ioto-task-view__card.is-editing {
+	border-inline-start-width: 4px;
+	border-inline-start-color: var(--ioto-tv-accent);
+	background: var(--background-primary);
+	box-shadow: var(--shadow-s);
+}
+
+/* 编辑期间隐藏旧的只读渲染内容，只留编辑器容器 */
+.ioto-task-view__card.is-editing
+	.ioto-task-view__card-text
+	> :not(.ioto-task-view__card-editor) {
+	display: none;
+}
+
+.ioto-task-view__card-editor {
+	min-height: 1.6em;
+	overflow: hidden;
+	margin: 0;
+}
+
+.ioto-task-view__card-editor .cm-editor {
+	background: transparent;
+}
+
+.ioto-task-view__card-editor .cm-scroller {
+	overflow: visible;
 }
 
 .ioto-task-view__card-text {
@@ -2283,6 +2328,16 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 
 .is-phone .ioto-task-view__section-toggle {
 	padding: 6px;
+}
+
+/* 移动端（本期不做真机验证）：加大 checkbox 与卡片的触控热区 */
+.is-phone .ioto-task-view__card-checkbox {
+	padding: 6px;
+	margin-top: -4px;
+}
+
+.is-phone .ioto-task-view__card-text {
+	min-height: 24px;
 }
 
 .is-phone .ioto-task-view__scroll {

@@ -486,6 +486,12 @@ const zhCN = {
 	'menu.openAsMarkdown': '切回 Markdown',
 	'view.iotoTaskView.fallbackTitle': '任务视图',
 	'view.iotoTaskView.sectionToggle': '折叠/展开章节：{0}',
+	'view.iotoTaskView.checkboxToggle': '切换任务完成状态：{0}',
+	'view.iotoTaskView.editCardHint': '点击编辑',
+	'notice.iotoTaskView.commitConflict': '文件在编辑期间被外部修改，本次改动已放弃。',
+	'notice.iotoTaskView.inlineEditUnavailable':
+		'当前 Obsidian 版本不支持内联编辑，请在 Markdown 中编辑。',
+	'notice.iotoTaskView.bodyMultilineRejected': '任务正文不支持换行。',
 	'notice.openAsIOTOTaskNoFile': '当前没有打开任务文件。',
 	'notice.openAsIOTOTaskNotTaskNote': '该文件不是任务笔记。',
 } as const;

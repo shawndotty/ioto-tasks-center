@@ -63,6 +63,7 @@ import {
 	IOTO_TASK_VIEW_TYPE,
 	IOTOTaskView,
 } from './views/iotoTaskView';
+import { probeEmbeddedEditorSupport } from './views/ioto-task/embedded-editor';
 import { IOTO_TASKS_CENTER_TASK_HOVER_SOURCE_ID } from './views/task-hover-preview';
 // import {
 // 	batchClearPriority,
@@ -77,9 +78,12 @@ import { IOTO_TASKS_CENTER_TASK_HOVER_SOURCE_ID } from './views/task-hover-previ
 
 export default class IOTOTasksCenter extends Plugin {
 	settings!: IOTOTasksCenterSettings;
+	/** IOTOTask 视图是否支持内联编辑（onload 时做一次能力探测，失败则降级） */
+	private supportsInlineEdit = false;
 
 	async onload() {
 		await this.loadSettings();
+		this.supportsInlineEdit = probeEmbeddedEditorSupport(this.app);
 		this.registerHoverLinkSource(IOTO_TASKS_CENTER_TASK_HOVER_SOURCE_ID, {
 			display: 'IOTO Tasks Center',
 			defaultMod: true,
@@ -139,7 +143,7 @@ export default class IOTOTasksCenter extends Plugin {
 		);
 		this.registerView(
 			IOTO_TASK_VIEW_TYPE,
-			(leaf) => new IOTOTaskView(leaf),
+			(leaf) => new IOTOTaskView(leaf, () => this.supportsInlineEdit),
 		);
 
 		this.addCommand({

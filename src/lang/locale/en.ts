@@ -528,6 +528,14 @@ const en = {
 	'menu.openAsMarkdown': 'Open as Markdown',
 	'view.iotoTaskView.fallbackTitle': 'Task view',
 	'view.iotoTaskView.sectionToggle': 'Toggle section: {0}',
+	'view.iotoTaskView.checkboxToggle': 'Toggle task: {0}',
+	'view.iotoTaskView.editCardHint': 'Click to edit',
+	'notice.iotoTaskView.commitConflict':
+		'The file changed during editing; this change was discarded.',
+	'notice.iotoTaskView.inlineEditUnavailable':
+		'Inline editing is unavailable in this Obsidian version. Edit in Markdown instead.',
+	'notice.iotoTaskView.bodyMultilineRejected':
+		'Task text does not support line breaks.',
 	'notice.openAsIOTOTaskNoFile': 'No task file is open.',
 	'notice.openAsIOTOTaskNotTaskNote': 'This file is not a task note.',
 } as const;
