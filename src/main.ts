@@ -64,6 +64,7 @@ import {
 	IOTOTaskView,
 } from './views/iotoTaskView';
 import { probeEmbeddedEditorSupport } from './views/ioto-task/embedded-editor';
+import { installItemControlBridge } from './views/ioto-task/item-control-bridge';
 import { IOTO_TASKS_CENTER_TASK_HOVER_SOURCE_ID } from './views/task-hover-preview';
 // import {
 // 	batchClearPriority,
@@ -391,6 +392,9 @@ export default class IOTOTasksCenter extends Plugin {
 		this.addSettingTab(new IOTOTasksCenterSettingTab(this.app, this));
 		this.registerVaultRefreshEvents();
 		this.registerTaskNoteMenuEvent();
+		// 「条目控制」桥接：让 IOTOTask 卡片内联编辑态下的 Option+I 可用
+		// （[[Plan-20261003-105625]]）；`register` 会在 onunload 时还原原方法。
+		this.register(installItemControlBridge(this.app));
 	}
 
 	async loadSettings() {

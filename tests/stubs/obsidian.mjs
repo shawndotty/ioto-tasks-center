@@ -28,6 +28,10 @@ export class TFolder extends TAbstractFile {}
 
 export class Menu {}
 
+// 供 item-control-bridge 的 shim 判据使用（`type === MarkdownView`）。
+// 真实 Obsidian 里 MarkdownView 与各插件共用同一模块实例，这里用单例类模拟。
+export class MarkdownView {}
+
 export class Notice {
 	constructor(message) {
 		this.message = message;

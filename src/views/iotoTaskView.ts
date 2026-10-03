@@ -22,6 +22,7 @@ import {
 	Notice,
 	setIcon,
 	TextFileView,
+	type TFile,
 	type ViewStateResult,
 	type WorkspaceLeaf,
 } from 'obsidian';
@@ -49,8 +50,34 @@ import {
 	restoreIotoTaskScroll,
 } from './ioto-task/ioto-task-scroll';
 import { renderTaskNote, type TaskNoteEditing } from './ioto-task/render-note';
+import { IOTO_TASK_VIEW_TYPE } from './ioto-task/item-control-bridge';
 
-export const IOTO_TASK_VIEW_TYPE = 'IOTOTask';
+export { IOTO_TASK_VIEW_TYPE };
+
+/** IOTOTask 视图供「条目控制」桥接读写当前编辑卡片的宿主（见 item-control-bridge.ts）。 */
+export interface ItemControlBridgeHost {
+	/** 视图打开的任务文件（必须是真 `TFile`，满足 ioto-settings 的 `instanceof` 判据） */
+	file: TFile;
+	/** 当前内联编辑行的 0 基**文件行号**（面板据此定位，不是卡片内的相对行号） */
+	line: number;
+	/** 打开编辑时的原始整行（写回时的冲突二次定位基线） */
+	originalLine: string;
+	/** 面板要读的整行：磁盘行 + 未提交的 CM 正文合成（`replaceTaskBody`） */
+	readBridgeLine(): string;
+	/** 除编辑行外的其它行按磁盘内容返回 */
+	readDiskLine(line: number): string;
+	/** 面板确认后的新整行 → 落盘并同步 `data` / `lastLoadedText` / `editingOriginalLine` */
+	commitBridgeLine(nextLine: string): Promise<CommitOutcome>;
+	/** 供面板定位：该行卡片的视口坐标 */
+	getLineCoords(line: number): {
+		top: number;
+		left: number;
+		bottom: number;
+		right: number;
+	};
+	/** 视图滚动容器宽度（面板用它约束自身宽度） */
+	getScrollWidth(): number;
+}
 
 export class IOTOTaskView extends TextFileView {
 	private collapsedSections = new Set<string>();
@@ -217,6 +244,76 @@ export class IOTOTaskView extends TextFileView {
 				void this.toggleTask(line, cardEl);
 			},
 		};
+	}
+
+	/**
+	 * 「条目控制」桥接宿主：仅在内联编辑态返回；其余情况返回 `null`（命令原样透传）。
+	 * 见 item-control-bridge.ts 与 [[Plan-20261003-105625]] §5.5。
+	 */
+	getItemControlHost(): ItemControlBridgeHost | null {
+		const line = this.editingLine;
+		const file = this.file;
+		const handle = this.editingHandle;
+		if (line === null || !file || !handle) {
+			return null;
+		}
+
+		const originalLine = this.lineAt(line);
+		const diskLines = this.data.split('\n');
+
+		return {
+			file,
+			line,
+			originalLine,
+			readBridgeLine: () =>
+				replaceTaskBody(originalLine, handle.getValue()) ??
+				originalLine,
+			readDiskLine: (index) => diskLines[index] ?? '',
+			commitBridgeLine: (nextLine) =>
+				this.commitFromItemControl(line, originalLine, nextLine),
+			getLineCoords: (targetLine) => {
+				const rect = this.queryCard(targetLine)?.getBoundingClientRect();
+				return rect
+					? {
+							top: rect.top,
+							left: rect.left,
+							bottom: rect.bottom,
+							right: rect.right,
+						}
+					: { top: 0, left: 0, bottom: 0, right: 0 };
+			},
+			getScrollWidth: () =>
+				this.contentEl
+					.querySelector('.ioto-task-view__scroll')
+					?.getBoundingClientRect().width ?? 0,
+		};
+	}
+
+	/**
+	 * 面板确认后的整行写回：复用 `commitTaskLineAction`（原子 + 冲突定位），
+	 * 成功后走 `applyOutcome` 红线同步 `data` / `lastLoadedText`，并同步
+	 * `editingOriginalLine`，避免随后的 blur 提交误判冲突。
+	 */
+	private async commitFromItemControl(
+		line: number,
+		originalLine: string,
+		nextLine: string,
+	): Promise<CommitOutcome> {
+		const file = this.file;
+		if (!file) {
+			return { status: 'unchanged' };
+		}
+
+		const outcome = await commitTaskLineAction(this.app, file, {
+			line,
+			originalLine,
+			transform: () => nextLine,
+		});
+		this.applyOutcome(outcome);
+		if (outcome.status === 'ok') {
+			this.editingOriginalLine = nextLine;
+		}
+		return outcome;
 	}
 
 	private lineAt(index: number): string {
