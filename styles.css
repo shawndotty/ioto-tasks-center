@@ -2275,6 +2275,8 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 .ioto-task-view__card-text {
 	flex: 1 1 auto;
 	min-width: 0;
+	/* 空条目：保证有可见且可命中的正文区（与 __card-editor 的 1.6em 对齐） */
+	min-height: 1.6em;
 }
 
 .ioto-task-view__card-text > :first-child {

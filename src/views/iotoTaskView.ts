@@ -18,6 +18,7 @@
 
 import type { EditorView } from '@codemirror/view';
 import {
+	MarkdownRenderer,
 	Notice,
 	setIcon,
 	TextFileView,
@@ -43,6 +44,10 @@ import {
 	mountEmbeddedEditor,
 	type EmbeddedEditorHandle,
 } from './ioto-task/embedded-editor';
+import {
+	captureIotoTaskScroll,
+	restoreIotoTaskScroll,
+} from './ioto-task/ioto-task-scroll';
 import { renderTaskNote, type TaskNoteEditing } from './ioto-task/render-note';
 
 export const IOTO_TASK_VIEW_TYPE = 'IOTOTask';
@@ -170,6 +175,10 @@ export class IOTOTaskView extends TextFileView {
 
 		this.isRendering = true;
 		try {
+			// 重绘会新建滚动容器（render-note.ts:60），scrollTop 会归零；
+			// 先捕获、render 之后恢复，保证结构性变更（回车新建 / 折叠 Section / 冲突回滚）
+			// 不把用户看到的视口位置丢掉（[[Plan-20261003-094145]] §5.2）。
+			const snapshot = captureIotoTaskScroll(this.contentEl);
 			this.contentEl.empty();
 			renderTaskNote({
 				app: this.app,
@@ -188,6 +197,7 @@ export class IOTOTaskView extends TextFileView {
 				},
 				editing: this.buildEditingController(),
 			});
+			restoreIotoTaskScroll(this.contentEl, snapshot);
 		} finally {
 			this.isRendering = false;
 		}
@@ -302,6 +312,17 @@ export class IOTOTaskView extends TextFileView {
 		this.editingHandle = handle;
 		cardEl.addClass('is-editing');
 		handle.focus();
+
+		// 视口兜底：结构性变更（回车新建末行 / 删除）后目标卡可能在视口外，
+		// `block:'nearest'` 只在确实出视口时才滚动（[[Plan-20261003-094145]] §5.4）。
+		const rect = cardEl.getBoundingClientRect();
+		const scrollEl = this.contentEl.querySelector<HTMLElement>(
+			'.ioto-task-view__scroll',
+		);
+		const view = scrollEl?.getBoundingClientRect();
+		if (view && (rect.top < view.top || rect.bottom > view.bottom)) {
+			cardEl.scrollIntoView({ block: 'nearest' });
+		}
 	}
 
 	private async commitEdit(): Promise<void> {
@@ -353,9 +374,56 @@ export class IOTOTaskView extends TextFileView {
 		});
 		this.editingLine = null;
 		this.applyOutcome(outcome);
-		await this.reloadFromVault();
-		// 强制重绘：清掉 `.is-editing` 与空的 editor 容器
-		this.renderNote(this.data);
+
+		if (outcome.status === 'conflict') {
+			// 外部已改，拉权威内容；冲突是罕见路径，允许整树重建。
+			await this.reloadFromVault();
+			this.renderNote(this.data);
+			return;
+		}
+
+		// 纯文本提交「行数 / 缩进 / 其它卡片」全都没变，就地刷新单卡即可：
+		// 既不会跳顶，也不会因整树重建吞掉正在进行的第二次点击（[[Plan-20261003-094145]] §5.3）。
+		this.refreshCard(line);
+	}
+
+	/**
+	 * 只刷新单张卡片：去掉编辑态、卸掉空编辑器容器、按最新 `data` 重渲染正文。
+	 *
+	 * 前提：调用方只改了该行**正文**（`replaceTaskBody` 保留 checked / indent / metaTags）。
+	 * 若将来提交语义扩展到改 `data-task` / `data-indent` 等属性，这里会漏更新，需改回整树重建。
+	 */
+	private refreshCard(line: number): void {
+		const cardEl = this.queryCard(line);
+		if (!cardEl) {
+			// 行号漂移 / 卡片被折叠：退回整树重建。
+			this.renderNote(this.data);
+			return;
+		}
+
+		cardEl.removeClass('is-editing');
+		const textEl = cardEl.querySelector<HTMLElement>(
+			'.ioto-task-view__card-text',
+		);
+		if (!textEl) {
+			return;
+		}
+
+		const item = parseChecklistItems(this.data, {
+			includeEmpty: true,
+		}).find((entry) => entry.line === line);
+
+		// 顺带移除 `.card-editor` 空壳（destroyActiveEditor 只清空了它的子节点）。
+		textEl.empty();
+		if (item) {
+			void MarkdownRenderer.render(
+				this.app,
+				item.text,
+				textEl,
+				this.file?.path ?? '',
+				this,
+			);
+		}
 	}
 
 	private onEditorEscape(): void {

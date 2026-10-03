@@ -282,10 +282,28 @@ function renderChecklistGroup(options: {
 			sourcePath,
 			component,
 		);
-		textEl.addEventListener('click', (event) => {
-			// 点 wikilink / 标签等交互元素时让核心处理，不进入编辑
+
+		// 编辑入口挂在卡片本体（li）而非正文区：空条目正文区高度为 0，挂正文区会命中不到
+		// （[[Research-20261003-091331]] §四，[[Plan-20261003-094145]] §5.5）。整张卡片
+		// （含 padding / 空白区）都可进入编辑；交互元素按 closest 逐类排除。
+		cardEl.addEventListener('click', (event) => {
 			const target = event.target as HTMLElement | null;
-			if (target?.closest('a')) {
+			if (!target) {
+				return;
+			}
+			// 点 wikilink / 标签等交互元素时让核心处理，不进入编辑
+			if (target.closest('a')) {
+				return;
+			}
+			// checkbox 走 3a（自身也 stopPropagation，这里按 closest 双保险）
+			if (target.closest('.ioto-task-view__card-checkbox')) {
+				return;
+			}
+			if (target.closest('.ioto-task-view__card-actions')) {
+				return;
+			}
+			// 编辑中不重复进入
+			if (target.closest('.ioto-task-view__card-editor')) {
 				return;
 			}
 			editing.beginEdit(item.line);
