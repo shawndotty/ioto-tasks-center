@@ -167,3 +167,47 @@ export function fitItemControlPanel(
 	}
 	return true;
 }
+
+/** 等面板挂载的上限；超时即断开观察者（应对命令被判否 / 无活动文件等「面板永不出现」）。 */
+const MOUNT_WAIT_LIMIT_MS = 3000;
+
+/**
+ * 面板不在命令同步段内创建：`openForActiveLine()` 会先 `await buildContext()`
+ * （内部 `await vault.read` + 解析），之后才 `new Modal(...).open()`。
+ * 因此 `setTimeout(0)` / 单次 rAF 都会早于面板建 DOM（[[Research-20261003-171720]] §二）。
+ * 这里用 `MutationObserver` 等 `.ioto-item-control-modal` 真正插入 body 后再量高重定位
+ * 一次，并设上限兜底（[[Plan-20261003-172455]] §三）。
+ *
+ * 快路径先量一次，兼容「面板已在（或对端未来改回同步）」的情形；命中即返回 true。
+ * `doc` / `win` 与 `fitItemControlPanel` 同口径：默认取 `activeDocument` /
+ * `activeWindow`（弹窗感知），在无 DOM 的 `node --test` 下提前返回 false。
+ */
+export function fitItemControlPanelWhenMounted(
+	host: ItemControlBridgeHost,
+	doc: Document | null = typeof activeDocument === 'undefined'
+		? null
+		: activeDocument,
+	win: Window | null = typeof activeWindow === 'undefined'
+		? null
+		: activeWindow,
+): boolean {
+	if (!doc || !win) {
+		return false; // node --test 无 DOM 环境
+	}
+	if (fitItemControlPanel(host, doc, win)) {
+		return true; // 快路径：面板已挂载，已定位
+	}
+
+	let timer: number | null = null;
+	const observer = new MutationObserver(() => {
+		if (fitItemControlPanel(host, doc, win)) {
+			observer.disconnect();
+			if (timer !== null) {
+				win.clearTimeout(timer);
+			}
+		}
+	});
+	observer.observe(doc.body, { childList: true, subtree: true });
+	timer = win.setTimeout(() => observer.disconnect(), MOUNT_WAIT_LIMIT_MS);
+	return true; // 已安排「挂载后定位」
+}

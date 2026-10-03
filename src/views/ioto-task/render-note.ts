@@ -311,11 +311,30 @@ function renderChecklistGroup(options: {
 			editing.beginEdit(item.line);
 		});
 
-		const actionsEl = cardEl.createDiv({
-			cls: 'ioto-task-view__card-actions',
-		});
-		renderControlBadges(actionsEl, item.controls);
+		renderCardActions(cardEl, item.controls);
 	}
+}
+
+/**
+ * 构建 / 就地重建一张卡片的动作区徽章。
+ *
+ * 首次渲染（`renderChecklistGroup`）与条目控制面板写回后的就地刷新
+ * （`IOTOTaskView.refreshCardActions`）共用同一份逻辑，避免两处写法漂移：
+ * 只重建 `.ioto-task-view__card-actions` 子树，**不碰**正文区与内联编辑器；
+ * 容器不存在时按卡片结构新建，保证编辑器存活、正文不丢、滚动位置不动。
+ */
+export function renderCardActions(
+	cardEl: HTMLElement,
+	controls: ControlToken[],
+): void {
+	let actionsEl = cardEl.querySelector<HTMLElement>(
+		'.ioto-task-view__card-actions',
+	);
+	if (!actionsEl) {
+		actionsEl = cardEl.createDiv({ cls: 'ioto-task-view__card-actions' });
+	}
+	actionsEl.empty();
+	renderControlBadges(actionsEl, controls);
 }
 
 /** 控制项 → 图标名（Obsidian `setIcon` 语汇）。 */

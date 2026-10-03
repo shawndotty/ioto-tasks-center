@@ -31,7 +31,7 @@ import { MarkdownView } from 'obsidian';
 import type { App } from 'obsidian';
 
 import type { ItemControlBridgeHost } from '../iotoTaskView';
-import { fitItemControlPanel } from './fit-item-control-panel';
+import { fitItemControlPanelWhenMounted } from './fit-item-control-panel';
 
 /**
  * IOTOTask 的视图类型标识。
@@ -211,18 +211,10 @@ export function installItemControlBridge(app: App): () => void {
 			// 视图查询发生在命令的同步段；微任务 + 宏任务尽早还原，幂等。
 			void Promise.resolve().then(restore);
 			window.setTimeout(restore, 0);
-			// 面板在 Modal.open() 的同步段已建好；下一拍量高并按视口重定位
-			// （[[Plan-20261003-165927]]：下方放不下翻上方 / 夹取，不改 ioto-settings）。
-			window.setTimeout(() => {
-				if (!fitItemControlPanel(host)) {
-					if (typeof window.requestAnimationFrame === 'function') {
-						// 异步化的兜底（面板若改成异步打开）；无 rAF 的环境跳过。
-						window.requestAnimationFrame(() =>
-							fitItemControlPanel(host),
-						);
-					}
-				}
-			}, 0);
+			// 面板不在同步段创建（对端先 await buildContext）→ 等它真正挂载后再量高
+			// 重定位一次（[[Plan-20261003-172455]]：下方放不下翻上方 / 夹取，不改
+			// ioto-settings）。`restore` 只还原视图查询 shim，与定位互不依赖。
+			fitItemControlPanelWhenMounted(host);
 		}
 	};
 

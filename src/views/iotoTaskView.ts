@@ -50,7 +50,11 @@ import {
 	captureIotoTaskScroll,
 	restoreIotoTaskScroll,
 } from './ioto-task/ioto-task-scroll';
-import { renderTaskNote, type TaskNoteEditing } from './ioto-task/render-note';
+import {
+	renderCardActions,
+	renderTaskNote,
+	type TaskNoteEditing,
+} from './ioto-task/render-note';
 import { IOTO_TASK_VIEW_TYPE } from './ioto-task/item-control-bridge';
 
 export { IOTO_TASK_VIEW_TYPE };
@@ -319,6 +323,9 @@ export class IOTOTaskView extends TextFileView {
 			if (typeof body === 'string') {
 				this.editingHandle?.setValue(body);
 			}
+			// 写回只同步了内存与编辑器；动作区徽章需就地重建，
+			// 否则要整页刷新才显示（[[Plan-20261003-174312]] §3.3）。
+			this.refreshCardActions(line);
 		}
 		return outcome;
 	}
@@ -492,6 +499,23 @@ export class IOTOTaskView extends TextFileView {
 	}
 
 	/**
+	 * 就地重建该卡片的动作区徽章（入口：条目控制面板写回后 / 单卡刷新）。
+	 * 只读 `this.data`（此时已是最新），复用渲染层 `renderCardActions`；
+	 * 不重建卡片、不碰正文区与内联编辑器，因此不丢编辑态、不影响滚动位置。
+	 * `queryCard` 未命中（行漂移 / 卡片被折叠）时静默跳过，交后续整树渲染兜底。
+	 */
+	private refreshCardActions(line: number): void {
+		const cardEl = this.queryCard(line);
+		if (!cardEl) {
+			return;
+		}
+		const item = parseChecklistItems(this.data, {
+			includeEmpty: true,
+		}).find((entry) => entry.line === line);
+		renderCardActions(cardEl, item?.controls ?? []);
+	}
+
+	/**
 	 * 只刷新单张卡片：去掉编辑态、卸掉空编辑器容器、按最新 `data` 重渲染正文。
 	 *
 	 * 前提：调用方只改了该行**正文**（`replaceTaskBody` 保留 checked / indent / controls）。
@@ -528,6 +552,8 @@ export class IOTOTaskView extends TextFileView {
 				this,
 			);
 		}
+		// 动作区也按最新 `data` 重建（幂等），覆盖 blur 提交等所有「就地刷单卡」路径。
+		this.refreshCardActions(line);
 	}
 
 	private onEditorEscape(): void {
