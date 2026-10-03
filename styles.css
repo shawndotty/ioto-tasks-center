@@ -2267,6 +2267,8 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	background: var(--background-primary);
 	box-shadow: var(--shadow-s);
 }
+/* 卡片动作区（控制项徽章底栏）只在编辑态显示——见下方 .ioto-task-view__card-actions
+   的显示条件（条目 60 / Plan-20261003-202403）。idle / 选择态 / 只读降级态均隐藏。 */
 
 /* 编辑期间隐藏旧的只读渲染内容，只留编辑器容器 */
 .ioto-task-view__card.is-editing
@@ -2305,7 +2307,9 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 }
 
 .ioto-task-view__card-actions {
-	display: flex;
+	/* 动作区默认隐藏：只在卡片内联编辑态（.is-editing）显示。
+	   依据条目 60——徽章内容只在执行/编辑任务时需要查看与调整。 */
+	display: none;
 	flex-wrap: wrap; /* 徽章过多时在底栏内换行，不横向溢出卡片 */
 	align-items: center;
 	gap: 4px;
@@ -2313,9 +2317,9 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	order: 2; /* 排在勾选框之后，仍是卡片最后一行（底栏）（Plan-20261003-191547） */
 }
 
-/* 无控制项的卡片：动作区为空 → 不产生空底栏，也不引入多余行间距 */
-.ioto-task-view__card-actions:empty {
-	display: none;
+/* 仅编辑态显示底栏；:not(:empty) 保证无控制项的卡片即使编辑也不产生空底栏 */
+.ioto-task-view__card.is-editing .ioto-task-view__card-actions:not(:empty) {
+	display: flex;
 }
 
 .ioto-task-view__badge {
