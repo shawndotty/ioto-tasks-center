@@ -333,6 +333,11 @@ const en = {
 		'Show a persistent inline search field above the task list (filters as you type), or use the legacy search dialog.',
 	'settings.taskSearchEntryMode.inline': 'Inline field (recommended)',
 	'settings.taskSearchEntryMode.modal': 'Search dialog',
+	'settings.appearanceStyle.name': 'IOTOTask view appearance',
+	'settings.appearanceStyle.desc':
+		'Choose the visual style of the IOTOTask view: Glass (dark aurora + glassmorphism, default) or Card (classic flat cards).',
+	'settings.appearanceStyle.glass': 'Glass (recommended)',
+	'settings.appearanceStyle.card': 'Card (classic)',
 	'settings.heading.subtasks': 'Subtasks',
 	'settings.subtasks.showCount.name': 'Show subtask count',
 	'settings.subtasks.showCount.desc':
@@ -531,7 +536,7 @@ const en = {
 	'view.iotoTaskView.checkboxToggle': 'Toggle task: {0}',
 	'view.iotoTaskView.selectCardHint': 'Click to select, click again to edit',
 	'view.iotoTaskView.selectedHint':
-		'Selected: Enter to edit · Del to delete · ↑↓ to move',
+		'Selected: Enter to edit · Del to delete · ↑↓ to move · Cmd+Enter to toggle · Cmd+↑↓ to jump',
 	'view.iotoTaskView.badge.depends': 'Depends ×{0}',
 	'view.iotoTaskView.badge.dependsIndex': 'Depends #{0}',
 	'view.iotoTaskView.badge.agent': 'Agent: {0}',

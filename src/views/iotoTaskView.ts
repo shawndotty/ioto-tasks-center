@@ -33,6 +33,7 @@ import {
 } from 'obsidian';
 
 import { t } from '../lang/helpter';
+import type { TaskViewAppearanceStyle } from '../settings';
 import {
 	buildSiblingTaskLine,
 	parseChecklistItems,
@@ -110,11 +111,17 @@ export class IOTOTaskView extends TextFileView {
 	private editingHandle: EmbeddedEditorHandle | null = null;
 	private pendingCommit: Promise<void> | null = null;
 	private readonly supportsInlineEdit: () => boolean;
+	private readonly appearanceStyleProvider: () => TaskViewAppearanceStyle;
 
-	constructor(leaf: WorkspaceLeaf, supportsInlineEdit: () => boolean) {
+	constructor(
+		leaf: WorkspaceLeaf,
+		supportsInlineEdit: () => boolean,
+		appearanceStyleProvider: () => TaskViewAppearanceStyle,
+	) {
 		super(leaf);
 		this.allowNoFile = false;
 		this.supportsInlineEdit = supportsInlineEdit;
+		this.appearanceStyleProvider = appearanceStyleProvider;
 	}
 
 	getViewType(): string {
@@ -185,6 +192,8 @@ export class IOTOTaskView extends TextFileView {
 	async onOpen(): Promise<void> {
 		this.contentEl.empty();
 		this.contentEl.addClass('ioto-task-view');
+		// 按设置挂 / 去 `.is-glass`（玻璃风格），保证打开即应用当前外观（[[Plan-20261003-215547]] §7.1）。
+		this.applyAppearanceStyle();
 
 		// 外部写入（含 Phase 2 的 AI 回写）→ 重读重绘；编辑期间由 editingLine 抑制。
 		this.registerEvent(
@@ -195,6 +204,20 @@ export class IOTOTaskView extends TextFileView {
 				void this.reloadFromVault();
 			}),
 		);
+	}
+
+	/**
+	 * 按设置切换 IOTOTask 视图外观：玻璃（`.is-glass`）或经典卡片。
+	 * 设置变更时由 `main.ts` 的 `applySettingsToOpenViews` 调此方法来即时回退 / 切换，
+	 * 无需整树重建（`contentEl` 的类在 `renderNote` 的 `empty()` 后仍然保留）。
+	 * 见 [[Plan-20261003-215547]] §7.1。
+	 */
+	applyAppearanceStyle(): void {
+		if (this.appearanceStyleProvider() === 'glass') {
+			this.contentEl.addClass('is-glass');
+		} else {
+			this.contentEl.removeClass('is-glass');
+		}
 	}
 
 	private async reloadFromVault(): Promise<void> {

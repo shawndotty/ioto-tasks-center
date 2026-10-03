@@ -66,6 +66,9 @@ export type TaskListTimeFilter =
 	| 'updated-calendar-month';
 export type TaskLinkBadgeBackgroundMode = 'multicolor' | 'monochrome';
 
+/** IOTOTask 视图的外观风格：玻璃拟态（glass，默认）或经典卡片（card）。 */
+export type TaskViewAppearanceStyle = 'glass' | 'card';
+
 export interface IOTOTasksCenterSettings {
 	tasksRootPath: string;
 	inputRootPath: string;
@@ -94,6 +97,8 @@ export interface IOTOTasksCenterSettings {
 	dateTaskDateFormat: string;
 	batchTemplateConfig: BatchTemplateConfig;
 	taskSearchEntryMode: TaskSearchEntryMode;
+	/** IOTOTask 视图外观风格（glass / card）。 */
+	appearanceStyle: TaskViewAppearanceStyle;
 }
 
 export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
@@ -124,6 +129,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	dateTaskDateFormat: DEFAULT_DATE_TASK_DATE_FORMAT,
 	batchTemplateConfig: { ...DEFAULT_BATCH_TEMPLATE_CONFIG },
 	taskSearchEntryMode: 'inline',
+	appearanceStyle: 'glass',
 };
 
 export { normalizeEnabledTaskCreationTypes } from './tasks-center/enabled-task-creation-types';
@@ -272,6 +278,30 @@ export function normalizeTaskLinkBadgeBackgroundMode(
 	return typeof value === 'string' && isTaskLinkBadgeBackgroundMode(value)
 		? value
 		: 'multicolor';
+}
+
+export function getTaskViewAppearanceStyleOptions(): Record<
+	TaskViewAppearanceStyle,
+	string
+> {
+	return {
+		glass: t('settings.appearanceStyle.glass'),
+		card: t('settings.appearanceStyle.card'),
+	};
+}
+
+export function isTaskViewAppearanceStyle(
+	value: string,
+): value is TaskViewAppearanceStyle {
+	return value === 'glass' || value === 'card';
+}
+
+export function normalizeTaskViewAppearanceStyle(
+	value: unknown,
+): TaskViewAppearanceStyle {
+	return typeof value === 'string' && isTaskViewAppearanceStyle(value)
+		? value
+		: 'glass';
 }
 
 export function getTaskTemplateSourceModeOptions(): Record<
@@ -434,6 +464,29 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 							}
 
 							await this.plugin.updateTaskSearchEntryMode(value);
+						});
+				});
+
+			new Setting(containerEl)
+				.setName(t('settings.appearanceStyle.name'))
+				.setDesc(t('settings.appearanceStyle.desc'))
+				.addDropdown((dropdown) => {
+					const appearanceStyleOptions =
+						getTaskViewAppearanceStyleOptions();
+					for (const [value, label] of Object.entries(
+						appearanceStyleOptions,
+					)) {
+						dropdown.addOption(value, label);
+					}
+
+					dropdown
+						.setValue(this.plugin.settings.appearanceStyle)
+						.onChange(async (value) => {
+							if (!isTaskViewAppearanceStyle(value)) {
+								return;
+							}
+
+							await this.plugin.updateAppearanceStyle(value);
 						});
 				});
 

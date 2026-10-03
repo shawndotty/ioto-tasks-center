@@ -2412,6 +2412,333 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	padding: var(--size-4-2, 8px);
 }
 
+/* ============================================================
+   IOTOTask 视图 · 玻璃拟态风格（`.is-glass`）
+   - 在既有 `card` 风格之上新增的一套外观，通过设置 `appearanceStyle` 切换。
+   - 所有规则都收敛在 `.ioto-task-view.is-glass` 作用域下；默认（无 `.is-glass`）
+     的 `card` 规则完全不动，因此切回 `card` 即完整回退（[[Plan-20261003-215547]]）。
+   - 参考图：深色 Aurora 渐变 + 玻璃卡 + 图标徽章 + 大标题 + 内嵌面板。
+   ============================================================ */
+
+.ioto-task-view.is-glass {
+	/* 玻璃面 */
+	--ioto-tv-glass-bg: color-mix(in srgb, var(--background-primary) 62%, transparent);
+	--ioto-tv-glass-border: color-mix(in srgb, var(--text-normal) 12%, transparent);
+	--ioto-tv-glass-highlight: color-mix(in srgb, #fff 8%, transparent); /* 顶部内高光 */
+
+	/* 几何 */
+	--ioto-tv-radius-outer: 18px;   /* Section 玻璃卡 */
+	--ioto-tv-radius-inner: 12px;   /* 卡片内嵌面板 */
+	--ioto-tv-radius-pill: 999px;
+	--ioto-tv-blur: 22px;
+	--ioto-tv-saturate: 140%;
+	--ioto-tv-shadow:
+		0 18px 40px -20px rgb(0 0 0 / 55%),
+		0 2px 8px -4px rgb(0 0 0 / 40%);
+
+	/* 语义色：活跃=暖橙、完成=绿（对齐参考图折线 / +25% 药丸） */
+	--ioto-tv-accent: var(--interactive-accent);
+	--ioto-tv-warm: #ff8c42;
+	--ioto-tv-done: #22c55e;
+
+	/* 间距 / 字号 */
+	--ioto-tv-scroll-pad: 20px;      /* sticky 头部的负 top 依赖它 */
+	--ioto-tv-pad-x: 14px;
+	--ioto-tv-pad-y: 10px;
+	--ioto-tv-gap: 6px;
+	--ioto-tv-section-gap: 18px;
+	--ioto-tv-title-size: 1.35em;
+	--ioto-tv-indent: 1.75em;        /* 玻璃风格更紧凑的缩进步长 */
+	--ioto-tv-done-opacity: 0.62;
+
+	position: relative;
+	isolation: isolate;              /* 背景层与卡片稳定分层，不被外层 mix-blend 影响 */
+	overflow: hidden;
+}
+
+/* Aurora 背景层：固定在视图根，不随滚动；内容在其上方滑动 */
+.ioto-task-view.is-glass::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	pointer-events: none;
+	background:
+		radial-gradient(60% 45% at 12% 6%,  color-mix(in srgb, #7c5cff 55%, transparent), transparent 70%),
+		radial-gradient(52% 46% at 92% 10%, color-mix(in srgb, #c026d3 45%, transparent), transparent 72%),
+		radial-gradient(58% 50% at 86% 94%, color-mix(in srgb, #ff8c42 42%, transparent), transparent 70%),
+		radial-gradient(46% 40% at 6% 90%,  color-mix(in srgb, #22c55e 26%, transparent), transparent 72%),
+		var(--background-primary);
+	filter: blur(30px) saturate(120%);
+	transform: scale(1.15);          /* 放大，避免 blur 在四边露出黑边 */
+	opacity: 0.9;
+}
+
+/* 背景之上才是滚动内容 */
+.ioto-task-view.is-glass .ioto-task-view__scroll {
+	position: relative;
+	z-index: 1;
+	padding: var(--ioto-tv-scroll-pad);
+	gap: var(--ioto-tv-section-gap);
+}
+
+/* Section = 玻璃卡 */
+.ioto-task-view.is-glass .ioto-task-view__section {
+	background: var(--ioto-tv-glass-bg);
+	border: 1px solid var(--ioto-tv-glass-border);
+	border-radius: var(--ioto-tv-radius-outer);
+	box-shadow: var(--ioto-tv-shadow);
+	backdrop-filter: blur(var(--ioto-tv-blur)) saturate(var(--ioto-tv-saturate));
+	-webkit-backdrop-filter: blur(var(--ioto-tv-blur)) saturate(var(--ioto-tv-saturate));
+	overflow: clip;                   /* 🔑 裁圆角但不创建滚动容器 → sticky 仍相对外层滚动容器生效 */
+}
+
+/* Section Header = 图标徽章 + 大标题 */
+.ioto-task-view.is-glass .ioto-task-view__section-header {
+	position: sticky;
+	top: calc(-1 * var(--ioto-tv-scroll-pad));   /* 与滚动容器 padding 对齐 */
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 12px 16px;
+	background: color-mix(in srgb, var(--background-primary) 70%, transparent);
+	backdrop-filter: blur(12px) saturate(140%);
+	-webkit-backdrop-filter: blur(12px) saturate(140%);
+	border-bottom: 1px solid color-mix(in srgb, var(--text-normal) 8%, transparent);
+	border-start-start-radius: var(--ioto-tv-radius-outer);
+	border-start-end-radius: var(--ioto-tv-radius-outer);
+}
+
+/* 复用既有 toggle 的 chevron SVG，把它变成参考图那种「圆角图标徽章」 */
+.ioto-task-view.is-glass .ioto-task-view__section-toggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	padding: 0;
+	flex: 0 0 auto;
+	border-radius: 10px;
+	background: color-mix(in srgb, var(--text-normal) 8%, transparent);
+	border: 1px solid var(--ioto-tv-glass-border);
+	box-shadow: inset 0 1px 0 var(--ioto-tv-glass-highlight);
+	color: var(--text-normal);
+	transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.ioto-task-view.is-glass .ioto-task-view__section-toggle:hover {
+	background: color-mix(in srgb, var(--text-normal) 14%, transparent);
+	color: var(--text-normal);
+}
+
+.ioto-task-view.is-glass .ioto-task-view__section-toggle svg {
+	width: 18px;
+	height: 18px;
+}
+
+.ioto-task-view.is-glass .ioto-task-view__section-title {
+	margin: 0;
+	font-size: var(--ioto-tv-title-size);
+	font-weight: var(--font-bold);
+	letter-spacing: -0.01em;
+	line-height: 1.15;
+	color: var(--text-normal);
+}
+
+/* actions 区在玻璃风格里可放计数 pill（需 JS 填内容，见 Plan §7.3），此处只定容器 */
+.ioto-task-view.is-glass .ioto-task-view__section-actions {
+	margin-inline-start: auto;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+/* 卡片 = 内嵌面板 + 渐变强调条 */
+.ioto-task-view.is-glass .ioto-task-view__section-body {
+	padding: 12px;
+	gap: var(--ioto-tv-gap);
+}
+
+.ioto-task-view.is-glass .ioto-task-view__card {
+	position: relative;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+	padding: var(--ioto-tv-pad-y) calc(var(--ioto-tv-pad-x) + 4px);
+	padding-inline-start: calc(var(--ioto-tv-pad-x) + 8px); /* 给左侧强调条留位 */
+	background: color-mix(in srgb, var(--text-normal) 5%, transparent);
+	border: 1px solid color-mix(in srgb, var(--text-normal) 7%, transparent);
+	border-radius: var(--ioto-tv-radius-inner);
+	/* 不 blur：行数多，用半透明 + 内高光模拟内嵌纵深，避免逐行 backdrop-filter 开销 */
+	box-shadow: inset 0 1px 0 var(--ioto-tv-glass-highlight);
+	transition: background 0.15s ease, border-color 0.15s ease,
+		box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+/* 左侧渐变发光条（替代原实心 border-inline-start） */
+.ioto-task-view.is-glass .ioto-task-view__card::before {
+	content: "";
+	position: absolute;
+	inset-inline-start: 2px;
+	top: 9px;
+	bottom: 9px;
+	width: 3px;
+	border-radius: var(--ioto-tv-radius-pill);
+	background: linear-gradient(
+		180deg,
+		var(--ioto-tv-warm),
+		color-mix(in srgb, var(--ioto-tv-warm) 35%, transparent)
+	);
+}
+
+/* 完成态 */
+.ioto-task-view.is-glass .ioto-task-view__card[data-task="x"],
+.ioto-task-view.is-glass .ioto-task-view__card[data-task="X"] {
+	background: color-mix(in srgb, var(--text-normal) 3%, transparent);
+	border-color: color-mix(in srgb, var(--text-normal) 5%, transparent);
+	opacity: var(--ioto-tv-done-opacity);
+	color: var(--text-muted);
+}
+
+.ioto-task-view.is-glass .ioto-task-view__card[data-task="x"]::before,
+.ioto-task-view.is-glass .ioto-task-view__card[data-task="X"]::before {
+	background: linear-gradient(
+		180deg,
+		var(--ioto-tv-done),
+		color-mix(in srgb, var(--ioto-tv-done) 30%, transparent)
+	);
+}
+
+/* Checkbox */
+.ioto-task-view.is-glass .ioto-task-view__card-checkbox {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	flex: 0 0 auto;
+	order: 1;                        /* 保持在右侧 */
+	background: color-mix(in srgb, var(--text-normal) 4%, transparent);
+	border: 1px solid color-mix(in srgb, var(--text-normal) 22%, transparent);
+	border-radius: 8px;              /* 圆角方块，呼应参考图的图标方块 */
+	color: var(--text-muted);
+	transition: all 0.15s ease;
+}
+
+.ioto-task-view.is-glass .ioto-task-view__card-checkbox:hover {
+	border-color: var(--interactive-accent);
+	color: var(--text-normal);
+}
+
+/* 完成：绿底深色勾（对齐参考图 +25% 绿色药丸） */
+.ioto-task-view.is-glass .ioto-task-view__card[data-task="x"] .ioto-task-view__card-checkbox,
+.ioto-task-view.is-glass .ioto-task-view__card[data-task="X"] .ioto-task-view__card-checkbox {
+	background: color-mix(in srgb, var(--ioto-tv-done) 85%, transparent);
+	border-color: transparent;
+	color: #04140a;
+}
+
+/* 三态：悬停 / 选中 / 编辑 */
+/* 悬停：轻微提亮 + 上浮 1px */
+.ioto-task-view.is-glass .ioto-task-view__card:hover {
+	background: color-mix(in srgb, var(--text-normal) 9%, transparent);
+	border-color: color-mix(in srgb, var(--text-normal) 13%, transparent);
+	transform: translateY(-1px);
+}
+
+/* 选中：accent 光晕环 + 淡 accent 底 */
+.ioto-task-view.is-glass .ioto-task-view__card.is-selected {
+	background: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+	border-color: color-mix(in srgb, var(--interactive-accent) 55%, transparent);
+	box-shadow:
+		inset 0 1px 0 var(--ioto-tv-glass-highlight),
+		0 0 0 1px color-mix(in srgb, var(--interactive-accent) 45%, transparent),
+		0 8px 24px -12px color-mix(in srgb, var(--interactive-accent) 70%, transparent);
+}
+.ioto-task-view.is-glass .ioto-task-view__card.is-selected:focus-visible {
+	outline: none; /* 用光晕环代替 focus 描边，避免双环 */
+}
+
+/* 编辑：更亮的面 + 强光晕（编辑器无缝融入） */
+.ioto-task-view.is-glass .ioto-task-view__card.is-editing {
+	background: color-mix(in srgb, var(--background-primary) 82%, transparent);
+	border-color: color-mix(in srgb, var(--interactive-accent) 70%, transparent);
+	box-shadow:
+		inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent),
+		0 0 0 1px color-mix(in srgb, var(--interactive-accent) 60%, transparent),
+		0 16px 40px -16px color-mix(in srgb, var(--interactive-accent) 80%, transparent);
+}
+
+/* 编辑器透明：既有规则（styles.css .cm-editor）保留；补一个 accent 光标 */
+.ioto-task-view.is-glass .ioto-task-view__card-editor .cm-editor { background: transparent; }
+.ioto-task-view.is-glass .ioto-task-view__card-editor .cm-cursor { border-color: var(--interactive-accent); }
+
+/* 动作区 pill */
+.ioto-task-view.is-glass .ioto-task-view__badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	max-width: 12em;
+	padding: 3px 9px;
+	border-radius: var(--ioto-tv-radius-pill);
+	background: color-mix(in srgb, var(--text-normal) 8%, transparent);
+	border: 1px solid color-mix(in srgb, var(--text-normal) 8%, transparent);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	line-height: 1.5;
+}
+
+/* 按控制项类型给一点彩色（对齐参考图多彩图标） */
+.ioto-task-view.is-glass .ioto-task-view__badge[data-kind="model"]   { color: #b39dff; }
+.ioto-task-view.is-glass .ioto-task-view__badge[data-kind="agent"]   { color: #5eead4; }
+.ioto-task-view.is-glass .ioto-task-view__badge[data-kind="depends"] { color: #ffb27a; }
+.ioto-task-view.is-glass .ioto-task-view__badge[data-kind="turns"]   { color: #93c5fd; }
+.ioto-task-view.is-glass .ioto-task-view__badge[data-kind="fanout"]  { color: #f0abfc; }
+
+/* 主题适配 / 降级 / 移动端 */
+/* 浅色主题：玻璃面提高不透明度、光斑降强度，保证文字对比度 */
+.theme-light .ioto-task-view.is-glass {
+	--ioto-tv-glass-bg: color-mix(in srgb, var(--background-primary) 78%, transparent);
+	--ioto-tv-glass-border: color-mix(in srgb, var(--text-normal) 10%, transparent);
+}
+.theme-light .ioto-task-view.is-glass::before { opacity: 0.5; }
+
+/* 不支持 backdrop-filter：退回不透明面（仍保留圆角/阴影/强调条） */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+	.ioto-task-view.is-glass .ioto-task-view__section,
+	.ioto-task-view.is-glass .ioto-task-view__section-header {
+		backdrop-filter: none;
+		-webkit-backdrop-filter: none;
+		background: var(--background-primary);
+	}
+}
+
+/* 系统「降低透明度」偏好：同样退回不透明面 */
+@media (prefers-reduced-transparency: reduce) {
+	.ioto-task-view.is-glass .ioto-task-view__section,
+	.ioto-task-view.is-glass .ioto-task-view__section-header {
+		backdrop-filter: none;
+		-webkit-backdrop-filter: none;
+		background: var(--background-primary);
+	}
+}
+
+/* 降低动态：去掉悬停位移 */
+@media (prefers-reduced-motion: reduce) {
+	.ioto-task-view.is-glass .ioto-task-view__card:hover { transform: none; }
+}
+
+/* 移动端：降 blur / 间距，保性能与触控热区（沿用既有 .is-phone 触控改动） */
+.is-phone .ioto-task-view.is-glass {
+	--ioto-tv-blur: 12px;
+	--ioto-tv-section-gap: 14px;
+	--ioto-tv-scroll-pad: 12px;
+}
+.is-phone .ioto-task-view.is-glass::before { filter: blur(18px) saturate(115%); }
+
 /* 「条目控制」面板比视口还高时，由桥接层在打开后挂上此类，让面板内部滚动
    （max-height 随视口变化走行内；overflow-y 是静态样式，按 obsidianmd 规范挂类名）。
    见 [[Plan-20261003-165927]] §3.2 叠加 C。 */

@@ -314,6 +314,11 @@ const zhTW = {
 		'在任務清單上方顯示常駐內聯搜尋框（輸入即篩選），或使用舊版搜尋對話框。',
 	'settings.taskSearchEntryMode.inline': '內聯欄位（推薦）',
 	'settings.taskSearchEntryMode.modal': '搜尋對話框',
+	'settings.appearanceStyle.name': 'IOTOTask 視圖外觀',
+	'settings.appearanceStyle.desc':
+		'選擇 IOTOTask 視圖的視覺風格：玻璃（深色 Aurora 漸變 + 玻璃擬態，預設）或卡片（經典扁平卡片）。',
+	'settings.appearanceStyle.glass': '玻璃（推薦）',
+	'settings.appearanceStyle.card': '卡片（經典）',
 	'settings.heading.subtasks': '子任務',
 	'settings.subtasks.showCount.name': '顯示子任務數量',
 	'settings.subtasks.showCount.desc':
@@ -489,7 +494,7 @@ const zhTW = {
 	'view.iotoTaskView.sectionToggle': '折疊/展開章節：{0}',
 	'view.iotoTaskView.checkboxToggle': '切換任務完成狀態：{0}',
 	'view.iotoTaskView.selectCardHint': '點擊選取，再點編輯',
-	'view.iotoTaskView.selectedHint': '已選取：Enter 編輯 · Del 刪除 · ↑↓ 切換',
+	'view.iotoTaskView.selectedHint': '已選取：Enter 編輯 · Del 刪除 · ↑↓ 切換 · Cmd+Enter 完成 · Cmd+↑↓ 首尾',
 	'view.iotoTaskView.badge.depends': '依賴×{0}',
 	'view.iotoTaskView.badge.dependsIndex': '依賴#{0}',
 	'view.iotoTaskView.badge.agent': 'Agent：{0}',

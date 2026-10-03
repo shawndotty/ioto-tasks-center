@@ -6,6 +6,7 @@ const jiti = createJiti(import.meta.url, { moduleCache: false });
 const {
 	collectCardLines,
 	pickAdjacentLine,
+	pickEdgeLine,
 	pickLineAfterDelete,
 } = await jiti.import('../src/views/ioto-task/card-navigation.ts');
 
@@ -58,6 +59,22 @@ test('pickAdjacentLine：首尾不循环，停在边界', () => {
 test('pickAdjacentLine：current 不在列表里返回 null', () => {
 	assert.equal(pickAdjacentLine([3, 7], 99, 1), null);
 	assert.equal(pickAdjacentLine([], 3, 1), null);
+});
+
+test('pickEdgeLine：取 DOM 顺序的首 / 末张卡片', () => {
+	const order = [3, 7, 11];
+	assert.equal(pickEdgeLine(order, 'first'), 3);
+	assert.equal(pickEdgeLine(order, 'last'), 11);
+});
+
+test('pickEdgeLine：只有一张卡时首尾都是它自己（select 幂等）', () => {
+	assert.equal(pickEdgeLine([5], 'first'), 5);
+	assert.equal(pickEdgeLine([5], 'last'), 5);
+});
+
+test('pickEdgeLine：空列表返回 null', () => {
+	assert.equal(pickEdgeLine([], 'first'), null);
+	assert.equal(pickEdgeLine([], 'last'), null);
 });
 
 test('pickLineAfterDelete：中间项落到原位置的下一张（行号已前移 1）', () => {

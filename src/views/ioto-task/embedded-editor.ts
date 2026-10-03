@@ -358,6 +358,12 @@ export async function mountEmbeddedEditor(
 
 			switch (event.key) {
 				case 'Enter':
+					// 带主修饰键 / Alt 的 Enter 不按「新建同级」处理：
+					// 放行后由外层（或核心）决定，避免 Cmd+Enter 被当普通 Enter 拆行
+					// （[[Plan-20261003-222709]] §四.4）。
+					if (event.metaKey || event.ctrlKey || event.altKey) {
+						break;
+					}
 					if (handlers.onEnter(cm)) {
 						event.preventDefault();
 						event.stopPropagation();

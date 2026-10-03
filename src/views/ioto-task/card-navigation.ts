@@ -70,6 +70,26 @@ export function pickAdjacentLine(
 }
 
 /**
+ * 取 DOM 顺序里的首 / 末张卡片（`edge = 'first' | 'last'`）。
+ *
+ * 与 `pickAdjacentLine` 同源、同口径：只认**可见**卡片（折叠 Section 的卡不在 DOM 里）、
+ * 不循环；已在边界时返回自身，交给上层 `select` 幂等处理（不清类、只 refocus）。
+ * 列表为空返回 `null`。
+ */
+export function pickEdgeLine(
+	lines: number[],
+	edge: 'first' | 'last',
+): number | null {
+	if (lines.length === 0) {
+		return null;
+	}
+
+	return edge === 'first'
+		? (lines[0] ?? null)
+		: (lines[lines.length - 1] ?? null);
+}
+
+/**
  * 删除 `current` 之后，选择该落到哪张：优先「原位置的下一张」顶上，
  * 末位则退回「上一张」，删空了整个列表返回 `null`。
  *

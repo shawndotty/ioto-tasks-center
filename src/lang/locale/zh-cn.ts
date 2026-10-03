@@ -313,6 +313,11 @@ const zhCN = {
 		'在任务列表上方显示常驻内联搜索框（输入即筛选），或使用旧版搜索对话框。',
 	'settings.taskSearchEntryMode.inline': '内联字段（推荐）',
 	'settings.taskSearchEntryMode.modal': '搜索对话框',
+	'settings.appearanceStyle.name': 'IOTOTask 视图外观',
+	'settings.appearanceStyle.desc':
+		'选择 IOTOTask 视图的视觉风格：玻璃（深色 Aurora 渐变 + 玻璃拟态，默认）或卡片（经典扁平卡片）。',
+	'settings.appearanceStyle.glass': '玻璃（推荐）',
+	'settings.appearanceStyle.card': '卡片（经典）',
 	'settings.heading.subtasks': '子任务',
 	'settings.subtasks.showCount.name': '显示子任务数量',
 	'settings.subtasks.showCount.desc':
@@ -488,7 +493,7 @@ const zhCN = {
 	'view.iotoTaskView.sectionToggle': '折叠/展开章节：{0}',
 	'view.iotoTaskView.checkboxToggle': '切换任务完成状态：{0}',
 	'view.iotoTaskView.selectCardHint': '点击选中，再点编辑',
-	'view.iotoTaskView.selectedHint': '已选中：Enter 编辑 · Del 删除 · ↑↓ 切换',
+	'view.iotoTaskView.selectedHint': '已选中：Enter 编辑 · Del 删除 · ↑↓ 切换 · Cmd+Enter 完成 · Cmd+↑↓ 首尾',
 	'view.iotoTaskView.badge.depends': '依赖×{0}',
 	'view.iotoTaskView.badge.dependsIndex': '依赖#{0}',
 	'view.iotoTaskView.badge.agent': 'Agent：{0}',

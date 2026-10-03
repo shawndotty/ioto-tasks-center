@@ -21,6 +21,7 @@ import { isOverlayFocusTarget } from './embedded-editor';
 import {
 	collectCardLines,
 	pickAdjacentLine,
+	pickEdgeLine,
 } from './card-navigation';
 
 /** 编辑交互回调（由 `IOTOTaskView` 注入；只读态 `enabled = false`）。 */
@@ -256,6 +257,15 @@ function renderSectionBody(options: {
 	}
 }
 
+/**
+ * 「主修饰键」：Mac 的 Command 与 Win/Linux 的 Ctrl。
+ * 与核心「Cmd/Ctrl+Enter 切换勾选」的口径一致，故两者同义，不做平台分支
+ * （[[Plan-20261003-222709]] §四.2b）。
+ */
+function hasCommandModifier(event: KeyboardEvent): boolean {
+	return event.metaKey || event.ctrlKey;
+}
+
 function renderChecklistGroup(options: {
 	app: App;
 	bodyEl: HTMLElement;
@@ -385,12 +395,26 @@ function renderChecklistGroup(options: {
 				);
 				switch (event.key) {
 					case 'Enter': {
+						// Cmd/Ctrl+Enter：切换本卡完成态（复用点 checkbox 的同一条链路，
+						// [[Plan-20261003-222709]] §三）。
+						// 编辑态不接管：编辑器里可能有未提交正文，此时改标志位会让随后的
+						// blur 提交判成冲突并丢字（§五.1）。
+						if (
+							hasCommandModifier(event) &&
+							!event.shiftKey &&
+							!event.altKey
+						) {
+							if (cardEl.hasClass('is-editing')) {
+								return;
+							}
+							editing.toggleTask(item.line, cardEl);
+							break;
+						}
 						// Shift+Enter：在选中卡片下方新建一张同级空卡并直接开编；
 						// 纯修饰键排除，避免抢占 Ctrl/Cmd/Alt+Shift+Enter 等组合。
 						if (
 							event.shiftKey &&
-							!event.ctrlKey &&
-							!event.metaKey &&
+							!hasCommandModifier(event) &&
 							!event.altKey
 						) {
 							editing.insertSibling(item.line);
@@ -400,14 +424,28 @@ function renderChecklistGroup(options: {
 						break;
 					}
 					case 'ArrowUp': {
-						const prev = pickAdjacentLine(order, item.line, -1);
+						// Cmd/Ctrl+↑：跳到第一张可见卡
+						const jump =
+							hasCommandModifier(event) &&
+							!event.shiftKey &&
+							!event.altKey;
+						const prev = jump
+							? pickEdgeLine(order, 'first')
+							: pickAdjacentLine(order, item.line, -1);
 						if (prev !== null) {
 							editing.select(prev);
 						}
 						break;
 					}
 					case 'ArrowDown': {
-						const next = pickAdjacentLine(order, item.line, 1);
+						// Cmd/Ctrl+↓：跳到最后一张可见卡
+						const jump =
+							hasCommandModifier(event) &&
+							!event.shiftKey &&
+							!event.altKey;
+						const next = jump
+							? pickEdgeLine(order, 'last')
+							: pickAdjacentLine(order, item.line, 1);
 						if (next !== null) {
 							editing.select(next);
 						}

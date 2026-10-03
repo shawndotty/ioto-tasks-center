@@ -34,6 +34,7 @@ import {
 	TaskListSortMode,
 	TaskListTimeFilter,
 	TaskSearchEntryMode,
+	TaskViewAppearanceStyle,
 	normalizeConfiguredInputRootPath,
 	normalizeConfiguredOutcomeRootPath,
 	normalizeConfiguredOutputRootPath,
@@ -144,7 +145,12 @@ export default class IOTOTasksCenter extends Plugin {
 		);
 		this.registerView(
 			IOTO_TASK_VIEW_TYPE,
-			(leaf) => new IOTOTaskView(leaf, () => this.supportsInlineEdit),
+			(leaf) =>
+				new IOTOTaskView(
+					leaf,
+					() => this.supportsInlineEdit,
+					() => this.settings.appearanceStyle,
+				),
 		);
 
 		this.addCommand({
@@ -585,6 +591,18 @@ export default class IOTOTasksCenter extends Plugin {
 		this.applySettingsToOpenViews();
 	}
 
+	async updateAppearanceStyle(
+		style: TaskViewAppearanceStyle,
+	): Promise<void> {
+		if (this.settings.appearanceStyle === style) {
+			return;
+		}
+
+		this.settings.appearanceStyle = style;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
 	async updateShowTaskSubtaskCount(show: boolean): Promise<void> {
 		if (this.settings.showTaskSubtaskCount === show) {
 			return;
@@ -1009,6 +1027,15 @@ export default class IOTOTasksCenter extends Plugin {
 			const view = leaf.view;
 			if (view instanceof IOTOProjectCenterView) {
 				void view.handleSettingsChange();
+			}
+		}
+
+		for (const leaf of this.app.workspace.getLeavesOfType(
+			IOTO_TASK_VIEW_TYPE,
+		)) {
+			const view = leaf.view;
+			if (view instanceof IOTOTaskView) {
+				view.applyAppearanceStyle();
 			}
 		}
 	}
