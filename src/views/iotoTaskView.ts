@@ -11,6 +11,11 @@
  * - 3b 卡片正文内联编辑：借用核心编辑器（`embedded-editor.ts`），失焦提交；
  * - 3c `Enter` 新建同级 / 空卡片 `Backspace` 删除 / `Tab` `Shift+Tab` 缩进 / `Esc` 取消。
  *
+ * 交互（[[Plan-20261003-194909]]）：`idle → selected → editing` 显式状态机。
+ * 单击 = 选中，再点 / `Enter` = 编辑，`Esc` = 先提交再落回本卡选择态，
+ * 选择态 `↑`/`↓` 增量移动选择、`Delete`/`Backspace` 只删当前行。
+ * 选中态用 `selectedLine` 承载且**不持久化**，但整树重建后由 `syncSelectionClass` 回填。
+ *
  * 🔴 红线：写盘成功后必须同步 `this.data` 与 `this.lastLoadedText`，否则 `getViewData()`
  * 会返回过期字节，`TextFileView` 的保存路径会把用户的编辑写回去。编辑期间用
  * `editingLine` 抑制位挡住外部写入触发的重绘，避免编辑器被冲掉。
@@ -36,6 +41,10 @@ import {
 	taskBodyForEditor,
 	toggleTaskMarker,
 } from '../tasks-center/note-structure';
+import {
+	collectCardLines,
+	pickLineAfterDelete,
+} from './ioto-task/card-navigation';
 import {
 	commitTaskLineAction,
 	commitTaskText,
@@ -89,6 +98,14 @@ export class IOTOTaskView extends TextFileView {
 	private lastLoadedText = '';
 	private isRendering = false;
 	private editingLine: number | null = null;
+	/**
+	 * 选择态行号（[[Plan-20261003-194909]] §四）。
+	 *
+	 * `idle → selected → editing` 显式状态机的载体：**同一时刻只有一张卡片被选中**，
+	 * 且 `selected` 是 `editing` 的前置态。按拍板结论**不持久化**（不进 `getState`），
+	 * 但必须**可重建**——任何整树重建（折叠 / 删除 / 外部写入）后由 `syncSelectionClass` 回填。
+	 */
+	private selectedLine: number | null = null;
 	private editingOriginalLine = '';
 	private editingHandle: EmbeddedEditorHandle | null = null;
 	private pendingCommit: Promise<void> | null = null;
@@ -129,6 +146,7 @@ export class IOTOTaskView extends TextFileView {
 	clear(): void {
 		this.destroyActiveEditor();
 		this.editingLine = null;
+		this.selectedLine = null;
 		this.editingOriginalLine = '';
 		this.contentEl.empty();
 		this.data = '';
@@ -230,9 +248,22 @@ export class IOTOTaskView extends TextFileView {
 				editing: this.buildEditingController(),
 			});
 			restoreIotoTaskScroll(this.contentEl, snapshot);
+			// 回填选中类：整树重建后 `selectedLine` 仍在，但不 `focus()`——
+			// `renderNote` 也会被后台 `reloadFromVault` 触发，抢焦点会打断用户输入
+			// （[[Plan-20261003-194909]] §5.1f）。
+			this.syncSelectionClass();
 		} finally {
 			this.isRendering = false;
 		}
+	}
+
+	/** 只按 `selectedLine` 回填 `.is-selected`，不抢焦点。 */
+	private syncSelectionClass(): void {
+		const line = this.selectedLine;
+		if (line === null) {
+			return;
+		}
+		this.queryCard(line)?.addClass('is-selected');
 	}
 
 	/* ------------------------------------------------------------------ *
@@ -240,8 +271,21 @@ export class IOTOTaskView extends TextFileView {
 	 * ------------------------------------------------------------------ */
 
 	private buildEditingController(): TaskNoteEditing {
+		// 箭头函数读实时值，供下面的 getter 转发（不写 `const self = this`）
+		const readSelected = (): number | null => this.selectedLine;
 		return {
 			enabled: this.supportsInlineEdit(),
+			// 🔴 必须是 getter：渲染层在 click / keydown 闭包里读实时值，
+			// 建成普通属性会捕获构建那一刻的旧值，「第二次点击进编辑」就判不出来了。
+			get selectedLine() {
+				return readSelected();
+			},
+			select: (line) => {
+				this.select(line);
+			},
+			delete: (line) => {
+				void this.deleteSelected(line);
+			},
 			beginEdit: (line) => {
 				void this.beginEdit(line);
 			},
@@ -249,6 +293,108 @@ export class IOTOTaskView extends TextFileView {
 				void this.toggleTask(line, cardEl);
 			},
 		};
+	}
+
+	/* ------------------------------------------------------------------ *
+	 * 选择态：选中 / 移动 / 删除（[[Plan-20261003-194909]] §5.1b、§5.1e）
+	 * ------------------------------------------------------------------ */
+
+	/**
+	 * 选中一张卡片（`idle|selected|editing → selected`）。
+	 *
+	 * 正编辑**其它**卡片时先提交（mousedown 的 blur 已经先跑过一次，这里是兜底，
+	 * 例如方向键移动或 `Option+I` 面板关闭后重新选中）。已在本卡编辑态则忽略。
+	 */
+	private select(line: number): void {
+		if (this.editingLine !== null && this.editingLine !== line) {
+			void this.commitEdit().then(() => this.applySelection(line));
+			return;
+		}
+		if (this.editingLine === line) {
+			return;
+		}
+		this.applySelection(line);
+	}
+
+	/**
+	 * 增量切选中：**绝不整树重绘**——重绘会让 `scrollTop` 归零，还会吞掉连续按键
+	 * （[[Research-20261003-091331]] §3.1、[[Plan-20261003-094145]] §5.3）。
+	 */
+	private applySelection(line: number): void {
+		const prev = this.selectedLine;
+		if (prev !== null && prev !== line) {
+			this.queryCard(prev)?.removeClass('is-selected');
+		}
+		this.selectedLine = line;
+
+		const cardEl = this.queryCard(line);
+		if (!cardEl) {
+			// 行号已漂移 / 卡片被折叠：交由后续整树渲染兜底
+			this.selectedLine = null;
+			return;
+		}
+
+		cardEl.addClass('is-selected');
+		cardEl.focus({ preventScroll: true });
+		this.scrollCardIntoView(cardEl);
+	}
+
+	/**
+	 * 选择态下 `Delete` / `Backspace`：只删当前行（已确认不级联子行），
+	 * 选择落到「原位置的下一张，否则上一张」。
+	 */
+	private async deleteSelected(line: number): Promise<void> {
+		const file = this.file;
+		if (!file) {
+			return;
+		}
+
+		// 删除前先取 DOM 顺序：删除会让后续卡片的 data-line 整体前移
+		const order = collectCardLines(this.contentEl);
+		const nextLine = pickLineAfterDelete(order, line);
+
+		const outcome = await commitTaskLineAction(this.app, file, {
+			line,
+			originalLine: this.lineAt(line),
+			transform: () => '',
+		});
+		// 🔴 红线：data / lastLoadedText 必须同步
+		this.applyOutcome(outcome);
+
+		if (outcome.status === 'conflict') {
+			// 罕见路径，允许整树重建
+			this.selectedLine = line;
+			await this.reloadFromVault();
+			this.renderNote(this.data);
+			return;
+		}
+		if (outcome.status !== 'ok') {
+			// unchanged：没删掉任何行，选择不动
+			return;
+		}
+
+		// 结构性变更 → 整树重建（不跳顶由 ioto-task-scroll.ts 兜底）
+		this.selectedLine = nextLine;
+		this.renderNote(this.data);
+		if (nextLine !== null) {
+			this.queryCard(nextLine)?.focus({ preventScroll: true });
+		}
+	}
+
+	/**
+	 * 视口兜底：结构性变更（回车新建末行 / 删除）后目标卡可能在视口外，
+	 * `block:'nearest'` 只在确实出视口时才滚动（[[Plan-20261003-094145]] §5.4）。
+	 * `select` 与 `beginEdit` 共用。
+	 */
+	private scrollCardIntoView(cardEl: HTMLElement): void {
+		const rect = cardEl.getBoundingClientRect();
+		const scrollEl = this.contentEl.querySelector<HTMLElement>(
+			'.ioto-task-view__scroll',
+		);
+		const view = scrollEl?.getBoundingClientRect();
+		if (view && (rect.top < view.top || rect.bottom > view.bottom)) {
+			cardEl.scrollIntoView({ block: 'nearest' });
+		}
 	}
 
 	/**
@@ -422,18 +568,12 @@ export class IOTOTaskView extends TextFileView {
 		this.editingOriginalLine = originalLine;
 		this.editingHandle = handle;
 		cardEl.addClass('is-editing');
+		// `selected` 是 `editing` 的前置态：进编辑必先选中。走 `applySelection`
+		// 而不是直接 addClass，是为了顺带清掉上一张卡的残留选中类
+		//（`runLineAction` 新建兄弟行后直接编辑的路径上，旧行仍在 DOM 里）。
+		this.applySelection(line);
+		// 焦点给编辑器（`applySelection` 刚把焦点放在卡片上）
 		handle.focus();
-
-		// 视口兜底：结构性变更（回车新建末行 / 删除）后目标卡可能在视口外，
-		// `block:'nearest'` 只在确实出视口时才滚动（[[Plan-20261003-094145]] §5.4）。
-		const rect = cardEl.getBoundingClientRect();
-		const scrollEl = this.contentEl.querySelector<HTMLElement>(
-			'.ioto-task-view__scroll',
-		);
-		const view = scrollEl?.getBoundingClientRect();
-		if (view && (rect.top < view.top || rect.bottom > view.bottom)) {
-			cardEl.scrollIntoView({ block: 'nearest' });
-		}
 	}
 
 	private async commitEdit(): Promise<void> {
@@ -556,13 +696,36 @@ export class IOTOTaskView extends TextFileView {
 		this.refreshCardActions(line);
 	}
 
+	/**
+	 * `Esc`：**先提交、再落回本卡选择态**（[[Discuss-20261003-194148]] §七.1 已确认）。
+	 *
+	 * 与旧路径的区别：**不再丢弃未提交内容**、**不再无选中地整树重绘**——
+	 * 提交走 `commitEdit`，无冲突时就地刷单卡（`refreshCard` 去 `is-editing`、
+	 * 保留 `.is-selected`），因此既不跳顶也不丢数据。
+	 */
 	private onEditorEscape(): void {
-		if (this.editingHandle === null) {
+		const line = this.editingLine;
+		if (line === null || this.editingHandle === null) {
 			return;
 		}
-		this.destroyActiveEditor();
-		this.editingLine = null;
-		this.renderNote(this.data);
+
+		// 先落状态：提交途中若发生冲突重绘，选中也能被回填
+		this.selectedLine = line;
+		// 延后一拍：避免在核心编辑器自己的 keydown 回调里同步卸载它
+		window.setTimeout(() => {
+			void this.commitEdit().then(() => {
+				const cardEl = this.queryCard(line);
+				if (!cardEl) {
+					// 冲突重绘把卡挪没/折叠了：重建后回填
+					this.renderNote(this.data);
+					this.syncSelectionClass();
+					return;
+				}
+				// 走 `applySelection`：它会先清掉上一张卡的残留选中类
+				//（旧路径只 addClass，实测会留下 2 张 `.is-selected`）。
+				this.applySelection(line);
+			});
+		}, 0);
 	}
 
 	private onEditorEnter(cm: EditorView): boolean {
@@ -655,8 +818,13 @@ export class IOTOTaskView extends TextFileView {
 		this.renderNote(this.data);
 
 		if (outcome.status !== 'conflict' && nextEditLine !== null) {
+			// beginEdit 内会把 selectedLine 落到新行上
 			await this.beginEdit(nextEditLine);
+			return;
 		}
+
+		// 没有后继编辑目标（删空首行 / 冲突回滚）：原卡已不存在，清掉选中避免悬空态
+		this.selectedLine = null;
 	}
 
 	private applyOutcome(outcome: CommitOutcome): void {

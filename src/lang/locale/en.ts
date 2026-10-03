@@ -529,7 +529,9 @@ const en = {
 	'view.iotoTaskView.fallbackTitle': 'Task view',
 	'view.iotoTaskView.sectionToggle': 'Toggle section: {0}',
 	'view.iotoTaskView.checkboxToggle': 'Toggle task: {0}',
-	'view.iotoTaskView.editCardHint': 'Click to edit',
+	'view.iotoTaskView.selectCardHint': 'Click to select, click again to edit',
+	'view.iotoTaskView.selectedHint':
+		'Selected: Enter to edit · Del to delete · ↑↓ to move',
 	'view.iotoTaskView.badge.depends': 'Depends ×{0}',
 	'view.iotoTaskView.badge.dependsIndex': 'Depends #{0}',
 	'view.iotoTaskView.badge.agent': 'Agent: {0}',
