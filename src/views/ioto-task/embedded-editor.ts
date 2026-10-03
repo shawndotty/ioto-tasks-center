@@ -41,6 +41,30 @@ export function probeEmbeddedEditorSupport(app: App): boolean {
 	}
 }
 
+/**
+ * 抢焦点的浮层容器：核心 Modal（含 ioto-settings 的 FuzzySuggestModal）/
+ * 核心建议器 / 建议器主体。集中一处，便于随核心版本或 Phase 2 卡片右键菜单增补。
+ */
+export const OVERLAY_FOCUS_SELECTOR =
+	'.modal-container, .suggestion-container, .prompt';
+
+/**
+ * 纯判断：给定 `document.activeElement`，是否落在会抢焦点的浮层里。
+ * 用最小结构接口（只依赖 closest）以便假对象单测，不 import obsidian、不触 DOM。
+ */
+export function isOverlayFocusTarget(
+	el: { closest?: (selector: string) => unknown } | null | undefined,
+): boolean {
+	if (!el || typeof el.closest !== 'function') {
+		return false;
+	}
+	try {
+		return Boolean(el.closest(OVERLAY_FOCUS_SELECTOR));
+	} catch {
+		return false;
+	}
+}
+
 let cachedEditorClass: any = null;
 let probeFailed = false;
 
@@ -250,19 +274,36 @@ export async function mountEmbeddedEditor(
 								return false;
 							},
 							blur: () => {
-								blurred = true;
-								try {
-									if (
-										(app.workspace as any)
-											.activeEditor === controller
-									) {
-										(app.workspace as any).activeEditor =
-											previousActiveEditor;
+								// 弹窗（如 ioto-settings 的出链 FuzzySuggestModal）会抢焦点，
+								// 但 Obsidian 在弹窗关闭后会把焦点还给进入前的元素
+								// （Research-20261003-100337 §3.3）。因此延后一拍再看焦点去向：
+								// 落进浮层就整体放行（不提交 / 不销毁 / 不还原 activeEditor），
+								// 否则按「真正离开」提交。期间不置 blurred=true，保护
+								// registerActiveEditor 挂载时那次 setTimeout 的再登记不被短路。
+								window.setTimeout(() => {
+									if (destroyed) {
+										return;
 									}
-								} catch {
-									/* ignore */
-								}
-								handlers.onBlur();
+									const activeEl =
+										hostEl.ownerDocument
+											?.activeElement ?? null;
+									if (isOverlayFocusTarget(activeEl)) {
+										return;
+									}
+									blurred = true;
+									try {
+										if (
+											(app.workspace as any)
+												.activeEditor === controller
+										) {
+											(app.workspace as any).activeEditor =
+												previousActiveEditor;
+										}
+									} catch {
+										/* ignore */
+									}
+									handlers.onBlur();
+								}, 0);
 								return false;
 							},
 						}),
