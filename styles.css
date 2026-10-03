@@ -2294,6 +2294,38 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	flex: 0 0 auto;
 }
 
+.ioto-task-view__badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	max-width: 12em;
+	padding: 0 4px;
+	border-radius: var(--radius-s);
+	background: var(--background-modifier-hover);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	line-height: 1.6;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.ioto-task-view__badge-icon {
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+}
+
+.ioto-task-view__badge-icon svg {
+	width: 1em;
+	height: 1em;
+}
+
+.ioto-task-view__badge-label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 .ioto-task-view__card[data-indent="1"] {
 	margin-inline-start: var(--ioto-tv-indent);
 }
@@ -2344,4 +2376,11 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 
 .is-phone .ioto-task-view__scroll {
 	padding: var(--size-4-2, 8px);
+}
+
+/* 「条目控制」面板比视口还高时，由桥接层在打开后挂上此类，让面板内部滚动
+   （max-height 随视口变化走行内；overflow-y 是静态样式，按 obsidianmd 规范挂类名）。
+   见 [[Plan-20261003-165927]] §3.2 叠加 C。 */
+.ioto-item-control-modal--fit-scroll {
+	overflow-y: auto;
 }

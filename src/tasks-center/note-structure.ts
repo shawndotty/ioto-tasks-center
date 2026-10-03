@@ -22,6 +22,23 @@ export interface NoteSection {
 	endLine: number;
 }
 
+/** 条目控制项类别（v1 锁定集合，见 [[Plan-20261003-162429]] §二）。 */
+export type ControlKind =
+	| 'depends' // #ioto/depends/N 或 depends：[[…]]
+	| 'agent' // #ioto/agent/<id>
+	| 'model' // #ioto/model/<id> 或 [model:: <id>]
+	| 'fanout' // #ioto/fanout 或 #ioto/fanout/N
+	| 'turns'; // #ioto/turns/<N>
+
+/** 一条控制项：`raw` 逐字节保留用于无损写回，`value` 供渲染层展示。 */
+export interface ControlToken {
+	kind: ControlKind;
+	/** 原文片段，逐字节保留（含 `depends：` / `#ioto/…` / `[model:: …]` 全串） */
+	raw: string;
+	/** 解析出的值：depends=string[]、fanout=true|number、turns=number、agent/model=string */
+	value: string | number | true | string[];
+}
+
 export interface NoteChecklistItem {
 	/** 0 基行号 */
 	line: number;
@@ -29,12 +46,12 @@ export interface NoteChecklistItem {
 	marker: string;
 	/** checkbox 之后的原文（未 trim），供上层计算字符偏移 */
 	rawText: string;
-	/** 展示用正文：去前缀、两侧 trim、并剥离行尾 #ioto/* 标签 */
+	/** 展示用正文：去前缀、两侧 trim、并剥离本行所有控制项 */
 	text: string;
 	/** 缩进层级（0 基）：每 2 空格或 1 个 Tab 记 1 级 */
 	indentLevel: number;
-	/** 行尾 #ioto/* 控制标签（执行元数据，卡片正文不显示） */
-	metaTags: string[];
+	/** 本行控制项（执行元数据，卡片正文不显示，投影到动作区徽章） */
+	controls: ControlToken[];
 }
 
 export interface CommentScanState {
@@ -52,7 +69,110 @@ export const TASK_LINE_PATTERN = /^\s*(?:[-*+]|\d+\.)\s+\[([ xX])\](.*)$/;
 
 const HEADING_PATTERN = /^(#{1,6})[ \t]+(.+?)[ \t]*#*[ \t]*$/;
 const FENCE_PATTERN = /^\s*(`{3,}|~{3,})/;
-const IOTO_META_TAG_PATTERN = /(?:^|\s)(#ioto\/[^\s#]+)\s*$/;
+
+/* ------------------------------------------------------------------ *
+ * 控制项扫描器（[[Plan-20261003-162429]] §3.2）
+ *
+ * 有序数组；每条「行内、非跨行」匹配。正则集中在此、不散落视图层，
+ * 由 `tests/task-controls.test.mjs` 单测锁定。
+ * ------------------------------------------------------------------ */
+
+interface ControlScanner {
+	kind: ControlKind;
+	/** 必须带 `g` 标志，供逐条 exec 收集全部命中 */
+	pattern: RegExp;
+	build: (match: RegExpExecArray) => ControlToken['value'];
+}
+
+const CONTROL_SCANNERS: ControlScanner[] = [
+	{
+		kind: 'depends',
+		pattern:
+			/depends\s*[：:]\s*(\[\[[^\]]+\]\](?:\s*[、,]\s*\[\[[^\]]+\]\])*)/g,
+		build: (match) =>
+			Array.from(match[1]?.matchAll(/\[\[([^\]]+)\]\]/g) ?? [], (link) =>
+				link[1] ?? '',
+			),
+	},
+	{
+		kind: 'depends',
+		pattern: /#ioto\/depends\/(\d+)/g,
+		build: (match) => Number(match[1]),
+	},
+	{
+		kind: 'agent',
+		pattern: /#ioto\/agent\/([^\s#]+)/g,
+		build: (match) => match[1] ?? '',
+	},
+	{
+		kind: 'model',
+		pattern: /\[model\s*::\s*([^\]]+)\]/g,
+		build: (match) => (match[1] ?? '').trim(),
+	},
+	{
+		kind: 'model',
+		pattern: /#ioto\/model\/([^\s#]+)/g,
+		build: (match) => match[1] ?? '',
+	},
+	{
+		kind: 'fanout',
+		pattern: /#ioto\/fanout(?:\/(\d+))?/g,
+		build: (match) => (match[1] === undefined ? true : Number(match[1])),
+	},
+	{
+		kind: 'turns',
+		pattern: /#ioto\/turns\/(\d+)/g,
+		build: (match) => Number(match[1]),
+	},
+];
+
+interface ScannedControl {
+	token: ControlToken;
+	start: number;
+	end: number;
+}
+
+/**
+ * 扫描 `core`，按出现顺序收集控制项；重叠区间只保留「更早出现」者。
+ * 所有匹配区间都不跨行（正则本身不含换行）。
+ */
+function scanControls(core: string): ScannedControl[] {
+	const hits: ScannedControl[] = [];
+
+	for (const scanner of CONTROL_SCANNERS) {
+		scanner.pattern.lastIndex = 0;
+		let match = scanner.pattern.exec(core);
+		while (match) {
+			hits.push({
+				token: {
+					kind: scanner.kind,
+					raw: match[0],
+					value: scanner.build(match),
+				},
+				start: match.index,
+				end: match.index + match[0].length,
+			});
+			if (match[0].length === 0) {
+				scanner.pattern.lastIndex += 1;
+			}
+			match = scanner.pattern.exec(core);
+		}
+	}
+
+	hits.sort((a, b) => a.start - b.start || b.end - a.end);
+
+	const accepted: ScannedControl[] = [];
+	let lastEnd = -1;
+	for (const hit of hits) {
+		if (hit.start < lastEnd) {
+			continue;
+		}
+		accepted.push(hit);
+		lastEnd = hit.end;
+	}
+
+	return accepted;
+}
 
 /**
  * 从一行里剥离 `%%…%%`（Obsidian 注释）与 `<!-- … -->`（HTML 注释）的内容，
@@ -344,14 +464,14 @@ function collectChecklistItems(
 			continue;
 		}
 
-		const { text, metaTags } = splitDisplayText(rawText);
+		const { text, controls } = splitDisplayText(rawText);
 		items.push({
 			line: index,
 			marker: match[1] ?? ' ',
 			rawText,
 			text,
 			indentLevel: computeIndentLevel(originalLine),
-			metaTags,
+			controls,
 		});
 	}
 
@@ -371,19 +491,31 @@ function findFrontmatterEndLine(lines: string[]): number {
 
 function splitDisplayText(rawTaskContent: string): {
 	text: string;
-	metaTags: string[];
+	controls: ControlToken[];
 } {
-	let text = rawTaskContent.trim();
-	const metaTags: string[] = [];
-
-	let match = text.match(IOTO_META_TAG_PATTERN);
-	while (match) {
-		metaTags.unshift(match[1] ?? '');
-		text = text.slice(0, match.index ?? 0).trimEnd();
-		match = text.match(IOTO_META_TAG_PATTERN);
+	const core = rawTaskContent.trim();
+	const scanned = scanControls(core);
+	if (scanned.length === 0) {
+		return { text: core, controls: [] };
 	}
 
-	return { text, metaTags };
+	// 用哨兵标记被剥离的控制项区间，再把「哨兵两侧的空白」收敛成单个空格，
+	// 这样只会吃掉接缝处的空白，正文内部的多空格保持不变。
+	// 哨兵选私有使用区字符（非控制字符，且正文里不会出现）。
+	const SENTINEL = '\uE000';
+	let marked = '';
+	let cursor = 0;
+	for (const hit of scanned) {
+		marked += core.slice(cursor, hit.start) + SENTINEL;
+		cursor = hit.end;
+	}
+	marked += core.slice(cursor);
+
+	const text = marked
+		.replace(/\s*\uE000(?:\s*\uE000)*\s*/g, ' ')
+		.replace(/\uE000/g, '')
+		.trim();
+	return { text, controls: scanned.map((hit) => hit.token) };
 }
 
 function computeIndentLevel(line: string): number {
@@ -399,7 +531,7 @@ function computeIndentLevel(line: string): number {
  * 看到的层级不会漂。
  * ------------------------------------------------------------------ */
 
-/** 一行任务拆成可无损重组的 7 段。 */
+/** 一行任务拆成可无损重组的各段。 */
 export interface TaskLineParts {
 	/** 前导空白，原样保留（Tab 也原样保留） */
 	indent: string;
@@ -409,10 +541,14 @@ export interface TaskLineParts {
 	checked: ' ' | 'x' | 'X';
 	/** `]` 之后的空白 */
 	gap: string;
-	/** 展示正文（已剥离 metaTags），两侧 trim */
+	/** 展示正文（已剥离 controls），两侧 trim */
 	body: string;
-	/** 行尾 `#ioto/*` 控制标签 */
-	metaTags: string[];
+	/** 本行控制项（行中 / 行尾一律收集） */
+	controls: ControlToken[];
+	/** 原始 core（未剥离），仅用于「未改动正文逐字节还原」 */
+	source: string;
+	/** 原始 core 的展示正文；`body === sourceText` 即判定「未改动」 */
+	sourceText: string;
 	/** 行尾空白（含 CRLF 的 `\r`），原样保留 */
 	trail: string;
 }
@@ -434,7 +570,7 @@ function indentStringForLevel(level: number): string {
 	return '  '.repeat(Math.max(0, level));
 }
 
-/** 把一行任务拆成可无损重组的 7 段；不是任务行时返回 `null`。 */
+/** 把一行任务拆成可无损重组的各段；不是任务行时返回 `null`。 */
 export function splitTaskLine(line: string): TaskLineParts | null {
 	const match = line.match(TASK_LINE_PARTS_PATTERN);
 	if (!match) {
@@ -445,7 +581,7 @@ export function splitTaskLine(line: string): TaskLineParts | null {
 	const trailMatch = rest.match(/[ \t\r]*$/);
 	const trail = trailMatch ? trailMatch[0] : '';
 	const core = rest.slice(0, rest.length - trail.length);
-	const { text, metaTags } = splitDisplayText(core);
+	const { text, controls } = splitDisplayText(core);
 
 	return {
 		indent: match[1] ?? '',
@@ -453,23 +589,44 @@ export function splitTaskLine(line: string): TaskLineParts | null {
 		checked: (match[3] ?? ' ') as ' ' | 'x' | 'X',
 		gap: match[4] ?? '',
 		body: text,
-		metaTags,
+		controls,
+		source: core,
+		sourceText: text,
 		trail,
 	};
 }
 
-/** `splitTaskLine` 的逆运算。 */
+/**
+ * 面板写回后，内联编辑器应持有的正文：剥离本行**所有**控制项
+ * （`depends：` / `[model::]` / `#ioto/*`）；非任务行返回 `null`。
+ * 修复 [[Plan-20261003-141212]]：写回成功后 re-seed 编辑器，避免随后的 blur
+ * 提交用旧正文重建整行而抹掉面板所选控制项。
+ */
+export function taskBodyForEditor(line: string): string | null {
+	return splitTaskLine(line)?.body ?? null;
+}
+
+/**
+ * `splitTaskLine` 的逆运算，双通道：
+ * - `body === sourceText`（正文未改动）→ 逐字节还原 `source`；
+ * - 否则规范化：正文 + 控制项按原序拼到行尾（Johnny 已确认「输入即归位」）。
+ */
 export function composeTaskLine(parts: TaskLineParts): string {
-	const meta =
-		parts.metaTags.length > 0
-			? `${parts.body.length > 0 ? ' ' : ''}${parts.metaTags.join(' ')}`
-			: '';
-	return `${parts.indent}${parts.listMarker}[${parts.checked}]${parts.gap}${parts.body}${meta}${parts.trail}`;
+	let core: string;
+	if (parts.body === parts.sourceText) {
+		core = parts.source;
+	} else {
+		const controlText = parts.controls.map((control) => control.raw).join(' ');
+		core = `${parts.body.trim()}${
+			controlText.length > 0 ? ` ${controlText}` : ''
+		}`;
+	}
+	return `${parts.indent}${parts.listMarker}[${parts.checked}]${parts.gap}${core}${parts.trail}`;
 }
 
 /**
  * 3b 提交：只换正文，原样保留 indent / listMarker / checked / gap / trail，
- * 并把原行行尾的 `#ioto/*` 标签拼回正文之后。正文含换行时拒绝（返回 `null`）。
+ * 并把原行控制项拼回正文之后（正文未改动时逐字节还原）。正文含换行时拒绝。
  */
 export function replaceTaskBody(line: string, nextBody: string): string | null {
 	if (nextBody.includes('\n')) {
@@ -523,7 +680,8 @@ export function setTaskIndent(
 
 /**
  * 3c-1 新建同级：给定参考行，产出「同 indent / 同列表符号 / 同 trail」的新行；
- * `text` 为空则返回纯骨架；不继承 `#ioto/*` 标签。
+ * `text` 为空则返回纯骨架；不继承任何控制项（`controls` 清空，`source` 与
+ * `sourceText` 显式对齐 `body`，保证走「逐字节还原」通道）。
  */
 export function buildSiblingTaskLine(
 	referenceLine: string,
@@ -535,10 +693,13 @@ export function buildSiblingTaskLine(
 		return null;
 	}
 
+	const body = text.trim();
 	return composeTaskLine({
 		...parts,
 		checked: marker,
-		body: text.trim(),
-		metaTags: [],
+		body,
+		controls: [],
+		source: body,
+		sourceText: body,
 	});
 }

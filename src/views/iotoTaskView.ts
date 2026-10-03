@@ -33,6 +33,7 @@ import {
 	parseChecklistItems,
 	replaceTaskBody,
 	setTaskIndent,
+	taskBodyForEditor,
 	toggleTaskMarker,
 } from '../tasks-center/note-structure';
 import {
@@ -312,6 +313,12 @@ export class IOTOTaskView extends TextFileView {
 		this.applyOutcome(outcome);
 		if (outcome.status === 'ok') {
 			this.editingOriginalLine = nextLine;
+			// 🔴 面板写回后必须把内联编辑器同步到新正文，否则下一次 blur 提交
+			// 会用旧正文覆盖整行，把 depends：/ [model::] 等控制项抹掉。
+			const body = taskBodyForEditor(nextLine);
+			if (typeof body === 'string') {
+				this.editingHandle?.setValue(body);
+			}
 		}
 		return outcome;
 	}
@@ -487,7 +494,7 @@ export class IOTOTaskView extends TextFileView {
 	/**
 	 * 只刷新单张卡片：去掉编辑态、卸掉空编辑器容器、按最新 `data` 重渲染正文。
 	 *
-	 * 前提：调用方只改了该行**正文**（`replaceTaskBody` 保留 checked / indent / metaTags）。
+	 * 前提：调用方只改了该行**正文**（`replaceTaskBody` 保留 checked / indent / controls）。
 	 * 若将来提交语义扩展到改 `data-task` / `data-indent` 等属性，这里会漏更新，需改回整树重建。
 	 */
 	private refreshCard(line: number): void {

@@ -530,6 +530,14 @@ const en = {
 	'view.iotoTaskView.sectionToggle': 'Toggle section: {0}',
 	'view.iotoTaskView.checkboxToggle': 'Toggle task: {0}',
 	'view.iotoTaskView.editCardHint': 'Click to edit',
+	'view.iotoTaskView.badge.depends': 'Depends ×{0}',
+	'view.iotoTaskView.badge.dependsIndex': 'Depends #{0}',
+	'view.iotoTaskView.badge.agent': 'Agent: {0}',
+	'view.iotoTaskView.badge.model': 'Model: {0}',
+	'view.iotoTaskView.badge.fanout': 'fanout',
+	'view.iotoTaskView.badge.fanoutLimit': 'fanout {0}',
+	'view.iotoTaskView.badge.turns': '{0} turns',
+	'view.iotoTaskView.badge.turnsUnlimited': 'no turn limit',
 	'notice.iotoTaskView.commitConflict':
 		'The file changed during editing; this change was discarded.',
 	'notice.iotoTaskView.inlineEditUnavailable':

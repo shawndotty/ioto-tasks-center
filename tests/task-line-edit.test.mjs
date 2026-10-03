@@ -7,6 +7,7 @@ const {
 	splitTaskLine,
 	composeTaskLine,
 	replaceTaskBody,
+	taskBodyForEditor,
 	toggleTaskMarker,
 	setTaskIndent,
 	buildSiblingTaskLine,
@@ -25,6 +26,7 @@ test('split(compose) 往返：各种列表符号 / 缩进 / 勾选态 / 行尾�
 		'    - [x] 四级缩进',
 		'- [ ] 带标签 #ioto/turns/0',
 		'- [x] 多标签 #ioto/turns/3 #ioto/foo',
+		'- [ ] 行中 depends：[[A]] [model:: m] 夹在正文 #ioto/fanout/2',
 	];
 
 	for (const line of lines) {
@@ -41,7 +43,9 @@ test('splitTaskLine 拆段正确', () => {
 		checked: 'X',
 		gap: ' ',
 		body: '正文',
-		metaTags: ['#ioto/turns/1'],
+		controls: [{ kind: 'turns', raw: '#ioto/turns/1', value: 1 }],
+		source: '正文 #ioto/turns/1',
+		sourceText: '正文',
 		trail: '',
 	});
 
@@ -67,6 +71,24 @@ test('replaceTaskBody 只换正文，前缀 / 勾选 / 标签 / 行尾空白原�
 test('replaceTaskBody 拒绝多行正文 / 非任务行', () => {
 	assert.equal(replaceTaskBody('- [ ] 旧', '第一行\n第二行'), null);
 	assert.equal(replaceTaskBody('不是任务行', '新'), null);
+});
+
+test('taskBodyForEditor：剥离本行所有控制项（Plan-20261003-162429）', () => {
+	// 面板写回的新行 → 编辑器应持有的正文（控制项全部收窄）
+	assert.equal(
+		taskBodyForEditor(
+			'- [ ] 正文 depends：[[B]] [model:: m] #ioto/turns/5',
+		),
+		'正文',
+	);
+	// 只有行尾 #ioto/* 时，正文不变
+	assert.equal(
+		taskBodyForEditor('- [ ] 正文 #ioto/turns/5'),
+		'正文',
+	);
+	// 非任务行 → null（调用方据此跳过 re-seed，绝不清空编辑器）
+	assert.equal(taskBodyForEditor('非任务行'), null);
+	assert.equal(taskBodyForEditor(''), null);
 });
 
 test('toggleTaskMarker：空格 ↔ x，X → 空格，其余字节不动', () => {

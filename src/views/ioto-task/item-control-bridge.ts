@@ -11,8 +11,9 @@
  * 仍会被整行判据挡下（弹「请先把光标放到任务行上」）。
  *
  * 三层桥接：
- *   ① 入口：包装 `app.commands.executeCommandById`，只命中这一条命令，且仅当
- *      「活动视图是 IOTOTask 且正在内联编辑」时启用；其余 id / 其余视图原样透传；
+ *   ① 入口：包装 `app.commands.executeCommand`（热键与命令面板的公共下游），只命中
+ *      这一条命令，且仅当「活动视图是 IOTOTask 且正在内联编辑」时启用；其余命令 /
+ *      其余视图原样透传；
  *   ② 假视图：临时把 `app.workspace.getActiveViewOfType` 对 `MarkdownView` 的查询
  *      换成 `{ editor: 桥接编辑器, file: 视图自己的 TFile }`，其它类型透传真实实现；
  *   ③ 桥接编辑器：用**文件真实整行**实现命令用到的 Editor 面
@@ -30,6 +31,7 @@ import { MarkdownView } from 'obsidian';
 import type { App } from 'obsidian';
 
 import type { ItemControlBridgeHost } from '../iotoTaskView';
+import { fitItemControlPanel } from './fit-item-control-panel';
 
 /**
  * IOTOTask 的视图类型标识。
@@ -169,27 +171,37 @@ function resolveBridgeHost(app: App, id: unknown): ItemControlBridgeHost | null 
 	}
 }
 
+/** `Commands.executeCommand` 的命令形状：判据只取 `id`。 */
+interface CommandLike {
+	id?: string;
+}
+
 interface CommandsLike {
-	executeCommandById: (id: string) => unknown;
+	executeCommand: (command: unknown, evt?: unknown) => unknown;
 }
 
 /**
- * 安装命令拦截。返回**卸载函数**：把 `executeCommandById` 复原（供 `plugin.register` 使用）。
+ * 安装命令拦截。返回**卸载函数**：把 `executeCommand` 复原（供 `plugin.register` 使用）。
+ *
+ * 为什么包 `executeCommand` 而不是 `executeCommandById`（[[Research-20261003-111611]] §二）：
+ * 核心热键 `HotkeyManager.onTrigger` 直接 `this.app.commands.executeCommand(cmd)`，
+ * **不经过** `executeCommandById`；而 `executeCommandById` 内部就是 `this.executeCommand(n, t)`。
+ * 包住 `executeCommand` 可一次覆盖「热键 + 命令面板」两条路径。
  */
 export function installItemControlBridge(app: App): () => void {
 	// `commands` 未出现在公开的 `App` 类型里，但运行期存在（命令派发入口）。
 	const commands = (app as unknown as { commands: CommandsLike }).commands;
-	const original = commands.executeCommandById.bind(commands);
+	const original = commands.executeCommand.bind(commands);
 
-	commands.executeCommandById = (id: string): unknown => {
-		const host = resolveBridgeHost(app, id);
+	commands.executeCommand = (command: unknown, evt?: unknown): unknown => {
+		const host = resolveBridgeHost(app, (command as CommandLike | undefined)?.id);
 		if (!host) {
-			return original(id); // 其余 id / 其余视图 / 非编辑态：原样透传
+			return original(command, evt); // 其余命令 / 其余视图 / 非编辑态：原样透传
 		}
 
 		const restore = shimActiveMarkdownView(app, host);
 		try {
-			return original(id);
+			return original(command, evt);
 		} catch (error) {
 			// 同步段异常：还原后放行，绝不白屏（异步段异常由 ioto-settings 自己兜底）。
 			console.error('[IOTO Task] 条目控制桥接失败，已还原', error);
@@ -199,10 +211,22 @@ export function installItemControlBridge(app: App): () => void {
 			// 视图查询发生在命令的同步段；微任务 + 宏任务尽早还原，幂等。
 			void Promise.resolve().then(restore);
 			window.setTimeout(restore, 0);
+			// 面板在 Modal.open() 的同步段已建好；下一拍量高并按视口重定位
+			// （[[Plan-20261003-165927]]：下方放不下翻上方 / 夹取，不改 ioto-settings）。
+			window.setTimeout(() => {
+				if (!fitItemControlPanel(host)) {
+					if (typeof window.requestAnimationFrame === 'function') {
+						// 异步化的兜底（面板若改成异步打开）；无 rAF 的环境跳过。
+						window.requestAnimationFrame(() =>
+							fitItemControlPanel(host),
+						);
+					}
+				}
+			}, 0);
 		}
 	};
 
 	return () => {
-		commands.executeCommandById = original;
+		commands.executeCommand = original;
 	};
 }

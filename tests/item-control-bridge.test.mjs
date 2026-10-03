@@ -19,6 +19,7 @@ const {
 	shouldBridgeItemControl,
 	createBridgeEditor,
 	shimActiveMarkdownView,
+	installItemControlBridge,
 } = await jiti.import('../src/views/ioto-task/item-control-bridge.ts');
 const { replaceTaskBody } = await jiti.import(
 	'../src/tasks-center/note-structure.ts',
@@ -197,4 +198,96 @@ test('合成整行：replaceTaskBody 保留 #ioto/* 并拼回正文之后', () =
 		replaceTaskBody(disk, '任务一 [[IOTO Task Center-计划-V250]]'),
 		'- [ ] 任务一 [[IOTO Task Center-计划-V250]] #ioto/turns/200',
 	);
+});
+
+/* ------------------------------------------------------------------ *
+ * installItemControlBridge（拦截点 = executeCommand，见 [[Plan-20261003-113130]] §5.6）
+ * ------------------------------------------------------------------ */
+
+/**
+ * 构造带 `commands.executeCommand` + IOTOTask 活动视图的 App 桩。
+ * `original` 内部记录「派发期间 getActiveViewOfType(MarkdownView) 返回值」，
+ * 用于断言 shim 是否在被包的方法体内生效。
+ */
+function makeBridgeApp() {
+	const { host } = makeHost();
+	const realGetActive = (type) => ({ real: type });
+	const workspace = {
+		activeLeaf: {
+			view: {
+				getViewType: () => IOTO_TASK_VIEW_TYPE,
+				getItemControlHost: () => host,
+			},
+		},
+		getActiveViewOfType: realGetActive,
+	};
+	const calls = { original: 0, seen: [] };
+	const commands = {
+		executeCommand(command, evt) {
+			calls.original += 1;
+			calls.seen.push(workspace.getActiveViewOfType(MarkdownView));
+			return { command, evt };
+		},
+	};
+	return { app: { commands, workspace }, commands, workspace, host, calls };
+}
+
+test('installItemControlBridge：命中 → 桥接期间 shim 生效，original 只调用一次', () => {
+	const { app, commands, host, calls } = makeBridgeApp();
+	const uninstall = installItemControlBridge(app);
+
+	commands.executeCommand({ id: ITEM_CONTROL_COMMAND_ID });
+
+	assert.equal(calls.original, 1);
+	assert.equal(calls.seen.length, 1);
+	assert.equal(calls.seen[0].file, host.file);
+	assert.equal(typeof calls.seen[0].editor.getCursor, 'function');
+
+	uninstall();
+});
+
+test('installItemControlBridge：非本命令 / 无 id → 原样透传，不安装 shim', () => {
+	const { app, commands, calls } = makeBridgeApp();
+	const uninstall = installItemControlBridge(app);
+
+	commands.executeCommand({ id: 'other:cmd' });
+	commands.executeCommand(undefined);
+
+	assert.equal(calls.original, 2);
+	assert.deepEqual(calls.seen[0], { real: MarkdownView });
+
+	uninstall();
+});
+
+test('installItemControlBridge：executeCommandById 内部 this.executeCommand 路径也被覆盖（单点覆盖、无双层）', () => {
+	const { app, commands, host, calls } = makeBridgeApp();
+	// 模拟核心 Commands.executeCommandById：内部就是 this.executeCommand(findCommand(id))。
+	commands.executeCommandById = (id) =>
+		commands.executeCommand({ id });
+	const uninstall = installItemControlBridge(app);
+
+	commands.executeCommandById(ITEM_CONTROL_COMMAND_ID);
+
+	assert.equal(calls.original, 1); // 只被调用一次，未叠加双层 shim
+	assert.equal(calls.seen.length, 1);
+	assert.equal(calls.seen[0].file, host.file);
+
+	uninstall();
+});
+
+test('installItemControlBridge：卸载后 executeCommand 复原，再派发不再安装 shim', () => {
+	const { app, commands, calls } = makeBridgeApp();
+	const before = commands.executeCommand;
+	const uninstall = installItemControlBridge(app);
+	const installed = commands.executeCommand;
+	assert.notEqual(installed, before); // 安装后换成包装函数
+
+	uninstall();
+	assert.notEqual(commands.executeCommand, installed); // 已还原，非包装
+	assert.deepEqual(
+		commands.executeCommand({ id: ITEM_CONTROL_COMMAND_ID }),
+		{ command: { id: ITEM_CONTROL_COMMAND_ID }, evt: undefined },
+	);
+	assert.equal(calls.original, 1);
+	assert.deepEqual(calls.seen[0], { real: MarkdownView }); // 未安装 shim
 });

@@ -98,16 +98,21 @@ test('endLine 精确：下一个 level <= 本级的标题前一行', () => {
 	]);
 });
 
-test('行尾 #ioto/* 被剥离进 metaTags', () => {
+test('控制项（含行中 #ioto/*）被剥离进 controls', () => {
 	const items = parseChecklistItems(
 		'- [ ] 执行落地 #ioto/turns/0\n- [x] 已完成 #ioto/turns/3 后置说明\n',
 	);
 
 	assert.equal(items.length, 2);
 	assert.equal(items[0].text, '执行落地');
-	assert.deepEqual(items[0].metaTags, ['#ioto/turns/0']);
-	assert.equal(items[1].text, '已完成 #ioto/turns/3 后置说明');
-	assert.deepEqual(items[1].metaTags, []);
+	assert.deepEqual(items[0].controls, [
+		{ kind: 'turns', raw: '#ioto/turns/0', value: 0 },
+	]);
+	// 行中控制项同样被收进 controls（正文接缝收敛为单个空格）
+	assert.equal(items[1].text, '已完成 后置说明');
+	assert.deepEqual(items[1].controls, [
+		{ kind: 'turns', raw: '#ioto/turns/3', value: 3 },
+	]);
 });
 
 test('缩进层级：每 2 空格或 1 个 Tab 记 1 级', () => {
