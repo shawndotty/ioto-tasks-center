@@ -358,7 +358,7 @@ function renderChecklistGroup(options: {
 				]),
 			},
 		});
-		setIcon(checkboxEl, done ? 'check-square' : 'square');
+		setIcon(checkboxEl, done ? 'check' : '');
 		checkboxEl.addEventListener('click', (event) => {
 			event.preventDefault();
 			event.stopPropagation();

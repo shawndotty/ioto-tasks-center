@@ -1040,7 +1040,7 @@ export class IOTOTaskView extends TextFileView {
 		if (checkboxEl) {
 			setIcon(
 				checkboxEl,
-				nextMarker === 'x' ? 'check-square' : 'square',
+				nextMarker === 'x' ? 'check' : '',
 			);
 			checkboxEl.setAttribute(
 				'aria-pressed',
