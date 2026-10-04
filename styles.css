@@ -2297,7 +2297,7 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	align-items: center;
 	color: var(--text-muted);
 	flex: 0 0 auto;
-	order: 1; /* 视觉顺序：正文(默认 0) → 勾选框(1) → 底栏(2)（Plan-20261003-191547） */
+	order: 1; /* 视觉顺序：正文(默认 0) → 勾选框(1) → 续行(2) → 底栏(3)（Plan-20261003-191547 / Plan-20261004-202053） */
 	margin-top: 0;
 	/* 从只读 span 升级成可真按钮：重置 UA 样式 + hover/focus 可见环 */
 	background: none;
@@ -2386,7 +2386,7 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	align-items: center;
 	gap: 4px;
 	flex: 1 1 100%; /* basis 100% → 必然折到正文下一行；grow 1 → 占满卡片内容宽 */
-	order: 2; /* 排在勾选框之后，仍是卡片最后一行（底栏）（Plan-20261003-191547） */
+	order: 3; /* 排在勾选框与续行之后，仍是卡片最后一行（底栏）（Plan-20261003-191547） */
 }
 
 /* 仅编辑态显示底栏；:not(:empty) 保证无控制项的卡片即使编辑也不产生空底栏 */
@@ -2455,14 +2455,15 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 }
 
 /* 卡片续行：Markdown View 里在任务项下 Shift+Enter 敲出的正文，CommonMark 视作
-   该 list item 的一部分，因此渲染成同一 <ul> 里紧跟卡片的 <li>。
-   清单是 flex column + gap，用负 margin-top 抵消一次 gap，让它贴住上方卡片而不是
-   被当成独立一行；再按缩进步长内缩，视觉上归入上面的任务。 */
+   该 list item 的一部分。现在挂成 `.ioto-task-view__card` 的直接子元素（不再是同一
+   <ul> 里的兄弟 <li>），因而落进卡片的背景 / 边框 / 圆角，并跟随选中态 / 编辑态
+   高亮。用 `flex: 1 1 100%` 独占一整行，排在正文行之后（与正文左对齐、去掉额外
+   缩进），与正文之间保留卡片自身的 8px 行距。字号 / 颜色继续弱于任务标题。 */
 .ioto-task-view__card-continuation {
-	list-style: none;
-	margin-top: calc(-1 * var(--ioto-tv-gap));
-	margin-inline-start: var(--ioto-tv-indent);
-	padding-inline-start: var(--ioto-tv-pad-x);
+	flex: 1 1 100%;
+	order: 2; /* 视觉顺序：正文(默认 0) → 勾选框(1) → 续行(2) → 动作底栏(3) */
+	min-width: 0;
+	margin: 0; /* 进卡片后不再需要负 margin 贴卡 / 额外缩进 */
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 }

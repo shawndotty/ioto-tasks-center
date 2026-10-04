@@ -492,6 +492,11 @@ function renderChecklistGroup(options: {
 			if (target.closest('.ioto-task-view__card-editor')) {
 				return;
 			}
+			// 续行虽已成卡片后代，但它不是任务行（编辑器只编辑任务那一行），
+			// 点它不应「选中该卡 / 再点进编辑」——与 a / checkbox / badge 早退并列。
+			if (target.closest('.ioto-task-view__card-continuation')) {
+				return;
+			}
 			// 「不支持内联编辑」时保留原 Notice 路径，不进选择态
 			if (!editing.enabled) {
 				editing.beginEdit(item.line);
@@ -603,14 +608,19 @@ function renderChecklistGroup(options: {
 
 		renderCardActions(cardEl, item.controls);
 
-		// 续行：渲染成同一 `<ul>` 里紧跟卡片的 `<li>`（B1），因此归属正确 ——
-		// 不再是被丢在 `<ul>` 之外的独立块。点击它**不**进编辑态（它不是任务行，
-		// 编辑器只编辑任务那一行），`collectCardLines` 用 `.ioto-task-view__card`
-		// 选择器也天然跳过它，导航不受影响。
-		// 跟随卡片一起被 ② 过滤：卡片隐藏时续行不能变成孤儿文本。
+		// 续行：挂成卡片的**直接子元素**（不再是同一 `<ul>` 里的兄弟 `<li>`），
+		// 这样它才落在 `.ioto-task-view__card` 这个盒子里，拿到卡片的背景 / 边框 /
+		// 圆角，并跟随 `.is-selected` / `.is-editing` 高亮（`flex: 1 1 100%` 独占
+		// 一整行，排在正文行之后，见 styles.css）。
+		// 🔴 不能挂进 `.card-text`：`refreshCard` 会 `textEl.empty()` 后只重渲染
+		// `item.text`，续行会被清掉且不重建；挂 `cardEl`（textEl 的兄弟）完全避开。
+		// 点击它**不**进编辑态（它只显示，编辑器只编辑任务那一行；guard 见卡片
+		// click 处理器）。`collectCardLines` 用 `.ioto-task-view__card` 选择器，续行
+		// 作为卡片后代仍是同一张卡，↑↓ 导航不受影响（比兄弟 `<li>` 更干净）。
+		// ② 只显示未完成时随卡片一起隐藏（现在是其子元素，天然跟随，无需显式条件）。
 		const continuation = continuationMarkdown.get(item.line);
 		if (continuation !== undefined) {
-			const continuationEl = listEl.createEl('li', {
+			const continuationEl = cardEl.createDiv({
 				cls: 'ioto-task-view__card-continuation',
 				attr: { 'data-line': String(item.line) },
 			});
