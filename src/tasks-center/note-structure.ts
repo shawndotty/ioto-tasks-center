@@ -531,6 +531,57 @@ export function collectTaskContinuations(
 	return result;
 }
 
+/**
+ * 抹掉一段多行文本的**公共前导空白**（dedent）。
+ *
+ * 用于卡片续行：任务项下 `Shift+Enter` 敲出来的正文带着列表自动缩进，而渲染层是
+ * **独立**渲染这几行的（没有外层 `<ul>` 语境），行首 ≥4 空格会被 Markdown 判成
+ * 缩进代码块（`<pre><code>`，格式全失效还多一个复制按钮）。取所有**非空行**的最长
+ * 公共前导空白前缀并移除，即可还原成顶格段落。
+ *
+ * - 用「公共前缀」而非固定格数：列表自动缩进宽度随标记（`- [ ] ` / `1. [ ] ` /
+ *   嵌套层数）变化，写死会漂。
+ * - **相对缩进保留**：更深的行仍比浅行多缩进，续行里的嵌套结构不会塌。
+ * - **只动行首**：行尾空白（可能是 Markdown 硬换行的两个空格）原样保留。
+ * - 全空行 / 无公共前缀时原样返回。按 `\n` 重新拼接（调用方传入的即是 `\n` 拼接）。
+ */
+export function dedentLines(text: string): string {
+	const lines = text.split(/\r?\n/);
+	const indents = lines
+		.filter((line) => line.trim().length > 0)
+		.map((line) => line.match(/^[ \t]*/)?.[0] ?? '');
+
+	if (indents.length === 0) {
+		return text;
+	}
+
+	let common = indents[0] ?? '';
+	for (const indent of indents) {
+		let length = 0;
+		while (
+			length < common.length &&
+			length < indent.length &&
+			common[length] === indent[length]
+		) {
+			length += 1;
+		}
+		common = common.slice(0, length);
+		if (common.length === 0) {
+			break;
+		}
+	}
+
+	if (common.length === 0) {
+		return text;
+	}
+
+	return lines
+		.map((line) =>
+			line.trim().length > 0 ? line.slice(common.length) : line,
+		)
+		.join('\n');
+}
+
 function collectChecklistItems(
 	content: string,
 	startLine: number,

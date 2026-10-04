@@ -11,6 +11,7 @@ import { MarkdownRenderer, setIcon, type App, type Component } from 'obsidian';
 import { t } from '../../lang/helpter';
 import {
 	collectTaskContinuations,
+	dedentLines,
 	isChecklistItemDone,
 	parseChecklistItemsInRange,
 	parseSections,
@@ -324,7 +325,9 @@ function renderSectionBody(options: {
 		}
 		continuationMarkdown.set(
 			item.line,
-			continuation.map((index) => lines[index] ?? '').join('\n'),
+			// 续行带着列表自动缩进，独立渲染时行首 ≥4 空格会被判成缩进代码块
+			// （`<pre><code>`）；dedent 抹掉公共前导空白后再交给渲染器。
+			dedentLines(continuation.map((index) => lines[index] ?? '').join('\n')),
 		);
 	}
 

@@ -10,6 +10,7 @@ const {
 	buildTasksSectionHeading,
 	buildTopLevelTaskLine,
 	collectTaskContinuations,
+	dedentLines,
 	findSectionByTitle,
 	isTaskContinuationLine,
 	sectionHasChecklist,
@@ -283,4 +284,32 @@ test('collectTaskContinuations：收在 limitLine 之内，不越出所属 Secti
 
 	assert.deepEqual(collectTaskContinuations(content, items, 1).get(0), [1]);
 	assert.deepEqual(collectTaskContinuations(content, items, 2).get(0), [1, 2]);
+});
+
+/* ------------------------------------------------------------------ *
+ * dedentLines（续行渲染前抹掉列表缩进）
+ *
+ * 回归：续行带着列表自动缩进被**独立**渲染，行首 ≥4 空格被判成缩进代码块
+ * （`<pre><code>`），行内 Markdown 格式全部失效还多出复制按钮。
+ * ------------------------------------------------------------------ */
+
+test('dedentLines：抹掉公共前导空白，保留相对缩进与行尾空白', () => {
+	// 列表缩进整体抹平 → 独立渲染时不再落入缩进代码块
+	assert.equal(dedentLines('      说明一\n      说明二'), '说明一\n说明二');
+	// 只有非空行参与取公共前缀：空行不会把前缀拉成 ''
+	assert.equal(dedentLines('    说明\n\n    继续'), '说明\n\n继续');
+	// 相对缩进保留：续行里的嵌套结构不塌
+	assert.equal(
+		dedentLines('      - 子项\n        - 孙项'),
+		'- 子项\n  - 孙项',
+	);
+	// 行尾空白（Markdown 硬换行语法）不动
+	assert.equal(dedentLines('    说明  '), '说明  ');
+});
+
+test('dedentLines：无公共前缀 / 纯空白输入时原样返回', () => {
+	assert.equal(dedentLines('顶格\n  缩进'), '顶格\n  缩进');
+	assert.equal(dedentLines('只有一行无缩进'), '只有一行无缩进');
+	assert.equal(dedentLines(''), '');
+	assert.equal(dedentLines('   \n  '), '   \n  ');
 });
