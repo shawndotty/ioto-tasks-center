@@ -3,9 +3,12 @@ import test from 'node:test';
 import { createJiti } from 'jiti';
 
 const jiti = createJiti(import.meta.url, { moduleCache: false });
-const { isOverlayFocusTarget, OVERLAY_FOCUS_SELECTOR } = await jiti.import(
-	'../src/views/ioto-task/embedded-editor.ts',
-);
+const {
+	isOverlayFocusTarget,
+	OVERLAY_FOCUS_SELECTOR,
+	isOverlayFocusGuardTarget,
+	OVERLAY_FOCUS_GUARD_SELECTOR,
+} = await jiti.import('../src/views/ioto-task/embedded-editor.ts');
 
 // 只锁「选择器契约 + null/异常兜底」；defer 时序与真实提交语义靠真机验证
 // （Plan-20261003-101010 §5.5、Research-20261003-100337 §3.2）。
@@ -66,6 +69,47 @@ test('isOverlayFocusTarget：null / undefined / 无 closest → false', () => {
 test('isOverlayFocusTarget：closest 抛异常 → false（防御性）', () => {
 	assert.equal(
 		isOverlayFocusTarget({
+			closest: () => {
+				throw new Error('boom');
+			},
+		}),
+		false,
+	);
+});
+
+test('OVERLAY_FOCUS_GUARD_SELECTOR：契约覆盖宿主 quickPanel', () => {
+	assert.equal(typeof OVERLAY_FOCUS_GUARD_SELECTOR, 'string');
+	assert.ok(OVERLAY_FOCUS_GUARD_SELECTOR.includes('.ioto-quick-panel'));
+});
+
+test('isOverlayFocusGuardTarget：命中 quickPanel → true', () => {
+	assert.equal(
+		isOverlayFocusGuardTarget({
+			closest: (s) => (s.includes('ioto-quick-panel') ? {} : null),
+		}),
+		true,
+	);
+});
+
+test('isOverlayFocusGuardTarget：不落 quickPanel（body / 卡片）→ false', () => {
+	assert.equal(isOverlayFocusGuardTarget({ closest: () => null }), false);
+	// 注意：modal / suggestion 不属保焦点目标——它们本就该让编辑器提交
+	assert.equal(
+		isOverlayFocusGuardTarget({
+			closest: (s) => (s.includes('modal-container') ? {} : null),
+		}),
+		false,
+	);
+});
+
+test('isOverlayFocusGuardTarget：null / 无 closest / 抛异常 → false（防御性）', () => {
+	assert.equal(isOverlayFocusGuardTarget(null), false);
+	assert.equal(isOverlayFocusGuardTarget(undefined), false);
+	assert.equal(isOverlayFocusGuardTarget({}), false);
+	assert.equal(isOverlayFocusGuardTarget({ nodeType: 3 }), false);
+	assert.equal(isOverlayFocusGuardTarget({ closest: 'not-a-function' }), false);
+	assert.equal(
+		isOverlayFocusGuardTarget({
 			closest: () => {
 				throw new Error('boom');
 			},

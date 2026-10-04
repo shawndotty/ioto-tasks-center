@@ -49,20 +49,49 @@ export const OVERLAY_FOCUS_SELECTOR =
 	'.modal-container, .suggestion-container, .prompt';
 
 /**
- * 纯判断：给定 `document.activeElement`，是否落在会抢焦点的浮层里。
+ * 「需要主动保焦点」的宿主浮层：由外部插件（ioto-settings）挂进本视图的 quickPanel。
+ * 它的按钮是普通 `div`（不可聚焦），点下去会把焦点从内嵌编辑器移走
+ * （`document.activeElement` 落到 body），从而触发 blur 提交并把 `activeEditor`
+ * 还原为 null —— 依赖 `activeEditor` 的命令（Templater 模板：I/O/T/O）随即报
+ * "No active editor"。仅靠 `activeElement` 判据覆盖不到它，故在捕获阶段拦 mousedown。
+ */
+export const OVERLAY_FOCUS_GUARD_SELECTOR = '.ioto-quick-panel';
+
+/**
+ * 纯判断：给定元素，其是否落在 `selector` 内。
  * 用最小结构接口（只依赖 closest）以便假对象单测，不 import obsidian、不触 DOM。
  */
-export function isOverlayFocusTarget(
+function elementMatches(
 	el: { closest?: (selector: string) => unknown } | null | undefined,
+	selector: string,
 ): boolean {
 	if (!el || typeof el.closest !== 'function') {
 		return false;
 	}
 	try {
-		return Boolean(el.closest(OVERLAY_FOCUS_SELECTOR));
+		return Boolean(el.closest(selector));
 	} catch {
 		return false;
 	}
+}
+
+/**
+ * 纯判断：给定 `document.activeElement`，是否落在会抢焦点的浮层里。
+ */
+export function isOverlayFocusTarget(
+	el: { closest?: (selector: string) => unknown } | null | undefined,
+): boolean {
+	return elementMatches(el, OVERLAY_FOCUS_SELECTOR);
+}
+
+/**
+ * 纯判断：mousedown 目标是否落在「需保焦点的宿主浮层」内；命中则调用方应
+ * `preventDefault`，阻止浏览器把焦点移出内嵌编辑器。
+ */
+export function isOverlayFocusGuardTarget(
+	el: { closest?: (selector: string) => unknown } | null | undefined,
+): boolean {
+	return elementMatches(el, OVERLAY_FOCUS_GUARD_SELECTOR);
 }
 
 let cachedEditorClass: any = null;
@@ -417,6 +446,17 @@ export async function mountEmbeddedEditor(
 		};
 		hostEl.addEventListener('keydown', onHostKeyDown, true);
 
+		// 宿主浮层（quickPanel）保焦点：其按钮是不可聚焦 div，mousedown 会把焦点
+		// 移出编辑器 → blur 提交 + `activeEditor` 置空 → Templater 报 "No active editor"。
+		// 在捕获阶段阻止默认的「移动焦点」行为；click 仍会照常派发，按钮逻辑不受影响。
+		const ownerDoc = hostEl.ownerDocument;
+		const onOverlayMouseDown = (event: MouseEvent) => {
+			if (isOverlayFocusGuardTarget(event.target as Element | null)) {
+				event.preventDefault();
+			}
+		};
+		ownerDoc?.addEventListener('mousedown', onOverlayMouseDown, true);
+
 		const getEditorValue = (): string => {
 			try {
 				if (editor?.cm?.state?.doc) {
@@ -435,6 +475,15 @@ export async function mountEmbeddedEditor(
 			destroyed = true;
 			try {
 				hostEl.removeEventListener('keydown', onHostKeyDown, true);
+			} catch {
+				/* ignore */
+			}
+			try {
+				ownerDoc?.removeEventListener(
+					'mousedown',
+					onOverlayMouseDown,
+					true,
+				);
 			} catch {
 				/* ignore */
 			}
