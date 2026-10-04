@@ -452,6 +452,85 @@ export function findSectionByTitle(
 	return null;
 }
 
+/* ------------------------------------------------------------------ *
+ * 卡片续行（CommonMark lazy continuation）
+ *
+ * Markdown View 里在任务项下面 Shift+Enter 敲出来的正文，CommonMark 视作该
+ * list item 的一部分 —— 缩进续行与「不缩进的懒续行」都算。渲染层必须把它并回
+ * 卡片，而不是当成章节级 markdown 块（否则会渲染成 `<ul>` 之外的孤儿块）。
+ * ------------------------------------------------------------------ */
+
+/**
+ * 块级结构起始：遇到即**不再是**续行（CommonMark 里这些会打断段落 / 结束 list
+ * item）。注意 `- [ ] 任务` 这类任务行同样命中列表标记，由调用方按行号先排除。
+ */
+const BLOCK_START_PATTERNS: RegExp[] = [
+	/^#{1,6}(?:\s|$)/, // ATX 标题
+	/^(?:`{3,}|~{3,})/, // 代码围栏
+	/^>/, // 引用
+	/^(?:[-*+]|\d+[.)])(?:\s|$)/, // 列表标记（含嵌套任务行）
+];
+
+/** 分隔线（`---` / `***` / `___`，允许中间夹空白）。 */
+const THEMATIC_BREAK_PATTERN = /^(?:(?:-\s*){3,}|(?:\*\s*){3,}|(?:_\s*){3,})$/;
+
+/**
+ * 该行能否作为上一张任务卡的**续行**。
+ *
+ * 口径：非空 + 不是块级结构起始（标题 / 围栏 / 引用 / 列表 / 分隔线）。
+ * 空行返回 `false` —— CommonMark 里「空行 + 非缩进内容」会结束 list item，
+ * 因此空行之后的内容属于 Section 而非某张卡。
+ */
+export function isTaskContinuationLine(line: string): boolean {
+	const trimmed = line.trim();
+	if (trimmed.length === 0) {
+		return false;
+	}
+	if (THEMATIC_BREAK_PATTERN.test(trimmed)) {
+		return false;
+	}
+
+	const trimmedStart = line.trimStart();
+	return !BLOCK_START_PATTERNS.some((pattern) => pattern.test(trimmedStart));
+}
+
+/**
+ * 为一批卡片收集各自的续行行号（0 基、升序、连续）。
+ *
+ * 每张卡从其下一行开始向下吃：遇到另一条 checklist 行、空行、或块级结构即停。
+ * 返回「卡片行号 → 续行行号数组」；无续行的卡不出现在结果里。
+ *
+ * @param limitLine 可解析的最后一行（0 基，含）——通常是所属 Section 的 `endLine`。
+ */
+export function collectTaskContinuations(
+	content: string,
+	items: NoteChecklistItem[],
+	limitLine: number,
+): Map<number, number[]> {
+	const lines = content.split(/\r?\n/);
+	const itemLines = new Set(items.map((item) => item.line));
+	const result = new Map<number, number[]>();
+
+	for (const item of items) {
+		const continuation: number[] = [];
+		for (let index = item.line + 1; index <= limitLine; index += 1) {
+			if (itemLines.has(index)) {
+				break;
+			}
+			if (!isTaskContinuationLine(lines[index] ?? '')) {
+				break;
+			}
+			continuation.push(index);
+		}
+
+		if (continuation.length > 0) {
+			result.set(item.line, continuation);
+		}
+	}
+
+	return result;
+}
+
 function collectChecklistItems(
 	content: string,
 	startLine: number,

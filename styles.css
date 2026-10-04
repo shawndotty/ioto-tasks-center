@@ -2454,6 +2454,19 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	margin-bottom: 0;
 }
 
+/* 卡片续行：Markdown View 里在任务项下 Shift+Enter 敲出的正文，CommonMark 视作
+   该 list item 的一部分，因此渲染成同一 <ul> 里紧跟卡片的 <li>。
+   清单是 flex column + gap，用负 margin-top 抵消一次 gap，让它贴住上方卡片而不是
+   被当成独立一行；再按缩进步长内缩，视觉上归入上面的任务。 */
+.ioto-task-view__card-continuation {
+	list-style: none;
+	margin-top: calc(-1 * var(--ioto-tv-gap));
+	margin-inline-start: var(--ioto-tv-indent);
+	padding-inline-start: var(--ioto-tv-pad-x);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
 .is-phone .ioto-task-view {
 	--ioto-tv-indent: 1.5em;
 	--ioto-tv-pad-x: 10px;

@@ -10,6 +10,7 @@ import { MarkdownRenderer, setIcon, type App, type Component } from 'obsidian';
 
 import { t } from '../../lang/helpter';
 import {
+	collectTaskContinuations,
 	isChecklistItemDone,
 	parseChecklistItemsInRange,
 	parseSections,
@@ -307,6 +308,26 @@ function renderSectionBody(options: {
 	);
 	const itemByLine = new Map(items.map((item) => [item.line, item]));
 
+	// 卡片续行：Markdown View 里在任务项下 Shift+Enter 敲出的正文，CommonMark
+	// 视作该 list item 的一部分。它没有 `- [ ]` 标记，若按普通正文分块就会渲染成
+	// `<ul>` 之外的孤儿 div（归属丢失）。这里取出归属，随卡片一起渲染。
+	const continuationByLine = collectTaskContinuations(
+		content,
+		items,
+		section.endLine,
+	);
+	const continuationMarkdown = new Map<number, string>();
+	for (const item of items) {
+		const continuation = continuationByLine.get(item.line);
+		if (!continuation || continuation.length === 0) {
+			continue;
+		}
+		continuationMarkdown.set(
+			item.line,
+			continuation.map((index) => lines[index] ?? '').join('\n'),
+		);
+	}
+
 	let lineIndex = bodyStartLine;
 	while (lineIndex <= section.endLine) {
 		const item = itemByLine.get(lineIndex);
@@ -319,6 +340,12 @@ function renderSectionBody(options: {
 				}
 				group.push(nextItem);
 				lineIndex += 1;
+				// 跳过本卡的续行：它们随卡片渲染，不能落进下面的 chunk 分支。
+				const continuation = continuationByLine.get(nextItem.line);
+				if (continuation && continuation.length > 0) {
+					lineIndex =
+						(continuation[continuation.length - 1] ?? lineIndex) + 1;
+				}
 			}
 			renderChecklistGroup({
 				app,
@@ -328,6 +355,7 @@ function renderSectionBody(options: {
 				component,
 				editing,
 				filters,
+				continuationMarkdown,
 			});
 			continue;
 		}
@@ -364,9 +392,19 @@ function renderChecklistGroup(options: {
 	component: Component;
 	editing: TaskNoteEditing;
 	filters: TaskNoteFilters;
+	/** 卡片行号 → 该卡的续行 markdown（无续行的卡不出现） */
+	continuationMarkdown: Map<number, string>;
 }): void {
-	const { app, bodyEl, items, sourcePath, component, editing, filters } =
-		options;
+	const {
+		app,
+		bodyEl,
+		items,
+		sourcePath,
+		component,
+		editing,
+		filters,
+		continuationMarkdown,
+	} = options;
 	const listEl = bodyEl.createEl('ul', { cls: 'ioto-task-view__checklist' });
 
 	for (const item of items) {
@@ -561,6 +599,29 @@ function renderChecklistGroup(options: {
 		}
 
 		renderCardActions(cardEl, item.controls);
+
+		// 续行：渲染成同一 `<ul>` 里紧跟卡片的 `<li>`（B1），因此归属正确 ——
+		// 不再是被丢在 `<ul>` 之外的独立块。点击它**不**进编辑态（它不是任务行，
+		// 编辑器只编辑任务那一行），`collectCardLines` 用 `.ioto-task-view__card`
+		// 选择器也天然跳过它，导航不受影响。
+		// 跟随卡片一起被 ② 过滤：卡片隐藏时续行不能变成孤儿文本。
+		const continuation = continuationMarkdown.get(item.line);
+		if (continuation !== undefined) {
+			const continuationEl = listEl.createEl('li', {
+				cls: 'ioto-task-view__card-continuation',
+				attr: { 'data-line': String(item.line) },
+			});
+			const mdEl = continuationEl.createDiv({
+				cls: 'ioto-task-view__md',
+			});
+			void MarkdownRenderer.render(
+				app,
+				continuation,
+				mdEl,
+				sourcePath,
+				component,
+			);
+		}
 	}
 }
 

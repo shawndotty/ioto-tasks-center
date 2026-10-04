@@ -9,7 +9,9 @@ const {
 	parseChecklistItemsInRange,
 	buildTasksSectionHeading,
 	buildTopLevelTaskLine,
+	collectTaskContinuations,
 	findSectionByTitle,
+	isTaskContinuationLine,
 	sectionHasChecklist,
 } = await jiti.import('../src/tasks-center/note-structure.ts');
 
@@ -224,4 +226,61 @@ test('buildTasksSectionHeading：写出的标题行能被解析成 Section 并�
 	// 语言包存的是裸标题，回查按裸标题匹配 → 必须能命中刚建的那一段
 	assert.equal(findSectionByTitle(content, '任务')?.startLine, 0);
 	assert.equal(sectionHasChecklist(content, parseSections(content)[0]), true);
+});
+
+/* ------------------------------------------------------------------ *
+ * 卡片续行（CommonMark lazy continuation）
+ *
+ * 回归：Markdown View 里在任务项下 Shift+Enter 敲出的正文，曾按普通正文分块，
+ * 渲染成 `<ul>` 之外的孤立 div；它应归属上一张卡。
+ * ------------------------------------------------------------------ */
+
+test('isTaskContinuationLine：正文/缩进续行算续行，空行与块级结构不算', () => {
+	assert.equal(isTaskContinuationLine('一段说明'), true);
+	assert.equal(isTaskContinuationLine('  缩进的说明'), true);
+
+	// 另一条任务行（含嵌套）→ 由调用方按行号处理，不算续行
+	assert.equal(isTaskContinuationLine('- [ ] 另一条任务'), false);
+	assert.equal(isTaskContinuationLine('  - [ ] 嵌套任务'), false);
+	// 普通列表项 / 块级结构起始 → 不算续行
+	assert.equal(isTaskContinuationLine('- 普通列表项'), false);
+	assert.equal(isTaskContinuationLine('1. 有序列表项'), false);
+	assert.equal(isTaskContinuationLine('## 嵌套标题'), false);
+	assert.equal(isTaskContinuationLine('> 引用'), false);
+	assert.equal(isTaskContinuationLine('```js'), false);
+	assert.equal(isTaskContinuationLine('~~~'), false);
+	assert.equal(isTaskContinuationLine('---'), false);
+	assert.equal(isTaskContinuationLine('* * *'), false);
+	// 空行终止续行
+	assert.equal(isTaskContinuationLine(''), false);
+	assert.equal(isTaskContinuationLine('   '), false);
+});
+
+test('collectTaskContinuations：续行归属上一张卡，遇空行/块级/下一张卡即止', () => {
+	const content = [
+		'- [ ] A', // 0
+		'续行一', // 1
+		'  续行二', // 2
+		'- [ ] B', // 3
+		'## 备注', // 4
+		'- [ ] C', // 5
+		'', // 6
+		'孤立段落', // 7
+	].join('\n');
+	const items = parseChecklistItems(content, { includeEmpty: true });
+	const map = collectTaskContinuations(content, items, 7);
+
+	assert.deepEqual(map.get(0), [1, 2]);
+	// B 紧跟着块级标题 → 无续行（`## 备注` 属于 Section，不该被吸进卡片）
+	assert.equal(map.has(3), false);
+	// C 之后是空行 → 无续行（CommonMark：空行结束 list item）
+	assert.equal(map.has(5), false);
+});
+
+test('collectTaskContinuations：收在 limitLine 之内，不越出所属 Section', () => {
+	const content = ['- [ ] A', '续行', '再一行'].join('\n');
+	const items = parseChecklistItems(content, { includeEmpty: true });
+
+	assert.deepEqual(collectTaskContinuations(content, items, 1).get(0), [1]);
+	assert.deepEqual(collectTaskContinuations(content, items, 2).get(0), [1, 2]);
 });
