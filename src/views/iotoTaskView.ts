@@ -46,8 +46,10 @@ import {
 	buildSiblingTaskLine,
 	buildTasksSectionHeading,
 	buildTopLevelTaskLine,
+	continuationIndentForTaskLine,
 	dedentLines,
 	findSectionByTitle,
+	indentContinuationLines,
 	isTaskContinuationLine,
 	parseChecklistItems,
 	replaceTaskBody,
@@ -163,6 +165,10 @@ export class IOTOTaskView extends TextFileView {
 	private continuationHandle: EmbeddedEditorHandle | null = null;
 	/** 当前续行编辑器的宿主 div（`destroy()` 只 empty 不 remove，需在此显式回收） */
 	private continuationHostEl: HTMLElement | null = null;
+	/** 本次续行编辑器是否为「新建草稿」（磁盘上尚无该续行块）：空草稿不落盘、不走自动落盘。 */
+	private continuationIsNew = false;
+	/** 新建草稿时临时创建的 `.card-continuation` 容器（回收用；复用既有容器时为 `null`）。 */
+	private continuationDraftContainerEl: HTMLElement | null = null;
 	private pendingCommit: Promise<void> | null = null;
 	/** 自动落盘节流器（视图级单例，编辑期间复用） */
 	private readonly autosave: AutosaveScheduler = createAutosaveScheduler(
@@ -832,6 +838,29 @@ export class IOTOTaskView extends TextFileView {
 	}
 
 	/**
+	 * 编辑态 `Shift+Enter`：进入该卡续写区——
+	 * 已有续行 → 编辑它（`beginContinuationEdit`）；无续行 → 起一个空草稿
+	 * （`beginNewContinuationEdit`）。与 Markdown View「`Enter` 新起一条 /
+	 * `Shift+Enter` 软换行续写」的手感一致。
+	 *
+	 * 注：选择态 `Shift+Enter` 仍是 `insertSibling`（新建同级任务），本条只服务编辑态；
+	 * 两态语义不同是 Johnny 拍板保留的（[[Plan-20261004-222507]] §七）。
+	 */
+	private async beginContinuationOrNew(line: number): Promise<void> {
+		if (!this.supportsInlineEdit() || !this.file) {
+			return; // 只读降级：静默（同「添加任务」口径）
+		}
+		if (this.continuationLine === line && this.continuationHandle) {
+			return; // 同一张卡重复按 = no-op（对齐 beginContinuationEdit 的短路）
+		}
+		if (this.countContinuationLines(line) > 0) {
+			await this.beginContinuationEdit(line);
+			return;
+		}
+		await this.beginNewContinuationEdit(line);
+	}
+
+	/**
 	 * 视口兜底：结构性变更（回车新建末行 / 删除）后目标卡可能在视口外，
 	 * `block:'nearest'` 只在确实出视口时才滚动（[[Plan-20261003-094145]] §5.4）。
 	 * `select` 与 `beginEdit` 共用。
@@ -1200,6 +1229,99 @@ export class IOTOTaskView extends TextFileView {
 		handle.focus();
 	}
 
+	/**
+	 * 起一个**空草稿**续行编辑器（磁盘上尚无可编辑的续行块）。
+	 *
+	 * 与 `beginContinuationEdit` 同构，差别只在：空种子 / 磁盘上无块（不读块范围）/
+	 * 卡片底部无 `.card-continuation` 时临时建一个（`continuationDraftContainerEl`）。
+	 * **有内容才落盘**（空草稿在磁盘上不可表示，`isTaskContinuationLine('')` 恒 `false`）；
+	 * 提交统一走 `commitContinuationEdit` 的「任务行展开」分支。
+	 */
+	private async beginNewContinuationEdit(line: number): Promise<void> {
+		if (!this.supportsInlineEdit() || !this.file) {
+			new Notice(t('notice.iotoTaskView.inlineEditUnavailable'));
+			return;
+		}
+		if (this.continuationLine === line && this.continuationHandle) {
+			return;
+		}
+
+		// 切换：先提交另一个编辑器（标题 / 另一条续行），互斥
+		await this.commitEdit();
+		await this.commitContinuationEdit();
+
+		const file = this.file;
+		if (!file) {
+			return;
+		}
+		const cardEl = this.queryCard(line);
+		if (!cardEl) {
+			return;
+		}
+		if (continuationIndentForTaskLine(this.lineAt(line)) === null) {
+			return; // 非任务行（DOM 与 data 不一致的兜底）
+		}
+
+		// 卡片底部：无续行容器则临时建一个（草稿专用）
+		let contEl = cardEl.querySelector<HTMLElement>(
+			'.ioto-task-view__card-continuation',
+		);
+		let createdContainer = false;
+		if (!contEl) {
+			contEl = cardEl.createDiv({
+				cls: 'ioto-task-view__card-continuation',
+				attr: { 'data-line': String(line) },
+			});
+			createdContainer = true;
+		}
+		contEl.addClass('is-editing');
+		// 防御：同一容器只允许一个编辑器宿主（历史空壳先清掉）
+		contEl
+			.querySelectorAll(':scope > .ioto-task-view__continuation-editor')
+			.forEach((el) => el.remove());
+		const hostEl = contEl.createDiv({
+			cls: 'ioto-task-view__continuation-editor',
+		});
+		this.continuationHostEl = hostEl;
+		this.continuationDraftContainerEl = createdContainer ? contEl : null;
+
+		const handle = await mountEmbeddedEditor({
+			app: this.app,
+			hostEl,
+			component: this,
+			file,
+			initialValue: '', // 空种子：有内容才落盘
+			handlers: {
+				onEnter: (cm) => this.onContinuationEnter(cm),
+				onDeleteEmpty: () => this.onContinuationDeleteEmpty(),
+				onIndent: () => false,
+				onEscape: () => this.onContinuationEscape(),
+				onBlur: () => void this.commitContinuationEdit(),
+				onChange: () => this.autosave.schedule(),
+			},
+		});
+		if (!handle) {
+			contEl.removeClass('is-editing');
+			hostEl.remove();
+			if (createdContainer) {
+				contEl.remove();
+			}
+			this.continuationHostEl = null;
+			this.continuationDraftContainerEl = null;
+			new Notice(t('notice.iotoTaskView.inlineEditUnavailable'));
+			return;
+		}
+
+		this.continuationLine = line;
+		this.continuationStartLine = line + 1; // 草稿期占位，提交时不用
+		this.continuationEndLine = line; // 空区间（start > end）
+		this.continuationOriginalLines = [];
+		this.continuationIsNew = true;
+		this.continuationHandle = handle;
+		this.applySelection(line);
+		handle.focus();
+	}
+
 	/** 续行编辑器：`Enter` / `Shift+Enter` 都在光标处换行，不新建任务。 */
 	private onContinuationEnter(cm: EditorView): boolean {
 		const sel = cm.state.selection.main;
@@ -1240,6 +1362,9 @@ export class IOTOTaskView extends TextFileView {
 	/**
 	 * 提交 / 删段：读编辑器正文（去末尾空行）→ 按原公共前缀重新缩进写回。
 	 *
+	 * - **新建草稿**（`continuationIsNew`）：走「任务行展开」`commitTaskLineAction`，
+	 *   缩进从任务行推导；空草稿不落盘（磁盘上不可表示空续行）；
+	 * - **既有块**：`commitTaskContinuation` 整段替换（`''` → 删段，语义不变）；
 	 * - `forceEmpty`（空内容 `Backspace`）直接视为删段；
 	 * - 续行行数会变、后续卡 `data-line` 会漂 → `ok` 后整树重建；
 	 * - `conflict` 拉权威内容重绘；`unchanged` 不写盘、不重绘。
@@ -1261,15 +1386,44 @@ export class IOTOTaskView extends TextFileView {
 		const startLine = this.continuationStartLine;
 		const endLine = this.continuationEndLine;
 		const originalLines = this.continuationOriginalLines;
+		const isNew = this.continuationIsNew;
 		const file = this.file;
 		this.destroyContinuationEditor();
 
-		const outcome = await commitTaskContinuation(this.app, file, {
-			startLine,
-			endLine,
-			originalLines,
-			nextText,
-		});
+		// ① 新草稿 + 空内容：磁盘上不可表示空续行 → 不落盘、不重绘
+		if (isNew && nextText.length === 0) {
+			this.continuationLine = null;
+			this.continuationOriginalLines = [];
+			return;
+		}
+
+		let outcome: CommitOutcome;
+		if (isNew) {
+			// ② 新建块：任务行展开成 `[任务行, ...新续行]`，缩进从任务行推导
+			//（空块的 `commonIndentPrefix([])` 恒为 `''`，不能沿用）。
+			const indent = continuationIndentForTaskLine(this.lineAt(line));
+			if (indent === null) {
+				this.continuationLine = null;
+				this.continuationOriginalLines = [];
+				return;
+			}
+			outcome = await commitTaskLineAction(this.app, file, {
+				line,
+				originalLine: this.lineAt(line),
+				transform: (raw) => [
+					raw,
+					...indentContinuationLines(nextText, indent),
+				],
+				insertAfterContinuations: true, // 与既有续行（若竞态中出现）不抢位
+			});
+		} else {
+			outcome = await commitTaskContinuation(this.app, file, {
+				startLine,
+				endLine,
+				originalLines,
+				nextText,
+			});
+		}
 		this.continuationLine = null;
 		this.continuationOriginalLines = [];
 		this.applyOutcome(outcome);
@@ -1310,6 +1464,13 @@ export class IOTOTaskView extends TextFileView {
 				?.querySelector('.ioto-task-view__card-continuation')
 				?.removeClass('is-editing');
 		}
+		// 新建草稿时临时建的空续行容器：一并回收，绝不留空壳
+		if (this.continuationDraftContainerEl) {
+			const el = this.continuationDraftContainerEl;
+			this.continuationDraftContainerEl = null;
+			el.remove();
+		}
+		this.continuationIsNew = false;
 	}
 
 	/**
@@ -1377,6 +1538,9 @@ export class IOTOTaskView extends TextFileView {
 	 * （起止行号 + 原文），否则下一次落盘用旧序列判 `conflict`。
 	 */
 	private async autosaveContinuation(): Promise<void> {
+		if (this.continuationIsNew) {
+			return; // 草稿不自动落盘：首次写入统一由 blur / Esc 的 commitContinuationEdit 完成
+		}
 		const handle = this.continuationHandle;
 		const line = this.continuationLine;
 		const file = this.file;
@@ -1526,24 +1690,13 @@ export class IOTOTaskView extends TextFileView {
 		// 新行落点 = 「任务行 + 其下连续续行」之后
 		const nextEditLine = line + 1 + this.countContinuationLines(line);
 
-		// Shift+Enter：新建**空**同级任务，不拆分正文（保存当前编辑器全文到原任务）
+		// Shift+Enter：进入 / 新增续写区（标题正文的落盘交给 beginContinuationOrNew
+		// 内部的 commitEdit）——与 Markdown View 的「Shift+Enter 软换行续写」手感一致。
+		// 选择态 Shift+Enter 仍是新建同级任务（insertSibling），此处只改编辑态。
 		if (shiftKey) {
 			// 延后一拍执行，避免在核心编辑器自己的 keymap 回调里同步卸载它。
 			window.setTimeout(() => {
-				void this.runLineAction(
-					line,
-					originalLine,
-					(raw) => {
-						const first = replaceTaskBody(raw, text);
-						const sibling = buildSiblingTaskLine(raw, '');
-						if (first === null || sibling === null) {
-							return null;
-						}
-						return [first, sibling];
-					},
-					nextEditLine,
-					{ insertAfterContinuations: true },
-				);
+				void this.beginContinuationOrNew(line);
 			}, 0);
 			return true;
 		}

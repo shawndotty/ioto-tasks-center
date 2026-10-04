@@ -11,8 +11,10 @@ const {
 	buildTopLevelTaskLine,
 	collectTaskContinuations,
 	commonIndentPrefix,
+	continuationIndentForTaskLine,
 	dedentLines,
 	findSectionByTitle,
+	indentContinuationLines,
 	isTaskContinuationLine,
 	sectionHasChecklist,
 } = await jiti.import('../src/tasks-center/note-structure.ts');
@@ -332,4 +334,54 @@ test('commonIndentPrefix：无公共前缀 / 单行 / 全空行', () => {
 	assert.equal(commonIndentPrefix(['    单行']), '    ');
 	assert.equal(commonIndentPrefix(['', '   ']), '');
 	assert.equal(commonIndentPrefix([]), '');
+});
+
+/* ------------------------------------------------------------------ *
+ * continuationIndentForTaskLine / indentContinuationLines
+ *（「编辑态 Shift+Enter 新增续写区」的缩进推导，[[Plan-20261004-222507]] §5.1）
+ * ------------------------------------------------------------------ */
+
+test('continuationIndentForTaskLine：续行与任务正文左对齐（`- [ ] ` 共 6 列）', () => {
+	assert.equal(continuationIndentForTaskLine('- [ ] 甲'), '      ');
+	// 嵌套：缩进原样保留，再补 6 → 不漂
+	assert.equal(continuationIndentForTaskLine('  - [ ] 甲'), '        ');
+	// 有序列表：'1. ' 共 3 列 + `[ ] ` 4 列
+	assert.equal(continuationIndentForTaskLine('1. [ ] 甲'), '       ');
+	// 无 gap：正文紧跟 `]`，缩进同样对齐到正文列
+	assert.equal(continuationIndentForTaskLine('- [ ]甲'), '     ');
+	// Tab 缩进原样保留（含 Tab），只在标记 / `[x]` / gap 上补空格
+	assert.equal(continuationIndentForTaskLine('\t- [ ] 甲'), '\t      ');
+});
+
+test('continuationIndentForTaskLine：非任务行返回 null', () => {
+	assert.equal(continuationIndentForTaskLine('不是任务行'), null);
+	assert.equal(continuationIndentForTaskLine('- 普通列表项'), null);
+	assert.equal(continuationIndentForTaskLine('      续行'), null);
+	assert.equal(continuationIndentForTaskLine(''), null);
+});
+
+test('indentContinuationLines：按缩进展开物理行，空行保持空行', () => {
+	assert.deepEqual(indentContinuationLines('一\n\n二', '      '), [
+		'      一',
+		'',
+		'      二',
+	]);
+	// 单行 / 末尾空行
+	assert.deepEqual(indentContinuationLines('甲补充', '      '), ['      甲补充']);
+	assert.deepEqual(indentContinuationLines('甲\n', '      '), [
+		'      甲',
+		'',
+	]);
+});
+
+test('continuationIndentForTaskLine + indentContinuationLines：产出能被解析回续行', () => {
+	const indent = continuationIndentForTaskLine('- [ ] 甲');
+	assert.equal(indent, '      ');
+	const physical = indentContinuationLines('补充一\n补充二', indent);
+	// 每一行都是合法续行（会被 collectTaskContinuations 吸进卡片）
+	for (const line of physical) {
+		assert.equal(isTaskContinuationLine(line), true);
+	}
+	// 与 Markdown View 的 dedent 口径互逆
+	assert.equal(dedentLines(physical.join('\n')), '补充一\n补充二');
 });

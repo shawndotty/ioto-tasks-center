@@ -786,6 +786,34 @@ export function splitTaskLine(line: string): TaskLineParts | null {
 }
 
 /**
+ * 任务行的续行缩进：让续行正文与任务正文**左对齐**（`- [ ] 甲` → 6 空格）。
+ *
+ * 复用 `splitTaskLine`；非任务行返回 `null`。`indent` 原样保留（含 Tab），只在
+ * 「列表符号 + `[x]` + gap」上补空格，避免嵌套层级漂移。用于「新建续写区」时从
+ * **任务行**推导缩进——`commonIndentPrefix([])` 恒为 `''`，不能沿用空块前缀。
+ */
+export function continuationIndentForTaskLine(line: string): string | null {
+	const parts = splitTaskLine(line);
+	if (!parts) {
+		return null;
+	}
+	// listMarker 已含其后空白；`[x]` 恒 3 字符（'[' + 勾选位 + ']'）；gap 是 `]` 之后的空白。
+	return (
+		parts.indent + ' '.repeat(parts.listMarker.length + 3 + parts.gap.length)
+	);
+}
+
+/** 把编辑器正文按给定缩进展开成续行物理行（空行保持空行）。 */
+export function indentContinuationLines(
+	nextText: string,
+	indent: string,
+): string[] {
+	return nextText
+		.split('\n')
+		.map((line) => (line.trim().length === 0 ? '' : indent + line));
+}
+
+/**
  * 面板写回后，内联编辑器应持有的正文：剥离本行**所有**控制项
  * （`depends：` / `[model::]` / `#ioto/*`）；非任务行返回 `null`。
  * 修复 [[Plan-20261003-141212]]：写回成功后 re-seed 编辑器，避免随后的 blur
