@@ -7,7 +7,10 @@ const {
 	parseSections,
 	parseChecklistItems,
 	parseChecklistItemsInRange,
+	buildTasksSectionHeading,
 	buildTopLevelTaskLine,
+	findSectionByTitle,
+	sectionHasChecklist,
 } = await jiti.import('../src/tasks-center/note-structure.ts');
 
 test('frontmatter 不进 Section，frontmatter 与首标题之间的正文进引导区', () => {
@@ -196,4 +199,29 @@ test('buildTopLevelTaskLine：强制 0 级、保留列表符号、不继承控�
 test('buildTopLevelTaskLine：参照行不是任务行时退回默认 - 列表符号', () => {
 	assert.equal(buildTopLevelTaskLine('- ', ''), '- [ ] ');
 	assert.equal(buildTopLevelTaskLine('普通行', '新'), '- [ ] 新');
+});
+
+/* ------------------------------------------------------------------ *
+ * buildTasksSectionHeading（「添加任务」在文末新建 Section）
+ * ------------------------------------------------------------------ */
+
+test('buildTasksSectionHeading：补 `# ` 成为一级标题，两侧空白收敛', () => {
+	assert.equal(buildTasksSectionHeading('任务'), '# 任务');
+	assert.equal(buildTasksSectionHeading(' Tasks '), '# Tasks');
+	assert.equal(buildTasksSectionHeading('任務'), '# 任務');
+});
+
+test('buildTasksSectionHeading：写出的标题行能被解析成 Section 并被回查命中', () => {
+	// 回归：曾只写裸标题 `任务`，产出普通段落 —— 既不成为 Section，
+	// 也让下一次「添加任务」找不到段而重复建段。
+	const content = [buildTasksSectionHeading('任务'), buildTopLevelTaskLine('- ')].join(
+		'\n',
+	);
+
+	assert.deepEqual(parseSections(content), [
+		{ level: 1, title: '任务', startLine: 0, endLine: 1 },
+	]);
+	// 语言包存的是裸标题，回查按裸标题匹配 → 必须能命中刚建的那一段
+	assert.equal(findSectionByTitle(content, '任务')?.startLine, 0);
+	assert.equal(sectionHasChecklist(content, parseSections(content)[0]), true);
 });

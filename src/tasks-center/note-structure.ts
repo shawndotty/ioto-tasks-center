@@ -755,6 +755,17 @@ export function buildSiblingTaskLine(
 }
 
 /**
+ * 「添加任务」专用：拼出 `# <title>` 标题行（一号标题）。
+ *
+ * 语言包里只存**裸标题**（`任务` / `Tasks` / `任務`），因为 `findSectionByTitle`
+ * 按去 `#` 的标题文本精确匹配；写进笔记时必须补 `# `，否则建出的是普通段落，
+ * 既不会被识别成 Section，也定位不到刚建的那一段。
+ */
+export function buildTasksSectionHeading(title: string): string {
+	return `# ${title.trim()}`;
+}
+
+/**
  * 「添加任务」专用：在参照行基础上**强制 0 级顶层**（`indent: ''`），
  * 保留列表符号与行尾空白，不继承控制项。参照行不是任务行（如新建 Section
  * 时的 `'- '`）时退回默认 `- ` 列表符号，保证仍能产出合法空任务行。

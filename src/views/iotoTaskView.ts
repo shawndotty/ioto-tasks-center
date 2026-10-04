@@ -44,6 +44,7 @@ import {
 } from '../tasks-center/frontmatter-properties';
 import {
 	buildSiblingTaskLine,
+	buildTasksSectionHeading,
 	buildTopLevelTaskLine,
 	findSectionByTitle,
 	parseChecklistItems,
@@ -1426,8 +1427,12 @@ export class IOTOTaskView extends TextFileView {
 			return;
 		}
 
-		// 无 Section → 文末新建 `# 任务`（en `Tasks`）再建任务。
-		const sectionTitle = t('view.iotoTaskView.tasksSectionTitle');
+		// 无 Section → 文末新建 `# 任务`（en `# Tasks`）再建任务。
+		// 裸标题只用于 findTasksSection 的精确匹配（见 :1471），写进笔记时必须补 `# `，
+		// 否则建出的是普通段落而非标题块。
+		const sectionTitle = buildTasksSectionHeading(
+			t('view.iotoTaskView.tasksSectionTitle'),
+		);
 		const lines = this.data.split('\n');
 		const lastIndex = lines.length - 1;
 		const lastLine = lines[lastIndex] ?? '';
