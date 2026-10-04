@@ -2131,6 +2131,78 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	gap: var(--ioto-tv-gap);
 }
 
+/* 顶部固定控制栏 + 列表容器（[[Plan-20261004-110845]] 批次 A/G）
+   - `__toolbar` 常驻、不随列表滚动；`__body` 承接列表并自己滚动。 */
+.ioto-task-view__toolbar {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--ioto-tv-gap);
+	padding: var(--ioto-tv-pad-y) var(--ioto-tv-pad-x);
+	border-bottom: 1px solid var(--ioto-tv-border);
+}
+
+.ioto-task-view__toolbar-left,
+.ioto-task-view__toolbar-right {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.ioto-task-view__toolbar-right {
+	margin-inline-start: auto;
+}
+
+.ioto-task-view__body {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+.ioto-task-view__toggle,
+.ioto-task-view__action {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 4px 10px;
+	font-size: var(--font-ui-smaller);
+	line-height: 1.2;
+	color: var(--text-muted);
+	background: var(--background-primary);
+	border: 1px solid var(--ioto-tv-border);
+	border-radius: var(--radius-s);
+	box-shadow: none;
+	cursor: pointer;
+}
+
+.ioto-task-view__toggle:hover,
+.ioto-task-view__action:hover {
+	color: var(--text-normal);
+	border-color: var(--ioto-tv-accent);
+}
+
+.ioto-task-view__toggle[aria-pressed="true"] {
+	color: var(--text-on-accent);
+	background: var(--ioto-tv-accent);
+	border-color: var(--ioto-tv-accent);
+}
+
+.ioto-task-view__toolbar-icon {
+	display: inline-flex;
+}
+
+.ioto-task-view__toolbar-icon svg {
+	width: 14px;
+	height: 14px;
+}
+
+.ioto-task-view__action.is-hidden {
+	display: none;
+}
+
 .ioto-task-view__section {
 	border: 1px solid var(--ioto-tv-border);
 	border-radius: var(--ioto-tv-radius);
@@ -2412,6 +2484,16 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	padding: var(--size-4-2, 8px);
 }
 
+/* 移动端：控制栏只留图标（文案已进 aria-label / title），避免按钮过宽换行 */
+.is-phone .ioto-task-view__toolbar-label {
+	display: none;
+}
+
+.is-phone .ioto-task-view__toggle,
+.is-phone .ioto-task-view__action {
+	padding: 6px 10px;
+}
+
 /* ============================================================
    IOTOTask 视图 · 玻璃拟态风格（`.is-glass`）
    - 在既有 `card` 风格之上新增的一套外观，通过设置 `appearanceStyle` 切换。
@@ -2480,6 +2562,30 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	z-index: 1;
 	padding: var(--ioto-tv-scroll-pad);
 	gap: var(--ioto-tv-section-gap);
+}
+
+/* 控制栏同样要浮在 Aurora 背景层（`::before`，z-index:0）之上 */
+.ioto-task-view.is-glass .ioto-task-view__toolbar,
+.ioto-task-view.is-glass .ioto-task-view__body {
+	position: relative;
+	z-index: 1;
+}
+
+.ioto-task-view.is-glass .ioto-task-view__toolbar {
+	border-bottom: 1px solid var(--ioto-tv-glass-border);
+}
+
+.ioto-task-view.is-glass .ioto-task-view__toggle,
+.ioto-task-view.is-glass .ioto-task-view__action {
+	background: var(--ioto-tv-glass-bg);
+	border-color: var(--ioto-tv-glass-border);
+	border-radius: var(--ioto-tv-radius-pill);
+}
+
+.ioto-task-view.is-glass .ioto-task-view__toggle[aria-pressed="true"] {
+	color: var(--text-on-accent);
+	background: var(--ioto-tv-accent);
+	border-color: var(--ioto-tv-accent);
 }
 
 /* Section = 玻璃卡 */

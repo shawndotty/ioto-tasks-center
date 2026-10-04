@@ -537,6 +537,14 @@ const en = {
 	'view.iotoTaskView.selectCardHint': 'Click to select, click again to edit',
 	'view.iotoTaskView.selectedHint':
 		'Selected: Enter to edit · Del to delete · ↑↓ to move · Cmd+Enter to toggle · Cmd+↑↓ to jump',
+	'view.iotoTaskView.toolbar.toggleTaskBlocks': 'Only task blocks',
+	'view.iotoTaskView.toolbar.toggleTaskBlocksTooltip':
+		'Show only sections that contain a task list',
+	'view.iotoTaskView.toolbar.togglePending': 'Only unfinished',
+	'view.iotoTaskView.toolbar.togglePendingTooltip': 'Hide completed tasks',
+	'view.iotoTaskView.toolbar.runTask': 'Run tasks',
+	'view.iotoTaskView.toolbar.addTask': 'Add task',
+	'view.iotoTaskView.tasksSectionTitle': 'Tasks',
 	'view.iotoTaskView.badge.depends': 'Depends ×{0}',
 	'view.iotoTaskView.badge.dependsIndex': 'Depends #{0}',
 	'view.iotoTaskView.badge.agent': 'Agent: {0}',
@@ -551,6 +559,8 @@ const en = {
 		'Inline editing is unavailable in this Obsidian version. Edit in Markdown instead.',
 	'notice.iotoTaskView.bodyMultilineRejected':
 		'Task text does not support line breaks.',
+	'notice.iotoTaskView.runTaskUnavailable':
+		'The IOTO Settings plugin is not enabled; cannot run tasks.',
 	'notice.openAsIOTOTaskNoFile': 'No task file is open.',
 	'notice.openAsIOTOTaskNotTaskNote': 'This file is not a task note.',
 } as const;

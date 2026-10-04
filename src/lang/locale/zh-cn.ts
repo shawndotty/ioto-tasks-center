@@ -494,6 +494,13 @@ const zhCN = {
 	'view.iotoTaskView.checkboxToggle': '切换任务完成状态：{0}',
 	'view.iotoTaskView.selectCardHint': '点击选中，再点编辑',
 	'view.iotoTaskView.selectedHint': '已选中：Enter 编辑 · Del 删除 · ↑↓ 切换 · Cmd+Enter 完成 · Cmd+↑↓ 首尾',
+	'view.iotoTaskView.toolbar.toggleTaskBlocks': '只显示任务区块',
+	'view.iotoTaskView.toolbar.toggleTaskBlocksTooltip': '只显示包含任务列表的章节',
+	'view.iotoTaskView.toolbar.togglePending': '只显示未完成',
+	'view.iotoTaskView.toolbar.togglePendingTooltip': '隐藏已完成任务',
+	'view.iotoTaskView.toolbar.runTask': '执行任务',
+	'view.iotoTaskView.toolbar.addTask': '添加任务',
+	'view.iotoTaskView.tasksSectionTitle': '任务',
 	'view.iotoTaskView.badge.depends': '依赖×{0}',
 	'view.iotoTaskView.badge.dependsIndex': '依赖#{0}',
 	'view.iotoTaskView.badge.agent': 'Agent：{0}',
@@ -506,6 +513,7 @@ const zhCN = {
 	'notice.iotoTaskView.inlineEditUnavailable':
 		'当前 Obsidian 版本不支持内联编辑，请在 Markdown 中编辑。',
 	'notice.iotoTaskView.bodyMultilineRejected': '任务正文不支持换行。',
+	'notice.iotoTaskView.runTaskUnavailable': '未启用 IOTO Settings 插件，无法执行任务。',
 	'notice.openAsIOTOTaskNoFile': '当前没有打开任务文件。',
 	'notice.openAsIOTOTaskNotTaskNote': '该文件不是任务笔记。',
 } as const;

@@ -402,6 +402,56 @@ export function parseChecklistItemsInRange(
 	);
 }
 
+/* ------------------------------------------------------------------ *
+ * 视图过滤谓词（[[Plan-20261004-110845]] 批次 B/C）
+ *
+ * 纯函数：只吃解析结果，零 obsidian 依赖，供 IOTOTask 视图与单测共用。
+ * ------------------------------------------------------------------ */
+
+/** 该条目是否已完成（`[x]` / `[X]`）。 */
+export function isChecklistItemDone(item: NoteChecklistItem): boolean {
+	return item.marker.toLowerCase() === 'x';
+}
+
+/**
+ * 该 Section（Block）体内是否含 Markdown 任务列表。
+ *
+ * 与渲染层 `renderSectionBody` 同一口径取正文起点：引导区（level 0）从
+ * `startLine` 起，标题块从标题行下一行起；`endLine` 已覆盖嵌套子标题内容，
+ * 因此「任务只写在嵌套子标题里」的父块也会判为任务区块。
+ * `includeEmpty: true`：空骨架任务行（`- [ ] `）同样算数。
+ */
+export function sectionHasChecklist(
+	content: string,
+	section: NoteSection,
+): boolean {
+	const bodyStartLine =
+		section.level === 0 ? section.startLine : section.startLine + 1;
+	return (
+		parseChecklistItemsInRange(content, bodyStartLine, section.endLine, {
+			includeEmpty: true,
+		}).length > 0
+	);
+}
+
+/**
+ * 按标题精确匹配（去两侧空白）找到最靠前的 Section；找不到返回 `null`。
+ * 仅匹配真标题块（level > 0）；引导区标题为 `''`，不会被命中。
+ */
+export function findSectionByTitle(
+	content: string,
+	title: string,
+): NoteSection | null {
+	const target = title.trim();
+	for (const section of parseSections(content)) {
+		if (section.level > 0 && section.title.trim() === target) {
+			return section;
+		}
+	}
+
+	return null;
+}
+
 function collectChecklistItems(
 	content: string,
 	startLine: number,
@@ -696,6 +746,42 @@ export function buildSiblingTaskLine(
 	const body = text.trim();
 	return composeTaskLine({
 		...parts,
+		checked: marker,
+		body,
+		controls: [],
+		source: body,
+		sourceText: body,
+	});
+}
+
+/**
+ * 「添加任务」专用：在参照行基础上**强制 0 级顶层**（`indent: ''`），
+ * 保留列表符号与行尾空白，不继承控制项。参照行不是任务行（如新建 Section
+ * 时的 `'- '`）时退回默认 `- ` 列表符号，保证仍能产出合法空任务行。
+ */
+export function buildTopLevelTaskLine(
+	referenceLine: string,
+	text = '',
+	marker: ' ' | 'x' = ' ',
+): string {
+	const parts = splitTaskLine(referenceLine);
+	const base: TaskLineParts =
+		parts ??
+		{
+			indent: '',
+			listMarker: '- ',
+			checked: ' ',
+			gap: ' ',
+			body: '',
+			controls: [],
+			source: '',
+			sourceText: '',
+			trail: '',
+		};
+	const body = text.trim();
+	return composeTaskLine({
+		...base,
+		indent: '',
 		checked: marker,
 		body,
 		controls: [],

@@ -28,6 +28,7 @@ import {
 	Platform,
 	setIcon,
 	TextFileView,
+	type App,
 	type HoverPopover,
 	type TFile,
 	type ViewStateResult,
@@ -37,7 +38,14 @@ import {
 import { t } from '../lang/helpter';
 import type { TaskViewAppearanceStyle } from '../settings';
 import {
+	readBooleanProperty,
+	readScalarProperty,
+	writeScalarProperties,
+} from '../tasks-center/frontmatter-properties';
+import {
 	buildSiblingTaskLine,
+	buildTopLevelTaskLine,
+	findSectionByTitle,
 	parseChecklistItems,
 	replaceTaskBody,
 	setTaskIndent,
@@ -46,6 +54,8 @@ import {
 } from '../tasks-center/note-structure';
 import {
 	collectCardLines,
+	pickAdjacentLine,
+	pickEdgeLine,
 	pickLineAfterDelete,
 } from './ioto-task/card-navigation';
 import {
@@ -70,6 +80,7 @@ import {
 	renderCardActions,
 	renderTaskNote,
 	type TaskNoteEditing,
+	type TaskNoteFilters,
 	type TaskNoteLinks,
 } from './ioto-task/render-note';
 import {
@@ -82,6 +93,19 @@ export { IOTO_TASK_VIEW_TYPE };
 
 /** 自动落盘窗口：与核心 2000ms 对齐；移动端 I/O 与电量敏感，放宽一档。 */
 const AUTOSAVE_INTERVAL_MS = Platform.isMobile ? 4000 : 2000;
+
+/** 过滤开关的 frontmatter 属性名（唯一真源，[[Plan-20261004-110845]] §二.1）。 */
+const PROPERTY_ONLY_TASK_BLOCKS = 'iotoTaskViewOnlyTaskBlocks';
+const PROPERTY_ONLY_PENDING = 'iotoTaskViewOnlyPending';
+
+/** ③「执行任务」由 ioto-settings 注册的命令 ID（按钮只派发，粒度交给对方）。 */
+const RUN_TASK_COMMAND_ID = 'ioto-settings:ioto-run-task';
+
+/** `app.commands` 的最小可判定形状（照抄 task-creation.ts 的 `CommandRegistryLike` 口径）。 */
+interface CommandRegistryLike {
+	executeCommandById?: (commandId: string) => unknown;
+	commands?: Record<string, unknown>;
+}
 
 /** IOTOTask 视图供「条目控制」桥接读写当前编辑卡片的宿主（见 item-control-bridge.ts）。 */
 export interface ItemControlBridgeHost {
@@ -143,6 +167,18 @@ export class IOTOTaskView extends TextFileView {
 		{
 			hoverPopover: null,
 		};
+	/**
+	 * 顶部固定控制栏（[[Plan-20261004-110845]] 批次 A）：`__toolbar` + `__body` 是
+	 * 常驻外壳，`renderNote` 只重建 `__body` 内容，栏不随列表滚动、重绘不闪。
+	 */
+	private toolbarEl: HTMLElement | null = null;
+	private bodyEl: HTMLElement | null = null;
+	private toggleTaskBlocksEl: HTMLButtonElement | null = null;
+	private togglePendingEl: HTMLButtonElement | null = null;
+	private runTaskEl: HTMLButtonElement | null = null;
+	private addTaskEl: HTMLButtonElement | null = null;
+	/** 过滤开关运行态：**每次 renderNote 从 `this.data`（frontmatter）重读**，不持久化。 */
+	private filters: TaskNoteFilters = { onlyTaskBlocks: false, onlyPending: false };
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -186,7 +222,10 @@ export class IOTOTaskView extends TextFileView {
 		this.editingLine = null;
 		this.selectedLine = null;
 		this.editingOriginalLine = '';
-		this.contentEl.empty();
+		// 保留常驻外壳（toolbar / body），只清列表内容。
+		this.bodyEl?.empty();
+		this.filters = { onlyTaskBlocks: false, onlyPending: false };
+		this.refreshToolbarState();
 		this.data = '';
 		this.lastLoadedText = '';
 		this.collapsedSections.clear();
@@ -226,6 +265,8 @@ export class IOTOTaskView extends TextFileView {
 		this.contentEl.addClass('ioto-task-view');
 		// 按设置挂 / 去 `.is-glass`（玻璃风格），保证打开即应用当前外观（[[Plan-20261003-215547]] §7.1）。
 		this.applyAppearanceStyle();
+		// 常驻控制栏 + 列表容器（批次 A）：栏固定，renderNote 只重建 body。
+		this.buildToolbar();
 
 		// 外部写入（含 Phase 2 的 AI 回写）→ 重读重绘；编辑期间由 editingLine 抑制。
 		this.registerEvent(
@@ -236,6 +277,238 @@ export class IOTOTaskView extends TextFileView {
 				void this.reloadFromVault();
 			}),
 		);
+	}
+
+	/* ------------------------------------------------------------------ *
+	 * 顶部控制栏（[[Plan-20261004-110845]] 批次 A）
+	 * ------------------------------------------------------------------ */
+
+	/** 建常驻外壳：`__toolbar`（固定）+ `__body`（可滚）。幂等，重绘不重建。 */
+	private buildToolbar(): void {
+		if (
+			this.toolbarEl?.isConnected &&
+			this.bodyEl?.isConnected
+		) {
+			return;
+		}
+
+		const toolbarEl = this.contentEl.createDiv({
+			cls: 'ioto-task-view__toolbar',
+		});
+		const leftEl = toolbarEl.createDiv({
+			cls: 'ioto-task-view__toolbar-left',
+		});
+		const rightEl = toolbarEl.createDiv({
+			cls: 'ioto-task-view__toolbar-right',
+		});
+
+		this.toggleTaskBlocksEl = this.createToolbarButton(leftEl, {
+			cls: 'ioto-task-view__toggle',
+			icon: 'list-todo',
+			label: t('view.iotoTaskView.toolbar.toggleTaskBlocks'),
+			title: t('view.iotoTaskView.toolbar.toggleTaskBlocksTooltip'),
+			attr: { 'data-filter': 'task-blocks' },
+			onClick: () => {
+				void this.toggleFilter('onlyTaskBlocks');
+			},
+		});
+		this.togglePendingEl = this.createToolbarButton(leftEl, {
+			cls: 'ioto-task-view__toggle',
+			icon: 'circle-check-big',
+			label: t('view.iotoTaskView.toolbar.togglePending'),
+			title: t('view.iotoTaskView.toolbar.togglePendingTooltip'),
+			attr: { 'data-filter': 'pending' },
+			onClick: () => {
+				void this.toggleFilter('onlyPending');
+			},
+		});
+		this.runTaskEl = this.createToolbarButton(rightEl, {
+			cls: 'ioto-task-view__action',
+			icon: 'play',
+			label: t('view.iotoTaskView.toolbar.runTask'),
+			title: t('view.iotoTaskView.toolbar.runTask'),
+			attr: { 'data-action': 'run-task' },
+			onClick: () => {
+				void this.runTask();
+			},
+		});
+		this.addTaskEl = this.createToolbarButton(rightEl, {
+			cls: 'ioto-task-view__action',
+			icon: 'plus',
+			label: t('view.iotoTaskView.toolbar.addTask'),
+			title: t('view.iotoTaskView.toolbar.addTask'),
+			attr: { 'data-action': 'add-task' },
+			onClick: () => {
+				void this.addTask();
+			},
+		});
+
+		this.bodyEl = this.contentEl.createDiv({ cls: 'ioto-task-view__body' });
+		this.toolbarEl = toolbarEl;
+		this.refreshToolbarState();
+	}
+
+	private createToolbarButton(
+		parentEl: HTMLElement,
+		options: {
+			cls: string;
+			icon: string;
+			label: string;
+			title: string;
+			attr: Record<string, string>;
+			onClick: () => void;
+		},
+	): HTMLButtonElement {
+		const btn = parentEl.createEl('button', {
+			cls: options.cls,
+			attr: {
+				type: 'button',
+				'aria-label': options.label,
+				title: options.title,
+				...options.attr,
+			},
+		});
+		const iconEl = btn.createSpan({
+			cls: 'ioto-task-view__toolbar-icon',
+		});
+		setIcon(iconEl, options.icon);
+		btn.createSpan({
+			cls: 'ioto-task-view__toolbar-label',
+			text: options.label,
+		});
+		btn.addEventListener('click', (event) => {
+			event.preventDefault();
+			options.onClick();
+		});
+		return btn;
+	}
+
+	/**
+	 * 按 `this.filters` 刷新栏态：两个 toggle 的 `aria-pressed`；只读态隐藏「添加任务」。
+	 * `aria-pressed` 以**属性真源**为准（`renderNote` 每次刷新），不缓存按钮内部状态。
+	 */
+	private refreshToolbarState(): void {
+		this.toggleTaskBlocksEl?.setAttribute(
+			'aria-pressed',
+			this.filters.onlyTaskBlocks ? 'true' : 'false',
+		);
+		this.togglePendingEl?.setAttribute(
+			'aria-pressed',
+			this.filters.onlyPending ? 'true' : 'false',
+		);
+		// 只读态隐藏「添加任务」：插入后进不了编辑只会剩 Notice（§5.4）。
+		this.addTaskEl?.toggleClass('is-hidden', !this.supportsInlineEdit());
+	}
+
+	/** 从 `this.data`（frontmatter）重读过滤开关；缺失 = 关。 */
+	private reloadFilters(): void {
+		this.filters = {
+			onlyTaskBlocks: readBooleanProperty(
+				this.data,
+				PROPERTY_ONLY_TASK_BLOCKS,
+			),
+			onlyPending: readBooleanProperty(
+				this.data,
+				PROPERTY_ONLY_PENDING,
+			),
+		};
+	}
+
+	/**
+	 * 切换 ① / ②：先 `commitEdit`（避免与落盘交错），一次补齐两个属性键，写盘后
+	 * 按 frontmatter 行数变化平移 `selectedLine` / `collapsedSections`，再整树重绘。
+	 */
+	private async toggleFilter(
+		kind: keyof TaskNoteFilters,
+	): Promise<void> {
+		const file = this.file;
+		if (!file) {
+			return;
+		}
+
+		// 竞态：点开关注定先 blur → 异步 commitEdit；必须先落盘再写属性。
+		await this.commitEdit();
+
+		const oldContent = this.data;
+		const nextValue = !this.filters[kind];
+		const propertyName =
+			kind === 'onlyTaskBlocks'
+				? PROPERTY_ONLY_TASK_BLOCKS
+				: PROPERTY_ONLY_PENDING;
+		const otherName =
+			kind === 'onlyTaskBlocks'
+				? PROPERTY_ONLY_PENDING
+				: PROPERTY_ONLY_TASK_BLOCKS;
+
+		const properties: Record<string, string> = {
+			[propertyName]: nextValue ? 'true' : 'false',
+		};
+		// 首次 toggle 时一次补齐另一个 key（把「行号平移」压成一次性事件）。
+		if (readScalarProperty(oldContent, otherName) === null) {
+			const otherValue = this.filters[
+				kind === 'onlyTaskBlocks' ? 'onlyPending' : 'onlyTaskBlocks'
+			];
+			properties[otherName] = otherValue ? 'true' : 'false';
+		}
+
+		const newContent = await writeScalarProperties(
+			this.app,
+			file,
+			properties,
+		);
+		const delta =
+			newContent.split('\n').length - oldContent.split('\n').length;
+		if (delta !== 0) {
+			this.shiftTrackedLines(delta, oldContent, newContent);
+		}
+
+		// 🔴 红线：data / lastLoadedText 同步，避免 TextFileView 回写旧字节。
+		this.data = newContent;
+		this.lastLoadedText = newContent;
+		this.renderNote(this.data);
+	}
+
+	/**
+	 * frontmatter 增行导致正文行号整体 ±Δ 后，把以行号为基准的跟踪态一起平移
+	 * （[[Plan-20261004-110845]] §5.1）。插入点恒在 frontmatter，故正文整体平移。
+	 */
+	private shiftTrackedLines(
+		delta: number,
+		oldContent: string,
+		newContent: string,
+	): void {
+		const newLines = newContent.split('\n');
+
+		if (this.selectedLine !== null) {
+			const target = this.selectedLine + delta;
+			const oldLine = this.lineAt(this.selectedLine);
+			if (target >= 0 && newLines[target] === oldLine) {
+				this.selectedLine = target;
+			} else {
+				this.selectedLine = null;
+			}
+		}
+
+		const shifted = new Set<string>();
+		for (const key of this.collapsedSections) {
+			// key = `level:startLine:title`（只 split 前两个 `:`，标题可能含 `:`）
+			const firstColon = key.indexOf(':');
+			const secondColon = key.indexOf(':', firstColon + 1);
+			if (firstColon < 0 || secondColon < 0) {
+				continue;
+			}
+			const level = key.slice(0, firstColon);
+			const startLine = Number.parseInt(
+				key.slice(firstColon + 1, secondColon),
+				10,
+			);
+			if (Number.isNaN(startLine)) {
+				continue;
+			}
+			const title = key.slice(secondColon + 1);
+			shifted.add(`${level}:${startLine + delta}:${title}`);
+		}
+		this.collapsedSections = shifted;
 	}
 
 	/**
@@ -280,14 +553,24 @@ export class IOTOTaskView extends TextFileView {
 
 		this.isRendering = true;
 		try {
+			// 兼容「setViewData 先于 onOpen」/ 外壳被清空的时序：缺失时补建。
+			if (!this.bodyEl?.isConnected) {
+				this.buildToolbar();
+			}
+
+			// 过滤开关以 frontmatter 为唯一真源：每次重绘都重读（多视图 / 外部改动自动对齐）。
+			this.reloadFilters();
+			this.refreshToolbarState();
+
 			// 重绘会新建滚动容器（render-note.ts:60），scrollTop 会归零；
 			// 先捕获、render 之后恢复，保证结构性变更（回车新建 / 折叠 Section / 冲突回滚）
 			// 不把用户看到的视口位置丢掉（[[Plan-20261003-094145]] §5.2）。
 			const snapshot = captureIotoTaskScroll(this.contentEl);
-			this.contentEl.empty();
+			// 只重建列表容器，控制栏外壳常驻（批次 A）。
+			this.bodyEl?.empty();
 			renderTaskNote({
 				app: this.app,
-				containerEl: this.contentEl,
+				containerEl: this.bodyEl ?? this.contentEl,
 				content: data,
 				sourcePath: this.file?.path ?? '',
 				component: this,
@@ -302,6 +585,7 @@ export class IOTOTaskView extends TextFileView {
 				},
 				editing: this.buildEditingController(),
 				links: this.buildLinkController(),
+				filters: this.filters,
 			});
 			restoreIotoTaskScroll(this.contentEl, snapshot);
 			// 回填选中类：整树重建后 `selectedLine` 仍在，但不 `focus()`——
@@ -313,13 +597,31 @@ export class IOTOTaskView extends TextFileView {
 		}
 	}
 
-	/** 只按 `selectedLine` 回填 `.is-selected`，不抢焦点。 */
+	/**
+	 * 只按 `selectedLine` 回填 `.is-selected`，不抢焦点。
+	 * 过滤 / 折叠后选中卡可能已不在 DOM（[[Plan-20261004-110845]] §5.5）：
+	 * 退化为「第一张可见卡」或 `null`，避免悬空选中。
+	 */
 	private syncSelectionClass(): void {
 		const line = this.selectedLine;
 		if (line === null) {
 			return;
 		}
-		this.queryCard(line)?.addClass('is-selected');
+
+		const cardEl = this.queryCard(line);
+		if (cardEl) {
+			cardEl.addClass('is-selected');
+			return;
+		}
+
+		const fallback = pickEdgeLine(
+			collectCardLines(this.contentEl),
+			'first',
+		);
+		this.selectedLine = fallback;
+		if (fallback !== null) {
+			this.queryCard(fallback)?.addClass('is-selected');
+		}
 	}
 
 	/* ------------------------------------------------------------------ *
@@ -1058,10 +1360,135 @@ export class IOTOTaskView extends TextFileView {
 		if (outcome.status === 'ok') {
 			this.data = outcome.content;
 			this.lastLoadedText = outcome.content;
+
+			// ② 开启时把新完成的任务「就地移除」（不整树重建，避免跳顶）。
+			if (this.filters.onlyPending && nextMarker === 'x') {
+				// ⚠️ 落点必须用 pickAdjacentLine 取**真实**相邻行号：② 只动 DOM、
+				// 不动文件行，行号不漂移；`pickLineAfterDelete` 的 −1 假设会让选中
+				// 指向一张不存在的卡（[[Plan-20261004-110845]] §5.2）。
+				const order = collectCardLines(this.contentEl);
+				const next =
+					pickAdjacentLine(order, line, 1) ??
+					pickAdjacentLine(order, line, -1);
+				cardEl.remove();
+				if (next !== null) {
+					this.applySelection(next);
+				} else {
+					this.selectedLine = null;
+				}
+			}
 		} else if (outcome.status === 'conflict') {
 			new Notice(t('notice.iotoTaskView.commitConflict'));
 			await this.reloadFromVault();
 			this.renderNote(this.data);
 		}
+	}
+
+	/* ------------------------------------------------------------------ *
+	 * 批次 D — ④「添加任务」：三段式落点（文件末条 → 任务 Section 段首 → 文末建段）
+	 * ------------------------------------------------------------------ */
+
+	private async addTask(): Promise<void> {
+		const file = this.file;
+		if (!file || !this.supportsInlineEdit()) {
+			return;
+		}
+
+		// 先落盘未提交正文，否则 runLineAction 里的 destroyActiveEditor 会丢弃它。
+		await this.commitEdit();
+
+		const items = parseChecklistItems(this.data, { includeEmpty: true });
+		const last = items.length > 0 ? items[items.length - 1] : undefined;
+
+		if (last) {
+			// 文件级末条任务之后追加一条**顶层 0 级**任务。
+			await this.runLineAction(
+				last.line,
+				this.lineAt(last.line),
+				(raw) => [raw, buildTopLevelTaskLine(raw, '')],
+				last.line + 1,
+			);
+			return;
+		}
+
+		const section = this.findTasksSection();
+		if (section) {
+			// 无任务 → 在 `任务`/`Tasks` Section **段首**（标题行下一行）插入。
+			await this.runLineAction(
+				section.startLine,
+				this.lineAt(section.startLine),
+				(heading) => [
+					heading,
+					buildTopLevelTaskLine('- ', ''),
+				],
+				section.startLine + 1,
+			);
+			return;
+		}
+
+		// 无 Section → 文末新建 `# 任务`（en `Tasks`）再建任务。
+		const sectionTitle = t('view.iotoTaskView.tasksSectionTitle');
+		const lines = this.data.split('\n');
+		const lastIndex = lines.length - 1;
+		const lastLine = lines[lastIndex] ?? '';
+		const nextTask = buildTopLevelTaskLine('- ', '');
+
+		if (this.data.length === 0) {
+			await this.runLineAction(
+				0,
+				'',
+				() => [sectionTitle, nextTask],
+				1,
+			);
+			return;
+		}
+
+		if (lastLine.trim() === '') {
+			// 末行已是空行：直接复用为分隔，避免双空行。
+			await this.runLineAction(
+				lastIndex,
+				lastLine,
+				() => ['', sectionTitle, nextTask],
+				lastIndex + 2,
+			);
+			return;
+		}
+
+		await this.runLineAction(
+			lastIndex,
+			lastLine,
+			(raw) => [raw, '', sectionTitle, nextTask],
+			lastIndex + 3,
+		);
+	}
+
+	/** 按当前语言标题（去空白精确相等、多命中取最靠前）找 `任务`/`Tasks` Section。 */
+	private findTasksSection(): ReturnType<typeof findSectionByTitle> {
+		return findSectionByTitle(
+			this.data,
+			t('view.iotoTaskView.tasksSectionTitle'),
+		);
+	}
+
+	/* ------------------------------------------------------------------ *
+	 * 批次 E — ③「执行任务」：派发 ioto-settings 命令（粒度交给对方）
+	 * ------------------------------------------------------------------ */
+
+	private async runTask(): Promise<void> {
+		// executeCommandById 同步派发，对方 resolveRunGate 会立刻读盘 → 先落盘。
+		await this.commitEdit();
+
+		const registry = (this.app as App & { commands?: CommandRegistryLike })
+			.commands;
+		if (
+			!registry?.commands ||
+			!(RUN_TASK_COMMAND_ID in registry.commands) ||
+			!registry.executeCommandById
+		) {
+			new Notice(t('notice.iotoTaskView.runTaskUnavailable'));
+			return;
+		}
+
+		await Promise.resolve(registry.executeCommandById(RUN_TASK_COMMAND_ID));
 	}
 }

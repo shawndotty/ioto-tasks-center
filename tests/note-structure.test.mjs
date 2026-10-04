@@ -7,6 +7,7 @@ const {
 	parseSections,
 	parseChecklistItems,
 	parseChecklistItemsInRange,
+	buildTopLevelTaskLine,
 } = await jiti.import('../src/tasks-center/note-structure.ts');
 
 test('frontmatter 不进 Section，frontmatter 与首标题之间的正文进引导区', () => {
@@ -172,4 +173,27 @@ test('空 checklist 行（无正文）不产出条目', () => {
 		items.map((item) => item.text),
 		['有效'],
 	);
+});
+
+/* ------------------------------------------------------------------ *
+ * buildTopLevelTaskLine（[[Plan-20261004-110845]] 批次 D/H）
+ * ------------------------------------------------------------------ */
+
+test('buildTopLevelTaskLine：强制 0 级、保留列表符号、不继承控制项', () => {
+	// 参照行是深层子任务 → 新行仍为顶层 0 级，正文原样
+	assert.equal(
+		buildTopLevelTaskLine('    - [x] 深层参照 #ioto/turns/0', '新任务'),
+		'- [ ] 新任务',
+	);
+	// 列表符号跟随参照行（有序列表）
+	assert.equal(buildTopLevelTaskLine('  1. [ ] 参照', ''), '1. [ ] ');
+	// 勾选态可指定
+	assert.equal(buildTopLevelTaskLine('- [ ] 参照', '已完成', 'x'), '- [x] 已完成');
+	// 行尾空白（含 CRLF 的 \r）保留
+	assert.equal(buildTopLevelTaskLine('- [ ] 参照\r', '新'), '- [ ] 新\r');
+});
+
+test('buildTopLevelTaskLine：参照行不是任务行时退回默认 - 列表符号', () => {
+	assert.equal(buildTopLevelTaskLine('- ', ''), '- [ ] ');
+	assert.equal(buildTopLevelTaskLine('普通行', '新'), '- [ ] 新');
 });

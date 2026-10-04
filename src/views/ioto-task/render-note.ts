@@ -10,8 +10,10 @@ import { MarkdownRenderer, setIcon, type App, type Component } from 'obsidian';
 
 import { t } from '../../lang/helpter';
 import {
+	isChecklistItemDone,
 	parseChecklistItemsInRange,
 	parseSections,
+	sectionHasChecklist,
 	type ControlKind,
 	type ControlToken,
 	type NoteChecklistItem,
@@ -59,6 +61,14 @@ export interface TaskNoteLinks {
 	hover(event: MouseEvent, linktext: string, targetEl: HTMLElement): void;
 }
 
+/** 视图过滤开关（[[Plan-20261004-110845]] 批次 B/C）。真源在笔记 frontmatter。 */
+export interface TaskNoteFilters {
+	/** ① 只显示任务区块：无任务列表的顶层 Section 整块隐藏 */
+	onlyTaskBlocks: boolean;
+	/** ② 只显示未完成任务：隐藏 `[x]` 卡片（空 Section 仍保留） */
+	onlyPending: boolean;
+}
+
 export interface RenderTaskNoteOptions {
 	app: App;
 	containerEl: HTMLElement;
@@ -71,6 +81,8 @@ export interface RenderTaskNoteOptions {
 	editing: TaskNoteEditing;
 	/** 卡片正文与 Section markdown 里双链的点击 / hover 接管方 */
 	links: TaskNoteLinks;
+	/** 过滤开关（缺省视为全关，兼容旧调用） */
+	filters?: TaskNoteFilters;
 }
 
 interface RenderSectionOptions {
@@ -83,6 +95,7 @@ interface RenderSectionOptions {
 	collapsedSections: Set<string>;
 	onToggleSection: (key: string) => void;
 	editing: TaskNoteEditing;
+	filters: TaskNoteFilters;
 }
 
 /** Section 折叠状态的稳定 key（Level + 起始行 + 标题，重排后不会错位）。 */
@@ -92,12 +105,23 @@ export function getSectionStateKey(section: NoteSection): string {
 
 export function renderTaskNote(options: RenderTaskNoteOptions): void {
 	const { containerEl, content } = options;
+	const filters: TaskNoteFilters = options.filters ?? {
+		onlyTaskBlocks: false,
+		onlyPending: false,
+	};
 	const sections = parseSections(content);
 	const scrollEl = containerEl.createDiv({ cls: 'ioto-task-view__scroll' });
 	attachTaskNoteLinkDelegates(scrollEl, options.links);
 
-	for (const section of getTopLevelSections(sections)) {
-		renderSection({ ...options, scrollEl, section });
+	let roots = getTopLevelSections(sections);
+	if (filters.onlyTaskBlocks) {
+		// ① 只显示任务区块：纯渲染期过滤，`data-line` 仍是真实文件行号，
+		// 编辑 / 删除 / 导航不受影响。
+		roots = roots.filter((section) => sectionHasChecklist(content, section));
+	}
+
+	for (const section of roots) {
+		renderSection({ ...options, scrollEl, section, filters });
 	}
 }
 
@@ -217,6 +241,7 @@ function renderSection(options: RenderSectionOptions): void {
 		component,
 		section,
 		editing: options.editing,
+		filters: options.filters,
 	});
 }
 
@@ -259,9 +284,18 @@ function renderSectionBody(options: {
 	component: Component;
 	section: NoteSection;
 	editing: TaskNoteEditing;
+	filters: TaskNoteFilters;
 }): void {
-	const { app, bodyEl, content, sourcePath, component, section, editing } =
-		options;
+	const {
+		app,
+		bodyEl,
+		content,
+		sourcePath,
+		component,
+		section,
+		editing,
+		filters,
+	} = options;
 	const lines = content.split(/\r?\n/);
 	const bodyStartLine =
 		section.level === 0 ? section.startLine : section.startLine + 1;
@@ -293,6 +327,7 @@ function renderSectionBody(options: {
 				sourcePath,
 				component,
 				editing,
+				filters,
 			});
 			continue;
 		}
@@ -328,12 +363,19 @@ function renderChecklistGroup(options: {
 	sourcePath: string;
 	component: Component;
 	editing: TaskNoteEditing;
+	filters: TaskNoteFilters;
 }): void {
-	const { app, bodyEl, items, sourcePath, component, editing } = options;
+	const { app, bodyEl, items, sourcePath, component, editing, filters } =
+		options;
 	const listEl = bodyEl.createEl('ul', { cls: 'ioto-task-view__checklist' });
 
 	for (const item of items) {
-		const done = item.marker.toLowerCase() === 'x';
+		const done = isChecklistItemDone(item);
+		// ② 只显示未完成：已完成卡不生成 DOM（collectCardLines 读 DOM，
+		// 隐藏卡天然不可达，↑↓ 自动跳过）；空 Section 不在此处隐藏。
+		if (filters.onlyPending && done) {
+			continue;
+		}
 		const cardEl = listEl.createEl('li', {
 			cls: 'ioto-task-view__card',
 			attr: {

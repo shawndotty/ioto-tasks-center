@@ -83,6 +83,68 @@ export function upsertScalarProperty(
 	return `---\n${nextFrontmatterBody}\n---${remainingContent}`;
 }
 
+/**
+ * 读取一个标量属性（frontmatter 顶层键）的原始值；缺失返回 `null`。
+ * 只认文件开头的一段 frontmatter，与 `upsertScalarProperty` 同一匹配口径。
+ */
+export function readScalarProperty(
+	content: string,
+	propertyName: string,
+): string | null {
+	const frontmatterMatch = content.match(
+		/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/,
+	);
+	if (!frontmatterMatch) {
+		return null;
+	}
+
+	const propertyPattern = new RegExp(
+		`^${escapeRegExp(propertyName)}\\s*:\\s*(.*)$`,
+	);
+	for (const line of (frontmatterMatch[1] ?? '').split(/\r?\n/)) {
+		const match = line.match(propertyPattern);
+		if (match) {
+			return (match[1] ?? '').trim().replace(/^["']|["']$/g, '');
+		}
+	}
+
+	return null;
+}
+
+/**
+ * 读取一个布尔属性：显式 `true`（大小写不敏感）为真，其余（含缺失）为假。
+ * 缺省即「关」，与 [[Plan-20261004-110845]] §二.1 的口径一致。
+ */
+export function readBooleanProperty(
+	content: string,
+	propertyName: string,
+): boolean {
+	return readScalarProperty(content, propertyName)?.toLowerCase() === 'true';
+}
+
+/**
+ * 原子地写入（upsert）一组标量属性，返回写盘后的完整内容。
+ *
+ * 走 `vault.process`：读到的永远是最新内容，多个键一次进入同一事务，
+ * 避免两次写之间被其它写入插空。调用方据此计算 frontmatter 行数变化（Δ）。
+ */
+export async function writeScalarProperties(
+	app: App,
+	file: TFile,
+	properties: Record<string, string>,
+): Promise<string> {
+	let next = '';
+	await app.vault.process(file, (content) => {
+		let result = content;
+		for (const [name, value] of Object.entries(properties)) {
+			result = upsertScalarProperty(result, name, value);
+		}
+		next = result;
+		return result;
+	});
+	return next;
+}
+
 export function removeScalarProperty(
 	content: string,
 	propertyName: string,
@@ -90,7 +152,6 @@ export function removeScalarProperty(
 	const frontmatterMatch = content.match(
 		/^---\r?\n([\s\S]*?)\r?\n---((?:\r?\n)?[\s\S]*)$/,
 	);
-
 	if (!frontmatterMatch) {
 		return content;
 	}
