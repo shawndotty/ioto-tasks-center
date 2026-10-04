@@ -37,3 +37,20 @@ export class Notice {
 		this.message = message;
 	}
 }
+
+// 以下为「视图宿主生命周期」测试加载 iotoTaskView.ts 所需的最小运行时实现。
+// 真实的 TextFileView 在 Obsidian 运行时由文件视图基类提供，这里只保留可继承的空壳。
+export class TextFileView {}
+
+export const Platform = {
+	isMobile: false,
+	isDesktop: true,
+	isPhone: false,
+	isTablet: false,
+};
+
+export const MarkdownRenderer = {
+	render: async () => {},
+};
+
+export const setIcon = () => {};

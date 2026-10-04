@@ -161,6 +161,8 @@ export class IOTOTaskView extends TextFileView {
 	private continuationEndLine = 0;
 	private continuationOriginalLines: string[] = [];
 	private continuationHandle: EmbeddedEditorHandle | null = null;
+	/** 当前续行编辑器的宿主 div（`destroy()` 只 empty 不 remove，需在此显式回收） */
+	private continuationHostEl: HTMLElement | null = null;
 	private pendingCommit: Promise<void> | null = null;
 	/** 自动落盘节流器（视图级单例，编辑期间复用） */
 	private readonly autosave: AutosaveScheduler = createAutosaveScheduler(
@@ -1156,9 +1158,14 @@ export class IOTOTaskView extends TextFileView {
 		}
 
 		contEl.addClass('is-editing');
+		// 防御：同一个 .card-continuation 只允许存在一个续行宿主（历史空壳先清掉）
+		contEl
+			.querySelectorAll(':scope > .ioto-task-view__continuation-editor')
+			.forEach((el) => el.remove());
 		const hostEl = contEl.createDiv({
 			cls: 'ioto-task-view__continuation-editor',
 		});
+		this.continuationHostEl = hostEl;
 
 		const handle = await mountEmbeddedEditor({
 			app: this.app,
@@ -1179,6 +1186,7 @@ export class IOTOTaskView extends TextFileView {
 		if (!handle) {
 			contEl.removeClass('is-editing');
 			hostEl.remove();
+			this.continuationHostEl = null;
 			new Notice(t('notice.iotoTaskView.inlineEditUnavailable'));
 			return;
 		}
@@ -1293,6 +1301,9 @@ export class IOTOTaskView extends TextFileView {
 				/* ignore */
 			}
 		}
+		// destroy() 只 empty 了子节点，宿主 div 仍在 → 显式移除并置空
+		this.continuationHostEl?.remove();
+		this.continuationHostEl = null;
 		const line = this.continuationLine;
 		if (line !== null) {
 			this.queryCard(line)
@@ -1453,6 +1464,11 @@ export class IOTOTaskView extends TextFileView {
 
 		// 顺带移除 `.card-editor` 空壳（destroyActiveEditor 只清空了它的子节点）。
 		textEl.empty();
+		// 与标题路径对称：顺带清掉续行容器的历史空壳
+		cardEl
+			.querySelector('.ioto-task-view__card-continuation')
+			?.querySelectorAll(':scope > .ioto-task-view__continuation-editor')
+			.forEach((el) => el.remove());
 		if (item) {
 			void MarkdownRenderer.render(
 				this.app,
