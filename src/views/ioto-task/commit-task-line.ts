@@ -11,7 +11,10 @@
 
 import type { App, TFile } from 'obsidian';
 
-import { replaceTaskBody } from '../../tasks-center/note-structure';
+import {
+	replaceTaskBody,
+	isTaskContinuationLine,
+} from '../../tasks-center/note-structure';
 
 export type CommitOutcome =
 	| { status: 'ok'; content: string }
@@ -33,6 +36,13 @@ export interface CommitTaskLineOptions {
 	/** 打开编辑器时快照的原始行文本（用于行漂移后的二次定位） */
 	originalLine: string;
 	transform: TaskLineTransform;
+	/**
+	 * 整行删除时，连同紧随其后、仍属「任务续行」的行一并删除。
+	 * 续行口径复用渲染层 isTaskContinuationLine → 卡片里显示几行就删几行。
+	 * 仅在 transform 判定为删除（返回 '' / []）时生效；其它返回值忽略此项。
+	 * 不会级联删除嵌套子任务（子任务行以列表标记开头，本就不算续行）。
+	 */
+	swallowContinuations?: boolean;
 }
 
 export async function commitTaskLineAction(
@@ -80,7 +90,16 @@ export async function commitTaskLineAction(
 
 		// ④ splice（单行 / 插入 / 删除都在这里完成，绝不整篇序列化）
 		if (next === '' || (Array.isArray(next) && next.length === 0)) {
-			lines.splice(index, 1);
+			let removeEnd = index + 1; // 至少删定位行本身
+			if (options.swallowContinuations) {
+				while (
+					removeEnd < lines.length &&
+					isTaskContinuationLine(lines[removeEnd] ?? '')
+				) {
+					removeEnd += 1;
+				}
+			}
+			lines.splice(index, removeEnd - index); // 一次删掉定位行 + 其后连续续行
 		} else {
 			lines.splice(index, 1, ...(Array.isArray(next) ? next : [next]));
 		}

@@ -47,6 +47,7 @@ import {
 	buildTasksSectionHeading,
 	buildTopLevelTaskLine,
 	findSectionByTitle,
+	isTaskContinuationLine,
 	parseChecklistItems,
 	replaceTaskBody,
 	setTaskIndent,
@@ -743,7 +744,8 @@ export class IOTOTaskView extends TextFileView {
 	}
 
 	/**
-	 * 选择态下 `Delete` / `Backspace`：只删当前行（已确认不级联子行），
+	 * 选择态下 `Delete` / `Backspace`：删当前行**及其下连续续行**（`Shift+Enter` 正文，
+	 * 卡片里显示几行就删几行），**不级联嵌套子行**；
 	 * 选择落到「原位置的下一张，否则上一张」。
 	 */
 	private async deleteSelected(line: number): Promise<void> {
@@ -754,12 +756,14 @@ export class IOTOTaskView extends TextFileView {
 
 		// 删除前先取 DOM 顺序：删除会让后续卡片的 data-line 整体前移
 		const order = collectCardLines(this.contentEl);
-		const nextLine = pickLineAfterDelete(order, line);
+		const removedCount = 1 + this.countContinuationLines(line); // 任务行 + 续行
+		const nextLine = pickLineAfterDelete(order, line, removedCount);
 
 		const outcome = await commitTaskLineAction(this.app, file, {
 			line,
 			originalLine: this.lineAt(line),
 			transform: () => '',
+			swallowContinuations: true, // 与渲染层同口径
 		});
 		// 🔴 红线：data / lastLoadedText 必须同步
 		this.applyOutcome(outcome);
@@ -902,6 +906,19 @@ export class IOTOTaskView extends TextFileView {
 
 	private lineAt(index: number): string {
 		return this.data.split('\n')[index] ?? '';
+	}
+
+	/** 统计从 `line + 1` 起的连续续行行数（与渲染层 isTaskContinuationLine 同口径）。 */
+	private countContinuationLines(line: number): number {
+		const lines = this.data.split('\n');
+		let count = 0;
+		for (let i = line + 1; i < lines.length; i += 1) {
+			if (!isTaskContinuationLine(lines[i] ?? '')) {
+				break;
+			}
+			count += 1;
+		}
+		return count;
 	}
 
 	private queryCard(line: number): HTMLElement | null {
@@ -1256,6 +1273,7 @@ export class IOTOTaskView extends TextFileView {
 				originalLine,
 				() => '',
 				line > 0 ? line - 1 : null,
+				{ swallowContinuations: true },
 			);
 		}, 0);
 		return true;
@@ -1283,6 +1301,7 @@ export class IOTOTaskView extends TextFileView {
 		originalLine: string,
 		transform: TaskLineTransform,
 		nextEditLine: number | null,
+		options?: { swallowContinuations?: boolean },
 	): Promise<void> {
 		const file = this.file;
 		if (!file) {
@@ -1294,6 +1313,7 @@ export class IOTOTaskView extends TextFileView {
 			line,
 			originalLine,
 			transform,
+			swallowContinuations: options?.swallowContinuations,
 		});
 		this.editingLine = null;
 		this.applyOutcome(outcome);

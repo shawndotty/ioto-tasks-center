@@ -169,3 +169,99 @@ test('commitTaskText：多行正文被拒绝（conflict，不写盘）', async (
 	assert.equal(outcome.status, 'conflict');
 	assert.equal(app.content, original);
 });
+
+test('swallowContinuations：删除任务行连同其后连续续行，下一张卡保留', async () => {
+	const app = makeApp(
+		[
+			'# T',
+			'- [ ] 甲',
+			'      甲的续行一',
+			'      甲的续行二',
+			'- [ ] 乙',
+			'乙的正文',
+		].join('\n'),
+	);
+	const outcome = await commitTaskLineAction(app, makeFile(), {
+		line: 1,
+		originalLine: '- [ ] 甲',
+		transform: () => '',
+		swallowContinuations: true,
+	});
+
+	assert.equal(outcome.status, 'ok');
+	assert.equal(app.content, ['# T', '- [ ] 乙', '乙的正文'].join('\n'));
+});
+
+test('swallowContinuations：续行里的嵌套子任务不被删', async () => {
+	const app = makeApp(
+		['- [ ] 甲', '甲的续行', '  - [ ] 子任务', '- [ ] 乙'].join('\n'),
+	);
+	const outcome = await commitTaskLineAction(app, makeFile(), {
+		line: 0,
+		originalLine: '- [ ] 甲',
+		transform: () => '',
+		swallowContinuations: true,
+	});
+
+	assert.equal(outcome.status, 'ok');
+	assert.equal(
+		app.content,
+		['  - [ ] 子任务', '- [ ] 乙'].join('\n'),
+	);
+});
+
+test('swallowContinuations：空行隔开的正文不被删', async () => {
+	const app = makeApp(
+		['- [ ] 甲', '甲的续行', '', '隔空正文', '- [ ] 乙'].join('\n'),
+	);
+	const outcome = await commitTaskLineAction(app, makeFile(), {
+		line: 0,
+		originalLine: '- [ ] 甲',
+		transform: () => '',
+		swallowContinuations: true,
+	});
+
+	assert.equal(outcome.status, 'ok');
+	assert.equal(
+		app.content,
+		['', '隔空正文', '- [ ] 乙'].join('\n'),
+	);
+});
+
+test('swallowContinuations：无续行时与不带该选项逐字节相同（回归）', async () => {
+	const original = ['# T', '- [ ] 甲', '- [ ] 乙'].join('\n');
+
+	const withOption = makeApp(original);
+	await commitTaskLineAction(withOption, makeFile(), {
+		line: 1,
+		originalLine: '- [ ] 甲',
+		transform: () => '',
+		swallowContinuations: true,
+	});
+
+	const withoutOption = makeApp(original);
+	await commitTaskLineAction(withoutOption, makeFile(), {
+		line: 1,
+		originalLine: '- [ ] 甲',
+		transform: () => '',
+	});
+
+	assert.equal(withOption.content, withoutOption.content);
+	assert.equal(withOption.content, ['# T', '- [ ] 乙'].join('\n'));
+});
+
+test('swallowContinuations：CRLF 文件同样吃掉续行且写回仍是 CRLF', async () => {
+	const app = makeApp(
+		['# T\r', '- [ ] 甲\r', '续行一\r', '- [ ] 乙\r'].join('\n'),
+	);
+	const outcome = await commitTaskLineAction(app, makeFile(), {
+		line: 1,
+		originalLine: '- [ ] 甲\r',
+		transform: () => '',
+		swallowContinuations: true,
+	});
+
+	assert.equal(outcome.status, 'ok');
+	assert.equal(app.content, ['# T\r', '- [ ] 乙\r'].join('\n'));
+	assert.ok(app.content.includes('\r\n'));
+});

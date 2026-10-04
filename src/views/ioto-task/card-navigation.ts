@@ -94,15 +94,19 @@ export function pickEdgeLine(
  * 末位则退回「上一张」，删空了整个列表返回 `null`。
  *
  * 🔴 返回的是**删除后**的行号，不是删除前的。`data-line` 就是文件行号，而删行会让
- * 后续所有卡片整体前移 1，所以「下一张」的前值必须 −1 才是删除后的真实行号；
+ * 后续所有卡片整体前移 `removedCount`（默认 1，含任务行的续行时更多），
+ * 所以「下一张」的前值必须 −`removedCount` 才是删除后的真实行号；
  * 「上一张」在删除点之前，行号不变。直接拿删除前的行号去选中会选中一张**不存在的卡**
  * （实测 `selectedLine=10` 而磁盘上只有 0–14 行的 5 张卡，选中态因此整个丢光）。
  *
  * 入参必须是**删除前**的 DOM 顺序。
+ *
+ * @param removedCount 本次删除实际消去的行数（任务行 + 其下连续续行），默认 1。
  */
 export function pickLineAfterDelete(
 	lines: number[],
 	current: number,
+	removedCount = 1,
 ): number | null {
 	const index = lines.indexOf(current);
 	if (index < 0) {
@@ -115,8 +119,8 @@ export function pickLineAfterDelete(
 		return null;
 	}
 
-	// 目标在删除点之后 → 行号 −1；在之前（末位退回上一张）→ 不变
-	return target > current ? target - 1 : target;
+	// 目标在删除点之后 → 行号前移 removedCount；在之前（末位退回上一张）→ 不变
+	return target > current ? target - removedCount : target;
 }
 
 function readLine(card: CardElementLike | undefined): number | null {

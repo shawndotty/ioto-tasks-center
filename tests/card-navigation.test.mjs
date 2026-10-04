@@ -116,3 +116,35 @@ test('pickLineAfterDelete：返回的行号一定落在删除后的集合里', (
 		);
 	}
 });
+
+test('pickLineAfterDelete：removedCount 参数让删除点后的下一张按前移量回填', () => {
+	// 删掉 9（连带其下 2 行续行，共删 3 行）：原「下一张」是 10，删除后前移到 7。
+	assert.equal(pickLineAfterDelete([7, 8, 9, 10, 14, 15], 9, 3), 7);
+});
+
+test('pickLineAfterDelete：默认参数 = 1，与显式传 1 完全一致（回归）', () => {
+	const lines = [7, 8, 9, 10, 14, 15];
+	for (const current of lines) {
+		assert.equal(
+			pickLineAfterDelete(lines, current),
+			pickLineAfterDelete(lines, current, 1),
+		);
+	}
+});
+
+test('pickLineAfterDelete：removedCount 越大回填越靠前，且仍落在删除后集合里', () => {
+	const lines = [7, 8, 9, 10, 14, 15];
+	for (const removedCount of [1, 2, 3]) {
+		const after = (current) => [
+			...lines.filter((l) => l < current),
+			...lines.filter((l) => l > current).map((l) => l - removedCount),
+		];
+		for (const current of lines) {
+			const picked = pickLineAfterDelete(lines, current, removedCount);
+			assert.ok(
+				picked === null || after(current).includes(picked),
+				`删 ${current}（前移 ${removedCount}）后选中 ${picked}，集合是 ${JSON.stringify(after(current))}`,
+			);
+		}
+	}
+});
