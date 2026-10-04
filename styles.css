@@ -2363,6 +2363,26 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	overflow: visible;
 }
 
+/* 续行编辑态：隐藏只读渲染，只留编辑器容器（镜像 .card-editor 口径） */
+.ioto-task-view__card-continuation.is-editing
+	> :not(.ioto-task-view__continuation-editor) {
+	display: none;
+}
+
+.ioto-task-view__continuation-editor {
+	min-height: 1.6em;
+	overflow: hidden;
+	margin: 0;
+}
+
+.ioto-task-view__continuation-editor .cm-editor {
+	background: transparent;
+}
+
+.ioto-task-view__continuation-editor .cm-scroller {
+	overflow: visible;
+}
+
 .ioto-task-view__card-text {
 	flex: 1 1 0; /* basis 0 → 与勾选框同处第一行，并由 grow 吃满剩余空间（Plan-20261003-191547） */
 	min-width: 0;
@@ -2796,6 +2816,10 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 /* 编辑器透明：既有规则（styles.css .cm-editor）保留；补一个 accent 光标 */
 .ioto-task-view.is-glass .ioto-task-view__card-editor .cm-editor { background: transparent; }
 .ioto-task-view.is-glass .ioto-task-view__card-editor .cm-cursor { border-color: var(--interactive-accent); }
+
+/* 续行编辑器同样透明 + accent 光标 */
+.ioto-task-view.is-glass .ioto-task-view__continuation-editor .cm-editor { background: transparent; }
+.ioto-task-view.is-glass .ioto-task-view__continuation-editor .cm-cursor { border-color: var(--interactive-accent); }
 
 /* 动作区 pill */
 .ioto-task-view.is-glass .ioto-task-view__badge {

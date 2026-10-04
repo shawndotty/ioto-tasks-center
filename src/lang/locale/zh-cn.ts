@@ -493,6 +493,7 @@ const zhCN = {
 	'view.iotoTaskView.sectionToggle': '折叠/展开章节：{0}',
 	'view.iotoTaskView.checkboxToggle': '切换任务完成状态：{0}',
 	'view.iotoTaskView.selectCardHint': '点击选中，再点编辑',
+	'view.iotoTaskView.continuationEditHint': '点击编辑补充说明',
 	'view.iotoTaskView.selectedHint': '已选中：Enter 编辑 · Del 删除 · ↑↓ 切换 · Cmd+Enter 完成 · Cmd+↑↓ 首尾',
 	'view.iotoTaskView.toolbar.toggleTaskBlocks': '只显示任务区块',
 	'view.iotoTaskView.toolbar.toggleTaskBlocksTooltip': '只显示包含任务列表的章节',

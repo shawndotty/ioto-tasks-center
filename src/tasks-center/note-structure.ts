@@ -547,12 +547,29 @@ export function collectTaskContinuations(
  */
 export function dedentLines(text: string): string {
 	const lines = text.split(/\r?\n/);
+	const common = commonIndentPrefix(lines);
+	if (common.length === 0) {
+		return text;
+	}
+
+	return lines
+		.map((line) => (line.trim().length > 0 ? line.slice(common.length) : line))
+		.join('\n');
+}
+
+/**
+ * 一组文本行的**公共前导空白**（只看非空行；无公共前缀返回 `''`）。
+ *
+ * 与 `dedentLines` 同一算法：续行写回（`commitTaskContinuation`）需要「还原原
+ * 缩进」——编辑器持有的是 dedent 后文本，提交时按原块公共前缀补回。
+ */
+export function commonIndentPrefix(lines: string[]): string {
 	const indents = lines
 		.filter((line) => line.trim().length > 0)
 		.map((line) => line.match(/^[ \t]*/)?.[0] ?? '');
 
 	if (indents.length === 0) {
-		return text;
+		return '';
 	}
 
 	let common = indents[0] ?? '';
@@ -571,15 +588,7 @@ export function dedentLines(text: string): string {
 		}
 	}
 
-	if (common.length === 0) {
-		return text;
-	}
-
-	return lines
-		.map((line) =>
-			line.trim().length > 0 ? line.slice(common.length) : line,
-		)
-		.join('\n');
+	return common;
 }
 
 function collectChecklistItems(

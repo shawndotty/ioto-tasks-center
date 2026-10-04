@@ -46,6 +46,7 @@ import {
 	buildSiblingTaskLine,
 	buildTasksSectionHeading,
 	buildTopLevelTaskLine,
+	dedentLines,
 	findSectionByTitle,
 	isTaskContinuationLine,
 	parseChecklistItems,
@@ -61,6 +62,7 @@ import {
 	pickLineAfterDelete,
 } from './ioto-task/card-navigation';
 import {
+	commitTaskContinuation,
 	commitTaskLineAction,
 	commitTaskText,
 	type CommitOutcome,
@@ -150,6 +152,15 @@ export class IOTOTaskView extends TextFileView {
 	private selectedLine: number | null = null;
 	private editingOriginalLine = '';
 	private editingHandle: EmbeddedEditorHandle | null = null;
+	/**
+	 * 续行编辑态：拥有该续行的任务行（0 基文件行号）；非编辑态为 `null`。
+	 * 与 `editingLine`（标题编辑器）互斥，进入任一方前先提交另一方。
+	 */
+	private continuationLine: number | null = null;
+	private continuationStartLine = 0;
+	private continuationEndLine = 0;
+	private continuationOriginalLines: string[] = [];
+	private continuationHandle: EmbeddedEditorHandle | null = null;
 	private pendingCommit: Promise<void> | null = null;
 	/** 自动落盘节流器（视图级单例，编辑期间复用） */
 	private readonly autosave: AutosaveScheduler = createAutosaveScheduler(
@@ -222,7 +233,10 @@ export class IOTOTaskView extends TextFileView {
 
 	clear(): void {
 		this.destroyActiveEditor();
+		this.destroyContinuationEditor();
 		this.editingLine = null;
+		this.continuationLine = null;
+		this.continuationOriginalLines = [];
 		this.selectedLine = null;
 		this.editingOriginalLine = '';
 		// 保留常驻外壳（toolbar / body），只清列表内容。
@@ -236,6 +250,7 @@ export class IOTOTaskView extends TextFileView {
 
 	onunload(): void {
 		this.destroyActiveEditor();
+		this.destroyContinuationEditor();
 		this.autosave.dispose();
 		super.onunload();
 	}
@@ -535,7 +550,7 @@ export class IOTOTaskView extends TextFileView {
 		}
 
 		// 编辑期间忽略外部写入，避免编辑器被重绘冲掉（只挡重绘，不挡写盘）。
-		if (this.editingLine !== null) {
+		if (this.editingLine !== null || this.continuationLine !== null) {
 			return;
 		}
 
@@ -649,6 +664,9 @@ export class IOTOTaskView extends TextFileView {
 			},
 			beginEdit: (line) => {
 				void this.beginEdit(line);
+			},
+			beginContinuationEdit: (line) => {
+				void this.beginContinuationEdit(line);
 			},
 			insertSibling: (line) => {
 				void this.insertSibling(line);
@@ -805,7 +823,9 @@ export class IOTOTaskView extends TextFileView {
 				const sibling = buildSiblingTaskLine(raw, '');
 				return sibling === null ? null : [raw, sibling];
 			},
-			line + 1,
+			// 新空卡落到「任务行 + 其下连续续行」之后，避免抢走原任务的续行
+			line + 1 + this.countContinuationLines(line),
+			{ insertAfterContinuations: true },
 		);
 	}
 
@@ -952,8 +972,9 @@ export class IOTOTaskView extends TextFileView {
 			return;
 		}
 
-		// 切换卡片：先提交上一个
+		// 切换卡片：先提交上一个（标题编辑器 + 续行编辑器互相排斥）
 		await this.commitEdit();
+		await this.commitContinuationEdit();
 
 		const file = this.file;
 		if (!file) {
@@ -991,7 +1012,7 @@ export class IOTOTaskView extends TextFileView {
 			file,
 			initialValue: item.text,
 			handlers: {
-				onEnter: (cm) => this.onEditorEnter(cm),
+				onEnter: (cm, shiftKey) => this.onEditorEnter(cm, shiftKey),
 				onDeleteEmpty: () => this.onEditorDeleteEmpty(),
 				onIndent: (delta) => this.onEditorIndent(delta),
 				onEscape: () => this.onEditorEscape(),
@@ -1086,6 +1107,200 @@ export class IOTOTaskView extends TextFileView {
 		this.refreshCard(line);
 	}
 
+	/* ------------------------------------------------------------------ *
+	 * 续行编辑器（[[Plan-20261004-212439]] §4.6）：点续行块就地多行编辑
+	 * ------------------------------------------------------------------ */
+
+	/**
+	 * 点续行块进入就地多行编辑。
+	 *
+	 * - 与标题编辑器互斥：进入前先提交标题 / 其它续行编辑器；
+	 * - 块范围 = `line + 1` 起连续 `isTaskContinuationLine`；编辑器持有 dedent 后文本；
+	 * - 提交 / 失焦走 `commitContinuationEdit`，整树重建（续行行数会变，后续卡会漂）。
+	 */
+	private async beginContinuationEdit(line: number): Promise<void> {
+		if (!this.supportsInlineEdit() || !this.file) {
+			new Notice(t('notice.iotoTaskView.inlineEditUnavailable'));
+			return;
+		}
+		if (this.continuationLine === line && this.continuationHandle) {
+			return;
+		}
+
+		// 切换：先提交另一个编辑器（标题 / 另一条续行），互斥
+		await this.commitEdit();
+		await this.commitContinuationEdit();
+
+		const file = this.file;
+		if (!file) {
+			return;
+		}
+
+		// 块范围：line + 1 起连续 isTaskContinuationLine
+		const lines = this.data.split('\n');
+		let end = line + 1;
+		while (end < lines.length && isTaskContinuationLine(lines[end] ?? '')) {
+			end += 1;
+		}
+		if (end === line + 1) {
+			return; // 无续行（DOM 与 data 不一致的兜底）
+		}
+		const originalLines = lines.slice(line + 1, end);
+
+		const cardEl = this.queryCard(line);
+		const contEl = cardEl?.querySelector<HTMLElement>(
+			'.ioto-task-view__card-continuation',
+		);
+		if (!contEl) {
+			return;
+		}
+
+		contEl.addClass('is-editing');
+		const hostEl = contEl.createDiv({
+			cls: 'ioto-task-view__continuation-editor',
+		});
+
+		const handle = await mountEmbeddedEditor({
+			app: this.app,
+			hostEl,
+			component: this,
+			file,
+			initialValue: dedentLines(originalLines.join('\n')), // 去公共前缀后再编辑
+			handlers: {
+				// Enter / Shift+Enter 都换行（忽略 shiftKey）
+				onEnter: (cm) => this.onContinuationEnter(cm),
+				onDeleteEmpty: () => this.onContinuationDeleteEmpty(),
+				onIndent: () => false, // Tab 放行给核心（插入缩进），本期不接管
+				onEscape: () => this.onContinuationEscape(),
+				onBlur: () => void this.commitContinuationEdit(),
+				onChange: () => this.autosave.schedule(),
+			},
+		});
+		if (!handle) {
+			contEl.removeClass('is-editing');
+			hostEl.remove();
+			new Notice(t('notice.iotoTaskView.inlineEditUnavailable'));
+			return;
+		}
+
+		this.continuationLine = line;
+		this.continuationStartLine = line + 1;
+		this.continuationEndLine = end - 1;
+		this.continuationOriginalLines = originalLines;
+		this.continuationHandle = handle;
+		this.applySelection(line); // 卡片高亮 + 清掉旧选中
+		handle.focus();
+	}
+
+	/** 续行编辑器：`Enter` / `Shift+Enter` 都在光标处换行，不新建任务。 */
+	private onContinuationEnter(cm: EditorView): boolean {
+		const sel = cm.state.selection.main;
+		cm.dispatch({
+			changes: { from: sel.from, to: sel.to, insert: '\n' },
+			selection: { anchor: sel.from + 1 },
+			scrollIntoView: true,
+		});
+		return true;
+	}
+
+	/** 空内容 `Backspace`：删除整段续行并退出编辑。 */
+	private onContinuationDeleteEmpty(): boolean {
+		window.setTimeout(() => void this.commitContinuationEdit(true), 0);
+		return true;
+	}
+
+	/** `Esc`：先提交、再落回本卡选择态（与标题编辑器同构）。 */
+	private onContinuationEscape(): void {
+		const line = this.continuationLine;
+		if (line === null || this.continuationHandle === null) {
+			return;
+		}
+		this.selectedLine = line;
+		window.setTimeout(() => {
+			void this.commitContinuationEdit().then(() => {
+				const cardEl = this.queryCard(line);
+				if (!cardEl) {
+					this.renderNote(this.data);
+					this.syncSelectionClass();
+					return;
+				}
+				this.applySelection(line);
+			});
+		}, 0);
+	}
+
+	/**
+	 * 提交 / 删段：读编辑器正文（去末尾空行）→ 按原公共前缀重新缩进写回。
+	 *
+	 * - `forceEmpty`（空内容 `Backspace`）直接视为删段；
+	 * - 续行行数会变、后续卡 `data-line` 会漂 → `ok` 后整树重建；
+	 * - `conflict` 拉权威内容重绘；`unchanged` 不写盘、不重绘。
+	 */
+	private async commitContinuationEdit(forceEmpty = false): Promise<void> {
+		const handle = this.continuationHandle;
+		if (!handle || this.continuationLine === null || !this.file) {
+			return;
+		}
+
+		const rawText = handle.getValue();
+		// 去掉末尾空行（编辑器习惯）；forceEmpty（空内容 Backspace）直接视为删段
+		let nextText = rawText.replace(/\n+$/u, '');
+		if (forceEmpty || rawText.trim().length === 0) {
+			nextText = '';
+		}
+
+		const line = this.continuationLine;
+		const startLine = this.continuationStartLine;
+		const endLine = this.continuationEndLine;
+		const originalLines = this.continuationOriginalLines;
+		const file = this.file;
+		this.destroyContinuationEditor();
+
+		const outcome = await commitTaskContinuation(this.app, file, {
+			startLine,
+			endLine,
+			originalLines,
+			nextText,
+		});
+		this.continuationLine = null;
+		this.continuationOriginalLines = [];
+		this.applyOutcome(outcome);
+
+		if (outcome.status === 'conflict') {
+			await this.reloadFromVault();
+			this.renderNote(this.data);
+			return;
+		}
+		if (outcome.status !== 'ok') {
+			return; // unchanged：无写入，无需重绘
+		}
+
+		// 续行行数可能变化 → 整树重建（带滚动快照）；选中回填到该卡
+		this.selectedLine = line;
+		this.renderNote(this.data);
+	}
+
+	/** 销毁续行编辑器：去 DOM 编辑态 + 卸载 handle + 置空（比对 `destroyActiveEditor`）。 */
+	private destroyContinuationEditor(): void {
+		this.autosave.cancel();
+		const handle = this.continuationHandle;
+		// 先置空，保证随后触发的 blur 走到 commitContinuationEdit 时直接短路。
+		this.continuationHandle = null;
+		if (handle) {
+			try {
+				handle.destroy();
+			} catch {
+				/* ignore */
+			}
+		}
+		const line = this.continuationLine;
+		if (line !== null) {
+			this.queryCard(line)
+				?.querySelector('.ioto-task-view__card-continuation')
+				?.removeClass('is-editing');
+		}
+	}
+
 	/**
 	 * 编辑态自动落盘：**只写盘，不退出编辑态**（与 `commitEdit()` 并列，不复用）。
 	 *
@@ -1098,6 +1313,12 @@ export class IOTOTaskView extends TextFileView {
 	 * `lines[index] === originalLine` 校验失配 → 判 conflict → 整树重建冲掉编辑态。
 	 */
 	private async autosaveEdit(): Promise<void> {
+		// 续行编辑态：只写盘、不退出编辑（与标题自动落盘同构）
+		if (this.continuationHandle && this.continuationLine !== null) {
+			await this.autosaveContinuation();
+			return;
+		}
+
 		const handle = this.editingHandle;
 		const line = this.editingLine;
 		const file = this.file;
@@ -1132,6 +1353,55 @@ export class IOTOTaskView extends TextFileView {
 			this.syncCommittedContent(outcome);
 			if (outcome.status === 'ok') {
 				this.editingOriginalLine = this.lineAt(line);
+			}
+		} finally {
+			this.autosaveRunning = false;
+		}
+	}
+
+	/**
+	 * 续行编辑态自动落盘：**只写盘，不退出编辑态**。
+	 *
+	 * 不 destroy、不 `renderNote`（避免编辑被打断）；成功后刷新续行块快照
+	 * （起止行号 + 原文），否则下一次落盘用旧序列判 `conflict`。
+	 */
+	private async autosaveContinuation(): Promise<void> {
+		const handle = this.continuationHandle;
+		const line = this.continuationLine;
+		const file = this.file;
+		if (!handle || line === null || !file) {
+			return;
+		}
+		if (this.autosaveRunning) {
+			return;
+		}
+
+		const nextText = handle.getValue().replace(/\n+$/u, '');
+
+		this.autosaveRunning = true;
+		try {
+			const outcome = await commitTaskContinuation(this.app, file, {
+				startLine: this.continuationStartLine,
+				endLine: this.continuationEndLine,
+				originalLines: this.continuationOriginalLines,
+				nextText,
+			});
+
+			// 落盘期间已退出编辑：以随后那次提交为准，不再改内存 / 快照
+			if (this.continuationHandle !== handle || this.continuationLine !== line) {
+				return;
+			}
+			this.syncCommittedContent(outcome);
+			if (outcome.status === 'ok') {
+				// 行数可能变化 → 按最新 data 重算块范围
+				const lines = this.data.split('\n');
+				let end = line + 1;
+				while (end < lines.length && isTaskContinuationLine(lines[end] ?? '')) {
+					end += 1;
+				}
+				this.continuationStartLine = line + 1;
+				this.continuationEndLine = end - 1;
+				this.continuationOriginalLines = lines.slice(line + 1, end);
 			}
 		} finally {
 			this.autosaveRunning = false;
@@ -1228,7 +1498,7 @@ export class IOTOTaskView extends TextFileView {
 		}, 0);
 	}
 
-	private onEditorEnter(cm: EditorView): boolean {
+	private onEditorEnter(cm: EditorView, shiftKey: boolean): boolean {
 		const handle = this.editingHandle;
 		const line = this.editingLine;
 		if (!handle || line === null) {
@@ -1236,11 +1506,37 @@ export class IOTOTaskView extends TextFileView {
 		}
 
 		const text = handle.getValue();
+		const originalLine = this.editingOriginalLine;
+		// 新行落点 = 「任务行 + 其下连续续行」之后
+		const nextEditLine = line + 1 + this.countContinuationLines(line);
+
+		// Shift+Enter：新建**空**同级任务，不拆分正文（保存当前编辑器全文到原任务）
+		if (shiftKey) {
+			// 延后一拍执行，避免在核心编辑器自己的 keymap 回调里同步卸载它。
+			window.setTimeout(() => {
+				void this.runLineAction(
+					line,
+					originalLine,
+					(raw) => {
+						const first = replaceTaskBody(raw, text);
+						const sibling = buildSiblingTaskLine(raw, '');
+						if (first === null || sibling === null) {
+							return null;
+						}
+						return [first, sibling];
+					},
+					nextEditLine,
+					{ insertAfterContinuations: true },
+				);
+			}, 0);
+			return true;
+		}
+
+		// Enter：光标处拆分（语义不变），拆出的兄弟同样落到整块之后
 		const selection = cm.state.selection.main;
 		const head = Math.min(Math.max(selection.head, 0), text.length);
 		const before = text.slice(0, head);
 		const after = text.slice(head);
-		const originalLine = this.editingOriginalLine;
 
 		// 延后一拍执行，避免在核心编辑器自己的 keymap 回调里同步卸载它。
 		window.setTimeout(() => {
@@ -1255,7 +1551,8 @@ export class IOTOTaskView extends TextFileView {
 					}
 					return [first, sibling];
 				},
-				line + 1,
+				nextEditLine,
+				{ insertAfterContinuations: true },
 			);
 		}, 0);
 		return true;
@@ -1301,7 +1598,10 @@ export class IOTOTaskView extends TextFileView {
 		originalLine: string,
 		transform: TaskLineTransform,
 		nextEditLine: number | null,
-		options?: { swallowContinuations?: boolean },
+		options?: {
+			swallowContinuations?: boolean;
+			insertAfterContinuations?: boolean;
+		},
 	): Promise<void> {
 		const file = this.file;
 		if (!file) {
@@ -1309,13 +1609,16 @@ export class IOTOTaskView extends TextFileView {
 		}
 
 		this.destroyActiveEditor();
+		this.destroyContinuationEditor();
 		const outcome = await commitTaskLineAction(this.app, file, {
 			line,
 			originalLine,
 			transform,
 			swallowContinuations: options?.swallowContinuations,
+			insertAfterContinuations: options?.insertAfterContinuations,
 		});
 		this.editingLine = null;
+		this.continuationLine = null;
 		this.applyOutcome(outcome);
 		await this.reloadFromVault();
 		this.renderNote(this.data);
@@ -1466,11 +1769,13 @@ export class IOTOTaskView extends TextFileView {
 
 		if (last) {
 			// 文件级末条任务之后追加一条**顶层 0 级**任务。
+			// 落点跨过末条任务的续行，避免新任务插到续行之前（同 insertSibling）。
 			await this.runLineAction(
 				last.line,
 				this.lineAt(last.line),
 				(raw) => [raw, buildTopLevelTaskLine(raw, '')],
-				last.line + 1,
+				last.line + 1 + this.countContinuationLines(last.line),
+				{ insertAfterContinuations: true },
 			);
 			return;
 		}

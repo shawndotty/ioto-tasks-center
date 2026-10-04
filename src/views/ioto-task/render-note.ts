@@ -47,6 +47,10 @@ export interface TaskNoteEditing {
 	/** 进入卡片正文内联编辑（同时会提交上一张正在编辑的卡片） */
 	beginEdit(line: number): void;
 	/**
+	 * 点续行块：进入该卡续行的就地多行编辑（会先提交正在编辑的标题 / 其它续行）。
+	 */
+	beginContinuationEdit(line: number): void;
+	/**
 	 * 选择态 `Shift+Enter`：在 `line` 下方插入一张同级空卡片，并进入其编辑态。
 	 * 与编辑态 `Enter` 的「新建同级」同源，只是不拆分当前正文。
 	 */
@@ -359,6 +363,7 @@ function renderSectionBody(options: {
 				editing,
 				filters,
 				continuationMarkdown,
+				continuationLines: continuationByLine,
 			});
 			continue;
 		}
@@ -397,6 +402,8 @@ function renderChecklistGroup(options: {
 	filters: TaskNoteFilters;
 	/** 卡片行号 → 该卡的续行 markdown（无续行的卡不出现） */
 	continuationMarkdown: Map<number, string>;
+	/** 卡片行号 → 该卡的续行行号数组（无续行的卡不出现） */
+	continuationLines: Map<number, number[]>;
 }): void {
 	const {
 		app,
@@ -407,6 +414,7 @@ function renderChecklistGroup(options: {
 		editing,
 		filters,
 		continuationMarkdown,
+		continuationLines,
 	} = options;
 	const listEl = bodyEl.createEl('ul', { cls: 'ioto-task-view__checklist' });
 
@@ -492,9 +500,12 @@ function renderChecklistGroup(options: {
 			if (target.closest('.ioto-task-view__card-editor')) {
 				return;
 			}
-			// 续行虽已成卡片后代，但它不是任务行（编辑器只编辑任务那一行），
-			// 点它不应「选中该卡 / 再点进编辑」——与 a / checkbox / badge 早退并列。
+			// 续行虽已成卡片后代，但它不是任务行（标题编辑器只编辑任务那一行），
+			// 点它进**续行编辑器**，而不是「选中该卡 / 再点进标题编辑」。
 			if (target.closest('.ioto-task-view__card-continuation')) {
+				if (editing.enabled) {
+					editing.beginContinuationEdit(item.line);
+				}
 				return;
 			}
 			// 「不支持内联编辑」时保留原 Notice 路径，不进选择态
@@ -525,7 +536,10 @@ function renderChecklistGroup(options: {
 				const target = event.target as HTMLElement | null;
 				// 编辑器是卡片的**后代**，keydown 会冒泡上来；不守卫则编辑态输入
 				// Enter / Backspace 会同时触发卡片分支（[[Plan-20261003-194909]] §6.3）。
-				if (target?.closest('.ioto-task-view__card-editor')) {
+				if (
+					target?.closest('.ioto-task-view__card-editor') ||
+					target?.closest('.ioto-task-view__continuation-editor')
+				) {
 					return;
 				}
 				// 只有卡片本体真正持有焦点时才响应（点了正文里的其他交互元素时不响应）
@@ -620,9 +634,21 @@ function renderChecklistGroup(options: {
 		// ② 只显示未完成时随卡片一起隐藏（现在是其子元素，天然跟随，无需显式条件）。
 		const continuation = continuationMarkdown.get(item.line);
 		if (continuation !== undefined) {
+			const contLines = continuationLines.get(item.line) ?? [];
 			const continuationEl = cardEl.createDiv({
 				cls: 'ioto-task-view__card-continuation',
-				attr: { 'data-line': String(item.line) },
+				attr: {
+					'data-line': String(item.line),
+					'data-cont-start': String(
+						contLines[0] ?? item.line + 1,
+					),
+					'data-cont-end': String(
+						contLines[contLines.length - 1] ?? item.line + 1,
+					),
+					title: editing.enabled
+						? t('view.iotoTaskView.continuationEditHint')
+						: '',
+				},
 			});
 			const mdEl = continuationEl.createDiv({
 				cls: 'ioto-task-view__md',

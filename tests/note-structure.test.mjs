@@ -10,6 +10,7 @@ const {
 	buildTasksSectionHeading,
 	buildTopLevelTaskLine,
 	collectTaskContinuations,
+	commonIndentPrefix,
 	dedentLines,
 	findSectionByTitle,
 	isTaskContinuationLine,
@@ -312,4 +313,23 @@ test('dedentLines：无公共前缀 / 纯空白输入时原样返回', () => {
 	assert.equal(dedentLines('只有一行无缩进'), '只有一行无缩进');
 	assert.equal(dedentLines(''), '');
 	assert.equal(dedentLines('   \n  '), '   \n  ');
+});
+
+/* ------------------------------------------------------------------ *
+ * commonIndentPrefix（dedentLines 的公共内核；续行写回还原前缀复用）
+ * ------------------------------------------------------------------ */
+
+test('commonIndentPrefix：多行取最长公共前导空白，空行不参与', () => {
+	assert.equal(commonIndentPrefix(['      说明一', '      说明二']), '      ');
+	// 空行（trim 为空）不参与，否则前缀会被拉成 ''
+	assert.equal(commonIndentPrefix(['    说明', '', '    继续']), '    ');
+	// 相对缩进保留：公共前缀只到两行共有的部分
+	assert.equal(commonIndentPrefix(['      - 子项', '        - 孙项']), '      ');
+});
+
+test('commonIndentPrefix：无公共前缀 / 单行 / 全空行', () => {
+	assert.equal(commonIndentPrefix(['顶格', '  缩进']), '');
+	assert.equal(commonIndentPrefix(['    单行']), '    ');
+	assert.equal(commonIndentPrefix(['', '   ']), '');
+	assert.equal(commonIndentPrefix([]), '');
 });

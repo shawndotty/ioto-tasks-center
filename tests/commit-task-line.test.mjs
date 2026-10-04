@@ -265,3 +265,100 @@ test('swallowContinuations：CRLF 文件同样吃掉续行且写回仍是 CRLF',
 	assert.equal(app.content, ['# T\r', '- [ ] 乙\r'].join('\n'));
 	assert.ok(app.content.includes('\r\n'));
 });
+
+/* ------------------------------------------------------------------ *
+ * insertAfterContinuations：新建同级任务跨过「任务行 + 连续续行」块
+ * ------------------------------------------------------------------ */
+
+test('insertAfterContinuations：新行落在连续续行之后，原任务保留续行', async () => {
+	const app = makeApp(
+		[
+			'# T',
+			'- [ ] 甲',
+			'      甲的续行一',
+			'      甲的续行二',
+			'- [ ] 乙',
+		].join('\n'),
+	);
+	const outcome = await commitTaskLineAction(app, makeFile(), {
+		line: 1,
+		originalLine: '- [ ] 甲',
+		transform: (line) => [line, '- [ ] 新'],
+		insertAfterContinuations: true,
+	});
+
+	assert.equal(outcome.status, 'ok');
+	assert.equal(
+		app.content,
+		[
+			'# T',
+			'- [ ] 甲',
+			'      甲的续行一',
+			'      甲的续行二',
+			'- [ ] 新',
+			'- [ ] 乙',
+		].join('\n'),
+	);
+});
+
+test('insertAfterContinuations：拆分型（首项 ≠ 原文）首项原位、兄弟落块尾', async () => {
+	const app = makeApp(
+		['- [ ] 甲', '      续行', '- [ ] 乙'].join('\n'),
+	);
+	const outcome = await commitTaskLineAction(app, makeFile(), {
+		line: 0,
+		originalLine: '- [ ] 甲',
+		transform: () => ['- [ ] 甲前半', '- [ ] 甲后半'],
+		insertAfterContinuations: true,
+	});
+
+	assert.equal(outcome.status, 'ok');
+	assert.equal(
+		app.content,
+		['- [ ] 甲前半', '      续行', '- [ ] 甲后半', '- [ ] 乙'].join('\n'),
+	);
+});
+
+test('insertAfterContinuations：无续行时与不带该选项逐字节相同（回归）', async () => {
+	const original = ['# T', '- [ ] 甲', '- [ ] 乙'].join('\n');
+
+	const withOption = makeApp(original);
+	await commitTaskLineAction(withOption, makeFile(), {
+		line: 1,
+		originalLine: '- [ ] 甲',
+		transform: (line) => [line, '- [ ] 新'],
+		insertAfterContinuations: true,
+	});
+
+	const withoutOption = makeApp(original);
+	await commitTaskLineAction(withoutOption, makeFile(), {
+		line: 1,
+		originalLine: '- [ ] 甲',
+		transform: (line) => [line, '- [ ] 新'],
+	});
+
+	assert.equal(withOption.content, withoutOption.content);
+	assert.equal(
+		withOption.content,
+		['# T', '- [ ] 甲', '- [ ] 新', '- [ ] 乙'].join('\n'),
+	);
+});
+
+test('insertAfterContinuations：CRLF 文件同样落块后且写回仍是 CRLF', async () => {
+	const app = makeApp(
+		['- [ ] 甲\r', '续行一\r', '- [ ] 乙\r'].join('\n'),
+	);
+	const outcome = await commitTaskLineAction(app, makeFile(), {
+		line: 0,
+		originalLine: '- [ ] 甲\r',
+		transform: (line) => [line, '- [ ] 新\r'],
+		insertAfterContinuations: true,
+	});
+
+	assert.equal(outcome.status, 'ok');
+	assert.equal(
+		app.content,
+		['- [ ] 甲\r', '续行一\r', '- [ ] 新\r', '- [ ] 乙\r'].join('\n'),
+	);
+	assert.ok(app.content.includes('\r\n'));
+});

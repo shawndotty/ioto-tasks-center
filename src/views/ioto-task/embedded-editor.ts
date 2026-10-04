@@ -111,8 +111,8 @@ export interface EmbeddedEditorHandle {
 
 /** 内嵌编辑器的宿主回调。不只键盘：还有文档变更（自动落盘用）。 */
 export interface EmbeddedEditorHandlers {
-	/** Enter：返回 true 表示已接管（提交 / 新建），false 放行给核心 */
-	onEnter: (cm: EditorView) => boolean;
+	/** Enter：返回 true 表示已接管（提交 / 新建），false 放行给核心。`shiftKey` 供调用方区分语义 */
+	onEnter: (cm: EditorView, shiftKey: boolean) => boolean;
 	/** 正文为空时的 Backspace：返回 true 表示已接管（删除该行） */
 	onDeleteEmpty: (cm: EditorView) => boolean;
 	/** Tab / Shift+Tab 缩进：返回 true 表示已接管 */
@@ -386,10 +386,10 @@ export async function mountEmbeddedEditor(
 					if (event.metaKey || event.ctrlKey || event.altKey) {
 						break;
 					}
-					if (handlers.onEnter(cm)) {
-						event.preventDefault();
-						event.stopPropagation();
-					}
+				if (handlers.onEnter(cm, event.shiftKey)) {
+					event.preventDefault();
+					event.stopPropagation();
+				}
 					break;
 				case 'Backspace':
 					if (

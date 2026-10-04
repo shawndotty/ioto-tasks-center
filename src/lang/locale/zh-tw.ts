@@ -494,6 +494,7 @@ const zhTW = {
 	'view.iotoTaskView.sectionToggle': '折疊/展開章節：{0}',
 	'view.iotoTaskView.checkboxToggle': '切換任務完成狀態：{0}',
 	'view.iotoTaskView.selectCardHint': '點擊選取，再點編輯',
+	'view.iotoTaskView.continuationEditHint': '點擊編輯補充說明',
 	'view.iotoTaskView.selectedHint': '已選取：Enter 編輯 · Del 刪除 · ↑↓ 切換 · Cmd+Enter 完成 · Cmd+↑↓ 首尾',
 	'view.iotoTaskView.toolbar.toggleTaskBlocks': '只顯示任務區塊',
 	'view.iotoTaskView.toolbar.toggleTaskBlocksTooltip': '只顯示包含任務清單的章節',

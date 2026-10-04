@@ -12,6 +12,7 @@
 import type { App, TFile } from 'obsidian';
 
 import {
+	commonIndentPrefix,
 	replaceTaskBody,
 	isTaskContinuationLine,
 } from '../../tasks-center/note-structure';
@@ -43,6 +44,13 @@ export interface CommitTaskLineOptions {
 	 * 不会级联删除嵌套子任务（子任务行以列表标记开头，本就不算续行）。
 	 */
 	swallowContinuations?: boolean;
+	/**
+	 * 插入型变换（返回值含 ≥2 行）时，把**首项留在定位行原位**，其余新增行插到
+	 * 「定位行 + 其下连续续行」之后，而不是紧贴定位行。
+	 * 用于「新建同级任务」：保证原任务的 Shift+Enter 续行不被新任务抢走。
+	 * 单行返回值（纯替换 / 删除）忽略此项。
+	 */
+	insertAfterContinuations?: boolean;
 }
 
 export async function commitTaskLineAction(
@@ -101,7 +109,21 @@ export async function commitTaskLineAction(
 			}
 			lines.splice(index, removeEnd - index); // 一次删掉定位行 + 其后连续续行
 		} else {
-			lines.splice(index, 1, ...(Array.isArray(next) ? next : [next]));
+			const inserted = Array.isArray(next) ? next : [next];
+			if (options.insertAfterContinuations && inserted.length > 1) {
+				// 块尾：定位行之后、仍属「任务续行」的连续行之后
+				let contEnd = index + 1;
+				while (
+					contEnd < lines.length &&
+					isTaskContinuationLine(lines[contEnd] ?? '')
+				) {
+					contEnd += 1;
+				}
+				lines.splice(index, 1, inserted[0] ?? ''); // 首项原位替换
+				lines.splice(contEnd, 0, ...inserted.slice(1)); // 其余落到整块之后
+			} else {
+				lines.splice(index, 1, ...inserted);
+			}
 		}
 
 		const result = lines.join('\n');
@@ -130,4 +152,82 @@ export async function commitTaskText(
 		originalLine: options.originalLine,
 		transform: (line) => replaceTaskBody(line, options.nextBody),
 	});
+}
+
+export interface CommitTaskContinuationOptions {
+	/** 打开编辑器时快照的续行块首行（0 基，= 任务行 + 1） */
+	startLine: number;
+	/** 快照的续行块末行（0 基，含） */
+	endLine: number;
+	/** 快照的续行块各行原文（`lines[startLine..endLine]`），用于行漂移后二次定位 */
+	originalLines: string[];
+	/** 编辑器提交的正文（已 dedent）；`''` → 删除整段续行 */
+	nextText: string;
+}
+
+/**
+ * 替换「任务行下方的一段连续续行」。原子 `vault.process`：
+ * 定位（startLine + 原序列校验，失败则全文按序列搜一次）→ 用原块公共前缀重新缩进
+ * → splice 整段替换；`nextText === ''` 即整段删除。绝不整篇序列化回写。
+ *
+ * 只认「快照的整段序列完全一致」：不吃任务行、不吃空行，块内只可能由调用方传入
+ * `isTaskContinuationLine` 成立的行。
+ */
+export async function commitTaskContinuation(
+	app: App,
+	file: TFile,
+	options: CommitTaskContinuationOptions,
+): Promise<CommitOutcome> {
+	let outcome: CommitOutcome = { status: 'unchanged' };
+
+	await app.vault.process(file, (content) => {
+		const lines = content.split('\n');
+		const count = options.originalLines.length;
+		const matchesAt = (at: number): boolean =>
+			options.originalLines.every((line, i) => lines[at + i] === line);
+
+		// ① 定位：优先 startLine；该处不匹配 → 全文按原序列再搜一次
+		let index = options.startLine;
+		if (index < 0 || !matchesAt(index)) {
+			index = -1;
+			for (let i = 0; i + count <= lines.length; i += 1) {
+				if (matchesAt(i)) {
+					index = i;
+					break;
+				}
+			}
+			if (index < 0) {
+				outcome = { status: 'conflict', line: options.startLine };
+				return content;
+			}
+		}
+
+		// ② 重新缩进：原块公共前缀补回（空行保持空行）
+		const indent = commonIndentPrefix(options.originalLines);
+		const nextLines =
+			options.nextText.length === 0
+				? []
+				: options.nextText
+						.split('\n')
+						.map((line) =>
+							line.trim().length === 0 ? '' : indent + line,
+						);
+
+		// ③ 无改动短路
+		if (
+			nextLines.length === count &&
+			nextLines.every((line, i) => line === lines[index + i])
+		) {
+			outcome = { status: 'unchanged' };
+			return content;
+		}
+
+		// ④ 整段替换（nextLines 为空即删除）
+		lines.splice(index, count, ...nextLines);
+		const result = lines.join('\n');
+		outcome = { status: 'ok', content: result };
+		return result;
+	});
+
+	return outcome;
 }
