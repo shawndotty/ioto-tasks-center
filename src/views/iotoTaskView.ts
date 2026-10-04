@@ -920,6 +920,16 @@ export class IOTOTaskView extends TextFileView {
 	}
 
 	/**
+	 * quickPanel 开放宿主契约（ioto-settings）：声明本视图可承载快捷面板。
+	 *
+	 * 鸭子类型实现——不 import `ioto-settings`；面板的挂载 / 清理 / 定位全部
+	 * 由对端 `PanelService` 管理（见 [[Plan-20261005-070644]] §五）。
+	 */
+	getQuickPanelHost(): HTMLElement | null {
+		return this.contentEl ?? null;
+	}
+
+	/**
 	 * 面板确认后的整行写回：复用 `commitTaskLineAction`（原子 + 冲突定位），
 	 * 成功后走 `applyOutcome` 红线同步 `data` / `lastLoadedText`，并同步
 	 * `editingOriginalLine`，避免随后的 blur 提交误判冲突。
