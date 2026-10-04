@@ -84,6 +84,7 @@ import {
 	type TaskNoteFilters,
 	type TaskNoteLinks,
 } from './ioto-task/render-note';
+import type { ModEnterHost } from './ioto-task/select-mode-scope';
 import {
 	IOTO_TASK_VIEW_HOVER_SOURCE_ID,
 	type TaskHoverPreviewPayload,
@@ -1386,6 +1387,48 @@ export class IOTOTaskView extends TextFileView {
 	}
 
 	/* ------------------------------------------------------------------ *
+	 * 选中态 Mod+Enter：走 Obsidian Scope（见 select-mode-scope.ts 顶部注释）
+	 * ------------------------------------------------------------------ */
+
+	/** 暴露给 select-mode scope 的宿主；由 `resolveModEnterHost` 按 active leaf 取用。 */
+	modEnterHost(): ModEnterHost {
+		return {
+			canToggleSelected: () => this.canToggleSelectedFromScope(),
+			toggleSelected: () => this.toggleSelectedFromScope(),
+		};
+	}
+
+	/**
+	 * 能否由 scope 接管 Mod+Enter：非编辑态 + 有选中卡 + 卡片仍在 DOM 里。
+	 *
+	 * 🔴 编辑态必须放行（返回 `undefined` 交给核心）：内联编辑器里可能有未提交
+	 * 正文，此时改标志位会让随后的 blur 提交判成冲突并丢字 —— 与原先
+	 * `render-note.ts` Enter 分支的那条红线一致。
+	 */
+	private canToggleSelectedFromScope(): boolean {
+		if (this.editingLine !== null) {
+			return false;
+		}
+		if (this.selectedLine === null) {
+			return false;
+		}
+		return this.queryCard(this.selectedLine) !== null;
+	}
+
+	/** scope 命中后的执行：复用点 checkbox 的同一条链路（乐观更新 + 原子写回）。 */
+	private toggleSelectedFromScope(): void {
+		const line = this.selectedLine;
+		if (line === null) {
+			return;
+		}
+		const cardEl = this.queryCard(line);
+		if (!cardEl) {
+			return;
+		}
+		void this.toggleTask(line, cardEl);
+	}
+
+	/* ------------------------------------------------------------------ *
 	 * 批次 D — ④「添加任务」：三段式落点（文件末条 → 任务 Section 段首 → 文末建段）
 	 * ------------------------------------------------------------------ */
 
@@ -1496,4 +1539,16 @@ export class IOTOTaskView extends TextFileView {
 
 		await Promise.resolve(registry.executeCommandById(RUN_TASK_COMMAND_ID));
 	}
+}
+
+/**
+ * 解析「当前 active 的 IOTOTask 视图」的 Mod+Enter 宿主；active view 不是本类型时
+ * 返回 `null`（scope 据此放行给核心）。
+ *
+ * 供 `main.ts` 注册的 select-mode scope 每次按键调用：多个 IOTOTask leaf 同时打开
+ * 时，只有 active 的那个会接管，避免误改另一个 leaf 里选中的卡片。
+ */
+export function resolveModEnterHost(app: App): ModEnterHost | null {
+	const view = app.workspace.getActiveViewOfType(IOTOTaskView);
+	return view ? view.modEnterHost() : null;
 }

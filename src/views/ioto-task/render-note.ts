@@ -492,19 +492,18 @@ function renderChecklistGroup(options: {
 				);
 				switch (event.key) {
 					case 'Enter': {
-						// Cmd/Ctrl+Enter：切换本卡完成态（复用点 checkbox 的同一条链路，
-						// [[Plan-20261003-222709]] §三）。
-						// 编辑态不接管：编辑器里可能有未提交正文，此时改标志位会让随后的
-						// blur 提交判成冲突并丢字（§五.1）。
+						// Mod+Enter（macOS Command / 其它平台 Ctrl）切换完成态**已移交
+						// Obsidian Scope**（`select-mode-scope.ts`）：核心 Keymap 挂在
+						// `window` 上的捕获监听会抢先吃掉这个组合，DOM 层根本收不到
+						// （Windows 上 Ctrl+Enter 完全无效、macOS 只有 Ctrl+Enter 能用，
+						// 就是这个原因）。
+						// 这里只留兜底：万一事件仍冒泡进来，按原条件吞掉，**绝不**
+						// 当作普通 Enter 落进编辑态（否则会与 scope 的写回交错）。
 						if (
 							hasCommandModifier(event) &&
 							!event.shiftKey &&
 							!event.altKey
 						) {
-							if (cardEl.hasClass('is-editing')) {
-								return;
-							}
-							editing.toggleTask(item.line, cardEl);
 							break;
 						}
 						// Shift+Enter：在选中卡片下方新建一张同级空卡并直接开编；
