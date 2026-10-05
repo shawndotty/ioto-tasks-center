@@ -15,8 +15,10 @@ const jiti = createJiti(import.meta.url, {
 const { MarkdownView } = await jiti.import('./stubs/obsidian.mjs');
 const {
 	ITEM_CONTROL_COMMAND_ID,
+	TASK_OUTLINK_COMMAND_ID,
 	IOTO_TASK_VIEW_TYPE,
-	shouldBridgeItemControl,
+	resolveBridgedCommand,
+	shouldBridgeInTaskView,
 	createBridgeEditor,
 	shimActiveMarkdownView,
 	installItemControlBridge,
@@ -51,47 +53,41 @@ function makeHost(overrides = {}) {
 }
 
 /* ------------------------------------------------------------------ *
- * shouldBridgeItemControl
+ * resolveBridgedCommand（命令族判据）
  * ------------------------------------------------------------------ */
 
-test('shouldBridgeItemControl：命令 id + IOTOTask + 编辑中 → true', () => {
-	assert.equal(
-		shouldBridgeItemControl(
-			ITEM_CONTROL_COMMAND_ID,
-			IOTO_TASK_VIEW_TYPE,
-			5,
-		),
-		true,
-	);
+test('resolveBridgedCommand：两条桥接命令各归一类', () => {
+	assert.equal(resolveBridgedCommand(ITEM_CONTROL_COMMAND_ID), 'item-control');
+	assert.equal(resolveBridgedCommand(TASK_OUTLINK_COMMAND_ID), 'task-outlink');
 });
 
-test('shouldBridgeItemControl：id 不命中 / 视图不命中 / 非编辑态 → false', () => {
-	assert.equal(
-		shouldBridgeItemControl('other:cmd', IOTO_TASK_VIEW_TYPE, 5),
-		false,
-	);
-	assert.equal(
-		shouldBridgeItemControl(ITEM_CONTROL_COMMAND_ID, 'markdown', 5),
-		false,
-	);
-	assert.equal(
-		shouldBridgeItemControl(ITEM_CONTROL_COMMAND_ID, IOTO_TASK_VIEW_TYPE, null),
-		false,
-	);
-	assert.equal(
-		shouldBridgeItemControl(
-			ITEM_CONTROL_COMMAND_ID,
-			IOTO_TASK_VIEW_TYPE,
-			undefined,
-		),
-		false,
-	);
+test('resolveBridgedCommand：其它命令 / 无 id → null（原样透传）', () => {
+	assert.equal(resolveBridgedCommand('other:cmd'), null);
+	assert.equal(resolveBridgedCommand(undefined), null);
+});
+
+/* ------------------------------------------------------------------ *
+ * shouldBridgeInTaskView（视图 + 编辑判据）
+ * ------------------------------------------------------------------ */
+
+test('shouldBridgeInTaskView：IOTOTask + 编辑中 → true', () => {
+	assert.equal(shouldBridgeInTaskView(IOTO_TASK_VIEW_TYPE, 5), true);
+});
+
+test('shouldBridgeInTaskView：视图不命中 / 非编辑态 → false', () => {
+	assert.equal(shouldBridgeInTaskView('markdown', 5), false);
+	assert.equal(shouldBridgeInTaskView(IOTO_TASK_VIEW_TYPE, null), false);
+	assert.equal(shouldBridgeInTaskView(IOTO_TASK_VIEW_TYPE, undefined), false);
 });
 
 test('命令 id / 视图类型标识与 ioto-settings 及本插件口径一致', () => {
 	assert.equal(
 		ITEM_CONTROL_COMMAND_ID,
 		'ioto-settings:ioto-edit-item-controls',
+	);
+	assert.equal(
+		TASK_OUTLINK_COMMAND_ID,
+		'ioto-settings:ioto-insert-outgoing-link',
 	);
 	assert.equal(IOTO_TASK_VIEW_TYPE, 'IOTOTask');
 });
@@ -242,6 +238,20 @@ test('installItemControlBridge：命中 → 桥接期间 shim 生效，original 
 	assert.equal(calls.seen.length, 1);
 	assert.equal(calls.seen[0].file, host.file);
 	assert.equal(typeof calls.seen[0].editor.getCursor, 'function');
+
+	uninstall();
+});
+
+test('installItemControlBridge：命中出链命令 → original 只调用一次，且不安装 shim', () => {
+	const { app, commands, calls } = makeBridgeApp();
+	const uninstall = installItemControlBridge(app);
+
+	commands.executeCommand({ id: TASK_OUTLINK_COMMAND_ID });
+
+	assert.equal(calls.original, 1);
+	// 出链读 getActiveFile() + activeEditor?.editor（编辑态已登记）→ 无需假视图，
+	// seen[0] 仍是真实实现（未被 shim 替换）。
+	assert.deepEqual(calls.seen[0], { real: MarkdownView });
 
 	uninstall();
 });

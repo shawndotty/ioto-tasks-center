@@ -3631,3 +3631,14 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 .ioto-item-control-modal--fit-scroll {
 	overflow-y: auto;
 }
+
+/* 「插入出链」建议器锚定卡片：核心 .prompt 默认 absolute / top:80px / 水平居中
+   （app.css:9575-9591）；改为 fixed 并交出行内 top/left（桥接层写，同
+   computePopupPlacement）。不写死 top/left → JS 未跑时回落到 .prompt 的 top:80px
+   与静态居中，与核心默认一致，不会跳到左上角。phone 保持核心全宽顶栏（S4），
+   故排除 .is-phone。见 [[Plan-20261005-233822]] §五 步骤 3。 */
+body:not(.is-phone) .ioto-outgoing-link-modal {
+	position: fixed;
+	right: auto; /* 撤销核心的水平居中（left 由行内样式给） */
+	margin: 0;
+}

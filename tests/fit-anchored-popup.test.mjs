@@ -2,9 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createJiti } from 'jiti';
 
-// 只锁纯几何（[[Plan-20261003-165927]] §6.1）：面板高度已知后的
-// 「下方优先 / 放不下翻上方 / 上下都放不下夹取 / 超高贴顶 / 水平夹取」。
-// DOM 包装（fitItemControlPanel）的真机行为必须真机验证，见 §6.2。
+// 只锁纯几何（[[Plan-20261003-165927]] §6.1、[[Plan-20261005-233822]] §五 步骤 4）：
+// 弹窗高度已知后的「下方优先 / 放不下翻上方 / 上下都放不下夹取 / 超高贴顶 / 水平夹取」，
+// 以及两个弹窗选择器常量。
+// DOM 包装（fitAnchoredPopup / fitItemControlPanel）的真机行为必须真机验证，见 §6.2。
 
 const jiti = createJiti(import.meta.url, {
 	moduleCache: false,
@@ -13,18 +14,32 @@ const jiti = createJiti(import.meta.url, {
 	},
 });
 
-const { computePanelPlacement } = await jiti.import(
-	'../src/views/ioto-task/fit-item-control-panel.ts',
-);
+const {
+	computePopupPlacement,
+	ITEM_CONTROL_PANEL_SELECTOR,
+	TASK_OUTLINK_POPOVER_SELECTOR,
+} = await jiti.import('../src/views/ioto-task/fit-anchored-popup.ts');
+
+/* ------------------------------------------------------------------ *
+ * 选择器常量：与 ioto-settings 源码显式加的类一致（失配则定位静默失效）
+ * ------------------------------------------------------------------ */
+
+test('选择器常量与 ioto-settings 实际类名一致', () => {
+	assert.equal(
+		ITEM_CONTROL_PANEL_SELECTOR,
+		'.ioto-item-control-modal .modal',
+	);
+	assert.equal(TASK_OUTLINK_POPOVER_SELECTOR, '.ioto-outgoing-link-modal');
+});
 
 /** 所有必填项都给默认值，用例只覆盖关心的那几项。 */
 function placement(overrides = {}) {
-	return computePanelPlacement({
+	return computePopupPlacement({
 		anchorTop: 60,
 		anchorBottom: 100,
 		anchorLeft: 300,
-		panelHeight: 200,
-		panelWidth: 560,
+		popupHeight: 200,
+		popupWidth: 560,
 		viewportHeight: 833,
 		viewportWidth: 1481,
 		...overrides,
@@ -36,7 +51,7 @@ function placement(overrides = {}) {
  * ------------------------------------------------------------------ */
 
 test('下方放得下：top = anchorBottom + gap，flipped = false', () => {
-	const r = placement({ anchorBottom: 100, panelHeight: 200, viewportHeight: 833 });
+	const r = placement({ anchorBottom: 100, popupHeight: 200, viewportHeight: 833 });
 	assert.equal(r.top, 108); // 100 + 8
 	assert.equal(r.flipped, false);
 });
@@ -50,7 +65,7 @@ test('下方放不下 → 翻到卡片上方，flipped = true 且与卡片不重
 	const r = placement({
 		anchorTop: 717,
 		anchorBottom: 766,
-		panelHeight: 362,
+		popupHeight: 362,
 		viewportHeight: 833,
 	});
 	assert.equal(r.top, 347); // 717 - 8 - 362
@@ -67,7 +82,7 @@ test('上下都放不下 → 夹取（保证顶部可见），flipped = false', 
 	const r = placement({
 		anchorTop: 200,
 		anchorBottom: 500,
-		panelHeight: 362,
+		popupHeight: 362,
 		viewportHeight: 833,
 	});
 	assert.equal(r.top, 463); // 833 - 8 - 362
@@ -82,7 +97,7 @@ test('上下都放不下 → 夹取（保证顶部可见），flipped = false', 
 test('面板超高（h > vh）→ top = margin，不返回负值', () => {
 	const r = placement({
 		anchorBottom: 100,
-		panelHeight: 900,
+		popupHeight: 900,
 		viewportHeight: 833,
 	});
 	assert.equal(r.top, 8);
@@ -95,21 +110,21 @@ test('面板超高（h > vh）→ top = margin，不返回负值', () => {
 
 test('水平夹取：右侧越界 → vw - w - edgeGap；左侧越界 → margin；常规 → anchorLeft', () => {
 	assert.equal(
-		placement({ anchorLeft: 2000, panelWidth: 560, viewportWidth: 1481 }).left,
+		placement({ anchorLeft: 2000, popupWidth: 560, viewportWidth: 1481 }).left,
 		905, // 1481 - 560 - 16
 	);
 	assert.equal(
-		placement({ anchorLeft: 2, panelWidth: 560, viewportWidth: 1481 }).left,
+		placement({ anchorLeft: 2, popupWidth: 560, viewportWidth: 1481 }).left,
 		8,
 	);
 	assert.equal(
-		placement({ anchorLeft: 300, panelWidth: 560, viewportWidth: 1481 }).left,
+		placement({ anchorLeft: 300, popupWidth: 560, viewportWidth: 1481 }).left,
 		300,
 	);
 });
 
 test('水平夹取：面板比视口还宽时退到 margin，不返回负值', () => {
-	const r = placement({ anchorLeft: 300, panelWidth: 2000, viewportWidth: 1481 });
+	const r = placement({ anchorLeft: 300, popupWidth: 2000, viewportWidth: 1481 });
 	assert.equal(r.left, 8);
 });
 
@@ -122,13 +137,13 @@ test('缺省 margin / gap / edgeGap 等价于 8 / 8 / 16', () => {
 		anchorTop: 60,
 		anchorBottom: 100,
 		anchorLeft: 2000,
-		panelHeight: 200,
-		panelWidth: 560,
+		popupHeight: 200,
+		popupWidth: 560,
 		viewportHeight: 833,
 		viewportWidth: 1481,
 	};
-	const withDefaults = computePanelPlacement({ ...base });
-	const explicit = computePanelPlacement({
+	const withDefaults = computePopupPlacement({ ...base });
+	const explicit = computePopupPlacement({
 		...base,
 		margin: 8,
 		gap: 8,
@@ -144,13 +159,13 @@ test('边界：vh 极小不返回负值、不抛错；同输入两次结果相�
 		anchorTop: 5,
 		anchorBottom: 10,
 		anchorLeft: 5,
-		panelHeight: 362,
-		panelWidth: 560,
+		popupHeight: 362,
+		popupWidth: 560,
 		viewportHeight: 20,
 		viewportWidth: 100,
 	};
-	const a = computePanelPlacement(input);
-	const b = computePanelPlacement(input);
+	const a = computePopupPlacement(input);
+	const b = computePopupPlacement(input);
 	assert.deepEqual(a, b);
 	assert.ok(a.top >= 0);
 	assert.ok(a.left >= 0);
