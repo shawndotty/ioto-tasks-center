@@ -22,6 +22,7 @@ import {
 	type NoteSection,
 } from '../../tasks-center/note-structure';
 import { isOverlayFocusTarget } from './embedded-editor';
+import { resolveDeleteConfirmKey } from './delete-confirm';
 import {
 	collectCardLines,
 	pickAdjacentLine,
@@ -45,6 +46,18 @@ export interface TaskNoteEditing {
 	select(line: number): void;
 	/** 删除该行，并把选择落到相邻卡片（`selected → selected/null`） */
 	delete(line: number): void;
+	/**
+	 * 取消「待删除确认」瞬态（pending 时有效）；缺省 = 该能力不可用。
+	 * 供取消按钮 / `Esc` 调用（[[Plan-20261005-141853]] 步骤 6）。
+	 */
+	cancelDelete?(): void;
+	/**
+	 * 是否正处于「待删除确认」瞬态（getter，读实时值，供 keydown 路由）。
+	 *
+	 * 🔴 必须是 getter：渲染层在 keydown 闭包里读实时值；普通属性会捕获构建那一刻
+	 * 的旧值，pending 判定永远失效（同 `selectedLine`）。
+	 */
+	readonly deletePending?: boolean;
 	/** 进入卡片正文内联编辑（同时会提交上一张正在编辑的卡片） */
 	beginEdit(line: number): void;
 	/**
@@ -558,6 +571,11 @@ function renderChecklistGroup(options: {
 			if (target.closest('.ioto-task-view__card-action-btn')) {
 				return;
 			}
+			// 待删除确认遮罩 / 按钮：按钮自身已 stopPropagation，这里按 closest 双保险；
+			// 点遮罩空白同样不触发选择 / 编辑（[[Plan-20261005-141853]] Q8）。
+			if (target.closest('.ioto-task-view__delete-confirm')) {
+				return;
+			}
 			// 编辑中不重复进入
 			if (target.closest('.ioto-task-view__card-editor')) {
 				return;
@@ -607,6 +625,43 @@ function renderChecklistGroup(options: {
 				// 只有卡片本体真正持有焦点时才响应（点了正文里的其他交互元素时不响应）
 				if (target !== cardEl) {
 					return;
+				}
+
+				// 待删除确认瞬态：优先路由（[[Plan-20261005-141853]] 步骤 5）。
+				// 判定抽成纯函数（delete-confirm.ts）覆盖 auto-repeat / 二次 Del / Esc / 导航。
+				const pendingAction = resolveDeleteConfirmKey(
+					editing.deletePending === true,
+					event.key,
+					event.repeat,
+					{
+						shiftKey: event.shiftKey,
+						commandModifier: hasCommandModifier(event),
+						altKey: event.altKey,
+					},
+				);
+				if (pendingAction === 'repeat') {
+					// 坑 A：长按连发不得走到确认
+					event.preventDefault();
+					event.stopPropagation();
+					return;
+				}
+				if (pendingAction === 'confirm') {
+					// 二次 Del/Backspace 或纯 Enter → 确认（delete 由 requestDelete 分派）
+					editing.delete(item.line);
+					event.preventDefault();
+					event.stopPropagation();
+					return;
+				}
+				if (pendingAction === 'cancel') {
+					// Q3：Esc 取消
+					editing.cancelDelete?.();
+					event.preventDefault();
+					event.stopPropagation();
+					return;
+				}
+				if (pendingAction === 'fallthrough') {
+					// 其余键（↑↓ / Shift+Enter / Cmd+Enter 等）：先取消 pending，再走常规分支
+					editing.cancelDelete?.();
 				}
 
 				const order = collectCardLines(

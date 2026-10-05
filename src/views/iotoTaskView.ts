@@ -170,6 +170,15 @@ export class IOTOTaskView extends TextFileView {
 	 * 但必须**可重建**——任何整树重建（折叠 / 删除 / 外部写入）后由 `syncSelectionClass` 回填。
 	 */
 	private selectedLine: number | null = null;
+	/**
+	 * 待删除确认中的文件行号（0 基）；非 pending 为 `null`。选择态**瞬态子状态**，
+	 * 不持久化，也不引入第四个大状态（[[Plan-20261005-141853]] §三）。
+	 *
+	 * 它是唯一真源；同一时刻最多一个遮罩，`pendingDeleteEl` 只是它的 DOM 影子。
+	 */
+	private pendingDeleteLine: number | null = null;
+	/** 当前遮罩元素（回收用）；与 `pendingDeleteLine` 同生共死。 */
+	private pendingDeleteEl: HTMLElement | null = null;
 	private editingOriginalLine = '';
 	private editingHandle: EmbeddedEditorHandle | null = null;
 	/**
@@ -273,6 +282,7 @@ export class IOTOTaskView extends TextFileView {
 		this.continuationOriginalLines = [];
 		this.selectedLine = null;
 		this.editingOriginalLine = '';
+		this.cancelPendingDelete(false);
 		// 保留常驻外壳（toolbar / body），只清列表内容。
 		this.bodyEl?.empty();
 		this.filters = {
@@ -651,6 +661,9 @@ export class IOTOTaskView extends TextFileView {
 
 		this.isRendering = true;
 		try {
+			// 整树重建会连遮罩一起清掉：先置空 pending 状态，避免旧行号悬空误删
+			//（[[Plan-20261005-141853]] 坑 B）。幂等，无 pending 时为 no-op。
+			this.cancelPendingDelete(false);
 			// 兼容「setViewData 先于 onOpen」/ 外壳被清空的时序：缺失时补建。
 			if (!this.bodyEl?.isConnected) {
 				this.buildToolbar();
@@ -732,6 +745,7 @@ export class IOTOTaskView extends TextFileView {
 	private buildEditingController(): TaskNoteEditing {
 		// 箭头函数读实时值，供下面的 getter 转发（不写 `const self = this`）
 		const readSelected = (): number | null => this.selectedLine;
+		const readDeletePending = (): boolean => this.pendingDeleteLine !== null;
 		// 卡片动作区按钮：仅在「支持内联编辑」且「目标命令已注册」时才注入，
 		// 缺省即渲染层隐藏按钮（Q5：只读 / ioto-settings 未启用 → 隐藏）。
 		const inlineEdit = this.supportsInlineEdit();
@@ -747,8 +761,18 @@ export class IOTOTaskView extends TextFileView {
 			select: (line) => {
 				this.select(line);
 			},
+			// 选择态删除入口改语义分派：首按进确认态，同一行再次触发才真删
+			//（[[Plan-20261005-141853]] 步骤 2）。确认按钮 / 二次 Delete 都走这里。
 			delete: (line) => {
-				void this.deleteSelected(line);
+				this.requestDelete(line);
+			},
+			// 取消按钮 / Esc 调用；无 pending 时幂等 no-op。
+			cancelDelete: () => {
+				this.cancelPendingDelete();
+			},
+			// 🔴 必须是 getter：渲染层在 keydown 闭包里读实时值（同 selectedLine）。
+			get deletePending() {
+				return readDeletePending();
 			},
 			beginEdit: (line) => {
 				void this.beginEdit(line);
@@ -865,6 +889,8 @@ export class IOTOTaskView extends TextFileView {
 	 * 例如方向键移动或 `Option+I` 面板关闭后重新选中）。已在本卡编辑态则忽略。
 	 */
 	private select(line: number): void {
+		// 换选中即离开 pending 语境：先撤遮罩（幂等，焦点交给随后的 applySelection）
+		this.cancelPendingDelete(false);
 		if (this.editingLine !== null && this.editingLine !== line) {
 			void this.commitEdit().then(() => this.applySelection(line));
 			return;
@@ -880,6 +906,8 @@ export class IOTOTaskView extends TextFileView {
 	 * （[[Research-20261003-091331]] §3.1、[[Plan-20261003-094145]] §5.3）。
 	 */
 	private applySelection(line: number): void {
+		// 任何改选中的入口都先撤遮罩（坑 C / Q2）；焦点交给下面的 cardEl.focus
+		this.cancelPendingDelete(false);
 		const prev = this.selectedLine;
 		if (prev !== null && prev !== line) {
 			this.queryCard(prev)?.removeClass('is-selected');
@@ -941,6 +969,126 @@ export class IOTOTaskView extends TextFileView {
 		if (nextLine !== null) {
 			this.queryCard(nextLine)?.focus({ preventScroll: true });
 		}
+	}
+
+	/* ------------------------------------------------------------------ *
+	 * 选择态 → 待删除确认瞬态（[[Plan-20261005-141853]] §三/§四）
+	 * ------------------------------------------------------------------ */
+
+	/**
+	 * 选择态删除入口：无 pending → 进确认态；同一行再次触发 → 确认删除。
+	 *
+	 * 「确认按钮」与「二次 `Delete`」都走 `delete(line)` 经此分派，渲染层无需维护
+	 * 两套语义。非同一行（理论上不会发生）视为一次新的确认请求。
+	 */
+	private requestDelete(line: number): void {
+		if (this.pendingDeleteLine === line) {
+			this.confirmPendingDelete();
+			return;
+		}
+		this.enterPendingDelete(line);
+	}
+
+	/**
+	 * 在当前卡片上盖一层遮罩 + 居中提示 + 确认/取消按钮。
+	 *
+	 * 焦点**不移动**（仍留在 `cardEl`）：键盘全部走既有卡片 `keydown`，避免在视图里
+	 * 重写一套 `collectCardLines`/`pickAdjacentLine` 导航（[[Plan-20261005-141853]] 步骤 5）。
+	 */
+	private enterPendingDelete(line: number): void {
+		const cardEl = this.queryCard(line);
+		if (!cardEl) {
+			// 行已漂移：静默放弃，不进 pending
+			return;
+		}
+		this.cancelPendingDelete(false); // 保证单例
+
+		const overlay = cardEl.createDiv({
+			cls: 'ioto-task-view__delete-confirm',
+		});
+		overlay.setAttr('role', 'alertdialog');
+		overlay.setAttr(
+			'aria-label',
+			t('view.iotoTaskView.deleteConfirm.aria'),
+		);
+
+		overlay.createDiv({
+			cls: 'ioto-task-view__delete-confirm-message',
+			text: t('view.iotoTaskView.deleteConfirm.message'),
+		});
+
+		const actions = overlay.createDiv({
+			cls: 'ioto-task-view__delete-confirm-actions',
+		});
+		const ok = actions.createEl('button', {
+			cls: 'ioto-task-view__delete-confirm-btn is-confirm',
+			text: t('view.iotoTaskView.deleteConfirm.confirm'),
+			attr: { type: 'button' },
+		});
+		const cancel = actions.createEl('button', {
+			cls: 'ioto-task-view__delete-confirm-btn',
+			text: t('view.iotoTaskView.deleteConfirm.cancel'),
+			attr: { type: 'button' },
+		});
+
+		// 两个按钮都 stopPropagation：否则冒泡到卡片 click 会因卡已 is-selected 而误进编辑态
+		ok.addEventListener('click', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			this.confirmPendingDelete();
+		});
+		cancel.addEventListener('click', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			this.cancelPendingDelete();
+		});
+
+		// Q8 防误触：点遮罩空白不取消，也不让焦点离开卡片
+		overlay.addEventListener('mousedown', (event) => {
+			event.preventDefault();
+		});
+		overlay.addEventListener('click', (event) => {
+			event.stopPropagation();
+		});
+
+		this.pendingDeleteLine = line;
+		this.pendingDeleteEl = overlay;
+		cardEl.addClass('is-pending-delete');
+		cardEl.focus({ preventScroll: true });
+	}
+
+	/**
+	 * 撤下遮罩并清空 pending 状态（幂等）。
+	 *
+	 * 只移除遮罩类与 DOM，**不动 `selectedLine`**：取消后卡片仍保持 `.is-selected`。
+	 */
+	private cancelPendingDelete(refocus = true): void {
+		this.pendingDeleteEl?.remove();
+		this.pendingDeleteEl = null;
+		const line = this.pendingDeleteLine;
+		this.pendingDeleteLine = null;
+		if (line !== null) {
+			const cardEl = this.queryCard(line);
+			cardEl?.removeClass('is-pending-delete');
+			if (refocus) {
+				cardEl?.focus({ preventScroll: true });
+			}
+		}
+	}
+
+	/**
+	 * 确认删除：先清遮罩/置空 pending，再走既有 `deleteSelected()`。
+	 *
+	 * **不另写行号计算**——`nextLine`、conflict/unchanged、整树重建、选择回填全部沿用
+	 * 既有链路（坑 G）。
+	 */
+	private confirmPendingDelete(): void {
+		const line = this.pendingDeleteLine;
+		if (line === null) {
+			return;
+		}
+		this.cancelPendingDelete(false);
+		void this.deleteSelected(line);
 	}
 
 	/**
@@ -2041,6 +2189,11 @@ export class IOTOTaskView extends TextFileView {
 	 */
 	private canToggleSelectedFromScope(): boolean {
 		if (this.editingLine !== null) {
+			return false;
+		}
+		// pending 期间屏蔽 Cmd/Ctrl+Enter 完成态切换：否则会经 Scope 改勾选态、刷单卡，
+		// 遮罩语境失效（[[Plan-20261005-141853]] 步骤 1.4 / 坑 D）。
+		if (this.pendingDeleteLine !== null) {
 			return false;
 		}
 		if (this.selectedLine === null) {

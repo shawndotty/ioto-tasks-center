@@ -564,6 +564,10 @@ const en = {
 	'view.iotoTaskView.badge.turnsUnlimited': 'no turn limit',
 	'view.iotoTaskView.cardActions.insertOutgoingLink': 'Insert outgoing link',
 	'view.iotoTaskView.cardActions.editItemControls': 'Edit item controls',
+	'view.iotoTaskView.deleteConfirm.message': 'Delete this task',
+	'view.iotoTaskView.deleteConfirm.confirm': 'Confirm',
+	'view.iotoTaskView.deleteConfirm.cancel': 'Cancel',
+	'view.iotoTaskView.deleteConfirm.aria': 'Delete confirmation',
 	'notice.iotoTaskView.commitConflict':
 		'The file changed during editing; this change was discarded.',
 	'notice.iotoTaskView.inlineEditUnavailable':

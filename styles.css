@@ -2309,6 +2309,8 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	border: 1px solid var(--ioto-tv-border);
 	border-inline-start: 3px solid var(--ioto-tv-accent);
 	border-radius: var(--ioto-tv-radius);
+	/* 待删除确认遮罩的定位上下文（inset:0 即覆盖整卡，含续行块与动作区）。 */
+	position: relative;
 }
 
 .ioto-task-view__card[data-task="x"],
@@ -2494,6 +2496,85 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	height: 16px;
 }
 
+/* ------------------------------------------------------------------ *
+ * 待删除确认遮罩（选择态 Delete 首按后盖在当前卡上）
+ * [[Plan-20261005-141853]] §四 步骤 8 / Q4 / Q8
+ * ------------------------------------------------------------------ */
+
+/* 遮罩容器：绝对定位盖满整卡（任务行 + 续行块 + 动作区 = 删除范围，坑 E），
+   内容水平 + 垂直居中。自身不加 opacity，背景走 ::before 单独控制，
+   保证文字 / 按钮不被一起冲淡（口径见 Plan §四 步骤 8 的「口径注意」）。 */
+.ioto-task-view__delete-confirm {
+	position: absolute;
+	inset: 0;
+	z-index: 3;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	border-radius: inherit;
+}
+
+/* Q4：遮罩层自身不透明度 ~0.7，底色取主题 cover 变量（跟随主题，不写死纯黑） */
+.ioto-task-view__delete-confirm::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	background: var(--background-modifier-cover);
+	opacity: 0.7;
+}
+
+/* 内容层提到遮罩背景之上，不受 ::before 的 opacity 影响 */
+.ioto-task-view__delete-confirm > * {
+	position: relative;
+}
+
+.ioto-task-view__delete-confirm-message {
+	color: var(--text-on-accent);
+	font-weight: var(--font-semibold);
+}
+
+.ioto-task-view__delete-confirm-actions {
+	display: flex;
+	gap: 8px;
+}
+
+.ioto-task-view__delete-confirm-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 28px;
+	padding: 2px 12px;
+	background: var(--interactive-normal);
+	color: var(--text-normal);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	box-shadow: none;
+	font-size: var(--font-ui-small);
+	cursor: pointer;
+}
+
+.ioto-task-view__delete-confirm-btn:hover {
+	background: var(--interactive-hover);
+}
+
+.ioto-task-view__delete-confirm-btn:focus-visible {
+	outline: 2px solid var(--ioto-tv-accent);
+	outline-offset: 1px;
+}
+
+.ioto-task-view__delete-confirm-btn.is-confirm {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+.ioto-task-view__delete-confirm-btn.is-confirm:hover {
+	background: var(--interactive-accent-hover);
+}
+
 .ioto-task-view__badge {
 	display: inline-flex;
 	align-items: center;
@@ -2576,6 +2657,12 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 
 .is-phone .ioto-task-view__section-toggle {
 	padding: 6px;
+}
+
+/* 待删除确认按钮：移动端留足点击尺寸 */
+.is-phone .ioto-task-view__delete-confirm-btn {
+	min-height: 36px;
+	padding: 6px 16px;
 }
 
 /* 移动端（本期不做真机验证）：加大 checkbox 与卡片的触控热区 */

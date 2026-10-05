@@ -521,6 +521,10 @@ const zhTW = {
 	'view.iotoTaskView.badge.turnsUnlimited': '不限輪數',
 	'view.iotoTaskView.cardActions.insertOutgoingLink': '插入出鏈',
 	'view.iotoTaskView.cardActions.editItemControls': '編輯條目控制',
+	'view.iotoTaskView.deleteConfirm.message': '刪除此任務',
+	'view.iotoTaskView.deleteConfirm.confirm': '確認',
+	'view.iotoTaskView.deleteConfirm.cancel': '取消',
+	'view.iotoTaskView.deleteConfirm.aria': '刪除確認',
 	'notice.iotoTaskView.commitConflict': '檔案在編輯期間被外部修改，本次變更已捨棄。',
 	'notice.iotoTaskView.inlineEditUnavailable':
 		'目前 Obsidian 版本不支援內嵌編輯，請在 Markdown 中編輯。',
