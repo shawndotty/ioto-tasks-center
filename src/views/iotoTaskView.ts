@@ -81,7 +81,13 @@ import {
 import {
 	captureIotoTaskScroll,
 	restoreIotoTaskScroll,
+	IOTO_TASK_CARD_SELECTOR,
+	IOTO_TASK_SCROLL_SELECTOR,
 } from './ioto-task/ioto-task-scroll';
+import {
+	captureCardSnapshots,
+	prepareSwapTransition,
+} from './ioto-task/list-transition';
 import {
 	renderCardActions,
 	renderTaskNote,
@@ -179,6 +185,13 @@ export class IOTOTaskView extends TextFileView {
 	private pendingDeleteLine: number | null = null;
 	/** 当前遮罩元素（回收用）；与 `pendingDeleteLine` 同生共死。 */
 	private pendingDeleteEl: HTMLElement | null = null;
+	/**
+	 * 进出场动画自增令牌：新一次渲染 / 收尾立即作废上一场的异步 rAF 回调
+	 * （[[Plan-20261005-150106]] 坑 6，避免连续增删叠影）。
+	 */
+	private listTransitionToken = 0;
+	/** 上一场动画的收尾函数（移除浮层、清临时类与 inline transform）。 */
+	private listTransitionCleanup: (() => void) | null = null;
 	private editingOriginalLine = '';
 	private editingHandle: EmbeddedEditorHandle | null = null;
 	/**
@@ -653,13 +666,16 @@ export class IOTOTaskView extends TextFileView {
 
 	private renderNote(
 		data: string,
-		options?: { skipAnchorRestore?: boolean },
+		options?: { skipAnchorRestore?: boolean; animateRecentSwap?: boolean },
 	): void {
 		if (this.isRendering) {
 			return;
 		}
 
 		this.isRendering = true;
+		// 新一次渲染立即作废上一场进出场动画（避免叠影）：`bodyEl.empty()` 会顺带
+		// 销毁旧浮层，但异步 rAF 回调仍需令牌作废（[[Plan-20261005-150106]] §2.4）。
+		this.cancelListTransition();
 		try {
 			// 整树重建会连遮罩一起清掉：先置空 pending 状态，避免旧行号悬空误删
 			//（[[Plan-20261005-141853]] 坑 B）。幂等，无 pending 时为 no-op。
@@ -677,6 +693,22 @@ export class IOTOTaskView extends TextFileView {
 			// 先捕获、render 之后恢复，保证结构性变更（回车新建 / 折叠 Section / 冲突回滚）
 			// 不把用户看到的视口位置丢掉（[[Plan-20261003-094145]] §5.2）。
 			const snapshot = captureIotoTaskScroll(this.contentEl);
+
+			// 进出场动效门控：只对「①③ 单任务增删」放行（residual 重建保持即时）。
+			// 必须在 `empty()` 前采旧集——旧卡节点会被 empty() 摘除，但引用仍在内存。
+			const animate =
+				options?.animateRecentSwap === true &&
+				this.filters.recentOnly &&
+				!this.prefersReducedMotion();
+			const scrollElBefore =
+				this.bodyEl?.querySelector<HTMLElement>(
+					IOTO_TASK_SCROLL_SELECTOR,
+				) ?? null;
+			const oldSnapshots =
+				animate && scrollElBefore
+					? captureCardSnapshots(scrollElBefore, IOTO_TASK_CARD_SELECTOR)
+					: [];
+
 			// 只重建列表容器，控制栏外壳常驻（批次 A）。
 			this.bodyEl?.empty();
 			renderTaskNote({
@@ -706,9 +738,70 @@ export class IOTOTaskView extends TextFileView {
 			// `renderNote` 也会被后台 `reloadFromVault` 触发，抢焦点会打断用户输入
 			// （[[Plan-20261003-194909]] §5.1f）。
 			this.syncSelectionClass();
+
+			// 选中态稳定后启动动画（[[Plan-20261005-150106]] 坑 7）。
+			// [[Plan-20261005-152203]] §3.2：改为「同步 prepare + 双 rAF play」——
+			// prepare 在 renderNote 返回前定格起点态，浏览器绘制新列表的第一帧即起点态，
+			// 不再先闪最终态再跳回起点；play 延到双 rAF（等布局 + 异步落字稳定）后起播。
+			if (animate && oldSnapshots.length > 0) {
+				const scrollEl = this.bodyEl?.querySelector<HTMLElement>(
+					IOTO_TASK_SCROLL_SELECTOR,
+				);
+				if (scrollEl) {
+					const plan = prepareSwapTransition({
+						scrollEl,
+						oldSnapshots,
+						newSnapshots: captureCardSnapshots(
+							scrollEl,
+							IOTO_TASK_CARD_SELECTOR,
+						),
+						reducedMotion: false,
+					});
+					if (plan) {
+						const token = ++this.listTransitionToken;
+						this.listTransitionCleanup = () => plan.cancel();
+						this.scheduleListPlay(() => {
+							if (
+								token !== this.listTransitionToken ||
+								!scrollEl.isConnected
+							) {
+								plan.cancel();
+								return;
+							}
+							plan.play();
+						});
+					}
+				}
+			}
 		} finally {
 			this.isRendering = false;
 		}
+	}
+
+	/**
+	 * 双 `requestAnimationFrame` 后执行 `callback`（等布局 + 异步
+	 * `MarkdownRenderer` 落字稳定再起播）。起点态已由 `prepareSwapTransition`
+	 * 同步定格，因此等待期间用户看到的是「起点态」而非最终态。
+	 */
+	private scheduleListPlay(callback: () => void): void {
+		const raf = (cb: FrameRequestCallback): number =>
+			window.requestAnimationFrame(cb);
+		raf(() => raf(callback));
+	}
+
+	/** 立即作废并收尾上一场进出场动画（幂等；无动画时为 no-op）。 */
+	private cancelListTransition(): void {
+		this.listTransitionToken += 1;
+		this.listTransitionCleanup?.();
+		this.listTransitionCleanup = null;
+	}
+
+	/** 系统「减弱动态效果」偏好：JS 侧预判（CSS 侧另有兜底）。 */
+	private prefersReducedMotion(): boolean {
+		return (
+			window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ===
+			true
+		);
 	}
 
 	/**
@@ -963,9 +1056,10 @@ export class IOTOTaskView extends TextFileView {
 			return;
 		}
 
-		// 结构性变更 → 整树重建（不跳顶由 ioto-task-scroll.ts 兜底）
+		// 结构性变更 → 整树重建（不跳顶由 ioto-task-scroll.ts 兜底）。
+		// 单任务删除：开启「只显示最近任务」时补进出场动画（[[Plan-20261005-150106]] §2.5.2）。
 		this.selectedLine = nextLine;
-		this.renderNote(this.data);
+		this.renderNote(this.data, { animateRecentSwap: true });
 		if (nextLine !== null) {
 			this.queryCard(nextLine)?.focus({ preventScroll: true });
 		}
@@ -1105,7 +1199,7 @@ export class IOTOTaskView extends TextFileView {
 			},
 			// 新空卡落到「任务行 + 其下连续续行」之后，避免抢走原任务的续行
 			line + 1 + this.countContinuationLines(line),
-			{ insertAfterContinuations: true },
+			{ insertAfterContinuations: true, animateRecentSwap: true },
 		);
 	}
 
@@ -2006,7 +2100,7 @@ export class IOTOTaskView extends TextFileView {
 					return [first, sibling];
 				},
 				nextEditLine,
-				{ insertAfterContinuations: true },
+				{ insertAfterContinuations: true, animateRecentSwap: true },
 			);
 		}, 0);
 		return true;
@@ -2024,7 +2118,7 @@ export class IOTOTaskView extends TextFileView {
 				originalLine,
 				() => '',
 				line > 0 ? line - 1 : null,
-				{ swallowContinuations: true },
+				{ swallowContinuations: true, animateRecentSwap: true },
 			);
 		}, 0);
 		return true;
@@ -2055,6 +2149,8 @@ export class IOTOTaskView extends TextFileView {
 		options?: {
 			swallowContinuations?: boolean;
 			insertAfterContinuations?: boolean;
+			/** 单任务新增/删除：开启「只显示最近任务」时补进出场动画（§2.5.1）。 */
+			animateRecentSwap?: boolean;
 		},
 	): Promise<void> {
 		const file = this.file;
@@ -2075,7 +2171,9 @@ export class IOTOTaskView extends TextFileView {
 		this.continuationLine = null;
 		this.applyOutcome(outcome);
 		await this.reloadFromVault();
-		this.renderNote(this.data);
+		this.renderNote(this.data, {
+			animateRecentSwap: options?.animateRecentSwap === true,
+		});
 
 		if (outcome.status !== 'conflict' && nextEditLine !== null) {
 			// beginEdit 内会把 selectedLine 落到新行上
@@ -2149,7 +2247,49 @@ export class IOTOTaskView extends TextFileView {
 				const next =
 					pickAdjacentLine(order, line, 1) ??
 					pickAdjacentLine(order, line, -1);
+
+				// 就地移除这一条（不走 renderNote）同样补进出场
+				// （[[Plan-20261005-150106]] §2.5.3 / Q2）：被勾掉的卡淡出、
+				// 其余卡 FLIP 上移。快照必须在 remove() 之前采集。
+				// [[Plan-20261005-152203]] §3.4：改为「同步 prepare + 双 rAF play」——
+				// 其余卡不再先跳到新位再退回，被删卡不再有 2 帧空窗。
+				this.cancelListTransition();
+				const scrollEl =
+					cardEl.closest<HTMLElement>(IOTO_TASK_SCROLL_SELECTOR);
+				const oldSnapshots =
+					scrollEl && !this.prefersReducedMotion()
+						? captureCardSnapshots(
+								scrollEl,
+								IOTO_TASK_CARD_SELECTOR,
+							)
+						: [];
 				cardEl.remove();
+				if (scrollEl && oldSnapshots.length > 0) {
+					const plan = prepareSwapTransition({
+						scrollEl,
+						oldSnapshots,
+						newSnapshots: captureCardSnapshots(
+							scrollEl,
+							IOTO_TASK_CARD_SELECTOR,
+						),
+						reducedMotion: false,
+					});
+					if (plan) {
+						const token = this.listTransitionToken;
+						this.listTransitionCleanup = () => plan.cancel();
+						this.scheduleListPlay(() => {
+							if (
+								token !== this.listTransitionToken ||
+								!scrollEl.isConnected
+							) {
+								plan.cancel();
+								return;
+							}
+							plan.play();
+						});
+					}
+				}
+
 				if (next !== null) {
 					this.applySelection(next);
 				} else {
@@ -2234,7 +2374,7 @@ export class IOTOTaskView extends TextFileView {
 				this.lineAt(last.line),
 				(raw) => [raw, buildTopLevelTaskLine(raw, '')],
 				last.line + 1 + this.countContinuationLines(last.line),
-				{ insertAfterContinuations: true },
+				{ insertAfterContinuations: true, animateRecentSwap: true },
 			);
 			return;
 		}
@@ -2250,6 +2390,7 @@ export class IOTOTaskView extends TextFileView {
 					buildTopLevelTaskLine('- ', ''),
 				],
 				section.startLine + 1,
+				{ animateRecentSwap: true },
 			);
 			return;
 		}
@@ -2271,6 +2412,7 @@ export class IOTOTaskView extends TextFileView {
 				'',
 				() => [sectionTitle, nextTask],
 				1,
+				{ animateRecentSwap: true },
 			);
 			return;
 		}
@@ -2282,6 +2424,7 @@ export class IOTOTaskView extends TextFileView {
 				lastLine,
 				() => ['', sectionTitle, nextTask],
 				lastIndex + 2,
+				{ animateRecentSwap: true },
 			);
 			return;
 		}
@@ -2291,6 +2434,7 @@ export class IOTOTaskView extends TextFileView {
 			lastLine,
 			(raw) => [raw, '', sectionTitle, nextTask],
 			lastIndex + 3,
+			{ animateRecentSwap: true },
 		);
 	}
 

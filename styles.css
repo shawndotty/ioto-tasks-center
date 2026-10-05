@@ -2133,6 +2133,9 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	display: flex;
 	flex-direction: column;
 	gap: var(--ioto-tv-gap);
+	/* 进出场浮层的定位上下文：浮层用「内容坐标」（含 scrollTop）绝对定位，
+	   随内容一起滚动，不与滚动恢复打架（[[Plan-20261005-150106]] §2.6 / 坑 3）。 */
+	position: relative;
 }
 
 /* 顶部固定控制栏 + 列表容器（[[Plan-20261004-110845]] 批次 A/G）
@@ -2289,6 +2292,46 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	display: flex;
 	flex-direction: column;
 	gap: var(--ioto-tv-gap);
+}
+
+/* 「最近任务」增删进出场：退出卡浮层 + 状态类（[[Plan-20261005-150106]] §2.6）。
+   浮层子节点用「内容坐标」（含 scrollTop）绝对定位，故浮层自身不裁剪：
+   height:0 + 默认 overflow:visible，保证窗口外的退出卡不被裁掉。
+   三个状态的 transition/opacity/transform 一律由 JS inline 写入（inline 赢过
+   `.is-glass` 基过渡的高特异性类规则，见 §2.6 warning）。 */
+.ioto-task-view__transition-layer {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 0;
+	pointer-events: none;
+	z-index: 5;
+}
+
+/* 退出卡脱离流（position/尺寸由 JS inline 写入；此规则为静态兜底）。 */
+.ioto-task-view__card.is-leaving {
+	position: absolute;
+	margin: 0;
+	pointer-events: none;
+}
+
+/* 三段动效走合成层，避免动画期间回主线程掉帧（[[Plan-20261005-152203]] §4.4）。
+   `will-change` 只是静态提示；transition/opacity/transform 仍由 JS inline 写入。
+   动画结束后清理由 `list-transition.ts` 的 cleanup 移除状态类，图层随之撤销。 */
+.ioto-task-view__card.is-flipping,
+.ioto-task-view__card.is-entering,
+.ioto-task-view__card.is-leaving {
+	will-change: transform, opacity;
+	backface-visibility: hidden;
+}
+
+/* 动画期间抑制卡片 hover 的 `translateY(-1px)`（§4.5），避免与 FLIP 叠加成二次位移。
+   特异性 (0,6,0) 高于 `.ioto-task-view.is-glass .ioto-task-view__card:hover` (0,4,0)。 */
+.ioto-task-view.is-glass
+	.ioto-task-view__scroll.is-animating
+	.ioto-task-view__card:hover {
+	transform: none;
 }
 
 /* ②/③ 叠加后本 Section 可见卡片为 0 时的空态（Plan-20261005-101007 §2.4）。 */
@@ -3064,6 +3107,9 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 
 	.ioto-task-view__toggle,
 	.ioto-task-view__action { transition: none; }
+
+	/* 进出场动画兜底：JS 侧已预判跳过；这里双保险（含 glass 基过渡）。 */
+	.ioto-task-view__card { transition: none !important; }
 }
 
 /* 移动端：降 blur / 间距，保性能与触控热区（沿用既有 .is-phone 触控改动） */

@@ -3,7 +3,12 @@
  *
  * 与解析层严格分离：这里只消费 `note-structure.ts` 的输出，不自己做字符串分析。
  * DOM 上挂 `data-level` / `data-start-line` / `data-end-line` / `data-line` /
- * `data-task` / `data-indent` 等属性，是 Phase 2/3 挂按钮与行级写回的契约。
+ * `data-task` / `data-indent` / `data-task-key` 等属性，是 Phase 2/3 挂按钮与
+ * 行级写回的契约。
+ *
+ * `data-line` 是**真实文件行号**（删/插后会整体漂移），只作写回定位用；
+ * `data-indent` + `data-task-key`（源码文本）是「最近任务」进出场动效的身份键
+ * （[[Plan-20261005-150106]] §2.3），不参与编辑/导航。
  */
 
 import { MarkdownRenderer, setIcon, type App, type Component } from 'obsidian';
@@ -501,6 +506,8 @@ function renderChecklistGroup(options: {
 				'data-line': String(item.line),
 				'data-task': item.marker,
 				'data-indent': String(item.indentLevel),
+				// 身份键（源码文本，非渲染产物）：供最近任务进出场 diff。
+				'data-task-key': item.text,
 				// 只读态不参与焦点：否则方向键会在别的视图里也响应
 				tabindex: editing.enabled ? '-1' : null,
 			},
