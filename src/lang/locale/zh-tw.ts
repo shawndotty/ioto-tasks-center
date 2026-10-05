@@ -314,6 +314,11 @@ const zhTW = {
 		'在任務清單上方顯示常駐內聯搜尋框（輸入即篩選），或使用舊版搜尋對話框。',
 	'settings.taskSearchEntryMode.inline': '內聯欄位（推薦）',
 	'settings.taskSearchEntryMode.modal': '搜尋對話框',
+	'settings.heading.taskView': 'IOTOTask 檢視',
+	'settings.useIOTOTaskViewAsDefault.name':
+		'在任務中心開啟任務筆記時，預設使用IOTO任務檢視',
+	'settings.useIOTOTaskViewAsDefault.desc':
+		'關閉後，從任務中心開啟任務筆記將顯示為一般 Markdown；命令與右鍵選單不受此開關影響。',
 	'settings.appearanceStyle.name': 'IOTOTask 視圖外觀',
 	'settings.appearanceStyle.desc':
 		'選擇 IOTOTask 視圖的視覺風格：玻璃（深色 Aurora 漸變 + 玻璃擬態，預設）或卡片（經典扁平卡片）。',

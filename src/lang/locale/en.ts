@@ -333,6 +333,11 @@ const en = {
 		'Show a persistent inline search field above the task list (filters as you type), or use the legacy search dialog.',
 	'settings.taskSearchEntryMode.inline': 'Inline field (recommended)',
 	'settings.taskSearchEntryMode.modal': 'Search dialog',
+	'settings.heading.taskView': 'IOTOTask view',
+	'settings.useIOTOTaskViewAsDefault.name':
+		'Open task notes from Task Center in the IOTO Task View by default',
+	'settings.useIOTOTaskViewAsDefault.desc':
+		'When off, opening task notes from Task Center falls back to plain Markdown. The command and context-menu entries are unaffected.',
 	'settings.appearanceStyle.name': 'IOTOTask view appearance',
 	'settings.appearanceStyle.desc':
 		'Choose the visual style of the IOTOTask view: Glass (dark aurora + glassmorphism, default) or Card (classic flat cards).',

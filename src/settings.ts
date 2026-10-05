@@ -97,6 +97,11 @@ export interface IOTOTasksCenterSettings {
 	dateTaskDateFormat: string;
 	batchTemplateConfig: BatchTemplateConfig;
 	taskSearchEntryMode: TaskSearchEntryMode;
+	/**
+	 * 在任务中心打开任务笔记时，是否默认使用 IOTOTask 任务视图（默认 false）。
+	 * 仅门控「任务中心预览面板点开任务笔记」这一条自动路径；命令与右键菜单不受限。
+	 */
+	useIOTOTaskViewAsDefault: boolean;
 	/** IOTOTask 视图外观风格（glass / card）。 */
 	appearanceStyle: TaskViewAppearanceStyle;
 	/** Task View「显示最近任务」保留的顶级任务数。 */
@@ -131,6 +136,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	dateTaskDateFormat: DEFAULT_DATE_TASK_DATE_FORMAT,
 	batchTemplateConfig: { ...DEFAULT_BATCH_TEMPLATE_CONFIG },
 	taskSearchEntryMode: 'inline',
+	useIOTOTaskViewAsDefault: false,
 	appearanceStyle: 'glass',
 	recentTaskCount: 3,
 };
@@ -482,6 +488,25 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 							await this.plugin.updateTaskSearchEntryMode(value);
 						});
 				});
+
+			new Setting(containerEl)
+				.setName(t('settings.heading.taskView'))
+				.setHeading();
+
+			new Setting(containerEl)
+				.setName(t('settings.useIOTOTaskViewAsDefault.name'))
+				.setDesc(t('settings.useIOTOTaskViewAsDefault.desc'))
+				.addToggle((toggle) =>
+					toggle
+						.setValue(
+							this.plugin.settings.useIOTOTaskViewAsDefault,
+						)
+						.onChange(async (value) => {
+							await this.plugin.updateUseIOTOTaskViewAsDefault(
+								value,
+							);
+						}),
+				);
 
 			new Setting(containerEl)
 				.setName(t('settings.appearanceStyle.name'))

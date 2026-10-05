@@ -287,6 +287,7 @@ export class IOTOTasksCenterView extends ItemView {
 	) => Promise<void>;
 	readonly getBatchTemplateConfig: () => BatchTemplateConfig;
 	readonly getTaskSearchEntryMode: () => TaskSearchEntryMode;
+	readonly getUseIOTOTaskViewAsDefault: () => boolean;
 	private readonly taskSearchSession = createTaskSearchSession();
 	private taskFilterCountsCache: {
 		key: string;
@@ -336,6 +337,7 @@ export class IOTOTasksCenterView extends ItemView {
 		) => Promise<void>,
 		getBatchTemplateConfig: () => BatchTemplateConfig,
 		getTaskSearchEntryMode: () => TaskSearchEntryMode,
+		getUseIOTOTaskViewAsDefault: () => boolean,
 	) {
 		super(leaf);
 		this.navigation = true;
@@ -371,6 +373,7 @@ export class IOTOTasksCenterView extends ItemView {
 		this.setProjectHidden = setProjectHidden;
 		this.getBatchTemplateConfig = getBatchTemplateConfig;
 		this.getTaskSearchEntryMode = getTaskSearchEntryMode;
+		this.getUseIOTOTaskViewAsDefault = getUseIOTOTaskViewAsDefault;
 	}
 
 	getViewType(): string {
@@ -1683,10 +1686,12 @@ export class IOTOTasksCenterView extends ItemView {
 					},
 				});
 			} else if (
+				this.getUseIOTOTaskViewAsDefault() &&
 				!hasCursorOffset &&
 				isTaskNoteFile(file, this.getTasksRootPath())
 			) {
-				// 任务笔记「打开即任务视图」；带搜索词或光标标记时仍走 markdown，
+				// 任务笔记「打开即任务视图」；受 useIOTOTaskViewAsDefault 设置门控，
+				// 带搜索词或光标标记时仍走 markdown，
 				// 因为滚动到命中与落光标都依赖 MarkdownView 的 CodeMirror。
 				await leaf.setViewState({
 					type: IOTO_TASK_VIEW_TYPE,

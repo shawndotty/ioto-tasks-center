@@ -141,6 +141,7 @@ export default class IOTOTasksCenter extends Plugin {
 						this.setProjectHidden(projectName, hidden),
 					() => this.settings.batchTemplateConfig,
 					() => this.settings.taskSearchEntryMode,
+					() => this.settings.useIOTOTaskViewAsDefault,
 				),
 		);
 		this.registerView(
@@ -646,6 +647,16 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.appearanceStyle = style;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateUseIOTOTaskViewAsDefault(value: boolean): Promise<void> {
+		if (this.settings.useIOTOTaskViewAsDefault === value) {
+			return;
+		}
+
+		this.settings.useIOTOTaskViewAsDefault = value;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}

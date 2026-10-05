@@ -313,6 +313,11 @@ const zhCN = {
 		'在任务列表上方显示常驻内联搜索框（输入即筛选），或使用旧版搜索对话框。',
 	'settings.taskSearchEntryMode.inline': '内联字段（推荐）',
 	'settings.taskSearchEntryMode.modal': '搜索对话框',
+	'settings.heading.taskView': 'IOTOTask 视图',
+	'settings.useIOTOTaskViewAsDefault.name':
+		'在任务中心打开任务笔记时，默认使用IOTO任务视图',
+	'settings.useIOTOTaskViewAsDefault.desc':
+		'关闭后，从任务中心打开任务笔记将显示为普通 Markdown；命令与右键菜单不受此开关影响。',
 	'settings.appearanceStyle.name': 'IOTOTask 视图外观',
 	'settings.appearanceStyle.desc':
 		'选择 IOTOTask 视图的视觉风格：玻璃（深色 Aurora 渐变 + 玻璃拟态，默认）或卡片（经典扁平卡片）。',
