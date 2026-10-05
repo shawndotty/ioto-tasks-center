@@ -518,6 +518,8 @@ const zhCN = {
 	'view.iotoTaskView.badge.fanoutLimit': 'fanout {0}',
 	'view.iotoTaskView.badge.turns': '{0} 轮',
 	'view.iotoTaskView.badge.turnsUnlimited': '不限轮数',
+	'view.iotoTaskView.cardActions.insertOutgoingLink': '插入出链',
+	'view.iotoTaskView.cardActions.editItemControls': '编辑条目控制',
 	'notice.iotoTaskView.commitConflict': '文件在编辑期间被外部修改，本次改动已放弃。',
 	'notice.iotoTaskView.inlineEditUnavailable':
 		'当前 Obsidian 版本不支持内联编辑，请在 Markdown 中编辑。',

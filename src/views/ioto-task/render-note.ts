@@ -58,6 +58,17 @@ export interface TaskNoteEditing {
 	insertSibling(line: number): void;
 	/** 3a 勾选：点 checkbox ↔ 行内 `[ ]` / `[x]`（乐观更新由调用方负责） */
 	toggleTask(line: number, cardEl: HTMLElement): void;
+	/**
+	 * 派发「插入出链」命令（`ioto-settings:ioto-insert-outgoing-link`）。
+	 * **缺省 = 按钮不渲染**：天然表达「命令未注册 / 只读态 → 隐藏按钮」
+	 * （[[Plan-20261005-111411]] §三 步骤 1，坑 E）。
+	 */
+	insertOutgoingLink?(line: number): void;
+	/**
+	 * 派发「编辑条目控制」命令（`ioto-settings:ioto-edit-item-controls`）。
+	 * **缺省 = 按钮不渲染**（同上）。
+	 */
+	editItemControls?(line: number): void;
 }
 
 /** 链接交互回调（由 `IOTOTaskView` 注入；只读态同样生效）。 */
@@ -542,6 +553,11 @@ function renderChecklistGroup(options: {
 			if (target.closest('.ioto-task-view__badge')) {
 				return;
 			}
+			// 动作区按钮：自身已 stopPropagation，这里按 closest 双保险
+			// （[[Plan-20261005-111411]] §三 步骤 3）
+			if (target.closest('.ioto-task-view__card-action-btn')) {
+				return;
+			}
 			// 编辑中不重复进入
 			if (target.closest('.ioto-task-view__card-editor')) {
 				return;
@@ -666,7 +682,10 @@ function renderChecklistGroup(options: {
 			});
 		}
 
-		renderCardActions(cardEl, item.controls);
+		renderCardActions(cardEl, item.controls, {
+			line: item.line,
+			editing,
+		});
 
 		// 续行：挂成卡片的**直接子元素**（不再是同一 `<ul>` 里的兄弟 `<li>`），
 		// 这样它才落在 `.ioto-task-view__card` 这个盒子里，拿到卡片的背景 / 边框 /
@@ -711,16 +730,20 @@ function renderChecklistGroup(options: {
 }
 
 /**
- * 构建 / 就地重建一张卡片的动作区徽章。
+ * 构建 / 就地重建一张卡片的动作区：**左栏图标按钮 + 右栏只读徽章**。
  *
  * 首次渲染（`renderChecklistGroup`）与条目控制面板写回后的就地刷新
  * （`IOTOTaskView.refreshCardActions`）共用同一份逻辑，避免两处写法漂移：
  * 只重建 `.ioto-task-view__card-actions` 子树，**不碰**正文区与内联编辑器；
  * 容器不存在时按卡片结构新建，保证编辑器存活、正文不丢、滚动位置不动。
+ *
+ * 左右分栏见 [[Plan-20261005-111411]] §三 步骤 2：`options.editing` 上是否挂
+ * `insertOutgoingLink` / `editItemControls` 决定左栏按钮是否出现（缺省=隐藏）。
  */
 export function renderCardActions(
 	cardEl: HTMLElement,
 	controls: ControlToken[],
+	options: { line: number; editing: TaskNoteEditing },
 ): void {
 	let actionsEl = cardEl.querySelector<HTMLElement>(
 		'.ioto-task-view__card-actions',
@@ -729,7 +752,79 @@ export function renderCardActions(
 		actionsEl = cardEl.createDiv({ cls: 'ioto-task-view__card-actions' });
 	}
 	actionsEl.empty();
-	renderControlBadges(actionsEl, controls);
+
+	const buttonsEl = actionsEl.createDiv({
+		cls: 'ioto-task-view__card-actions-buttons',
+	});
+	renderCardActionButtons(buttonsEl, options);
+
+	const badgesEl = actionsEl.createDiv({
+		cls: 'ioto-task-view__card-actions-badges',
+	});
+	renderControlBadges(badgesEl, controls);
+}
+
+/**
+ * 渲染左栏图标按钮：出链、条目控制（顺序固定，[[Plan-20261005-111411]] Q6）。
+ * 只在编辑控制器提供了对应回调时才渲染——即 `supportsInlineEdit()` 为真且
+ * 目标命令已注册（Q5：只读 / ioto-settings 未启用时隐藏按钮）。
+ */
+function renderCardActionButtons(
+	containerEl: HTMLElement,
+	options: { line: number; editing: TaskNoteEditing },
+): void {
+	const { line, editing } = options;
+
+	if (editing.insertOutgoingLink) {
+		createCardActionButton(containerEl, {
+			icon: 'arrow-up-right',
+			label: t('view.iotoTaskView.cardActions.insertOutgoingLink'),
+			action: 'insert-outgoing-link',
+			// 闭包内 `?.` 兜底：方法存在性在渲染时已判定，此处只为满足窄化
+			onClick: () => editing.insertOutgoingLink?.(line),
+		});
+	}
+
+	if (editing.editItemControls) {
+		createCardActionButton(containerEl, {
+			icon: 'sliders-horizontal',
+			label: t('view.iotoTaskView.cardActions.editItemControls'),
+			action: 'edit-item-controls',
+			onClick: () => editing.editItemControls?.(line),
+		});
+	}
+}
+
+/**
+ * 单个卡片动作按钮：`<button>` + `setIcon`，仅图标（可见内容为图标，
+ * `label` 只进 `aria-label` / `title`）。点击 `stopPropagation`，避免冒泡到
+ * 卡片点击 → 误触发选择 / 进入编辑（[[Plan-20261005-111411]] §三 步骤 3）。
+ */
+function createCardActionButton(
+	containerEl: HTMLElement,
+	options: {
+		icon: string;
+		label: string;
+		action: string;
+		onClick: () => void;
+	},
+): HTMLButtonElement {
+	const btn = containerEl.createEl('button', {
+		cls: 'ioto-task-view__card-action-btn',
+		attr: {
+			type: 'button',
+			'aria-label': options.label,
+			title: options.label,
+			'data-action': options.action,
+		},
+	});
+	setIcon(btn, options.icon);
+	btn.addEventListener('click', (event) => {
+		event.preventDefault();
+		event.stopPropagation();
+		options.onClick();
+	});
+	return btn;
 }
 
 /** 控制项 → 图标名（Obsidian `setIcon` 语汇）。 */

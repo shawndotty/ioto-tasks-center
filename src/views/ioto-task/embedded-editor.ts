@@ -54,8 +54,15 @@ export const OVERLAY_FOCUS_SELECTOR =
  * （`document.activeElement` 落到 body），从而触发 blur 提交并把 `activeEditor`
  * 还原为 null —— 依赖 `activeEditor` 的命令（Templater 模板：I/O/T/O）随即报
  * "No active editor"。仅靠 `activeElement` 判据覆盖不到它，故在捕获阶段拦 mousedown。
+ *
+ * 卡片动作区按钮 `.ioto-task-view__card-action-btn` 同理：它是 `<button>`（可聚焦），
+ * 点下去同样会把焦点移出 CM 编辑器 → blur 提交 + 销毁编辑器 + 还原 `activeEditor`；
+ * 而出链命令读 `activeEditor?.editor`、条目控制走桥接 `getItemControlHost`，
+ * 两者都要求编辑态存活（[[Plan-20261005-111411]] §三 步骤 5，坑 A）。并入本守卫
+ * 让 mousedown 不移动焦点、click 照常派发。
  */
-export const OVERLAY_FOCUS_GUARD_SELECTOR = '.ioto-quick-panel';
+export const OVERLAY_FOCUS_GUARD_SELECTOR =
+	'.ioto-quick-panel, .ioto-task-view__card-action-btn';
 
 /**
  * 纯判断：给定元素，其是否落在 `selector` 内。

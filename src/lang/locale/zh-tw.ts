@@ -519,6 +519,8 @@ const zhTW = {
 	'view.iotoTaskView.badge.fanoutLimit': 'fanout {0}',
 	'view.iotoTaskView.badge.turns': '{0} 輪',
 	'view.iotoTaskView.badge.turnsUnlimited': '不限輪數',
+	'view.iotoTaskView.cardActions.insertOutgoingLink': '插入出鏈',
+	'view.iotoTaskView.cardActions.editItemControls': '編輯條目控制',
 	'notice.iotoTaskView.commitConflict': '檔案在編輯期間被外部修改，本次變更已捨棄。',
 	'notice.iotoTaskView.inlineEditUnavailable':
 		'目前 Obsidian 版本不支援內嵌編輯，請在 Markdown 中編輯。',

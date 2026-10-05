@@ -77,15 +77,32 @@ test('isOverlayFocusTarget：closest 抛异常 → false（防御性）', () => 
 	);
 });
 
-test('OVERLAY_FOCUS_GUARD_SELECTOR：契约覆盖宿主 quickPanel', () => {
+test('OVERLAY_FOCUS_GUARD_SELECTOR：契约覆盖宿主 quickPanel 与卡片动作按钮', () => {
 	assert.equal(typeof OVERLAY_FOCUS_GUARD_SELECTOR, 'string');
 	assert.ok(OVERLAY_FOCUS_GUARD_SELECTOR.includes('.ioto-quick-panel'));
+	// 卡片动作按钮点击前保焦，否则出链 / 条目控制命令落空
+	// （Plan-20261005-111411 §三 步骤 5）。
+	assert.ok(
+		OVERLAY_FOCUS_GUARD_SELECTOR.includes(
+			'.ioto-task-view__card-action-btn',
+		),
+	);
 });
 
 test('isOverlayFocusGuardTarget：命中 quickPanel → true', () => {
 	assert.equal(
 		isOverlayFocusGuardTarget({
 			closest: (s) => (s.includes('ioto-quick-panel') ? {} : null),
+		}),
+		true,
+	);
+});
+
+test('isOverlayFocusGuardTarget：命中卡片动作按钮 → true', () => {
+	assert.equal(
+		isOverlayFocusGuardTarget({
+			closest: (s) =>
+				s.includes('ioto-task-view__card-action-btn') ? {} : null,
 		}),
 		true,
 	);

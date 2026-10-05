@@ -2428,16 +2428,70 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	/* 动作区默认隐藏：只在卡片内联编辑态（.is-editing）显示。
 	   依据条目 60——徽章内容只在执行/编辑任务时需要查看与调整。 */
 	display: none;
-	flex-wrap: wrap; /* 徽章过多时在底栏内换行，不横向溢出卡片 */
+	/* 左栏动作按钮 + 右栏只读徽章左右分栏（[[Plan-20261005-111411]] §三 步骤 6） */
+	justify-content: space-between;
 	align-items: center;
-	gap: 4px;
+	gap: 8px;
 	flex: 1 1 100%; /* basis 100% → 必然折到正文下一行；grow 1 → 占满卡片内容宽 */
 	order: 3; /* 排在勾选框与续行之后，仍是卡片最后一行（底栏）（Plan-20261003-191547） */
 }
 
-/* 仅编辑态显示底栏；:not(:empty) 保证无控制项的卡片即使编辑也不产生空底栏 */
-.ioto-task-view__card.is-editing .ioto-task-view__card-actions:not(:empty) {
+/* 仅编辑态显示底栏。去掉 :not(:empty)：动作区固定渲染左栏按钮，编辑态下
+   每张卡都应出现底栏（[[Plan-20261005-111411]] Q2 / 坑 C）。 */
+.ioto-task-view__card.is-editing .ioto-task-view__card-actions {
 	display: flex;
+}
+
+/* 左栏：动作按钮区 */
+.ioto-task-view__card-actions-buttons {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	flex: 0 0 auto;
+}
+
+/* 右栏：只读徽章区。徽章多时换行、不挤爆左栏按钮。 */
+.ioto-task-view__card-actions-badges {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	flex-wrap: wrap;
+	flex: 1 1 auto;
+	justify-content: flex-end;
+	min-width: 0;
+}
+
+/* 卡片动作按钮：图标按钮，尺寸 / hover 沿用本 V253 工具栏口径
+   （见上方 .ioto-task-view__toggle:hover / :focus-visible）。 */
+.ioto-task-view__card-action-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	padding: 0;
+	color: var(--text-muted);
+	background: transparent;
+	border: none;
+	border-radius: var(--radius-s);
+	box-shadow: none;
+	cursor: pointer;
+	transition: background-color 120ms ease, color 120ms ease;
+}
+
+.ioto-task-view__card-action-btn:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+}
+
+.ioto-task-view__card-action-btn:focus-visible {
+	outline: 2px solid var(--ioto-tv-accent);
+	outline-offset: 1px;
+}
+
+.ioto-task-view__card-action-btn svg {
+	width: 16px;
+	height: 16px;
 }
 
 .ioto-task-view__badge {

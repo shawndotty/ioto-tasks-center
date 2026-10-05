@@ -119,6 +119,13 @@ const FILTER_PROPERTY_NAMES: Record<keyof TaskNoteFilters, string> = {
 /** ③「执行任务」由 ioto-settings 注册的命令 ID（按钮只派发，粒度交给对方）。 */
 const RUN_TASK_COMMAND_ID = 'ioto-settings:ioto-run-task';
 
+/** 卡片动作区「插入出链」按钮派发的命令 ID（[[Plan-20261005-111411]] §三 步骤 4）。 */
+const INSERT_OUTGOING_LINK_COMMAND_ID =
+	'ioto-settings:ioto-insert-outgoing-link';
+
+/** 卡片动作区「编辑条目控制」按钮派发的命令 ID（同上）。 */
+const EDIT_ITEM_CONTROLS_COMMAND_ID = 'ioto-settings:ioto-edit-item-controls';
+
 /** `app.commands` 的最小可判定形状（照抄 task-creation.ts 的 `CommandRegistryLike` 口径）。 */
 interface CommandRegistryLike {
 	executeCommandById?: (commandId: string) => unknown;
@@ -725,8 +732,13 @@ export class IOTOTaskView extends TextFileView {
 	private buildEditingController(): TaskNoteEditing {
 		// 箭头函数读实时值，供下面的 getter 转发（不写 `const self = this`）
 		const readSelected = (): number | null => this.selectedLine;
+		// 卡片动作区按钮：仅在「支持内联编辑」且「目标命令已注册」时才注入，
+		// 缺省即渲染层隐藏按钮（Q5：只读 / ioto-settings 未启用 → 隐藏）。
+		const inlineEdit = this.supportsInlineEdit();
+		const canInsertLink = this.canDispatch(INSERT_OUTGOING_LINK_COMMAND_ID);
+		const canEditControls = this.canDispatch(EDIT_ITEM_CONTROLS_COMMAND_ID);
 		return {
-			enabled: this.supportsInlineEdit(),
+			enabled: inlineEdit,
 			// 🔴 必须是 getter：渲染层在 click / keydown 闭包里读实时值，
 			// 建成普通属性会捕获构建那一刻的旧值，「第二次点击进编辑」就判不出来了。
 			get selectedLine() {
@@ -750,7 +762,56 @@ export class IOTOTaskView extends TextFileView {
 			toggleTask: (line, cardEl) => {
 				void this.toggleTask(line, cardEl);
 			},
+			// 🔴 派发前**不** commitEdit：两个命令都依赖「命令同步段仍处编辑态」
+			// （出链读 activeEditor?.editor，条目控制走 item-control-bridge 的
+			// getItemControlHost，要求 editingLine / editingHandle 存活）。
+			// 按钮已由 embedded-editor 捕获阶段保焦，命令可直接派发。
+			...(inlineEdit && canInsertLink
+				? {
+						insertOutgoingLink: () =>
+							this.dispatchCommand(
+								INSERT_OUTGOING_LINK_COMMAND_ID,
+							),
+					}
+				: {}),
+			...(inlineEdit && canEditControls
+				? {
+						editItemControls: () =>
+							this.dispatchCommand(
+								EDIT_ITEM_CONTROLS_COMMAND_ID,
+							),
+					}
+				: {}),
 		};
+	}
+
+	/**
+	 * 目标命令当前是否可派发：`app.commands` 已注册该 id 且具备 `executeCommandById`。
+	 * 照 `runTask()` 的判据抽成方法，供编辑控制器按可用性隐藏按钮
+	 * （[[Plan-20261005-111411]] §三 步骤 4）。
+	 */
+	private canDispatch(commandId: string): boolean {
+		const registry = (this.app as App & { commands?: CommandRegistryLike })
+			.commands;
+		return Boolean(
+			registry?.commands &&
+				commandId in registry.commands &&
+				registry.executeCommandById,
+		);
+	}
+
+	/**
+	 * 派发 ioto-settings 命令（照 `runTask()` 口径）。正常情况下按钮已按可用性
+	 * 隐藏，走到这里说明存在竞态（命令刚被注销），给 `Notice` 兜底不静默。
+	 */
+	private dispatchCommand(commandId: string): void {
+		const registry = (this.app as App & { commands?: CommandRegistryLike })
+			.commands;
+		if (!this.canDispatch(commandId)) {
+			new Notice(t('notice.iotoTaskView.runTaskUnavailable'));
+			return;
+		}
+		void Promise.resolve(registry?.executeCommandById?.(commandId));
 	}
 
 	/* ------------------------------------------------------------------ *
@@ -1675,7 +1736,10 @@ export class IOTOTaskView extends TextFileView {
 		const item = parseChecklistItems(this.data, {
 			includeEmpty: true,
 		}).find((entry) => entry.line === line);
-		renderCardActions(cardEl, item?.controls ?? []);
+		renderCardActions(cardEl, item?.controls ?? [], {
+			line,
+			editing: this.buildEditingController(),
+		});
 	}
 
 	/**

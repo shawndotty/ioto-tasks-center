@@ -562,6 +562,8 @@ const en = {
 	'view.iotoTaskView.badge.fanoutLimit': 'fanout {0}',
 	'view.iotoTaskView.badge.turns': '{0} turns',
 	'view.iotoTaskView.badge.turnsUnlimited': 'no turn limit',
+	'view.iotoTaskView.cardActions.insertOutgoingLink': 'Insert outgoing link',
+	'view.iotoTaskView.cardActions.editItemControls': 'Edit item controls',
 	'notice.iotoTaskView.commitConflict':
 		'The file changed during editing; this change was discarded.',
 	'notice.iotoTaskView.inlineEditUnavailable':
