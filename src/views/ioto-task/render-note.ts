@@ -81,6 +81,11 @@ export interface TaskNoteEditing {
 	 * 与编辑态 `Enter` 的「新建同级」同源，只是不拆分当前正文。
 	 */
 	insertSibling(line: number): void;
+	/**
+	 * 选择态 `Tab` / `Shift+Tab`：对 `line` 做 ±1 级缩进（`delta = +1 / -1`）。
+	 * 与编辑态 `onIndent` 同源（`setTaskIndent`），只是不进入编辑器。
+	 */
+	indent(line: number, delta: number): void;
 	/** 3a 勾选：点 checkbox ↔ 行内 `[ ]` / `[x]`（乐观更新由调用方负责） */
 	toggleTask(line: number, cardEl: HTMLElement): void;
 	/**
@@ -741,6 +746,15 @@ function renderChecklistGroup(options: {
 					case 'Delete':
 					case 'Backspace': {
 						editing.delete(item.line);
+						break;
+					}
+					case 'Tab': {
+						// Tab / Shift+Tab 缩进选中卡（[[Plan-20261003-073911]] §3c）。
+						// 纯修饰键组合（Cmd/Ctrl/Alt+Tab）交还系统 / 核心，不做缩进。
+						if (hasCommandModifier(event) || event.altKey) {
+							return;
+						}
+						editing.indent(item.line, event.shiftKey ? -1 : 1);
 						break;
 					}
 					default:

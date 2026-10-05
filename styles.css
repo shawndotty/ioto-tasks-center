@@ -2682,23 +2682,27 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	text-overflow: ellipsis;
 }
 
-.ioto-task-view__card[data-indent="1"] {
+/* 嵌套缩进：层级靠 margin-inline-start 表达。选择器带 `.ioto-task-view` +
+   `.ioto-task-view__checklist >`（特异性 0,4,0），是为了压过「简洁风格」的卡片基线
+   `.ioto-task-view.is-simple .ioto-task-view__card { margin: 0 }`（0,3,0）——否则
+   简洁主题下缩进值写进了文件却看不出层级变化（[[Research-20261006-002136]]）。 */
+.ioto-task-view .ioto-task-view__checklist > .ioto-task-view__card[data-indent="1"] {
 	margin-inline-start: var(--ioto-tv-indent);
 }
 
-.ioto-task-view__card[data-indent="2"] {
+.ioto-task-view .ioto-task-view__checklist > .ioto-task-view__card[data-indent="2"] {
 	margin-inline-start: calc(var(--ioto-tv-indent) * 2);
 }
 
-.ioto-task-view__card[data-indent="3"] {
+.ioto-task-view .ioto-task-view__checklist > .ioto-task-view__card[data-indent="3"] {
 	margin-inline-start: calc(var(--ioto-tv-indent) * 3);
 }
 
-.ioto-task-view__card[data-indent="4"] {
+.ioto-task-view .ioto-task-view__checklist > .ioto-task-view__card[data-indent="4"] {
 	margin-inline-start: calc(var(--ioto-tv-indent) * 4);
 }
 
-.ioto-task-view__card[data-indent="5"] {
+.ioto-task-view .ioto-task-view__checklist > .ioto-task-view__card[data-indent="5"] {
 	margin-inline-start: calc(var(--ioto-tv-indent) * 5);
 }
 

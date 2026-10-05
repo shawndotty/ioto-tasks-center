@@ -879,6 +879,9 @@ export class IOTOTaskView extends TextFileView {
 			insertSibling: (line) => {
 				void this.insertSibling(line);
 			},
+			indent: (line, delta) => {
+				void this.indentSelected(line, delta);
+			},
 			toggleTask: (line, cardEl) => {
 				void this.toggleTask(line, cardEl);
 			},
@@ -1100,6 +1103,46 @@ export class IOTOTaskView extends TextFileView {
 		if (nextLine !== null) {
 			this.queryCard(nextLine)?.focus({ preventScroll: true });
 		}
+	}
+
+	/**
+	 * 选择态 `Tab` / `Shift+Tab`：对选中行做 ±1 级缩进，写回后**保持选中**。
+	 *
+	 * 与 `deleteSelected` 同构（同一 `commitTaskLineAction` + 整树重建 + 回填焦点），
+	 * 差别只在：缩进**不改行数**，故行号不漂移，重建后仍聚焦同一行；`setTaskIndent`
+	 * 负责 clamp 到 `[0, 8]` 并规整为「每级 2 空格」。到边界时 transform 返回同一行，
+	 * `commitTaskLineAction` 记为 `unchanged`，无写入、无重绘（幂等）。
+	 */
+	private async indentSelected(line: number, delta: number): Promise<void> {
+		const file = this.file;
+		if (!file) {
+			return;
+		}
+
+		const outcome = await commitTaskLineAction(this.app, file, {
+			line,
+			originalLine: this.lineAt(line),
+			transform: (raw) => setTaskIndent(raw, delta),
+		});
+		// 🔴 红线：data / lastLoadedText 必须同步
+		this.applyOutcome(outcome);
+
+		if (outcome.status === 'conflict') {
+			// 罕见路径，允许整树重建
+			this.selectedLine = line;
+			await this.reloadFromVault();
+			this.renderNote(this.data);
+			return;
+		}
+		if (outcome.status !== 'ok') {
+			// unchanged：已到缩进边界（0 级 / 8 级），选中不动
+			return;
+		}
+
+		// 缩进改变卡片 `data-indent`，需重建 DOM 才能刷新 `margin-inline-start`
+		// （styles.css 的 [data-indent] 规则）；行数不变 → 行号不漂移，就地回填选中。
+		this.renderNote(this.data);
+		this.queryCard(line)?.focus({ preventScroll: true });
 	}
 
 	/* ------------------------------------------------------------------ *
