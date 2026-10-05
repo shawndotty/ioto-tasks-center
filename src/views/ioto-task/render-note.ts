@@ -11,7 +11,14 @@
  * （[[Plan-20261005-150106]] §2.3），不参与编辑/导航。
  */
 
-import { MarkdownRenderer, setIcon, type App, type Component } from 'obsidian';
+import {
+	Keymap,
+	MarkdownRenderer,
+	setIcon,
+	type App,
+	type Component,
+	type PaneType,
+} from 'obsidian';
 
 import { t } from '../../lang/helpter';
 import {
@@ -91,8 +98,8 @@ export interface TaskNoteEditing {
 
 /** 链接交互回调（由 `IOTOTaskView` 注入；只读态同样生效）。 */
 export interface TaskNoteLinks {
-	/** 打开双链：`newTab` = 按了 Cmd/Ctrl */
-	open(linktext: string, newTab: boolean): void;
+	/** 打开双链：`newLeaf` = 核心同款叶子类型（`Keymap.isModEvent` 的结果） */
+	open(linktext: string, newLeaf: PaneType | boolean): void;
 	/** 触发核心 hover 预览（修饰键判断交给核心） */
 	hover(event: MouseEvent, linktext: string, targetEl: HTMLElement): void;
 }
@@ -200,7 +207,7 @@ function attachTaskNoteLinkDelegates(
 		event.preventDefault();
 		// 不再冒泡到卡片的选择 / 编辑逻辑（卡片本体 click 对 a 早退是双保险）
 		event.stopPropagation();
-		links.open(linktext, hasCommandModifier(event));
+		links.open(linktext, Keymap.isModEvent(event));
 	});
 
 	scrollEl.addEventListener('mouseover', (event) => {

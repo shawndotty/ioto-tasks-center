@@ -23,6 +23,7 @@
 
 import type { EditorView } from '@codemirror/view';
 import {
+	Keymap,
 	MarkdownRenderer,
 	Notice,
 	Platform,
@@ -30,6 +31,7 @@ import {
 	TextFileView,
 	type App,
 	type HoverPopover,
+	type PaneType,
 	type TFile,
 	type ViewStateResult,
 	type WorkspaceLeaf,
@@ -429,7 +431,7 @@ export class IOTOTaskView extends TextFileView {
 			title: t('view.iotoTaskView.toolbar.addTaskTooltip'),
 			attr: { 'data-action': 'add-task' },
 			onClick: () => {
-				void this.addTask();
+				this.triggerAddTask();
 			},
 		});
 
@@ -943,7 +945,7 @@ export class IOTOTaskView extends TextFileView {
 	 */
 	private buildLinkController(): TaskNoteLinks {
 		return {
-			open: (linktext, newTab) => {
+			open: (linktext, newLeaf) => {
 				const sourcePath = this.file?.path ?? '';
 				void (async () => {
 					// 编辑态点**别的卡片**的链接：mousedown 的 blur 已提交过一次，
@@ -953,8 +955,8 @@ export class IOTOTaskView extends TextFileView {
 					await this.app.workspace.openLinkText(
 						linktext,
 						sourcePath,
-						// false = 当前叶子（与阅读模式一致）；'tab' = 新标签页
-						newTab ? 'tab' : false,
+						// 核心同款叶子类型：'tab' / 'split' / 'window'，或 false = 当前叶子
+						newLeaf,
 					);
 				})();
 			},
@@ -2385,6 +2387,16 @@ export class IOTOTaskView extends TextFileView {
 			return;
 		}
 		void this.toggleTask(line, cardEl);
+	}
+
+	/** 命令面板 / 快捷键入口：仅转发到 `addTask`，不复制逻辑。 */
+	triggerAddTask(): void {
+		void this.addTask();
+	}
+
+	/** 供 main.ts 的 checkCallback 判定命令是否可用：与按钮只读态隐藏同口径。 */
+	canAddTask(): boolean {
+		return this.file !== null && this.supportsInlineEdit();
 	}
 
 	/* ------------------------------------------------------------------ *

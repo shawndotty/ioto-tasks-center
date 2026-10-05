@@ -214,6 +214,26 @@ export default class IOTOTasksCenter extends Plugin {
 				return true;
 			},
 		});
+		this.addCommand({
+			id: 'itc-add-task',
+			name: t('command.addTask'),
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(
+					IOTOTaskView,
+				);
+				// 仅当 Task View 为 active leaf 且可内联编辑时命令才可用；
+				// 与工具栏「添加」按钮只读态 is-hidden 同口径（见 discuss 4.1/4.2 方案 A）。
+				if (!view || !view.canAddTask()) {
+					return false;
+				}
+
+				if (!checking) {
+					view.triggerAddTask();
+				}
+
+				return true;
+			},
+		});
 
 		this.addCommand({
 			id: 'open-tasks-center-view',
