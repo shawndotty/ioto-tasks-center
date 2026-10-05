@@ -2502,6 +2502,10 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	margin-bottom: 0;
 }
 
+.ioto-task-view__card-text a {
+	text-decoration: none;
+}
+
 .ioto-task-view__card-actions {
 	/* 动作区默认隐藏：只在卡片内联编辑态（.is-editing）显示。
 	   依据条目 60——徽章内容只在执行/编辑任务时需要查看与调整。 */
@@ -3270,8 +3274,8 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	inset-inline-start: 6px;
 	top: 50%;
 	transform: translateY(-50%);
-	width: 3px;
-	height: 18px;
+	width: 2px;
+	height: 70%;
 	border-radius: var(--ioto-tv-radius-pill);
 	background: var(--ioto-tv-accent);
 	opacity: 0.9;
