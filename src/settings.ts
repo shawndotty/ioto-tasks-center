@@ -99,6 +99,8 @@ export interface IOTOTasksCenterSettings {
 	taskSearchEntryMode: TaskSearchEntryMode;
 	/** IOTOTask 视图外观风格（glass / card）。 */
 	appearanceStyle: TaskViewAppearanceStyle;
+	/** Task View「显示最近任务」保留的顶级任务数。 */
+	recentTaskCount: number;
 }
 
 export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
@@ -130,6 +132,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	batchTemplateConfig: { ...DEFAULT_BATCH_TEMPLATE_CONFIG },
 	taskSearchEntryMode: 'inline',
 	appearanceStyle: 'glass',
+	recentTaskCount: 3,
 };
 
 export { normalizeEnabledTaskCreationTypes } from './tasks-center/enabled-task-creation-types';
@@ -190,6 +193,19 @@ export function normalizeTaskSearchEntryMode(
 	value: unknown,
 ): TaskSearchEntryMode {
 	return value === 'modal' ? 'modal' : 'inline';
+}
+
+/**
+ * 归一化 Task View「显示最近任务」的阈值：取整；`< 1` 或非有限数回退默认值。
+ */
+export function normalizeRecentTaskCount(value: unknown): number {
+	const parsed = typeof value === 'number' ? value : Number(value);
+	if (!Number.isFinite(parsed)) {
+		return DEFAULT_SETTINGS.recentTaskCount;
+	}
+
+	const floored = Math.floor(parsed);
+	return floored < 1 ? DEFAULT_SETTINGS.recentTaskCount : floored;
 }
 
 export function getTaskListGroupModeOptions(): Record<
@@ -489,6 +505,18 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 							await this.plugin.updateAppearanceStyle(value);
 						});
 				});
+
+			new Setting(containerEl)
+				.setName(t('settings.recentTaskCount.name'))
+				.setDesc(t('settings.recentTaskCount.desc'))
+				.addText((text) =>
+					text
+						.setPlaceholder(String(DEFAULT_SETTINGS.recentTaskCount))
+						.setValue(String(this.plugin.settings.recentTaskCount))
+						.onChange(async (value) => {
+							await this.plugin.updateRecentTaskCount(value);
+						}),
+				);
 
 			new Setting(containerEl)
 				.setName(t('settings.heading.taskOutlinks'))

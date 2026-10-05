@@ -545,6 +545,12 @@ const en = {
 	'view.iotoTaskView.toolbar.togglePendingTooltip': 'Hide completed tasks',
 	'view.iotoTaskView.toolbar.runTask': 'Run tasks',
 	'view.iotoTaskView.toolbar.addTask': 'Add task',
+	'view.iotoTaskView.toolbar.toggleRecent': 'Recent tasks',
+	'view.iotoTaskView.toolbar.toggleRecentTooltip': 'Show the last {0} tasks',
+	'view.iotoTaskView.empty.allDone': 'All tasks completed',
+	'settings.recentTaskCount.name': 'Recent task count',
+	'settings.recentTaskCount.desc':
+		'Number of top-level tasks kept by "Recent tasks" in Task view (default 3).',
 	'view.iotoTaskView.tasksSectionTitle': 'Tasks',
 	'view.iotoTaskView.badge.depends': 'Depends ×{0}',
 	'view.iotoTaskView.badge.dependsIndex': 'Depends #{0}',

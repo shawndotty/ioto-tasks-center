@@ -27,6 +27,7 @@ import {
 	pickAdjacentLine,
 	pickEdgeLine,
 } from './card-navigation';
+import { pickRecentTopLevelLines } from './recent-task-filter';
 import { shouldTriggerTaskHoverPreview } from '../task-hover-preview';
 
 /** 编辑交互回调（由 `IOTOTaskView` 注入；只读态 `enabled = false`）。 */
@@ -73,6 +74,8 @@ export interface TaskNoteFilters {
 	onlyTaskBlocks: boolean;
 	/** ② 只显示未完成任务：隐藏 `[x]` 卡片（空 Section 仍保留） */
 	onlyPending: boolean;
+	/** ③ 只显示最近任务：每个 Section 只保留末尾 N 个顶级任务（含其子任务） */
+	recentOnly: boolean;
 }
 
 export interface RenderTaskNoteOptions {
@@ -89,6 +92,8 @@ export interface RenderTaskNoteOptions {
 	links: TaskNoteLinks;
 	/** 过滤开关（缺省视为全关，兼容旧调用） */
 	filters?: TaskNoteFilters;
+	/** ③「只显示最近任务」保留的顶级任务数（缺省 3） */
+	recentTaskCount?: number;
 }
 
 interface RenderSectionOptions {
@@ -102,6 +107,7 @@ interface RenderSectionOptions {
 	onToggleSection: (key: string) => void;
 	editing: TaskNoteEditing;
 	filters: TaskNoteFilters;
+	recentTaskCount: number;
 }
 
 /** Section 折叠状态的稳定 key（Level + 起始行 + 标题，重排后不会错位）。 */
@@ -114,7 +120,9 @@ export function renderTaskNote(options: RenderTaskNoteOptions): void {
 	const filters: TaskNoteFilters = options.filters ?? {
 		onlyTaskBlocks: false,
 		onlyPending: false,
+		recentOnly: false,
 	};
+	const recentTaskCount = options.recentTaskCount ?? 3;
 	const sections = parseSections(content);
 	const scrollEl = containerEl.createDiv({ cls: 'ioto-task-view__scroll' });
 	attachTaskNoteLinkDelegates(scrollEl, options.links);
@@ -127,7 +135,13 @@ export function renderTaskNote(options: RenderTaskNoteOptions): void {
 	}
 
 	for (const section of roots) {
-		renderSection({ ...options, scrollEl, section, filters });
+		renderSection({
+			...options,
+			scrollEl,
+			section,
+			filters,
+			recentTaskCount,
+		});
 	}
 }
 
@@ -248,6 +262,7 @@ function renderSection(options: RenderSectionOptions): void {
 		section,
 		editing: options.editing,
 		filters: options.filters,
+		recentTaskCount: options.recentTaskCount,
 	});
 }
 
@@ -291,6 +306,7 @@ function renderSectionBody(options: {
 	section: NoteSection;
 	editing: TaskNoteEditing;
 	filters: TaskNoteFilters;
+	recentTaskCount: number;
 }): void {
 	const {
 		app,
@@ -301,6 +317,7 @@ function renderSectionBody(options: {
 		section,
 		editing,
 		filters,
+		recentTaskCount,
 	} = options;
 	const lines = content.split(/\r?\n/);
 	const bodyStartLine =
@@ -335,6 +352,27 @@ function renderSectionBody(options: {
 		);
 	}
 
+	// ③ 只显示最近任务：每个顶层 Section 各自取末尾 N 组（口径 A：先取组、后套 onlyPending）。
+	const recentLines = filters.recentOnly
+		? pickRecentTopLevelLines(items, recentTaskCount)
+		: null;
+
+	// ②/③ 叠加后本 Section 可见卡片数为 0：渲染空态，不再画空 `<ul>`（Q8）。
+	if (filters.onlyPending && items.length > 0) {
+		const hasVisible = items.some(
+			(item) =>
+				(!recentLines || recentLines.has(item.line)) &&
+				!isChecklistItemDone(item),
+		);
+		if (!hasVisible) {
+			bodyEl.createDiv({
+				cls: 'ioto-task-view__empty',
+				text: t('view.iotoTaskView.empty.allDone'),
+			});
+			return;
+		}
+	}
+
 	let lineIndex = bodyStartLine;
 	while (lineIndex <= section.endLine) {
 		const item = itemByLine.get(lineIndex);
@@ -362,6 +400,7 @@ function renderSectionBody(options: {
 				component,
 				editing,
 				filters,
+				recentLines,
 				continuationMarkdown,
 				continuationLines: continuationByLine,
 			});
@@ -400,6 +439,8 @@ function renderChecklistGroup(options: {
 	component: Component;
 	editing: TaskNoteEditing;
 	filters: TaskNoteFilters;
+	/** ③ 最近任务过滤：保留的行号集合；`null` = 未开启。 */
+	recentLines: Set<number> | null;
 	/** 卡片行号 → 该卡的续行 markdown（无续行的卡不出现） */
 	continuationMarkdown: Map<number, string>;
 	/** 卡片行号 → 该卡的续行行号数组（无续行的卡不出现） */
@@ -413,12 +454,17 @@ function renderChecklistGroup(options: {
 		component,
 		editing,
 		filters,
+		recentLines,
 		continuationMarkdown,
 		continuationLines,
 	} = options;
 	const listEl = bodyEl.createEl('ul', { cls: 'ioto-task-view__checklist' });
 
 	for (const item of items) {
+		// ③ 只显示最近任务：不属于末尾 N 组的行不生成 DOM（与 ② 同为独立 skip）。
+		if (recentLines && !recentLines.has(item.line)) {
+			continue;
+		}
 		const done = isChecklistItemDone(item);
 		// ② 只显示未完成：已完成卡不生成 DOM（collectCardLines 读 DOM，
 		// 隐藏卡天然不可达，↑↓ 自动跳过）；空 Section 不在此处隐藏。

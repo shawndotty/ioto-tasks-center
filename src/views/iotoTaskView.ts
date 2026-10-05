@@ -104,6 +104,17 @@ const AUTOSAVE_INTERVAL_MS = Platform.isMobile ? 4000 : 2000;
 /** 过滤开关的 frontmatter 属性名（唯一真源，[[Plan-20261004-110845]] §二.1）。 */
 const PROPERTY_ONLY_TASK_BLOCKS = 'iotoTaskViewOnlyTaskBlocks';
 const PROPERTY_ONLY_PENDING = 'iotoTaskViewOnlyPending';
+const PROPERTY_RECENT_ONLY = 'iotoTaskViewRecentOnly';
+
+/**
+ * 过滤开关 → frontmatter 属性名映射（`toggleFilter` 的写盘真源）。
+ * 开关新增时只需在此登记，写盘 / 补齐逻辑自动覆盖（[[Plan-20261005-101007]] §2.7）。
+ */
+const FILTER_PROPERTY_NAMES: Record<keyof TaskNoteFilters, string> = {
+	onlyTaskBlocks: PROPERTY_ONLY_TASK_BLOCKS,
+	onlyPending: PROPERTY_ONLY_PENDING,
+	recentOnly: PROPERTY_RECENT_ONLY,
+};
 
 /** ③「执行任务」由 ioto-settings 注册的命令 ID（按钮只派发，粒度交给对方）。 */
 const RUN_TASK_COMMAND_ID = 'ioto-settings:ioto-run-task';
@@ -181,6 +192,7 @@ export class IOTOTaskView extends TextFileView {
 	private autosaveRunning = false;
 	private readonly supportsInlineEdit: () => boolean;
 	private readonly appearanceStyleProvider: () => TaskViewAppearanceStyle;
+	private readonly recentTaskCountProvider: () => number;
 	/**
 	 * 视图级稳定对象：否则弹窗无法复用 / 关闭
 	 * （与 `iotoTasksCenterView` 同一口径，[[Plan-20261004-004408]] §3.2 ④）。
@@ -197,20 +209,27 @@ export class IOTOTaskView extends TextFileView {
 	private bodyEl: HTMLElement | null = null;
 	private toggleTaskBlocksEl: HTMLButtonElement | null = null;
 	private togglePendingEl: HTMLButtonElement | null = null;
+	private toggleRecentEl: HTMLButtonElement | null = null;
 	private runTaskEl: HTMLButtonElement | null = null;
 	private addTaskEl: HTMLButtonElement | null = null;
 	/** 过滤开关运行态：**每次 renderNote 从 `this.data`（frontmatter）重读**，不持久化。 */
-	private filters: TaskNoteFilters = { onlyTaskBlocks: false, onlyPending: false };
+	private filters: TaskNoteFilters = {
+		onlyTaskBlocks: false,
+		onlyPending: false,
+		recentOnly: false,
+	};
 
 	constructor(
 		leaf: WorkspaceLeaf,
 		supportsInlineEdit: () => boolean,
 		appearanceStyleProvider: () => TaskViewAppearanceStyle,
+		recentTaskCountProvider: () => number,
 	) {
 		super(leaf);
 		this.allowNoFile = false;
 		this.supportsInlineEdit = supportsInlineEdit;
 		this.appearanceStyleProvider = appearanceStyleProvider;
+		this.recentTaskCountProvider = recentTaskCountProvider;
 	}
 
 	getViewType(): string {
@@ -249,7 +268,11 @@ export class IOTOTaskView extends TextFileView {
 		this.editingOriginalLine = '';
 		// 保留常驻外壳（toolbar / body），只清列表内容。
 		this.bodyEl?.empty();
-		this.filters = { onlyTaskBlocks: false, onlyPending: false };
+		this.filters = {
+			onlyTaskBlocks: false,
+			onlyPending: false,
+			recentOnly: false,
+		};
 		this.refreshToolbarState();
 		this.data = '';
 		this.lastLoadedText = '';
@@ -348,6 +371,17 @@ export class IOTOTaskView extends TextFileView {
 				void this.toggleFilter('onlyPending');
 			},
 		});
+		// ③ 显示最近任务：每个 Section 只保留末尾 N 个顶级任务（阈值取自设置）。
+		this.toggleRecentEl = this.createToolbarButton(leftEl, {
+			cls: 'ioto-task-view__toggle',
+			icon: 'history',
+			label: t('view.iotoTaskView.toolbar.toggleRecent'),
+			title: this.recentTaskTitle(),
+			attr: { 'data-filter': 'recent' },
+			onClick: () => {
+				void this.toggleFilter('recentOnly');
+			},
+		});
 		this.runTaskEl = this.createToolbarButton(rightEl, {
 			cls: 'ioto-task-view__action',
 			icon: 'play',
@@ -422,8 +456,21 @@ export class IOTOTaskView extends TextFileView {
 			'aria-pressed',
 			this.filters.onlyPending ? 'true' : 'false',
 		);
+		this.toggleRecentEl?.setAttribute(
+			'aria-pressed',
+			this.filters.recentOnly ? 'true' : 'false',
+		);
+		// 阈值随设置变化：每次刷新重取 provider 更新 tooltip，避免只取一次导致滞后。
+		this.toggleRecentEl?.setAttribute('title', this.recentTaskTitle());
 		// 只读态隐藏「添加任务」：插入后进不了编辑只会剩 Notice（§5.4）。
 		this.addTaskEl?.toggleClass('is-hidden', !this.supportsInlineEdit());
+	}
+
+	/** ③ 按钮 tooltip：内插当前阈值（设置变更后由 `refreshToolbarState` 重取）。 */
+	private recentTaskTitle(): string {
+		return t('view.iotoTaskView.toolbar.toggleRecentTooltip', [
+			String(this.recentTaskCountProvider()),
+		]);
 	}
 
 	/** 从 `this.data`（frontmatter）重读过滤开关；缺失 = 关。 */
@@ -436,6 +483,10 @@ export class IOTOTaskView extends TextFileView {
 			onlyPending: readBooleanProperty(
 				this.data,
 				PROPERTY_ONLY_PENDING,
+			),
+			recentOnly: readBooleanProperty(
+				this.data,
+				PROPERTY_RECENT_ONLY,
 			),
 		};
 	}
@@ -457,24 +508,21 @@ export class IOTOTaskView extends TextFileView {
 
 		const oldContent = this.data;
 		const nextValue = !this.filters[kind];
-		const propertyName =
-			kind === 'onlyTaskBlocks'
-				? PROPERTY_ONLY_TASK_BLOCKS
-				: PROPERTY_ONLY_PENDING;
-		const otherName =
-			kind === 'onlyTaskBlocks'
-				? PROPERTY_ONLY_PENDING
-				: PROPERTY_ONLY_TASK_BLOCKS;
 
 		const properties: Record<string, string> = {
-			[propertyName]: nextValue ? 'true' : 'false',
+			[FILTER_PROPERTY_NAMES[kind]]: nextValue ? 'true' : 'false',
 		};
-		// 首次 toggle 时一次补齐另一个 key（把「行号平移」压成一次性事件）。
-		if (readScalarProperty(oldContent, otherName) === null) {
-			const otherValue = this.filters[
-				kind === 'onlyTaskBlocks' ? 'onlyPending' : 'onlyTaskBlocks'
-			];
-			properties[otherName] = otherValue ? 'true' : 'false';
+		// 首次 toggle 时一次补齐其余两个 key（把「行号平移」压成一次性事件）。
+		for (const key of Object.keys(
+			FILTER_PROPERTY_NAMES,
+		) as (keyof TaskNoteFilters)[]) {
+			if (key === kind) {
+				continue;
+			}
+			const name = FILTER_PROPERTY_NAMES[key];
+			if (readScalarProperty(oldContent, name) === null) {
+				properties[name] = this.filters[key] ? 'true' : 'false';
+			}
 		}
 
 		const newContent = await writeScalarProperties(
@@ -553,6 +601,18 @@ export class IOTOTaskView extends TextFileView {
 		}
 	}
 
+	/**
+	 * 阈值（`recentTaskCount`）设置变更后由 `main.ts` 调用：
+	 * 刷新按钮 tooltip；仅当「显示最近任务」开启时重绘（阈值变化需重算分组），
+	 * 其余情况不动 DOM（[[Plan-20261005-101007]] §2.6）。
+	 */
+	applyRecentTaskCount(): void {
+		this.refreshToolbarState();
+		if (this.filters.recentOnly) {
+			this.renderNote(this.data);
+		}
+	}
+
 	private async reloadFromVault(): Promise<void> {
 		const file = this.file;
 		if (!file) {
@@ -617,6 +677,7 @@ export class IOTOTaskView extends TextFileView {
 				editing: this.buildEditingController(),
 				links: this.buildLinkController(),
 				filters: this.filters,
+				recentTaskCount: this.recentTaskCountProvider(),
 			});
 			restoreIotoTaskScroll(this.contentEl, snapshot, {
 				skipAnchor: options?.skipAnchorRestore ?? false,

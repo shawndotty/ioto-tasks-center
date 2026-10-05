@@ -501,6 +501,12 @@ const zhCN = {
 	'view.iotoTaskView.toolbar.togglePendingTooltip': '隐藏已完成任务',
 	'view.iotoTaskView.toolbar.runTask': '执行任务',
 	'view.iotoTaskView.toolbar.addTask': '添加任务',
+	'view.iotoTaskView.toolbar.toggleRecent': '显示最近任务',
+	'view.iotoTaskView.toolbar.toggleRecentTooltip': '只显示最近 {0} 个任务',
+	'view.iotoTaskView.empty.allDone': '所有任务已完成',
+	'settings.recentTaskCount.name': '最近任务数量',
+	'settings.recentTaskCount.desc':
+		'Task View「显示最近任务」保留的顶级任务数（默认 3）。',
 	'view.iotoTaskView.tasksSectionTitle': '任务',
 	'view.iotoTaskView.badge.depends': '依赖×{0}',
 	'view.iotoTaskView.badge.dependsIndex': '依赖#{0}',

@@ -502,6 +502,12 @@ const zhTW = {
 	'view.iotoTaskView.toolbar.togglePendingTooltip': '隱藏已完成任務',
 	'view.iotoTaskView.toolbar.runTask': '執行任務',
 	'view.iotoTaskView.toolbar.addTask': '新增任務',
+	'view.iotoTaskView.toolbar.toggleRecent': '顯示最近任務',
+	'view.iotoTaskView.toolbar.toggleRecentTooltip': '只顯示最近 {0} 個任務',
+	'view.iotoTaskView.empty.allDone': '所有任務已完成',
+	'settings.recentTaskCount.name': '最近任務數量',
+	'settings.recentTaskCount.desc':
+		'Task View「顯示最近任務」保留的頂級任務數（預設 3）。',
 	'view.iotoTaskView.tasksSectionTitle': '任務',
 	'view.iotoTaskView.badge.depends': '依賴×{0}',
 	'view.iotoTaskView.badge.dependsIndex': '依賴#{0}',

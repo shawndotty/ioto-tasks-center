@@ -45,6 +45,7 @@ import {
 	normalizeProjectCategoryOptions,
 	normalizeProjectListGroupMode,
 	normalizeProjectListSortMode,
+	normalizeRecentTaskCount,
 	normalizeTaskSearchEntryMode,
 } from './settings';
 import {
@@ -162,6 +163,7 @@ export default class IOTOTasksCenter extends Plugin {
 					leaf,
 					() => this.supportsInlineEdit,
 					() => this.settings.appearanceStyle,
+					() => this.settings.recentTaskCount,
 				),
 		);
 
@@ -482,6 +484,9 @@ export default class IOTOTasksCenter extends Plugin {
 		this.settings.taskSearchEntryMode = normalizeTaskSearchEntryMode(
 			loadedData?.taskSearchEntryMode,
 		);
+		this.settings.recentTaskCount = normalizeRecentTaskCount(
+			this.settings.recentTaskCount,
+		);
 	}
 
 	async saveSettings() {
@@ -621,6 +626,17 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.appearanceStyle = style;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateRecentTaskCount(value: unknown): Promise<void> {
+		const count = normalizeRecentTaskCount(value);
+		if (this.settings.recentTaskCount === count) {
+			return;
+		}
+
+		this.settings.recentTaskCount = count;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}
@@ -1058,6 +1074,7 @@ export default class IOTOTasksCenter extends Plugin {
 			const view = leaf.view;
 			if (view instanceof IOTOTaskView) {
 				view.applyAppearanceStyle();
+				view.applyRecentTaskCount();
 			}
 		}
 	}
