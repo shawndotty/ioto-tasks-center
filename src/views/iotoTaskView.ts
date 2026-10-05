@@ -1020,6 +1020,40 @@ export class IOTOTaskView extends TextFileView {
 	}
 
 	/**
+	 * blur 提交后的「焦点还原」：与 Esc 出口（onEditorEscape）对称
+	 * （[[Discuss-20261005-175835]] §四·A，[[Plan-20261005-180341]]）。
+	 *
+	 * 只在「焦点落空」时拉回，避免和用户主动跳走（点另一张卡 / 点工具栏 /
+	 * 切侧栏 / 打开链接）打架：
+	 *  - 选中没在途中被挪走（`selectedLine` 仍是本行）——防与点另一张卡的竞态；
+	 *  - 卡片仍在（未被折叠 / 重绘挪走）；
+	 *  - `activeElement` 既不在任何卡片内，也**确实掉空**（body / documentElement / null）。
+	 *
+	 * 用 `applySelection` 而不是手写 addClass+focus，是为了顺带清掉上一张卡的
+	 * 残留选中类，并与 Esc 路径共用同一套语义。
+	 */
+	private restoreSelectionFocusAfterBlurCommit(line: number): void {
+		if (this.selectedLine !== line) {
+			return;
+		}
+		if (!this.queryCard(line)) {
+			return;
+		}
+
+		const doc = activeDocument;
+		const activeEl = doc.activeElement;
+		const orphaned =
+			activeEl === null ||
+			activeEl === doc.body ||
+			activeEl === doc.documentElement;
+		if (!orphaned) {
+			return;
+		}
+
+		this.applySelection(line);
+	}
+
+	/**
 	 * 选择态下 `Delete` / `Backspace`：删当前行**及其下连续续行**（`Shift+Enter` 正文，
 	 * 卡片里显示几行就删几行），**不级联嵌套子行**；
 	 * 选择落到「原位置的下一张，否则上一张」。
@@ -1426,7 +1460,10 @@ export class IOTOTaskView extends TextFileView {
 				onBlur: () => {
 					// blur 提交会写同一行的最终值，先撤掉待写的那次（内容相同，属无效写）
 					this.autosave.cancel();
-					void this.commitEdit();
+					void this.commitEdit().then(() => {
+						// 提交完成后按需把焦点还原到卡片（点空白的修复路径）
+						this.restoreSelectionFocusAfterBlurCommit(line);
+					});
 				},
 				onChange: () => {
 					this.autosave.schedule();
