@@ -2388,6 +2388,35 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	outline-offset: 2px;
 }
 
+/* 经典卡片主题（非玻璃）：勾选框图标在未完成态为空字符串（只有完成态 setIcon('check')），
+   仅靠图标无法在未完成态显形，故用 CSS 外框补出「未选中的空框」。
+   玻璃主题已有自己的 24px 方块，用 :not(.is-glass) 排除，避免叠加。
+   （[[Research-20261005-193032]]） */
+.ioto-task-view:not(.is-glass) .ioto-task-view__card-checkbox {
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	border: 1px solid var(--ioto-tv-border);
+	border-radius: var(--radius-s);
+	background: color-mix(in srgb, var(--text-normal) 3%, transparent);
+}
+
+.ioto-task-view:not(.is-glass) .ioto-task-view__card-checkbox:hover {
+	border-color: var(--ioto-tv-accent);
+}
+
+/* 完成态沿用「仅 check 图标」的极简观感：外框让位，只留勾。
+   （未完成态才显示空框；两态视觉差异靠图标而非框线区分。） */
+.ioto-task-view:not(.is-glass)
+	.ioto-task-view__card[data-task="x"]
+	.ioto-task-view__card-checkbox,
+.ioto-task-view:not(.is-glass)
+	.ioto-task-view__card[data-task="X"]
+	.ioto-task-view__card-checkbox {
+	border-color: transparent;
+	background: none;
+}
+
 /* 选择态：左侧强调线加粗 + 淡背景，强度介于默认态与 `.is-editing` 之间。
    定义在 `.is-editing` 之前，因此编辑态样式天然覆盖选中态；两者可并存，
    进/退编辑无需切换类（[[Plan-20261003-194909]] §5.4）。 */
