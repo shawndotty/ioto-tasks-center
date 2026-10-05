@@ -386,7 +386,7 @@ export class IOTOTaskView extends TextFileView {
 			cls: 'ioto-task-view__action',
 			icon: 'play',
 			label: t('view.iotoTaskView.toolbar.runTask'),
-			title: t('view.iotoTaskView.toolbar.runTask'),
+			title: t('view.iotoTaskView.toolbar.runTaskTooltip'),
 			attr: { 'data-action': 'run-task' },
 			onClick: () => {
 				void this.runTask();
@@ -396,7 +396,7 @@ export class IOTOTaskView extends TextFileView {
 			cls: 'ioto-task-view__action',
 			icon: 'plus',
 			label: t('view.iotoTaskView.toolbar.addTask'),
-			title: t('view.iotoTaskView.toolbar.addTask'),
+			title: t('view.iotoTaskView.toolbar.addTaskTooltip'),
 			attr: { 'data-action': 'add-task' },
 			onClick: () => {
 				void this.addTask();
