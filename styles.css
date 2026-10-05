@@ -2120,6 +2120,10 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
+	/* 容器查询宿主：以「视图自身宽度」为判据（侧边栏/分屏缩窄也会命中，
+	   而 @media 只看窗口宽度会漏判）。见 [[Plan-20261005-104938]] §2.2。 */
+	container-type: inline-size;
+	container-name: ioto-task-view;
 }
 
 .ioto-task-view__scroll {
@@ -2176,12 +2180,26 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	border-radius: var(--radius-s);
 	box-shadow: none;
 	cursor: pointer;
+	transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
 .ioto-task-view__toggle:hover,
 .ioto-task-view__action:hover {
 	color: var(--text-normal);
+	background: var(--background-modifier-hover);
 	border-color: var(--ioto-tv-accent);
+}
+
+/* 已按下的 toggle 悬浮：保持强调底色，只加一圈内高光，别被 hover 背景盖掉 */
+.ioto-task-view__toggle[aria-pressed="true"]:hover {
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-on-accent) 50%, transparent);
+}
+
+/* 键盘可达性：可见焦点环 */
+.ioto-task-view__toggle:focus-visible,
+.ioto-task-view__action:focus-visible {
+	outline: 2px solid var(--ioto-tv-accent);
+	outline-offset: 1px;
 }
 
 .ioto-task-view__toggle[aria-pressed="true"] {
@@ -2531,6 +2549,21 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	display: none;
 }
 
+/* 窄宽度图标态（容器查询，判据是「视图自身宽度」而非窗口宽度，见 [[Plan-20261005-104938]] §2）。
+   阈值 420px 为按现有尺寸估算的值（英文体验优先可调到 440px）；媒体/容器查询条件里
+   不能用 CSS 变量，故断点必须是字面量。文案隐藏后仍由 aria-label / title 提供语义与 tooltip。 */
+@container ioto-task-view (max-width: 420px) {
+	.ioto-task-view__toolbar-label {
+		display: none;
+	}
+
+	/* 图标态改方形，避免「宽扁」按钮显得松散 */
+	.ioto-task-view__toggle,
+	.ioto-task-view__action {
+		padding: 6px;
+	}
+}
+
 .is-phone .ioto-task-view__toggle,
 .is-phone .ioto-task-view__action {
 	padding: 6px 10px;
@@ -2622,6 +2655,16 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	background: var(--ioto-tv-glass-bg);
 	border-color: var(--ioto-tv-glass-border);
 	border-radius: var(--ioto-tv-radius-pill);
+}
+
+/* glass 基底 (0,3,0) 会盖掉通用 :hover 的边框，这里用 (0,4,0) 明确补回玻璃面悬浮态。
+   必须放在下面的 `[aria-pressed="true"]` 之前：两者特指度相同 (0,4,0)，靠后者胜出，
+   这样「已按下的 toggle 悬浮」才仍保留强调底色（悬浮只额外加内高光）。 */
+.ioto-task-view.is-glass .ioto-task-view__toggle:hover,
+.ioto-task-view.is-glass .ioto-task-view__action:hover {
+	background: color-mix(in srgb, var(--text-normal) 10%, var(--ioto-tv-glass-bg));
+	border-color: color-mix(in srgb, var(--ioto-tv-accent) 55%, var(--ioto-tv-glass-border));
+	color: var(--text-normal);
 }
 
 .ioto-task-view.is-glass .ioto-task-view__toggle[aria-pressed="true"] {
@@ -2879,9 +2922,12 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	}
 }
 
-/* 降低动态：去掉悬停位移 */
+/* 降低动态：去掉悬停位移与过渡 */
 @media (prefers-reduced-motion: reduce) {
 	.ioto-task-view.is-glass .ioto-task-view__card:hover { transform: none; }
+
+	.ioto-task-view__toggle,
+	.ioto-task-view__action { transition: none; }
 }
 
 /* 移动端：降 blur / 间距，保性能与触控热区（沿用既有 .is-phone 触控改动） */
