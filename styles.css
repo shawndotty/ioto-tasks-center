@@ -3153,6 +3153,229 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 }
 .is-phone .ioto-task-view.is-glass::before { filter: blur(18px) saturate(115%); }
 
+/* ============================================================
+   IOTOTask 视图 · 现代风格（`.is-modern`）
+   - 定位：介于 `card`（有边框扁平）与 `glass`（Aurora + 模糊）之间的第三套外观。
+     比 `card` 更现代 → 去满框描边、加大圆角、用「浅色分层 + 极浅投影」体现纵深、
+     控件/徽章改药丸形、左侧强调改「短胶囊」；
+     比 `glass` 克制 → 无渐变光斑、无 backdrop-filter，性能与 `card` 同级。
+   - 全部规则收敛在 `.ioto-task-view.is-modern` 下；`card` 基线规则原样保留，
+     切回 `card` 即完整回退（[[Plan-20261005-200436]]）。
+   - 注意：`modern` 命中既有 `:not(.is-glass)` 的勾选框规则，故下方对勾选框显式覆盖。
+   ============================================================ */
+
+.ioto-task-view.is-modern {
+	/* 几何：更圆、更舒展 */
+	--ioto-tv-radius: 14px;          /* Section 外层卡 */
+	--ioto-tv-radius-inner: 10px;    /* 任务行内嵌面板 */
+	--ioto-tv-radius-pill: 999px;
+	--ioto-tv-pad-x: 14px;
+	--ioto-tv-pad-y: 10px;
+	--ioto-tv-gap: 6px;
+	--ioto-tv-section-gap: 16px;
+	--ioto-tv-title-size: 1.12em;
+	--ioto-tv-indent: 1.9em;
+	--ioto-tv-done-opacity: 0.55;
+
+	/* 面 / 线 / 影（浅色分层是现代风格的核心，不靠描边） */
+	--ioto-tv-canvas: color-mix(in srgb, var(--background-secondary) 55%, var(--background-primary));
+	--ioto-tv-surface: var(--background-primary);
+	--ioto-tv-hairline: color-mix(in srgb, var(--text-normal) 8%, transparent);
+	--ioto-tv-line: color-mix(in srgb, var(--text-normal) 4%, transparent);
+	--ioto-tv-elev-1: 0 1px 2px rgb(0 0 0 / 5%), 0 1px 3px rgb(0 0 0 / 4%);
+	--ioto-tv-elev-2: 0 4px 14px -6px rgb(0 0 0 / 16%), 0 2px 6px -3px rgb(0 0 0 / 8%);
+	--ioto-tv-motion: 160ms cubic-bezier(0.2, 0, 0.05, 1);
+
+	background: var(--ioto-tv-canvas);
+}
+
+/* 列表容器：Section 之间留出呼吸（沿用 --ioto-tv-section-gap） */
+.ioto-task-view.is-modern .ioto-task-view__scroll {
+	gap: var(--ioto-tv-section-gap);
+}
+
+/* 控制栏：去重边框，改极浅发丝线；控件改药丸 */
+.ioto-task-view.is-modern .ioto-task-view__toolbar {
+	border-bottom: 1px solid var(--ioto-tv-line);
+}
+
+.ioto-task-view.is-modern .ioto-task-view__toggle,
+.ioto-task-view.is-modern .ioto-task-view__action {
+	background: color-mix(in srgb, var(--text-normal) 4%, transparent);
+	border-color: transparent;
+	border-radius: var(--ioto-tv-radius-pill);
+	transition: background-color var(--ioto-tv-motion), color var(--ioto-tv-motion);
+}
+
+.ioto-task-view.is-modern .ioto-task-view__toggle:hover,
+.ioto-task-view.is-modern .ioto-task-view__action:hover {
+	background: color-mix(in srgb, var(--text-normal) 9%, transparent);
+	border-color: transparent;
+	color: var(--text-normal);
+}
+
+.ioto-task-view.is-modern .ioto-task-view__toggle[aria-pressed="true"] {
+	color: var(--text-on-accent);
+	background: var(--ioto-tv-accent);
+}
+
+/* Section = 一张「浮起」的分层卡：无满框描边，用 1px 发丝环 + 极浅投影 */
+.ioto-task-view.is-modern .ioto-task-view__section {
+	background: var(--ioto-tv-surface);
+	border: none;
+	border-radius: var(--ioto-tv-radius);
+	box-shadow: 0 0 0 1px var(--ioto-tv-hairline), var(--ioto-tv-elev-1);
+	overflow: clip; /* 裁圆角但不创建滚动容器 → 内部 sticky 头仍相对外层滚动容器生效 */
+}
+
+/* Header：无重底边、medium 字重标题 */
+.ioto-task-view.is-modern .ioto-task-view__section-header {
+	padding: 12px 14px;
+	gap: 8px;
+	background: var(--ioto-tv-surface);
+	border-bottom: 1px solid var(--ioto-tv-line);
+	border-start-start-radius: var(--ioto-tv-radius);
+	border-start-end-radius: var(--ioto-tv-radius);
+}
+
+.ioto-task-view.is-modern .ioto-task-view__section-title {
+	font-size: var(--ioto-tv-title-size);
+	font-weight: var(--font-semibold);
+	letter-spacing: -0.01em;
+}
+
+.ioto-task-view.is-modern .ioto-task-view__section-body {
+	padding: 10px 12px;
+	gap: var(--ioto-tv-gap);
+}
+
+/* 任务行 = 内嵌面板：无描边 + 极浅底 + 圆角；hover 抬升出投影 */
+.ioto-task-view.is-modern .ioto-task-view__card {
+	position: relative;
+	gap: 10px;
+	padding: var(--ioto-tv-pad-y) 12px;
+	padding-inline-start: 16px; /* 给左侧强调胶囊留位 */
+	background: color-mix(in srgb, var(--text-normal) 3.5%, transparent);
+	border: none;
+	border-inline-start-width: 0;
+	border-radius: var(--ioto-tv-radius-inner);
+	box-shadow: none;
+	transition: background-color var(--ioto-tv-motion), box-shadow var(--ioto-tv-motion);
+}
+
+/* 左侧强调胶囊：居中短条（替代 card 的整条实心 border-inline-start） */
+.ioto-task-view.is-modern .ioto-task-view__card::before {
+	content: "";
+	position: absolute;
+	inset-inline-start: 6px;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 3px;
+	height: 18px;
+	border-radius: var(--ioto-tv-radius-pill);
+	background: var(--ioto-tv-accent);
+	opacity: 0.9;
+	transition: opacity var(--ioto-tv-motion);
+}
+
+.ioto-task-view.is-modern .ioto-task-view__card:hover {
+	background: color-mix(in srgb, var(--text-normal) 6%, transparent);
+	box-shadow: var(--ioto-tv-elev-1);
+}
+
+/* 完成态：整体收淡，强调胶囊转弱灰 */
+.ioto-task-view.is-modern .ioto-task-view__card[data-task="x"],
+.ioto-task-view.is-modern .ioto-task-view__card[data-task="X"] {
+	background: color-mix(in srgb, var(--text-normal) 2%, transparent);
+	opacity: var(--ioto-tv-done-opacity);
+	color: var(--text-muted);
+}
+
+.ioto-task-view.is-modern .ioto-task-view__card[data-task="x"]::before,
+.ioto-task-view.is-modern .ioto-task-view__card[data-task="X"]::before {
+	background: var(--text-faint);
+	opacity: 0.7;
+}
+
+/* 选中态：淡 accent 底 + accent 内环（基线的「左线加宽」在此显式归零） */
+.ioto-task-view.is-modern .ioto-task-view__card.is-selected {
+	border-inline-start-width: 0;
+	background: color-mix(in srgb, var(--ioto-tv-accent) 12%, transparent);
+	box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ioto-tv-accent) 45%, transparent);
+}
+
+.ioto-task-view.is-modern .ioto-task-view__card.is-selected:focus-visible {
+	outline: 2px solid var(--ioto-tv-accent);
+	outline-offset: 2px;
+}
+
+/* 编辑态：升到主面 + accent 内环 + 更强投影（编辑器无缝融入） */
+.ioto-task-view.is-modern .ioto-task-view__card.is-editing {
+	border-inline-start-width: 0;
+	background: var(--ioto-tv-surface);
+	box-shadow:
+		inset 0 0 0 1.5px color-mix(in srgb, var(--ioto-tv-accent) 60%, transparent),
+		var(--ioto-tv-elev-2);
+}
+
+.ioto-task-view.is-modern .ioto-task-view__card-editor .cm-editor { background: transparent; }
+.ioto-task-view.is-modern .ioto-task-view__card-editor .cm-cursor { border-color: var(--ioto-tv-accent); }
+.ioto-task-view.is-modern .ioto-task-view__continuation-editor .cm-editor { background: transparent; }
+.ioto-task-view.is-modern .ioto-task-view__continuation-editor .cm-cursor { border-color: var(--ioto-tv-accent); }
+
+/* Checkbox：显式覆盖 `:not(.is-glass)` 的卡片空框规则（modern 命中该选择器）。
+   20px 圆角方框（radius 6px）+ 主面底；完成态 accent 实心 + 反白勾。 */
+.ioto-task-view.is-modern .ioto-task-view__card-checkbox {
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	border: 1.5px solid color-mix(in srgb, var(--text-normal) 22%, transparent);
+	border-radius: 6px;
+	background: var(--background-primary);
+	color: var(--text-muted);
+	transition: border-color var(--ioto-tv-motion), background-color var(--ioto-tv-motion), color var(--ioto-tv-motion);
+}
+
+.ioto-task-view.is-modern .ioto-task-view__card-checkbox:hover {
+	border-color: var(--ioto-tv-accent);
+	color: var(--text-normal);
+}
+
+.ioto-task-view.is-modern .ioto-task-view__card[data-task="x"] .ioto-task-view__card-checkbox,
+.ioto-task-view.is-modern .ioto-task-view__card[data-task="X"] .ioto-task-view__card-checkbox {
+	border-color: var(--ioto-tv-accent);
+	background: var(--ioto-tv-accent);
+	color: var(--text-on-accent);
+}
+
+/* 控制项徽章：药丸 */
+.ioto-task-view.is-modern .ioto-task-view__badge {
+	padding: 2px 8px;
+	border-radius: var(--ioto-tv-radius-pill);
+	background: color-mix(in srgb, var(--text-normal) 7%, transparent);
+}
+
+/* 浅色主题：投影与分层略增强，保证白底上分层可辨 */
+.theme-light .ioto-task-view.is-modern {
+	--ioto-tv-canvas: color-mix(in srgb, var(--background-secondary) 35%, var(--background-primary));
+	--ioto-tv-elev-1: 0 1px 2px rgb(0 0 0 / 6%), 0 2px 6px -2px rgb(0 0 0 / 6%);
+}
+
+/* 降低动态：关闭过渡 */
+@media (prefers-reduced-motion: reduce) {
+	.ioto-task-view.is-modern .ioto-task-view__card,
+	.ioto-task-view.is-modern .ioto-task-view__card-checkbox,
+	.ioto-task-view.is-modern .ioto-task-view__card::before {
+		transition: none;
+	}
+}
+
+/* 移动端：收紧间距与圆角（沿用既有 .is-phone 触控改动） */
+.is-phone .ioto-task-view.is-modern {
+	--ioto-tv-section-gap: 12px;
+	--ioto-tv-radius: 12px;
+}
+
 /* 「条目控制」面板比视口还高时，由桥接层在打开后挂上此类，让面板内部滚动
    （max-height 随视口变化走行内；overflow-y 是静态样式，按 obsidianmd 规范挂类名）。
    见 [[Plan-20261003-165927]] §3.2 叠加 C。 */

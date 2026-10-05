@@ -344,7 +344,8 @@ export class IOTOTaskView extends TextFileView {
 	async onOpen(): Promise<void> {
 		this.contentEl.empty();
 		this.contentEl.addClass('ioto-task-view');
-		// 按设置挂 / 去 `.is-glass`（玻璃风格），保证打开即应用当前外观（[[Plan-20261003-215547]] §7.1）。
+		// 按设置挂 / 去外观风格类（玻璃 `.is-glass` / 现代 `.is-modern`），保证打开即应用当前外观
+		// （[[Plan-20261003-215547]] §7.1、[[Plan-20261005-200436]]）。
 		this.applyAppearanceStyle();
 		// 常驻控制栏 + 列表容器（批次 A）：栏固定，renderNote 只重建 body。
 		this.buildToolbar();
@@ -620,17 +621,16 @@ export class IOTOTaskView extends TextFileView {
 	}
 
 	/**
-	 * 按设置切换 IOTOTask 视图外观：玻璃（`.is-glass`）或经典卡片。
+	 * 按设置切换 IOTOTask 视图外观：玻璃（`.is-glass`）/ 现代（`.is-modern`）/ 经典卡片。
+	 * `card` 为基线，不挂任何风格类；两个风格类互斥（一次只挂一个）。
 	 * 设置变更时由 `main.ts` 的 `applySettingsToOpenViews` 调此方法来即时回退 / 切换，
 	 * 无需整树重建（`contentEl` 的类在 `renderNote` 的 `empty()` 后仍然保留）。
-	 * 见 [[Plan-20261003-215547]] §7.1。
+	 * 见 [[Plan-20261003-215547]] §7.1、[[Plan-20261005-200436]]。
 	 */
 	applyAppearanceStyle(): void {
-		if (this.appearanceStyleProvider() === 'glass') {
-			this.contentEl.addClass('is-glass');
-		} else {
-			this.contentEl.removeClass('is-glass');
-		}
+		const style = this.appearanceStyleProvider();
+		this.contentEl.toggleClass('is-glass', style === 'glass');
+		this.contentEl.toggleClass('is-modern', style === 'modern');
 	}
 
 	/**

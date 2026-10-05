@@ -320,8 +320,9 @@ const zhCN = {
 		'关闭后，从任务中心打开任务笔记将显示为普通 Markdown；命令与右键菜单不受此开关影响。',
 	'settings.appearanceStyle.name': 'IOTOTask 视图外观',
 	'settings.appearanceStyle.desc':
-		'选择 IOTOTask 视图的视觉风格：玻璃（深色 Aurora 渐变 + 玻璃拟态，默认）或卡片（经典扁平卡片）。',
+		'选择 IOTOTask 视图的视觉风格：玻璃（深色 Aurora 渐变 + 玻璃拟态，默认）、现代（无边框分层 + 大圆角 + 柔和投影，克制耐看）或卡片（经典扁平卡片）。',
 	'settings.appearanceStyle.glass': '玻璃（推荐）',
+	'settings.appearanceStyle.modern': '现代（Modern）',
 	'settings.appearanceStyle.card': '卡片（经典）',
 	'settings.heading.subtasks': '子任务',
 	'settings.subtasks.showCount.name': '显示子任务数量',
