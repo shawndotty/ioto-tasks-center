@@ -2405,16 +2405,20 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	border-color: var(--ioto-tv-accent);
 }
 
-/* 完成态沿用「仅 check 图标」的极简观感：外框让位，只留勾。
-   （未完成态才显示空框；两态视觉差异靠图标而非框线区分。） */
+/* 完成态：给勾选框补上强调色实心底 + 描边，勾用反白色。
+   未完成态是「空框」（描边 + 3% 底），完成态是「实心框」（accent 底 + accent 描边），
+   两态形成「空 ↔ 实心」的清晰对照，选中后有边框、有颜色。
+   （卡片主题不定义 --ioto-tv-done，绿的语义色只属于玻璃主题，故此处用视图强调色
+   --ioto-tv-accent；[[Discuss-20261005-193829]]） */
 .ioto-task-view:not(.is-glass)
 	.ioto-task-view__card[data-task="x"]
 	.ioto-task-view__card-checkbox,
 .ioto-task-view:not(.is-glass)
 	.ioto-task-view__card[data-task="X"]
 	.ioto-task-view__card-checkbox {
-	border-color: transparent;
-	background: none;
+	border-color: var(--ioto-tv-accent);
+	background: var(--ioto-tv-accent);
+	color: var(--text-on-accent);
 }
 
 /* 选择态：左侧强调线加粗 + 淡背景，强度介于默认态与 `.is-editing` 之间。
