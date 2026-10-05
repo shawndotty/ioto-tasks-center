@@ -2722,6 +2722,10 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	text-decoration: none;
 }
 
+.ioto-task-view__md a:hover {
+	text-decoration: underline;
+}
+
 /* 卡片续行：Markdown View 里在任务项下 Shift+Enter 敲出的正文，CommonMark 视作
    该 list item 的一部分。现在挂成 `.ioto-task-view__card` 的直接子元素（不再是同一
    <ul> 里的兄弟 <li>），因而落进卡片的背景 / 边框 / 圆角，并跟随选中态 / 编辑态
