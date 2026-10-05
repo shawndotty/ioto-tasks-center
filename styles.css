@@ -3380,6 +3380,251 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	--ioto-tv-radius: 12px;
 }
 
+/* ============================================================
+   IOTOTask 视图 · 简洁风格（`.is-simple`）
+   - 定位：第四套外观，学习参考图 [[Pasted image 20261005230046.png]] 的
+     ①「数据表式列表」（白卡 + 浅灰表头带 + 发丝分隔线）与
+     ②「药丸按钮」（主按钮实心 accent、次按钮白底细描边）。
+     比 `card` 更克制：去投影、去左侧强调条，靠明度差与发丝线表达结构。
+   - 全部规则收敛在 `.ioto-task-view.is-simple` 下；`card` 基线规则原样保留，
+     切回 `card` 即完整回退（[[Plan-20261005-230336]]）。
+   - 注意：`simple` 命中既有 `:not(.is-glass)` 的勾选框规则，故下方对勾选框显式覆盖。
+   - Johnny 确认：Section 标题不弱化（沿用基线样式）；行取「轻量留缝」（非通栏 flush）。
+   ============================================================ */
+
+.ioto-task-view.is-simple {
+	/* 几何：克制的小圆角 + 行间轻量留缝 */
+	--ioto-tv-radius: 12px;          /* Section 外层卡 */
+	--ioto-tv-radius-row: 6px;       /* 任务行 */
+	--ioto-tv-radius-pill: 999px;
+	--ioto-tv-pad-x: 14px;
+	--ioto-tv-pad-y: 10px;
+	--ioto-tv-gap: 4px;              /* 行间轻量留缝（非 0） */
+	--ioto-tv-section-gap: 14px;
+	--ioto-tv-indent: 1.9em;
+	--ioto-tv-done-opacity: 0.55;
+
+	/* 面 / 线（靠「灰底 vs 白卡」的明度差分层，不用投影） */
+	--ioto-tv-canvas: color-mix(in srgb, var(--background-secondary) 70%, var(--background-primary));
+	--ioto-tv-surface: var(--background-primary);
+	--ioto-tv-hairline: color-mix(in srgb, var(--text-normal) 7%, transparent);
+	--ioto-tv-header: color-mix(in srgb, var(--text-normal) 4%, var(--background-primary));
+	--ioto-tv-motion: 120ms ease;
+
+	background: var(--ioto-tv-canvas);
+}
+
+/* 列表容器：Section 之间留出呼吸 */
+.ioto-task-view.is-simple .ioto-task-view__scroll {
+	gap: var(--ioto-tv-section-gap);
+}
+
+/* 控制栏：把重边框换成发丝线 */
+.ioto-task-view.is-simple .ioto-task-view__toolbar {
+	border-bottom: 1px solid var(--ioto-tv-hairline);
+}
+
+/* 次按钮 = 白底 + 1px 细描边 + 药丸（参考图 Sort by / Filter） */
+.ioto-task-view.is-simple .ioto-task-view__toggle,
+.ioto-task-view.is-simple .ioto-task-view__action {
+	padding: 4px 12px;
+	background: var(--ioto-tv-surface);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--ioto-tv-radius-pill);
+	color: var(--text-muted);
+	transition: background-color var(--ioto-tv-motion), color var(--ioto-tv-motion), border-color var(--ioto-tv-motion);
+}
+
+.ioto-task-view.is-simple .ioto-task-view__toggle:hover,
+.ioto-task-view.is-simple .ioto-task-view__action:hover {
+	background: color-mix(in srgb, var(--text-normal) 5%, var(--ioto-tv-surface));
+	border-color: var(--background-modifier-border);
+	color: var(--text-normal);
+}
+
+/* 主按钮 = 实心 accent + 反白 + 药丸（参考图 Create new campaign） */
+.ioto-task-view.is-simple .ioto-task-view__toggle[aria-pressed="true"] {
+	color: var(--text-on-accent);
+	background: var(--ioto-tv-accent);
+	border-color: var(--ioto-tv-accent);
+}
+
+.ioto-task-view.is-simple .ioto-task-view__toggle[aria-pressed="true"]:hover {
+	background: var(--interactive-accent-hover);
+	border-color: var(--interactive-accent-hover);
+	box-shadow: none;
+}
+
+/* Section = 白卡：1px 描边 + 圆角 + 无投影（纵深靠灰底/白面明度差） */
+.ioto-task-view.is-simple .ioto-task-view__section {
+	background: var(--ioto-tv-surface);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--ioto-tv-radius);
+	box-shadow: none;
+	overflow: clip; /* 裁圆角但不创建滚动容器 → 内部 sticky 头仍相对外层滚动容器生效 */
+}
+
+/* Header = 浅灰「表头带」；标题沿用基线样式，不弱化 */
+.ioto-task-view.is-simple .ioto-task-view__section-header {
+	padding: 10px var(--ioto-tv-pad-x);
+	background: var(--ioto-tv-header);
+	border-bottom: 1px solid var(--ioto-tv-hairline);
+	border-start-start-radius: var(--ioto-tv-radius);
+	border-start-end-radius: var(--ioto-tv-radius);
+}
+
+.ioto-task-view.is-simple .ioto-task-view__section-body {
+	padding: 8px 10px;
+	gap: var(--ioto-tv-gap);
+}
+
+/* 任务行 = 表行：透明底 + 底部发丝线 + 轻量留缝；无左强调条 */
+.ioto-task-view.is-simple .ioto-task-view__card {
+	position: relative;
+	margin: 0;
+	gap: 10px;
+	padding: 10px 14px;
+	background: transparent;
+	border: none;
+	border-inline-start-width: 0;
+	border-bottom: 1px solid var(--ioto-tv-hairline);
+	border-radius: var(--ioto-tv-radius-row);
+	box-shadow: none;
+	transition: background-color var(--ioto-tv-motion);
+}
+
+/* 末行去线，收尾干净（transition-layer 不在 checklist 内，:last-child 安全） */
+.ioto-task-view.is-simple .ioto-task-view__checklist > .ioto-task-view__card:last-child {
+	border-bottom-color: transparent;
+}
+
+/* 完成态：整体收淡，保留发丝线 */
+.ioto-task-view.is-simple .ioto-task-view__card[data-task="x"],
+.ioto-task-view.is-simple .ioto-task-view__card[data-task="X"] {
+	background: transparent;
+	border-inline-start-width: 0;
+	border-inline-start-color: transparent;
+	color: var(--text-muted);
+	opacity: var(--ioto-tv-done-opacity);
+}
+
+/* hover：只变底色，不做位移（放在完成态之后，保证完成行也吃 hover，同特异度靠源序取胜） */
+.ioto-task-view.is-simple .ioto-task-view__card:hover {
+	background: color-mix(in srgb, var(--text-normal) 4%, transparent);
+	transform: none;
+}
+
+/* 选中态：浅 accent 底 + accent 内环（基线的左线在此显式归零） */
+.ioto-task-view.is-simple .ioto-task-view__card.is-selected {
+	border-inline-start-width: 0;
+	background: color-mix(in srgb, var(--ioto-tv-accent) 9%, transparent);
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ioto-tv-accent) 35%, transparent);
+}
+
+.ioto-task-view.is-simple .ioto-task-view__card.is-selected:focus-visible {
+	outline: 2px solid var(--ioto-tv-accent);
+	outline-offset: 2px;
+}
+
+/* 编辑态：升到主面 + accent 内环 */
+.ioto-task-view.is-simple .ioto-task-view__card.is-editing {
+	border-inline-start-width: 0;
+	background: var(--ioto-tv-surface);
+	border-bottom-color: transparent;
+	box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ioto-tv-accent) 55%, transparent);
+}
+
+.ioto-task-view.is-simple .ioto-task-view__card-editor .cm-editor { background: transparent; }
+.ioto-task-view.is-simple .ioto-task-view__card-editor .cm-cursor { border-color: var(--ioto-tv-accent); }
+.ioto-task-view.is-simple .ioto-task-view__continuation-editor .cm-editor { background: transparent; }
+.ioto-task-view.is-simple .ioto-task-view__continuation-editor .cm-cursor { border-color: var(--ioto-tv-accent); }
+
+/* Checkbox：显式覆盖 `:not(.is-glass)` 的卡片空框规则（simple 命中该选择器）。
+   18px 方框（radius 5px）+ 主面底；完成态 accent 实心 + 反白勾。 */
+.ioto-task-view.is-simple .ioto-task-view__card-checkbox {
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	border: 1.5px solid color-mix(in srgb, var(--text-normal) 25%, transparent);
+	border-radius: 5px;
+	background: var(--background-primary);
+	color: var(--text-muted);
+	transition: border-color var(--ioto-tv-motion), background-color var(--ioto-tv-motion), color var(--ioto-tv-motion);
+}
+
+.ioto-task-view.is-simple .ioto-task-view__card-checkbox:hover {
+	border-color: var(--ioto-tv-accent);
+	color: var(--text-normal);
+}
+
+.ioto-task-view.is-simple .ioto-task-view__card[data-task="x"] .ioto-task-view__card-checkbox,
+.ioto-task-view.is-simple .ioto-task-view__card[data-task="X"] .ioto-task-view__card-checkbox {
+	border-color: var(--ioto-tv-accent);
+	background: var(--ioto-tv-accent);
+	color: var(--text-on-accent);
+}
+
+/* 行内图标按钮：药丸形，平时透明，hover 浮出浅底 */
+.ioto-task-view.is-simple .ioto-task-view__card-action-btn {
+	border-radius: var(--ioto-tv-radius-pill);
+}
+
+.ioto-task-view.is-simple .ioto-task-view__card-action-btn:hover {
+	background: color-mix(in srgb, var(--text-normal) 6%, transparent);
+}
+
+/* 删除确认按钮：药丸；`.is-confirm` = 实心 accent + 反白 */
+.ioto-task-view.is-simple .ioto-task-view__delete-confirm-btn {
+	border-radius: var(--ioto-tv-radius-pill);
+}
+
+/* 控制项徽章：浅底多彩药丸（`--ink` 定义底色与文字色） */
+.ioto-task-view.is-simple .ioto-task-view__badge {
+	--ink: var(--text-muted);
+	padding: 2px 10px;
+	border-radius: var(--ioto-tv-radius-pill);
+	background: color-mix(in srgb, var(--ink) 14%, transparent);
+	color: var(--ink);
+	transition: background-color var(--ioto-tv-motion), color var(--ioto-tv-motion);
+}
+
+.ioto-task-view.is-simple .ioto-task-view__badge[data-kind="model"]   { --ink: #7c5cff; }
+.ioto-task-view.is-simple .ioto-task-view__badge[data-kind="agent"]   { --ink: #0ea5a0; }
+.ioto-task-view.is-simple .ioto-task-view__badge[data-kind="depends"] { --ink: #e07b1a; }
+.ioto-task-view.is-simple .ioto-task-view__badge[data-kind="turns"]   { --ink: #2563eb; }
+.ioto-task-view.is-simple .ioto-task-view__badge[data-kind="fanout"]  { --ink: #c026d3; }
+
+/* 深浅自适应：深色下画布收一点混比、选中态提高 accent alpha（暗底低 alpha 不够醒目） */
+.theme-dark .ioto-task-view.is-simple {
+	--ioto-tv-canvas: color-mix(in srgb, var(--background-secondary) 55%, var(--background-primary));
+}
+
+.theme-dark .ioto-task-view.is-simple .ioto-task-view__card.is-selected {
+	background: color-mix(in srgb, var(--ioto-tv-accent) 16%, transparent);
+}
+
+/* 深色徽章：提高底色 alpha 并提亮文字，保证暗底可读 */
+.theme-dark .ioto-task-view.is-simple .ioto-task-view__badge {
+	background: color-mix(in srgb, var(--ink) 26%, transparent);
+	color: color-mix(in srgb, var(--ink) 70%, white);
+}
+
+/* 降低动态：关闭过渡 */
+@media (prefers-reduced-motion: reduce) {
+	.ioto-task-view.is-simple .ioto-task-view__card,
+	.ioto-task-view.is-simple .ioto-task-view__card-checkbox,
+	.ioto-task-view.is-simple .ioto-task-view__badge {
+		transition: none;
+	}
+}
+
+/* 移动端：收紧 Section 间距与行距，略增行内边距保触控热区 */
+.is-phone .ioto-task-view.is-simple {
+	--ioto-tv-section-gap: 12px;
+	--ioto-tv-radius: 12px;
+	--ioto-tv-pad-x: 12px;
+}
+
 /* 「条目控制」面板比视口还高时，由桥接层在打开后挂上此类，让面板内部滚动
    （max-height 随视口变化走行内；overflow-y 是静态样式，按 obsidianmd 规范挂类名）。
    见 [[Plan-20261003-165927]] §3.2 叠加 C。 */

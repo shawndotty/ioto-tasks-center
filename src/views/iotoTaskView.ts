@@ -621,16 +621,17 @@ export class IOTOTaskView extends TextFileView {
 	}
 
 	/**
-	 * 按设置切换 IOTOTask 视图外观：玻璃（`.is-glass`）/ 现代（`.is-modern`）/ 经典卡片。
-	 * `card` 为基线，不挂任何风格类；两个风格类互斥（一次只挂一个）。
+	 * 按设置切换 IOTOTask 视图外观：玻璃（`.is-glass`）/ 现代（`.is-modern`）/ 简洁（`.is-simple`）/ 经典卡片。
+	 * `card` 为基线，不挂任何风格类；三个风格类互斥（一次只挂一个）。
 	 * 设置变更时由 `main.ts` 的 `applySettingsToOpenViews` 调此方法来即时回退 / 切换，
 	 * 无需整树重建（`contentEl` 的类在 `renderNote` 的 `empty()` 后仍然保留）。
-	 * 见 [[Plan-20261003-215547]] §7.1、[[Plan-20261005-200436]]。
+	 * 见 [[Plan-20261003-215547]] §7.1、[[Plan-20261005-200436]]、[[Plan-20261005-230336]]。
 	 */
 	applyAppearanceStyle(): void {
 		const style = this.appearanceStyleProvider();
 		this.contentEl.toggleClass('is-glass', style === 'glass');
 		this.contentEl.toggleClass('is-modern', style === 'modern');
+		this.contentEl.toggleClass('is-simple', style === 'simple');
 	}
 
 	/**

@@ -321,9 +321,10 @@ const zhTW = {
 		'關閉後，從任務中心開啟任務筆記將顯示為一般 Markdown；命令與右鍵選單不受此開關影響。',
 	'settings.appearanceStyle.name': 'IOTOTask 視圖外觀',
 	'settings.appearanceStyle.desc':
-		'選擇 IOTOTask 視圖的視覺風格：玻璃（深色 Aurora 漸變 + 玻璃擬態，預設）、現代（無邊框分層 + 大圓角 + 柔和投影，克制耐看）或卡片（經典扁平卡片）。',
+		'選擇 IOTOTask 視圖的視覺風格：玻璃（深色 Aurora 漸變 + 玻璃擬態，預設）、現代（無邊框分層 + 大圓角 + 柔和投影，克制耐看）、簡潔（白卡 + 淺灰表頭帶 + 髮絲分隔線 + 藥丸按鈕）或卡片（經典扁平卡片）。',
 	'settings.appearanceStyle.glass': '玻璃（推薦）',
 	'settings.appearanceStyle.modern': '現代（Modern）',
+	'settings.appearanceStyle.simple': '簡潔（Simple）',
 	'settings.appearanceStyle.card': '卡片（經典）',
 	'settings.heading.subtasks': '子任務',
 	'settings.subtasks.showCount.name': '顯示子任務數量',

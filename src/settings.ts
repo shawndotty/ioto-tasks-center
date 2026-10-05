@@ -70,9 +70,10 @@ export type TaskLinkBadgeBackgroundMode = 'multicolor' | 'monochrome';
  * IOTOTask 视图的外观风格：
  * - `glass`：玻璃拟态（Aurora 渐变 + 模糊，默认，最华丽）
  * - `modern`：现代扁平（无边框分层 + 圆角 + 极浅投影，介于 glass 与 card 之间）
+ * - `simple`：简洁（白卡 + 浅灰表头带 + 发丝分隔线 + 药丸按钮，最克制）
  * - `card`：经典扁平卡片（有边框 + 左侧实心强调线，最克制）
  */
-export type TaskViewAppearanceStyle = 'glass' | 'modern' | 'card';
+export type TaskViewAppearanceStyle = 'glass' | 'modern' | 'simple' | 'card';
 
 export interface IOTOTasksCenterSettings {
 	tasksRootPath: string;
@@ -107,7 +108,7 @@ export interface IOTOTasksCenterSettings {
 	 * 仅门控「任务中心预览面板点开任务笔记」这一条自动路径；命令与右键菜单不受限。
 	 */
 	useIOTOTaskViewAsDefault: boolean;
-	/** IOTOTask 视图外观风格（glass / modern / card）。 */
+	/** IOTOTask 视图外观风格（glass / modern / simple / card）。 */
 	appearanceStyle: TaskViewAppearanceStyle;
 	/** Task View「显示最近任务」保留的顶级任务数。 */
 	recentTaskCount: number;
@@ -314,6 +315,7 @@ export function getTaskViewAppearanceStyleOptions(): Record<
 	return {
 		glass: t('settings.appearanceStyle.glass'),
 		modern: t('settings.appearanceStyle.modern'),
+		simple: t('settings.appearanceStyle.simple'),
 		card: t('settings.appearanceStyle.card'),
 	};
 }
@@ -321,7 +323,12 @@ export function getTaskViewAppearanceStyleOptions(): Record<
 export function isTaskViewAppearanceStyle(
 	value: string,
 ): value is TaskViewAppearanceStyle {
-	return value === 'glass' || value === 'modern' || value === 'card';
+	return (
+		value === 'glass' ||
+		value === 'modern' ||
+		value === 'simple' ||
+		value === 'card'
+	);
 }
 
 export function normalizeTaskViewAppearanceStyle(
