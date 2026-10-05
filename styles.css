@@ -2531,11 +2531,6 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	position: relative;
 }
 
-.ioto-task-view__delete-confirm-message {
-	color: var(--text-on-accent);
-	font-weight: var(--font-semibold);
-}
-
 .ioto-task-view__delete-confirm-actions {
 	display: flex;
 	gap: 8px;

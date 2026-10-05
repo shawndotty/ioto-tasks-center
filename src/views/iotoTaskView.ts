@@ -990,7 +990,7 @@ export class IOTOTaskView extends TextFileView {
 	}
 
 	/**
-	 * 在当前卡片上盖一层遮罩 + 居中提示 + 确认/取消按钮。
+	 * 在当前卡片上盖一层遮罩 + 居中的确认/取消按钮。
 	 *
 	 * 焦点**不移动**（仍留在 `cardEl`）：键盘全部走既有卡片 `keydown`，避免在视图里
 	 * 重写一套 `collectCardLines`/`pickAdjacentLine` 导航（[[Plan-20261005-141853]] 步骤 5）。
@@ -1011,11 +1011,6 @@ export class IOTOTaskView extends TextFileView {
 			'aria-label',
 			t('view.iotoTaskView.deleteConfirm.aria'),
 		);
-
-		overlay.createDiv({
-			cls: 'ioto-task-view__delete-confirm-message',
-			text: t('view.iotoTaskView.deleteConfirm.message'),
-		});
 
 		const actions = overlay.createDiv({
 			cls: 'ioto-task-view__delete-confirm-actions',
