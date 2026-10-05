@@ -44,6 +44,15 @@ export interface IotoTaskScrollSnapshot {
 	anchorOffset: number;
 }
 
+export interface RestoreIotoTaskScrollOptions {
+	/**
+	 * true：只写绝对 `scrollTop`，跳过卡片锚点纠偏。
+	 * 用于「内容结构整体变化」的过滤切换（关闭 `onlyTaskBlocks` 会在锚点上方插入
+	 * 整段 Section，此时锚点纠偏会把新显形内容整体顶出视口，[[Plan-20261005-092543]]）。
+	 */
+	skipAnchor?: boolean;
+}
+
 /** 纯函数，唯一需要单测的判断：给一组卡片顶边坐标，返回首个「底边进入视口」的索引。 */
 export function pickAnchorIndex(
 	cardTops: number[],
@@ -109,13 +118,15 @@ export function captureIotoTaskScroll(
 export function restoreIotoTaskScroll(
 	container: QueryableContainerLike | null | undefined,
 	snapshot: IotoTaskScrollSnapshot,
+	options: RestoreIotoTaskScrollOptions = {},
 ): void {
 	const scrollEl = getScrollElement(container);
 	if (!scrollEl) {
 		return;
 	}
 
-	applySnapshot(container, scrollEl, snapshot);
+	const skipAnchor = options.skipAnchor === true;
+	applySnapshot(container, scrollEl, snapshot, skipAnchor);
 
 	// 与 `restoreTaskListScrollTop` 的 rAF 口径一致（`task-list-scroll.ts:43`）：
 	// 核心渲染完成后布局可能再变一次，下一帧再纠一次。
@@ -124,7 +135,7 @@ export function restoreIotoTaskScroll(
 		requestAnimationFrameFn(() => {
 			const nextScrollEl = getScrollElement(container);
 			if (nextScrollEl) {
-				applySnapshot(container, nextScrollEl, snapshot);
+				applySnapshot(container, nextScrollEl, snapshot, skipAnchor);
 			}
 		});
 	}
@@ -135,8 +146,13 @@ function applySnapshot(
 	container: QueryableContainerLike | null | undefined,
 	scrollEl: ScrollableElementLike,
 	snapshot: IotoTaskScrollSnapshot,
+	skipAnchor: boolean,
 ): void {
 	scrollEl.scrollTop = snapshot.scrollTop;
+
+	if (skipAnchor) {
+		return;
+	}
 
 	if (snapshot.anchorLine === null || !container?.querySelector) {
 		return;

@@ -142,3 +142,69 @@ test('restoreIotoTaskScroll：rAF 会再次纠偏（用假 rAF 捕获调用）',
 		}
 	}
 });
+
+test('restoreIotoTaskScroll：skipAnchor 只写绝对 scrollTop、不做锚点纠偏', () => {
+	const scrollEl = {
+		scrollTop: 0,
+		getBoundingClientRect: () => ({ top: 0, bottom: 600 }),
+	};
+	const card = makeCard(5, 20, 60);
+	const container = {
+		querySelector: (selector) =>
+			selector.includes('data-line') ? card : scrollEl,
+		querySelectorAll: () => [card],
+	};
+
+	// 不加 skipAnchor 时 delta = card.top(20) - scroll.top(0) - anchorOffset(0) = 20 → 100 + 20；
+	// 加 skipAnchor 后应恒为 100（[[Plan-20261005-092543]] §3.2）。
+	restoreIotoTaskScroll(
+		container,
+		{ scrollTop: 100, anchorLine: 5, anchorOffset: 0 },
+		{ skipAnchor: true },
+	);
+
+	assert.equal(scrollEl.scrollTop, 100);
+});
+
+test('restoreIotoTaskScroll：skipAnchor 下 rAF 二次纠偏同样跳过', () => {
+	const previousWindow = globalThis.window;
+	const callbacks = [];
+	globalThis.window = {
+		requestAnimationFrame: (callback) => {
+			callbacks.push(callback);
+			return callbacks.length;
+		},
+	};
+
+	try {
+		const scrollEl = {
+			scrollTop: 0,
+			getBoundingClientRect: () => ({ top: 0, bottom: 600 }),
+		};
+		const card = makeCard(9, 30, 70);
+		const container = {
+			querySelector: (selector) =>
+				selector.includes('data-line') ? card : scrollEl,
+			querySelectorAll: () => [card],
+		};
+
+		restoreIotoTaskScroll(
+			container,
+			{ scrollTop: 50, anchorLine: 9, anchorOffset: 0 },
+			{ skipAnchor: true },
+		);
+		assert.equal(scrollEl.scrollTop, 50);
+		assert.equal(callbacks.length, 1);
+
+		// rAF 回调只重写绝对量 50，不做锚点纠偏（否则会变成 50 + delta=20 → 70）
+		scrollEl.scrollTop = 0;
+		callbacks[0]();
+		assert.equal(scrollEl.scrollTop, 50);
+	} finally {
+		if (previousWindow === undefined) {
+			delete globalThis.window;
+		} else {
+			globalThis.window = previousWindow;
+		}
+	}
+});

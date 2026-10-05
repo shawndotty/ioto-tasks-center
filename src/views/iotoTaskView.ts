@@ -491,7 +491,9 @@ export class IOTOTaskView extends TextFileView {
 		// 🔴 红线：data / lastLoadedText 同步，避免 TextFileView 回写旧字节。
 		this.data = newContent;
 		this.lastLoadedText = newContent;
-		this.renderNote(this.data);
+		this.renderNote(this.data, {
+			skipAnchorRestore: kind === 'onlyTaskBlocks' && nextValue === false,
+		});
 	}
 
 	/**
@@ -572,7 +574,10 @@ export class IOTOTaskView extends TextFileView {
 		this.renderNote(content);
 	}
 
-	private renderNote(data: string): void {
+	private renderNote(
+		data: string,
+		options?: { skipAnchorRestore?: boolean },
+	): void {
 		if (this.isRendering) {
 			return;
 		}
@@ -613,7 +618,9 @@ export class IOTOTaskView extends TextFileView {
 				links: this.buildLinkController(),
 				filters: this.filters,
 			});
-			restoreIotoTaskScroll(this.contentEl, snapshot);
+			restoreIotoTaskScroll(this.contentEl, snapshot, {
+				skipAnchor: options?.skipAnchorRestore ?? false,
+			});
 			// 回填选中类：整树重建后 `selectedLine` 仍在，但不 `focus()`——
 			// `renderNote` 也会被后台 `reloadFromVault` 触发，抢焦点会打断用户输入
 			// （[[Plan-20261003-194909]] §5.1f）。
