@@ -2244,7 +2244,7 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	border-start-end-radius: var(--ioto-tv-radius);
 }
 
-.ioto-task-view__section-toggle {
+button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -2820,7 +2820,7 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	--ioto-tv-pad-y: 10px;
 	--ioto-tv-gap: 6px;
 	--ioto-tv-section-gap: 18px;
-	--ioto-tv-title-size: 1.35em;
+	--ioto-tv-title-size: 1.12em;
 	--ioto-tv-indent: 1.75em;        /* 玻璃风格更紧凑的缩进步长 */
 	--ioto-tv-done-opacity: 0.62;
 
