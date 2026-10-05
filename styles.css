@@ -2116,7 +2116,7 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	--ioto-tv-pad-y: 8px;
 	--ioto-tv-gap: 8px;
 	--ioto-tv-indent: var(--list-indent, 2.25em);
-	--ioto-tv-done-opacity: 0.7;
+	--ioto-tv-done-opacity: 0.8;
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
@@ -2822,7 +2822,7 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	--ioto-tv-section-gap: 18px;
 	--ioto-tv-title-size: 1.12em;
 	--ioto-tv-indent: 1.75em;        /* 玻璃风格更紧凑的缩进步长 */
-	--ioto-tv-done-opacity: 0.62;
+	--ioto-tv-done-opacity: 0.8;
 
 	position: relative;
 	isolation: isolate;              /* 背景层与卡片稳定分层，不被外层 mix-blend 影响 */
@@ -3179,7 +3179,7 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	--ioto-tv-section-gap: 16px;
 	--ioto-tv-title-size: 1.12em;
 	--ioto-tv-indent: 1.9em;
-	--ioto-tv-done-opacity: 0.55;
+	--ioto-tv-done-opacity: 0.8;
 
 	/* 面 / 线 / 影（浅色分层是现代风格的核心，不靠描边） */
 	--ioto-tv-canvas: color-mix(in srgb, var(--background-secondary) 55%, var(--background-primary));
@@ -3402,7 +3402,7 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	--ioto-tv-gap: 4px;              /* 行间轻量留缝（非 0） */
 	--ioto-tv-section-gap: 14px;
 	--ioto-tv-indent: 1.9em;
-	--ioto-tv-done-opacity: 0.55;
+	--ioto-tv-done-opacity: 0.8;
 
 	/* 面 / 线（靠「灰底 vs 白卡」的明度差分层，不用投影） */
 	--ioto-tv-canvas: color-mix(in srgb, var(--background-secondary) 70%, var(--background-primary));
