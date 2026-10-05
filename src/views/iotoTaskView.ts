@@ -53,6 +53,7 @@ import {
 	findSectionByTitle,
 	indentContinuationLines,
 	isTaskContinuationLine,
+	parentIndentLevelOfTaskLine,
 	parseChecklistItems,
 	replaceTaskBody,
 	setTaskIndent,
@@ -1418,9 +1419,10 @@ export class IOTOTaskView extends TextFileView {
 	/** 统计从 `line + 1` 起的连续续行行数（与渲染层 isTaskContinuationLine 同口径）。 */
 	private countContinuationLines(line: number): number {
 		const lines = this.data.split('\n');
+		const parent = parentIndentLevelOfTaskLine(lines[line] ?? '');
 		let count = 0;
 		for (let i = line + 1; i < lines.length; i += 1) {
-			if (!isTaskContinuationLine(lines[i] ?? '')) {
+			if (!isTaskContinuationLine(lines[i] ?? '', parent)) {
 				break;
 			}
 			count += 1;
@@ -1626,10 +1628,14 @@ export class IOTOTaskView extends TextFileView {
 			return;
 		}
 
-		// 块范围：line + 1 起连续 isTaskContinuationLine
+		// 块范围：line + 1 起连续 isTaskContinuationLine（父缩进 = 任务行缩进）
 		const lines = this.data.split('\n');
+		const parent = parentIndentLevelOfTaskLine(lines[line] ?? '');
 		let end = line + 1;
-		while (end < lines.length && isTaskContinuationLine(lines[end] ?? '')) {
+		while (
+			end < lines.length &&
+			isTaskContinuationLine(lines[end] ?? '', parent)
+		) {
 			end += 1;
 		}
 		if (end === line + 1) {
@@ -2027,10 +2033,14 @@ export class IOTOTaskView extends TextFileView {
 			}
 			this.syncCommittedContent(outcome);
 			if (outcome.status === 'ok') {
-				// 行数可能变化 → 按最新 data 重算块范围
+				// 行数可能变化 → 按最新 data 重算块范围（父缩进 = 任务行缩进）
 				const lines = this.data.split('\n');
+				const parent = parentIndentLevelOfTaskLine(lines[line] ?? '');
 				let end = line + 1;
-				while (end < lines.length && isTaskContinuationLine(lines[end] ?? '')) {
+				while (
+					end < lines.length &&
+					isTaskContinuationLine(lines[end] ?? '', parent)
+				) {
 					end += 1;
 				}
 				this.continuationStartLine = line + 1;

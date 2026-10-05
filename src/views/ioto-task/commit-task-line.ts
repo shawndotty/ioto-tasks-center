@@ -13,8 +13,10 @@ import type { App, TFile } from 'obsidian';
 
 import {
 	commonIndentPrefix,
+	dedentContinuationLines,
 	replaceTaskBody,
 	isTaskContinuationLine,
+	parentIndentLevelOfTaskLine,
 } from '../../tasks-center/note-structure';
 
 export type CommitOutcome =
@@ -79,6 +81,9 @@ export async function commitTaskLineAction(
 			}
 		}
 
+		// 续行口径的父缩进：定位行（任务行）本身的缩进层级
+		const parentIndentLevel = parentIndentLevelOfTaskLine(lines[index] ?? '');
+
 		// ② 变换（纯函数）；null = 不是任务行，放弃
 		const next = options.transform(lines[index] ?? '');
 		if (next === null) {
@@ -102,7 +107,7 @@ export async function commitTaskLineAction(
 			if (options.swallowContinuations) {
 				while (
 					removeEnd < lines.length &&
-					isTaskContinuationLine(lines[removeEnd] ?? '')
+					isTaskContinuationLine(lines[removeEnd] ?? '', parentIndentLevel)
 				) {
 					removeEnd += 1;
 				}
@@ -115,7 +120,7 @@ export async function commitTaskLineAction(
 				let contEnd = index + 1;
 				while (
 					contEnd < lines.length &&
-					isTaskContinuationLine(lines[contEnd] ?? '')
+					isTaskContinuationLine(lines[contEnd] ?? '', parentIndentLevel)
 				) {
 					contEnd += 1;
 				}
@@ -202,16 +207,25 @@ export async function commitTaskContinuation(
 			}
 		}
 
-		// ② 重新缩进：原块公共前缀补回（空行保持空行）
-		const indent = commonIndentPrefix(options.originalLines);
+		// ② 重新缩进：
+		//    - 行数不变 → 用 dedent 时的 removed 逐行补回（未编辑时逐字节还原原文）
+		//    - 行数变化（用户增删行）→ 退回原块公共前缀（旧行为）
+		const nextTextLines = options.nextText.split('\n');
+		const lossless =
+			options.nextText.length > 0 &&
+			nextTextLines.length === options.originalLines.length;
+		const removed = lossless
+			? dedentContinuationLines(options.originalLines).removed
+			: [];
+		const fallbackIndent = commonIndentPrefix(options.originalLines);
+		const indentFor = (i: number): string =>
+			lossless ? (removed[i] ?? '') : fallbackIndent;
 		const nextLines =
 			options.nextText.length === 0
 				? []
-				: options.nextText
-						.split('\n')
-						.map((line) =>
-							line.trim().length === 0 ? '' : indent + line,
-						);
+				: nextTextLines.map((line, i) =>
+						line.trim().length === 0 ? '' : indentFor(i) + line,
+					);
 
 		// ③ 无改动短路
 		if (

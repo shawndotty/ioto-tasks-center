@@ -181,3 +181,51 @@ test('区间不越出：只吃快照序列，不吃任务行 / 空行', async ()
 		['- [ ] 甲', '', '隔空正文', '- [ ] 乙'].join('\n'),
 	);
 });
+
+test('Tab 缩进续行：编辑后原文重放 → unchanged（按 removed 逐行还原）', async () => {
+	const original = ['- [ ] 甲', '\t- a', '\t- b', '- [ ] 乙'].join('\n');
+	const app = makeApp(original);
+	const outcome = await commitTaskContinuation(app, makeFile(), {
+		startLine: 1,
+		endLine: 2,
+		originalLines: ['\t- a', '\t- b'],
+		nextText: '- a\n- b', // 编辑器持有 dedent 后文本
+	});
+
+	assert.deepEqual(outcome, { status: 'unchanged' });
+	assert.equal(app.content, original);
+});
+
+test('混合缩进续行：空格段落 + Tab 列表 重放原文 → unchanged', async () => {
+	const original = ['- [ ] 甲', '      para', '\t- list', '- [ ] 乙'].join(
+		'\n',
+	);
+	const app = makeApp(original);
+	const outcome = await commitTaskContinuation(app, makeFile(), {
+		startLine: 1,
+		endLine: 2,
+		originalLines: ['      para', '\t- list'],
+		nextText: '  para\n- list', // dedent 后：段落残留 2 列、列表归位
+	});
+
+	assert.deepEqual(outcome, { status: 'unchanged' });
+	assert.equal(app.content, original);
+});
+
+test('混合缩进续行：改一行落盘，Tab 前缀按原行补回', async () => {
+	const app = makeApp(
+		['- [ ] 甲', '      para', '\t- list', '- [ ] 乙'].join('\n'),
+	);
+	const outcome = await commitTaskContinuation(app, makeFile(), {
+		startLine: 1,
+		endLine: 2,
+		originalLines: ['      para', '\t- list'],
+		nextText: '  para改\n- list',
+	});
+
+	assert.equal(outcome.status, 'ok');
+	assert.equal(
+		app.content,
+		['- [ ] 甲', '      para改', '\t- list', '- [ ] 乙'].join('\n'),
+	);
+});

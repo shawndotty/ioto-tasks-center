@@ -12,10 +12,12 @@ const {
 	collectTaskContinuations,
 	commonIndentPrefix,
 	continuationIndentForTaskLine,
+	dedentContinuationLines,
 	dedentLines,
 	findSectionByTitle,
 	indentContinuationLines,
 	isTaskContinuationLine,
+	parentIndentLevelOfTaskLine,
 	sectionHasChecklist,
 } = await jiti.import('../src/tasks-center/note-structure.ts');
 
@@ -258,6 +260,33 @@ test('isTaskContinuationLine：正文/缩进续行算续行，空行与块级结
 	// 空行终止续行
 	assert.equal(isTaskContinuationLine(''), false);
 	assert.equal(isTaskContinuationLine('   '), false);
+	// 单参（未传父缩进）时列表行为与旧口径逐字一致
+	assert.equal(isTaskContinuationLine('\t- 顶格缩进列表'), false);
+});
+
+test('isTaskContinuationLine：列表按「相对父任务行的缩进」判定', () => {
+	// 比父任务行更深 → 续行（Tab / 2 空格 = 1 级，4 空格 = 2 级）
+	assert.equal(isTaskContinuationLine('\t- 子项', 0), true);
+	assert.equal(isTaskContinuationLine('  - 子项', 0), true);
+	assert.equal(isTaskContinuationLine('    1. 第一', 0), true);
+	// 与父同级 / 更浅 → 不算续行（维持章节级列表语义）
+	assert.equal(isTaskContinuationLine('- 子项', 0), false);
+	assert.equal(isTaskContinuationLine('  - 子项', 1), false);
+	// 任务行护栏：任务行（含嵌套子任务）永远不算续行
+	assert.equal(isTaskContinuationLine('- [ ] 嵌套任务', 0), false);
+	assert.equal(isTaskContinuationLine('  - [ ] 嵌套任务', 0), false);
+	assert.equal(isTaskContinuationLine('\t- [x] 深层子任务', 0), false);
+});
+
+test('parentIndentLevelOfTaskLine：任务行取缩进层级，其它行 → Infinity', () => {
+	assert.equal(parentIndentLevelOfTaskLine('- [ ] 甲'), 0);
+	assert.equal(parentIndentLevelOfTaskLine('  - [ ] 甲'), 1);
+	assert.equal(parentIndentLevelOfTaskLine('\t- [ ] 甲'), 1);
+	assert.equal(parentIndentLevelOfTaskLine('    - [ ] 甲'), 2);
+	// 非任务行 / 空行 → +Infinity（列表一律不算续行，保持旧行为兜底）
+	assert.equal(parentIndentLevelOfTaskLine('- 普通列表项'), Infinity);
+	assert.equal(parentIndentLevelOfTaskLine('正文'), Infinity);
+	assert.equal(parentIndentLevelOfTaskLine(''), Infinity);
 });
 
 test('collectTaskContinuations：续行归属上一张卡，遇空行/块级/下一张卡即止', () => {
@@ -289,6 +318,52 @@ test('collectTaskContinuations：收在 limitLine 之内，不越出所属 Secti
 	assert.deepEqual(collectTaskContinuations(content, items, 2).get(0), [1, 2]);
 });
 
+test('collectTaskContinuations：缩进列表收进卡片；顶格列表 / 嵌套任务行不收', () => {
+	// Tab 无序列表：比任务行深 → 归上一张卡
+	const unordered = ['- [ ] A', '\t- a', '\t- b'].join('\n');
+	assert.deepEqual(
+		collectTaskContinuations(
+			unordered,
+			parseChecklistItems(unordered, { includeEmpty: true }),
+			unordered.split('\n').length - 1,
+		).get(0),
+		[1, 2],
+	);
+
+	// Tab 有序列表：同样归卡
+	const ordered = ['- [ ] A', '\t1. a', '\t2. b'].join('\n');
+	assert.deepEqual(
+		collectTaskContinuations(
+			ordered,
+			parseChecklistItems(ordered, { includeEmpty: true }),
+			ordered.split('\n').length - 1,
+		).get(0),
+		[1, 2],
+	);
+
+	// 顶格列表（与任务行同级）→ 不算续行，维持章节级列表
+	const topLevel = ['- [ ] A', '- 顶格项'].join('\n');
+	assert.equal(
+		collectTaskContinuations(
+			topLevel,
+			parseChecklistItems(topLevel, { includeEmpty: true }),
+			topLevel.split('\n').length - 1,
+		).has(0),
+		false,
+	);
+
+	// 缩进列表后紧跟嵌套任务行 → 只收列表，任务行终止续行
+	const withNested = ['- [ ] A', '\t- a', '- [ ] B'].join('\n');
+	assert.deepEqual(
+		collectTaskContinuations(
+			withNested,
+			parseChecklistItems(withNested, { includeEmpty: true }),
+			withNested.split('\n').length - 1,
+		).get(0),
+		[1],
+	);
+});
+
 /* ------------------------------------------------------------------ *
  * dedentLines（续行渲染前抹掉列表缩进）
  *
@@ -315,6 +390,31 @@ test('dedentLines：无公共前缀 / 纯空白输入时原样返回', () => {
 	assert.equal(dedentLines('只有一行无缩进'), '只有一行无缩进');
 	assert.equal(dedentLines(''), '');
 	assert.equal(dedentLines('   \n  '), '   \n  ');
+});
+
+test('dedentLines：按列宽求公共缩进，混合空格/Tab 也能整体 dedent', () => {
+	// 段落用空格对齐、列表用 Tab 缩进：按字符求公共前缀会得 ''（首字符不同），
+	// 按列宽求则能整体 dedent（Tab = 4 列），段落残余 2 列保留、列表归位。
+	assert.equal(dedentLines('      para\n\t- list'), '  para\n- list');
+	assert.equal(dedentLines('\t- list\n      para'), '- list\n  para');
+	// 纯 Tab 缩进的列表（既有行为保持）
+	assert.equal(dedentLines('\t- a\n\t- b'), '- a\n- b');
+});
+
+test('dedentContinuationLines：返回按行剥掉的前导空白，供写回无损还原', () => {
+	// 纯空白对齐：removed 即原前导空白，补回即还原
+	const aligned = dedentContinuationLines(['      续行一', '      续行二']);
+	assert.equal(aligned.text, '续行一\n续行二');
+	assert.deepEqual(aligned.removed, ['      ', '      ']);
+
+	// 混合缩进：段落残余 2 列保留在 dedent 文本里，removed 记被剥掉的 4 列；
+	// 列表行残 0，removed 记整段 Tab。
+	const mixed = dedentContinuationLines(['      para', '\t- list']);
+	assert.equal(mixed.text, '  para\n- list');
+	assert.deepEqual(mixed.removed, ['    ', '\t']);
+	// 逐行补回 removed = 原文（无损往返）
+	assert.equal(mixed.removed[0] + mixed.text.split('\n')[0], '      para');
+	assert.equal(mixed.removed[1] + mixed.text.split('\n')[1], '\t- list');
 });
 
 /* ------------------------------------------------------------------ *
