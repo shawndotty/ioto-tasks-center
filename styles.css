@@ -2779,7 +2779,7 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 
 	/* 间距 / 字号 */
 	--ioto-tv-scroll-pad: 20px;      /* sticky 头部的负 top 依赖它 */
-	--ioto-tv-pad-x: 14px;
+	--ioto-tv-pad-x: 20px;
 	--ioto-tv-pad-y: 10px;
 	--ioto-tv-gap: 6px;
 	--ioto-tv-section-gap: 18px;
