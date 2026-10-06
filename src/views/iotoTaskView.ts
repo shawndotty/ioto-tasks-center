@@ -66,11 +66,13 @@ import {
 	dedentLines,
 	findSectionByTitle,
 	indentContinuationLines,
+	insertSoftBreak,
 	isTaskContinuationLine,
 	parentIndentLevelOfTaskLine,
 	parseChecklistItems,
 	replaceTaskBody,
 	setTaskIndent,
+	SOFT_BREAK,
 	taskBodyForEditor,
 	toggleTaskMarker,
 } from '../tasks-center/note-structure';
@@ -1524,6 +1526,7 @@ export class IOTOTaskView extends TextFileView {
 			initialValue: item.text,
 			handlers: {
 				onEnter: (cm, shiftKey) => this.onEditorEnter(cm, shiftKey),
+				onSoftBreak: (cm) => this.onEditorSoftBreak(cm),
 				onDeleteEmpty: () => this.onEditorDeleteEmpty(),
 				onIndent: (delta) => this.onEditorIndent(delta),
 				onEscape: () => this.onEditorEscape(),
@@ -2170,6 +2173,30 @@ export class IOTOTaskView extends TextFileView {
 				this.applySelection(line);
 			});
 		}, 0);
+	}
+
+	/**
+	 * 标题编辑器：`Mod+Enter` 在光标 / 选区处插入 `<br>`（标题行内换行）。
+	 *
+	 * 只插字面 `<br>`、全程无 `\n` → `replaceTaskBody` / `autosaveEdit` 的换行守卫
+	 * 不会被触发；dispatch 触发 `onChange → autosave`，`<br>` 在**不退出编辑态**的情况
+	 * 下自动落盘，Live Preview 立即渲染为折行。续写区不注册 `onSoftBreak`，语义不受影响。
+	 */
+	private onEditorSoftBreak(cm: EditorView): boolean {
+		if (!this.editingHandle || this.editingLine === null) {
+			return false;
+		}
+		const sel = cm.state.selection.main;
+		const { cursor } = insertSoftBreak(
+			cm.state.doc.toString(),
+			sel.from,
+			sel.to,
+		);
+		cm.dispatch({
+			changes: { from: sel.from, to: sel.to, insert: SOFT_BREAK },
+			selection: { anchor: cursor },
+		});
+		return true;
 	}
 
 	private onEditorEnter(cm: EditorView, shiftKey: boolean): boolean {

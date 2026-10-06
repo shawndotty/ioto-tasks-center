@@ -597,7 +597,7 @@ const en = {
 	'notice.iotoTaskView.inlineEditUnavailable':
 		'Inline editing is unavailable in this Obsidian version. Edit in Markdown instead.',
 	'notice.iotoTaskView.bodyMultilineRejected':
-		'Task text does not support line breaks.',
+		'Task text does not support line breaks. Use <br> to break the title, or Shift+Enter for a continuation.',
 	'notice.iotoTaskView.runTaskUnavailable':
 		'The IOTO Settings plugin is not enabled; cannot run tasks.',
 	'notice.exportTaskViewImage.generating': 'Generating image…',

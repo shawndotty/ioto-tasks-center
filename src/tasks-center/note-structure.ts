@@ -991,6 +991,28 @@ export function replaceTaskBody(line: string, nextBody: string): string | null {
 	return composeTaskLine({ ...parts, body: nextBody.trim() });
 }
 
+/** 标题行内换行的唯一字面量（Q3：不带自闭合斜杠）。 */
+export const SOFT_BREAK = '<br>';
+
+/**
+ * 在 `[from, to)` 处用 `<br>` 替换选区，返回新文本与新光标位。
+ * 纯函数：零 obsidian / 零 DOM，`tests/` 直接 jiti 导入断言。
+ *
+ * 写回仍是**单行**（不含 `\n`），因此 `replaceTaskBody` 的换行守卫不会拦它。
+ */
+export function insertSoftBreak(
+	value: string,
+	from: number,
+	to: number,
+): { value: string; cursor: number } {
+	const start = Math.min(Math.max(from, 0), value.length);
+	const end = Math.min(Math.max(to, start), value.length);
+	return {
+		value: value.slice(0, start) + SOFT_BREAK + value.slice(end),
+		cursor: start + SOFT_BREAK.length,
+	};
+}
+
 /** 3a 勾选：`' '` ↔ `'x'`，`'X'` 视作已勾选 → 切到 `' '`，其余字节一律不动。 */
 export function toggleTaskMarker(line: string): string | null {
 	const parts = splitTaskLine(line);

@@ -149,6 +149,8 @@ export interface EmbeddedEditorHandle {
 export interface EmbeddedEditorHandlers {
 	/** Enter：返回 true 表示已接管（提交 / 新建），false 放行给核心。`shiftKey` 供调用方区分语义 */
 	onEnter: (cm: EditorView, shiftKey: boolean) => boolean;
+	/** 主修饰键 + Enter（Mod+Enter）的接管：返回 true 表示宿主已处理（不落核心）。 */
+	onSoftBreak?: (cm: EditorView) => boolean;
 	/** 正文为空时的 Backspace：返回 true 表示已接管（删除该行） */
 	onDeleteEmpty: (cm: EditorView) => boolean;
 	/** Tab / Shift+Tab 缩进：返回 true 表示已接管 */
@@ -416,16 +418,30 @@ export async function mountEmbeddedEditor(
 
 			switch (event.key) {
 				case 'Enter':
-					// 带主修饰键 / Alt 的 Enter 不按「新建同级」处理：
-					// 放行后由外层（或核心）决定，避免 Cmd+Enter 被当普通 Enter 拆行
-					// （[[Plan-20261003-222709]] §四.4）。
+					// Mod+Enter：优先交给宿主（标题编辑器插 `<br>`，不产生裸换行）。
+					// 宿主未实现 `onSoftBreak`（如续写区）→ 维持放行给核心真换行，
+					// 语义不变（[[Plan-20261003-222709]] §四.4）。
+					if (
+						(event.metaKey || event.ctrlKey) &&
+						!event.shiftKey &&
+						!event.altKey
+					) {
+						if (handlers.onSoftBreak?.(cm)) {
+							event.preventDefault();
+							event.stopPropagation();
+							return;
+						}
+						break;
+					}
+					// 带主修饰键 / Alt 的 Enter（非上面那种）不按「新建同级」处理：
+					// 放行后由外层（或核心）决定，避免被当普通 Enter 拆行。
 					if (event.metaKey || event.ctrlKey || event.altKey) {
 						break;
 					}
-				if (handlers.onEnter(cm, event.shiftKey)) {
-					event.preventDefault();
-					event.stopPropagation();
-				}
+					if (handlers.onEnter(cm, event.shiftKey)) {
+						event.preventDefault();
+						event.stopPropagation();
+					}
 					break;
 				case 'Backspace':
 					if (

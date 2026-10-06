@@ -552,7 +552,8 @@ const zhTW = {
 	'notice.iotoTaskView.commitConflict': '檔案在編輯期間被外部修改，本次變更已捨棄。',
 	'notice.iotoTaskView.inlineEditUnavailable':
 		'目前 Obsidian 版本不支援內嵌編輯，請在 Markdown 中編輯。',
-	'notice.iotoTaskView.bodyMultilineRejected': '任務正文不支援換行。',
+	'notice.iotoTaskView.bodyMultilineRejected':
+		'任務正文不支援換行。可用 <br> 在標題內換行，或用 Shift+Enter 寫補充說明。',
 	'notice.iotoTaskView.runTaskUnavailable': '未啟用 IOTO Settings 外掛，無法執行任務。',
 	'notice.exportTaskViewImage.generating': '正在產生圖片…',
 	'notice.exportTaskViewImage.saved': '任務檢視已匯出到 {0}',
