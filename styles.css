@@ -3807,9 +3807,9 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	--ioto-tv-canvas: color-mix(in srgb, var(--background-secondary) 55%, var(--background-primary));
 }
 
-.theme-dark .ioto-task-view.is-simple .ioto-task-view__card.is-selected {
-	background: color-mix(in srgb, var(--ioto-tv-accent) 16%, transparent);
-}
+/* .theme-dark .ioto-task-view.is-simple .ioto-task-view__card.is-selected { */
+/* 	background: color-mix(in srgb, var(--ioto-tv-accent) 16%, transparent); */
+/* } */
 
 /* 深色徽章：提高底色 alpha 并提亮文字，保证暗底可读 */
 .theme-dark .ioto-task-view.is-simple .ioto-task-view__badge {
