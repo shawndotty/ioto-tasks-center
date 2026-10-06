@@ -2226,6 +2226,23 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	height: 14px;
 }
 
+/* 搜索命中高亮（[[Discuss-20261006-183552]] §四.4）：对齐核心搜索侧栏
+   `.search-result-file-matched-text`，取同一个 `--text-highlight-bg`（就是 `==高亮==`
+   的底色），因此任何主题下观感都与 Obsidian 一致。
+   🔴 本插件渲染容器不带 `.markdown-rendered` 类，核心那条规则不会自动命中，
+   必须**自带类名 + 自带样式**。 */
+.ioto-task-view__search-hit {
+	color: var(--text-normal);
+	background-color: var(--text-highlight-bg);
+	border-radius: 2px;
+}
+
+/* 当前定位卡（`上一个` / `下一个` 落点）的命中加重，对齐核心「当前匹配」观感：
+   `highlightMatch` 已给目标卡加 `.is-selected`，一条后代选择器即够，零 JS。 */
+.ioto-task-view__card.is-selected .ioto-task-view__search-hit {
+	background-color: var(--text-selection);
+}
+
 .ioto-task-view__body {
 	flex: 1 1 auto;
 	min-height: 0;

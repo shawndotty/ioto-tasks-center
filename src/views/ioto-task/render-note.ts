@@ -47,6 +47,7 @@ import {
 	type CardVisibilityContext,
 	type CardVisibilityInput,
 } from './task-query-filter';
+import { applySearchHighlight } from './search-highlight';
 import { shouldTriggerTaskHoverPreview } from '../task-hover-preview';
 
 /** 编辑交互回调（由 `IOTOTaskView` 注入；只读态 `enabled = false`）。 */
@@ -606,6 +607,10 @@ function renderChecklistGroup(options: {
 			sourcePath,
 			component,
 		);
+		// 关键词命中高亮：`MarkdownRenderer.render` 的基础 DOM 是**同步** append 的
+		// （[[Discuss-20261006-183552]] §一.2），同步跑即可命中；入参直接取已透传到卡片层的
+		// `visibilityCtx.normalizedQuery`——与过滤判据同源，无需新增透传字段。
+		applySearchHighlight(textEl, visibilityCtx.normalizedQuery);
 
 		// 编辑入口挂在卡片本体（li）而非正文区：空条目正文区高度为 0，挂正文区会命中不到
 		// （[[Research-20261003-091331]] §四，[[Plan-20261003-094145]] §5.5）。整张卡片
@@ -853,6 +858,9 @@ function renderChecklistGroup(options: {
 				sourcePath,
 				component,
 			);
+			// 续行同样跑高亮（Q1：标题 + 续行）；容器 `.ioto-task-view__md` 是渲染产物，
+			// 不是编辑器容器，可安全包裹（[[Discuss-20261006-183552]] §五.4）。
+			applySearchHighlight(mdEl, visibilityCtx.normalizedQuery);
 		}
 	}
 }

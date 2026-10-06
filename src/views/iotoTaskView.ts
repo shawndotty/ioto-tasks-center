@@ -114,6 +114,8 @@ import {
 	type TaskNoteFilters,
 	type TaskNoteLinks,
 } from './ioto-task/render-note';
+import { applySearchHighlight } from './ioto-task/search-highlight';
+import { normalizeQuery } from './ioto-task/task-query-filter';
 import type { ModEnterHost } from './ioto-task/select-mode-scope';
 import type { SearchHost } from './ioto-task/search-scope';
 import {
@@ -2420,6 +2422,9 @@ export class IOTOTaskView extends TextFileView {
 				this.file?.path ?? '',
 				this,
 			);
+			// 就地重绘只重建标题（不动续行容器），续行里的高亮自然保留，只需对标题复跑。
+			// `applySearchHighlight` 自带 unwrap，重复调用安全（[[Discuss-20261006-183552]] §4.3）。
+			applySearchHighlight(textEl, normalizeQuery(this.searchQuery));
 		}
 		// 动作区也按最新 `data` 重建（幂等），覆盖 blur 提交等所有「就地刷单卡」路径。
 		this.refreshCardActions(line);

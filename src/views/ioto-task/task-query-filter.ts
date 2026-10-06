@@ -9,20 +9,29 @@
  * 「空态判定」与「逐卡 skip」都调 `isCardVisible`，避免两处各写一遍导致漂移。
  */
 
+import { findMatchRanges } from './search-highlight';
+
 /** 归一化查询：去首尾空白 + 小写。空串 / 纯空白 = 不过滤。 */
 export function normalizeQuery(raw: string): string {
 	return raw.trim().toLocaleLowerCase();
 }
 
-/** 关键词是否命中一张卡：标题 + 续行，字面大小写不敏感包含。空查询恒 true。 */
+/**
+ * 关键词是否命中一张卡：标题 + 续行，字面大小写不敏感包含。空查询恒 true。
+ *
+ * 🔴 命中判据复用 `search-highlight.ts` 的 `findMatchRanges`，与高亮**同源**：保证
+ * 「卡片可见 ⟺ 卡里至少有一处高亮」，不出现大小写 / locale 边角下的漂移
+ * （[[Discuss-20261006-183552]] §四.1 / §五.9）。对旧 `toLocaleLowerCase().includes()`
+ * 是**行为等价重构**（既有 `tests/task-query-filter.test.mjs` 覆盖）。
+ */
 export function matchesTaskQuery(
 	title: string,
 	continuation: string | undefined,
 	normalized: string,
 ): boolean {
 	if (normalized.length === 0) return true;
-	if (title.toLocaleLowerCase().includes(normalized)) return true;
-	return continuation?.toLocaleLowerCase().includes(normalized) ?? false;
+	if (findMatchRanges(title, normalized).length > 0) return true;
+	return continuation ? findMatchRanges(continuation, normalized).length > 0 : false;
 }
 
 /** 卡片可见性输入（由渲染层从 `NoteChecklistItem` 映射，保持本模块纯净）。 */
