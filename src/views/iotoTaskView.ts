@@ -115,6 +115,7 @@ import {
 	type TaskNoteLinks,
 } from './ioto-task/render-note';
 import type { ModEnterHost } from './ioto-task/select-mode-scope';
+import type { SearchHost } from './ioto-task/search-scope';
 import {
 	IOTO_TASK_VIEW_HOVER_SOURCE_ID,
 	type TaskHoverPreviewPayload,
@@ -125,6 +126,9 @@ export { IOTO_TASK_VIEW_TYPE };
 
 /** 自动落盘窗口：与核心 2000ms 对齐；移动端 I/O 与电量敏感，放宽一档。 */
 const AUTOSAVE_INTERVAL_MS = Platform.isMobile ? 4000 : 2000;
+
+/** 关键词实时过滤的输入 debounce（[[Discuss-20261006-160043]] §六 Q2）。 */
+const SEARCH_DEBOUNCE_MS = 200;
 
 /** 过滤开关的 frontmatter 属性名（唯一真源，[[Plan-20261004-110845]] §二.1）。 */
 const PROPERTY_ONLY_TASK_BLOCKS = 'iotoTaskViewOnlyTaskBlocks';
@@ -266,6 +270,16 @@ export class IOTOTaskView extends TextFileView {
 	private toggleRecentEl: HTMLButtonElement | null = null;
 	private runTaskEl: HTMLButtonElement | null = null;
 	private addTaskEl: HTMLButtonElement | null = null;
+	/**
+	 * 搜索关键词：**瞬态**，不进 `getState` / 不写 frontmatter / 关闭即归零
+	 * （[[Plan-20261006-161121]] §2.3a、§三.3）。
+	 */
+	private searchQuery = '';
+	private searchBarEl: HTMLElement | null = null;
+	private searchInputEl: HTMLInputElement | null = null;
+	private searchPrevEl: HTMLButtonElement | null = null;
+	private searchNextEl: HTMLButtonElement | null = null;
+	private searchDebounce: number | null = null;
 	/** 过滤开关运行态：**每次 renderNote 从 `this.data`（frontmatter）重读**，不持久化。 */
 	private filters: TaskNoteFilters = {
 		onlyTaskBlocks: false,
@@ -323,6 +337,7 @@ export class IOTOTaskView extends TextFileView {
 		this.selectedLine = null;
 		this.editingOriginalLine = '';
 		this.cancelPendingDelete(false);
+		this.resetSearchState();
 		// 保留常驻外壳（toolbar / body），只清列表内容。
 		this.bodyEl?.empty();
 		this.filters = {
@@ -339,8 +354,14 @@ export class IOTOTaskView extends TextFileView {
 	onunload(): void {
 		this.destroyActiveEditor();
 		this.destroyContinuationEditor();
+		this.resetSearchState();
 		this.autosave.dispose();
 		super.onunload();
+	}
+
+	async onClose(): Promise<void> {
+		// 视图销毁后 debounce 回调不得再触发（[[Plan-20261006-161121]] §2.3f）。
+		this.resetSearchState();
 	}
 
 	getState(): Record<string, unknown> {
@@ -461,9 +482,64 @@ export class IOTOTaskView extends TextFileView {
 			},
 		});
 
+		// DOM 顺序固定 `__toolbar` → `__searchbar` → `__body`（[[Plan-20261006-161121]] §2.3b）。
+		const searchbarEl = this.contentEl.createDiv({
+			cls: 'ioto-task-view__searchbar is-hidden',
+		});
+		this.searchInputEl = searchbarEl.createEl('input', {
+			cls: 'ioto-task-view__search-input',
+			attr: {
+				type: 'search',
+				placeholder: t('view.iotoTaskView.search.placeholder'),
+				'aria-label': t('view.iotoTaskView.search.placeholder'),
+			},
+		});
+		const searchActionsEl = searchbarEl.createDiv({
+			cls: 'ioto-task-view__search-actions',
+		});
+		this.searchPrevEl = this.createSearchButton(searchActionsEl, {
+			icon: 'chevron-up',
+			label: t('view.iotoTaskView.search.prev'),
+			action: 'search-prev',
+			onClick: () => this.stepMatch(-1),
+		});
+		this.searchNextEl = this.createSearchButton(searchActionsEl, {
+			icon: 'chevron-down',
+			label: t('view.iotoTaskView.search.next'),
+			action: 'search-next',
+			onClick: () => this.stepMatch(1),
+		});
+		this.createSearchButton(searchActionsEl, {
+			icon: 'x',
+			label: t('view.iotoTaskView.search.close'),
+			action: 'search-close',
+			onClick: () => this.closeSearch(),
+		});
+		this.searchBarEl = searchbarEl;
+
+		const input = this.searchInputEl;
+		input.addEventListener('input', () => this.onSearchInput());
+		input.addEventListener('keydown', (event) => {
+			if (event.isComposing) {
+				return; // IME 组字放行
+			}
+			if (event.key === 'Enter') {
+				// Enter = 下一个 / Shift+Enter = 上一个（对齐核心查找条）
+				event.preventDefault();
+				this.stepMatch(event.shiftKey ? -1 : 1);
+				return;
+			}
+			if (event.key === 'Escape') {
+				// Esc = 关闭 + 清空（Q5）
+				event.preventDefault();
+				this.closeSearch();
+			}
+		});
+
 		this.bodyEl = this.contentEl.createDiv({ cls: 'ioto-task-view__body' });
 		this.toolbarEl = toolbarEl;
 		this.refreshToolbarState();
+		this.refreshSearchNavState();
 	}
 
 	private createToolbarButton(
@@ -502,6 +578,36 @@ export class IOTOTaskView extends TextFileView {
 	}
 
 	/**
+	 * 搜索条图标按钮（照 `createToolbarButton` 裁剪的纯图标版）：
+	 * 可见内容为图标，`label` 只进 `aria-label` / `title`（[[Plan-20261006-161121]] §2.3b）。
+	 */
+	private createSearchButton(
+		parentEl: HTMLElement,
+		options: {
+			icon: string;
+			label: string;
+			action: string;
+			onClick: () => void;
+		},
+	): HTMLButtonElement {
+		const btn = parentEl.createEl('button', {
+			cls: 'ioto-task-view__search-btn',
+			attr: {
+				type: 'button',
+				'aria-label': options.label,
+				title: options.label,
+				'data-action': options.action,
+			},
+		});
+		setIcon(btn, options.icon);
+		btn.addEventListener('click', (event) => {
+			event.preventDefault();
+			options.onClick();
+		});
+		return btn;
+	}
+
+	/**
 	 * 按 `this.filters` 刷新栏态：两个 toggle 的 `aria-pressed`；只读态隐藏「添加任务」。
 	 * `aria-pressed` 以**属性真源**为准（`renderNote` 每次刷新），不缓存按钮内部状态。
 	 */
@@ -529,6 +635,156 @@ export class IOTOTaskView extends TextFileView {
 		return t('view.iotoTaskView.toolbar.toggleRecentTooltip', [
 			String(this.recentTaskCountProvider()),
 		]);
+	}
+
+	/* ------------------------------------------------------------------ *
+	 * 关键词搜索条（[[Plan-20261006-161121]] §2.3）
+	 * ------------------------------------------------------------------ */
+
+	/** Mod+F / 命令入口：显示搜索条并聚焦输入框（Q6 移动端复用它）。 */
+	revealSearch(): void {
+		if (!this.searchBarEl?.isConnected) {
+			this.buildToolbar();
+		}
+		this.searchBarEl?.removeClass('is-hidden');
+		const input = this.searchInputEl;
+		if (!input) {
+			return;
+		}
+		const focus = (): void => {
+			input.focus();
+			input.select();
+		};
+		if (typeof window !== 'undefined' && window.requestAnimationFrame) {
+			window.requestAnimationFrame(focus);
+		} else {
+			focus();
+		}
+	}
+
+	private onSearchInput(): void {
+		const value = this.searchInputEl?.value ?? '';
+		if (this.searchDebounce !== null) {
+			window.clearTimeout(this.searchDebounce);
+		}
+		this.searchDebounce = window.setTimeout(() => {
+			this.searchDebounce = null;
+			void this.applySearchQuery(value);
+		}, SEARCH_DEBOUNCE_MS);
+	}
+
+	/**
+	 * 实时生效：改关键词 → 先 commit 正在编辑的卡（照 `toggleFilter` 口径）→ 重绘归顶。
+	 * 边界：与当前关键词相同则跳过（避免无意义的整树重建）。
+	 */
+	private async applySearchQuery(value: string): Promise<void> {
+		if (value === this.searchQuery) {
+			return;
+		}
+		// 🔴 重绘会销毁编辑器：先让编辑态落盘退出（真正的保护，非 isCardVisible 的兜底）。
+		await this.commitEdit();
+		await this.commitContinuationEdit();
+		this.searchQuery = value;
+		this.renderNote(this.data, { resetScroll: true });
+	}
+
+	/** 关闭 + 清空（`关闭` 按钮与 `Esc` 共用）。 */
+	private closeSearch(): void {
+		if (this.searchDebounce !== null) {
+			window.clearTimeout(this.searchDebounce);
+			this.searchDebounce = null;
+		}
+		this.searchBarEl?.addClass('is-hidden');
+		if (this.searchQuery !== '' || (this.searchInputEl?.value ?? '') !== '') {
+			this.searchQuery = '';
+			if (this.searchInputEl) {
+				this.searchInputEl.value = '';
+			}
+			this.renderNote(this.data, { resetScroll: true });
+		}
+		// 焦点归还：优先选中卡，否则视图容器
+		const card =
+			this.selectedLine !== null
+				? this.queryCard(this.selectedLine)
+				: null;
+		if (card) {
+			card.focus({ preventScroll: true });
+		} else {
+			this.contentEl.focus?.();
+		}
+	}
+
+	/** `上一个`/`下一个`：在**可见卡**（= 命中卡）间定位，环绕，焦点留在搜索框。 */
+	private stepMatch(delta: 1 | -1): void {
+		const lines = collectCardLines(this.contentEl);
+		if (lines.length === 0) {
+			return;
+		}
+		const current =
+			this.selectedLine !== null && lines.includes(this.selectedLine)
+				? this.selectedLine
+				: null;
+		let target: number | null;
+		if (current === null) {
+			target =
+				delta === 1
+					? (lines[0] ?? null)
+					: (lines[lines.length - 1] ?? null);
+		} else {
+			target =
+				pickAdjacentLine(lines, current, delta) ??
+				(delta === 1
+					? (lines[0] ?? null)
+					: (lines[lines.length - 1] ?? null)); // 环绕
+		}
+		if (target === null) {
+			return;
+		}
+		this.highlightMatch(target);
+	}
+
+	/**
+	 * 定位到某张卡：**加选中类 + 滚动入视口，但不抢焦点**（保持搜索框焦点）。
+	 * 与 `applySelection` 的区别就在这里——后者会 `cardEl.focus()`，会跳出搜索框。
+	 */
+	private highlightMatch(line: number): void {
+		this.cancelPendingDelete(false);
+		const prev = this.selectedLine;
+		if (prev !== null && prev !== line) {
+			this.queryCard(prev)?.removeClass('is-selected');
+		}
+		this.selectedLine = line;
+		const cardEl = this.queryCard(line);
+		if (!cardEl) {
+			this.selectedLine = null;
+			return;
+		}
+		cardEl.addClass('is-selected');
+		this.scrollCardIntoView(cardEl);
+		// 🔴 不 cardEl.focus()：Obsidian 查找条语义是焦点留在查找框
+	}
+
+	/** 无命中时禁用两个定位按钮。 */
+	private refreshSearchNavState(): void {
+		const has = collectCardLines(this.contentEl).length > 0;
+		this.searchPrevEl?.toggleAttribute('disabled', !has);
+		this.searchNextEl?.toggleAttribute('disabled', !has);
+	}
+
+	/**
+	 * 释放搜索瞬态：清 debounce 计时器、归零关键词、清输入框、收起搜索条。
+	 * **不重绘**（调用方按需决定）；用于销毁 / 清空视图（[[Plan-20261006-161121]] §2.3f）。
+	 */
+	private resetSearchState(): void {
+		if (this.searchDebounce !== null) {
+			window.clearTimeout(this.searchDebounce);
+			this.searchDebounce = null;
+		}
+		this.searchQuery = '';
+		if (this.searchInputEl) {
+			this.searchInputEl.value = '';
+		}
+		this.searchBarEl?.addClass('is-hidden');
 	}
 
 	/** 从 `this.data`（frontmatter）重读过滤开关；缺失 = 关。 */
@@ -694,7 +950,12 @@ export class IOTOTaskView extends TextFileView {
 
 	private renderNote(
 		data: string,
-		options?: { skipAnchorRestore?: boolean; animateRecentSwap?: boolean },
+		options?: {
+			skipAnchorRestore?: boolean;
+			animateRecentSwap?: boolean;
+			/** 搜索结果集与滚动锚点无关：置顶（跳过「捕获-恢复」） */
+			resetScroll?: boolean;
+		},
 	): void {
 		if (this.isRendering) {
 			return;
@@ -720,7 +981,9 @@ export class IOTOTaskView extends TextFileView {
 			// 重绘会新建滚动容器（render-note.ts:60），scrollTop 会归零；
 			// 先捕获、render 之后恢复，保证结构性变更（回车新建 / 折叠 Section / 冲突回滚）
 			// 不把用户看到的视口位置丢掉（[[Plan-20261003-094145]] §5.2）。
-			const snapshot = captureIotoTaskScroll(this.contentEl);
+			const snapshot = options?.resetScroll
+				? null
+				: captureIotoTaskScroll(this.contentEl);
 
 			// 进出场动效门控：只对「①③ 单任务增删」放行（residual 重建保持即时）。
 			// 必须在 `empty()` 前采旧集——旧卡节点会被 empty() 摘除，但引用仍在内存。
@@ -758,14 +1021,27 @@ export class IOTOTaskView extends TextFileView {
 				links: this.buildLinkController(),
 				filters: this.filters,
 				recentTaskCount: this.recentTaskCountProvider(),
+				searchQuery: this.searchQuery,
 			});
-			restoreIotoTaskScroll(this.contentEl, snapshot, {
-				skipAnchor: options?.skipAnchorRestore ?? false,
-			});
+			if (snapshot) {
+				restoreIotoTaskScroll(this.contentEl, snapshot, {
+					skipAnchor: options?.skipAnchorRestore ?? false,
+				});
+			} else {
+				// 搜索应用 / 清空：结果集与锚点无关，直接归顶。
+				const scrollEl = this.bodyEl?.querySelector<HTMLElement>(
+					IOTO_TASK_SCROLL_SELECTOR,
+				);
+				if (scrollEl) {
+					scrollEl.scrollTop = 0;
+				}
+			}
 			// 回填选中类：整树重建后 `selectedLine` 仍在，但不 `focus()`——
 			// `renderNote` 也会被后台 `reloadFromVault` 触发，抢焦点会打断用户输入
 			// （[[Plan-20261003-194909]] §5.1f）。
 			this.syncSelectionClass();
+			// 结果集变化后同步定位按钮可用态（无命中 → 两个按钮 disabled）。
+			this.refreshSearchNavState();
 
 			// 选中态稳定后启动动画（[[Plan-20261005-150106]] 坑 7）。
 			// [[Plan-20261005-152203]] §3.2：改为「同步 prepare + 双 rAF play」——
@@ -867,6 +1143,8 @@ export class IOTOTaskView extends TextFileView {
 		// 箭头函数读实时值，供下面的 getter 转发（不写 `const self = this`）
 		const readSelected = (): number | null => this.selectedLine;
 		const readDeletePending = (): boolean => this.pendingDeleteLine !== null;
+		// 🔴 对象字面量里的 `this` 指向对象本身，故必须走箭头读取器。
+		const readEditingLine = (): number | null => this.editingLine;
 		// 卡片动作区按钮：仅在「支持内联编辑」且「目标命令已注册」时才注入，
 		// 缺省即渲染层隐藏按钮（Q5：只读 / ioto-settings 未启用 → 隐藏）。
 		const inlineEdit = this.supportsInlineEdit();
@@ -894,6 +1172,10 @@ export class IOTOTaskView extends TextFileView {
 			// 🔴 必须是 getter：渲染层在 keydown 闭包里读实时值（同 selectedLine）。
 			get deletePending() {
 				return readDeletePending();
+			},
+			// 🔴 必须是 getter：关键词过滤读实时值，供「编辑中的卡无条件保留」兜底。
+			get editingLine() {
+				return readEditingLine();
 			},
 			beginEdit: (line) => {
 				void this.beginEdit(line);
@@ -2497,6 +2779,26 @@ export class IOTOTaskView extends TextFileView {
 		void this.addTask();
 	}
 
+	/* ------------------------------------------------------------------ *
+	 * Ctrl/Cmd+F 搜索：走 Obsidian Scope（见 search-scope.ts 顶部注释）
+	 * ------------------------------------------------------------------ */
+
+	/** 暴露给 search scope 的宿主（照 `modEnterHost` 范式）。 */
+	searchHost(): SearchHost {
+		return {
+			canRevealSearch: () => this.canRevealSearchFromScope(),
+			revealSearch: () => this.revealSearch(),
+		};
+	}
+
+	/**
+	 * 能否由 scope 接管 Mod+F：非编辑态（保留内嵌编辑器的 Cmd+F 查找）。
+	 * 非 active 视图由 `resolveSearchHost` 先挡掉（返回 `null` → 放行）。
+	 */
+	private canRevealSearchFromScope(): boolean {
+		return this.editingLine === null && this.continuationLine === null;
+	}
+
 	/** 供 main.ts 的 checkCallback 判定命令是否可用：与按钮只读态隐藏同口径。 */
 	canAddTask(): boolean {
 		return this.file !== null && this.supportsInlineEdit();
@@ -2801,4 +3103,13 @@ export class IOTOTaskView extends TextFileView {
 export function resolveModEnterHost(app: App): ModEnterHost | null {
 	const view = app.workspace.getActiveViewOfType(IOTOTaskView);
 	return view ? view.modEnterHost() : null;
+}
+
+/**
+ * 解析「当前 active 的 IOTOTask 视图」的 Ctrl/Cmd+F 搜索宿主；active view 不是本类型
+ * 时返回 `null`（scope 据此放行给核心，避免吞掉别的视图的 `Cmd+F`）。
+ */
+export function resolveSearchHost(app: App): SearchHost | null {
+	const view = app.workspace.getActiveViewOfType(IOTOTaskView);
+	return view ? view.searchHost() : null;
 }

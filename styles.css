@@ -2161,6 +2161,71 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	margin-inline-start: auto;
 }
 
+/* 关键词搜索条（[[Plan-20261006-161121]] §2.6）：`__toolbar` 下方的内联条。
+   `__toolbar` → `__searchbar` → `__body` 三者常驻、只显隐。 */
+.ioto-task-view__searchbar {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: calc(var(--ioto-tv-pad-y) * 0.5) var(--ioto-tv-pad-x);
+	border-bottom: 1px solid var(--ioto-tv-border);
+}
+
+/* 本仓库无通用 `.is-hidden`，这里显式声明（默认收起）。 */
+.ioto-task-view__searchbar.is-hidden {
+	display: none;
+}
+
+.ioto-task-view__search-input {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.ioto-task-view__search-actions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	margin-inline-start: auto;
+}
+
+.ioto-task-view__search-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 4px;
+	color: var(--text-muted);
+	background: transparent;
+	border: 1px solid transparent;
+	border-radius: var(--radius-s);
+	box-shadow: none;
+	cursor: pointer;
+	transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.ioto-task-view__search-btn:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+	border-color: var(--ioto-tv-border);
+}
+
+.ioto-task-view__search-btn:focus-visible {
+	outline: 2px solid var(--ioto-tv-accent);
+	outline-offset: 1px;
+}
+
+.ioto-task-view__search-btn:disabled {
+	opacity: 0.45;
+	cursor: default;
+	background: transparent;
+	border-color: transparent;
+}
+
+.ioto-task-view__search-btn svg {
+	width: 14px;
+	height: 14px;
+}
+
 .ioto-task-view__body {
 	flex: 1 1 auto;
 	min-height: 0;
@@ -2873,6 +2938,7 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 
 /* 控制栏同样要浮在 Aurora 背景层（`::before`，z-index:0）之上 */
 .ioto-task-view.is-glass .ioto-task-view__toolbar,
+.ioto-task-view.is-glass .ioto-task-view__searchbar,
 .ioto-task-view.is-glass .ioto-task-view__body {
 	position: relative;
 	z-index: 1;
@@ -2880,6 +2946,23 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 
 .ioto-task-view.is-glass .ioto-task-view__toolbar {
 	border-bottom: 1px solid var(--ioto-tv-glass-border);
+}
+
+.ioto-task-view.is-glass .ioto-task-view__searchbar {
+	border-bottom: 1px solid var(--ioto-tv-glass-border);
+}
+
+.ioto-task-view.is-glass .ioto-task-view__search-input {
+	background: var(--ioto-tv-glass-bg);
+	border: 1px solid var(--ioto-tv-glass-border);
+	border-radius: var(--ioto-tv-radius-pill);
+	padding: 4px 10px;
+}
+
+.ioto-task-view.is-glass .ioto-task-view__search-btn {
+	background: var(--ioto-tv-glass-bg);
+	border-color: var(--ioto-tv-glass-border);
+	border-radius: var(--ioto-tv-radius-pill);
 }
 
 .ioto-task-view.is-glass .ioto-task-view__toggle,
@@ -3219,6 +3302,22 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	border-bottom: 1px solid var(--ioto-tv-line);
 }
 
+.ioto-task-view.is-modern .ioto-task-view__searchbar {
+	border-bottom: 1px solid var(--ioto-tv-line);
+}
+
+.ioto-task-view.is-modern .ioto-task-view__search-input {
+	background: color-mix(in srgb, var(--text-normal) 4%, transparent);
+	border: 1px solid transparent;
+	border-radius: var(--ioto-tv-radius-pill);
+	padding: 4px 12px;
+}
+
+.ioto-task-view.is-modern .ioto-task-view__search-btn {
+	color: var(--text-muted);
+	border-radius: var(--ioto-tv-radius-pill);
+}
+
 .ioto-task-view.is-modern .ioto-task-view__toggle,
 .ioto-task-view.is-modern .ioto-task-view__action {
 	background: color-mix(in srgb, var(--text-normal) 4%, transparent);
@@ -3438,6 +3537,23 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 /* 控制栏：把重边框换成发丝线 */
 .ioto-task-view.is-simple .ioto-task-view__toolbar {
 	border-bottom: 1px solid var(--ioto-tv-hairline);
+}
+
+.ioto-task-view.is-simple .ioto-task-view__searchbar {
+	border-bottom: 1px solid var(--ioto-tv-hairline);
+}
+
+.ioto-task-view.is-simple .ioto-task-view__search-input {
+	background: var(--ioto-tv-surface);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--ioto-tv-radius-pill);
+	padding: 4px 10px;
+}
+
+.ioto-task-view.is-simple .ioto-task-view__search-btn {
+	background: var(--ioto-tv-surface);
+	border-color: var(--background-modifier-border);
+	border-radius: var(--ioto-tv-radius-pill);
 }
 
 /* 次按钮 = 白底 + 1px 细描边 + 药丸（参考图 Sort by / Filter） */

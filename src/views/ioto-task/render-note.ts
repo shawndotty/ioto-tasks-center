@@ -41,6 +41,12 @@ import {
 	pickEdgeLine,
 } from './card-navigation';
 import { pickRecentTopLevelLines } from './recent-task-filter';
+import {
+	isCardVisible,
+	normalizeQuery,
+	type CardVisibilityContext,
+	type CardVisibilityInput,
+} from './task-query-filter';
 import { shouldTriggerTaskHoverPreview } from '../task-hover-preview';
 
 /** 编辑交互回调（由 `IOTOTaskView` 注入；只读态 `enabled = false`）。 */
@@ -70,6 +76,14 @@ export interface TaskNoteEditing {
 	 * 的旧值，pending 判定永远失效（同 `selectedLine`）。
 	 */
 	readonly deletePending?: boolean;
+	/**
+	 * 当前处于**编辑态**的文件行号（getter，读实时值）；非编辑态 `null`。
+	 *
+	 * 🔴 必须是 getter：图层在渲染时读实时值。用于关键词过滤里「编辑中的卡无条件保留」
+	 * 的兜底判定——与 `selectedLine`（仅选中）区分，避免把「仅选中、未编辑」的卡也保留
+	 * （[[Plan-20261006-161121]] §2.2e）。
+	 */
+	readonly editingLine?: number | null;
 	/** 进入卡片正文内联编辑（同时会提交上一张正在编辑的卡片） */
 	beginEdit(line: number): void;
 	/**
@@ -135,6 +149,8 @@ export interface RenderTaskNoteOptions {
 	filters?: TaskNoteFilters;
 	/** ③「只显示最近任务」保留的顶级任务数（缺省 3） */
 	recentTaskCount?: number;
+	/** 关键词过滤的瞬态输入（**不进 `TaskNoteFilters`**，不落盘）。缺省 = 不过滤。 */
+	searchQuery?: string;
 }
 
 interface RenderSectionOptions {
@@ -149,6 +165,8 @@ interface RenderSectionOptions {
 	editing: TaskNoteEditing;
 	filters: TaskNoteFilters;
 	recentTaskCount: number;
+	/** 关键词过滤（已透传；空串 = 不过滤） */
+	searchQuery: string;
 }
 
 /** Section 折叠状态的稳定 key（Level + 起始行 + 标题，重排后不会错位）。 */
@@ -164,6 +182,7 @@ export function renderTaskNote(options: RenderTaskNoteOptions): void {
 		recentOnly: false,
 	};
 	const recentTaskCount = options.recentTaskCount ?? 3;
+	const searchQuery = options.searchQuery ?? '';
 	const sections = parseSections(content);
 	const scrollEl = containerEl.createDiv({ cls: 'ioto-task-view__scroll' });
 	attachTaskNoteLinkDelegates(scrollEl, options.links);
@@ -182,6 +201,7 @@ export function renderTaskNote(options: RenderTaskNoteOptions): void {
 			section,
 			filters,
 			recentTaskCount,
+			searchQuery,
 		});
 	}
 }
@@ -304,6 +324,7 @@ function renderSection(options: RenderSectionOptions): void {
 		editing: options.editing,
 		filters: options.filters,
 		recentTaskCount: options.recentTaskCount,
+		searchQuery: options.searchQuery,
 	});
 }
 
@@ -348,6 +369,8 @@ function renderSectionBody(options: {
 	editing: TaskNoteEditing;
 	filters: TaskNoteFilters;
 	recentTaskCount: number;
+	/** 关键词过滤（已透传；空串 = 不过滤） */
+	searchQuery: string;
 }): void {
 	const {
 		app,
@@ -359,6 +382,7 @@ function renderSectionBody(options: {
 		editing,
 		filters,
 		recentTaskCount,
+		searchQuery,
 	} = options;
 	const lines = content.split(/\r?\n/);
 	const bodyStartLine =
@@ -398,20 +422,37 @@ function renderSectionBody(options: {
 		? pickRecentTopLevelLines(items, recentTaskCount)
 		: null;
 
-	// ②/③ 叠加后本 Section 可见卡片数为 0：渲染空态，不再画空 `<ul>`（Q8）。
-	if (filters.onlyPending && items.length > 0) {
-		const hasVisible = items.some(
-			(item) =>
-				(!recentLines || recentLines.has(item.line)) &&
-				!isChecklistItemDone(item),
-		);
-		if (!hasVisible) {
-			bodyEl.createDiv({
-				cls: 'ioto-task-view__empty',
-				text: t('view.iotoTaskView.empty.allDone'),
-			});
-			return;
-		}
+	// 四层过滤（①=Section 层已在外层处理；②③ + 关键词 = 卡片层）的唯一真源：
+	// 「空态判定」与「逐卡 skip」共用 `isCardVisible`，避免两处漂移
+	// （[[Plan-20261006-161121]] §2.2c/2.2d）。
+	const normalizedQuery = normalizeQuery(searchQuery);
+	const queryActive = normalizedQuery.length > 0;
+	const toVisibility = (item: NoteChecklistItem): CardVisibilityInput => ({
+		line: item.line,
+		done: isChecklistItemDone(item),
+		title: item.text,
+		continuation: continuationMarkdown.get(item.line),
+	});
+	const visibilityCtx: CardVisibilityContext = {
+		recentLines,
+		onlyPending: filters.onlyPending,
+		normalizedQuery,
+		editingLine: editing.editingLine ?? null,
+	};
+
+	// ②/③/关键词叠加后本 Section 可见卡片数为 0：渲染空态，不再画空 `<ul>`（Q8）。
+	// 文案按 `queryActive` 分流：搜索无命中 vs 全部完成（均为「本 Section 无可见卡」）。
+	if (
+		items.length > 0 &&
+		!items.some((item) => isCardVisible(toVisibility(item), visibilityCtx))
+	) {
+		bodyEl.createDiv({
+			cls: 'ioto-task-view__empty',
+			text: queryActive
+				? t('view.iotoTaskView.empty.noMatch', [searchQuery.trim()])
+				: t('view.iotoTaskView.empty.allDone'),
+		});
+		return;
 	}
 
 	let lineIndex = bodyStartLine;
@@ -440,8 +481,7 @@ function renderSectionBody(options: {
 				sourcePath,
 				component,
 				editing,
-				filters,
-				recentLines,
+				visibilityCtx,
 				continuationMarkdown,
 				continuationLines: continuationByLine,
 			});
@@ -479,9 +519,8 @@ function renderChecklistGroup(options: {
 	sourcePath: string;
 	component: Component;
 	editing: TaskNoteEditing;
-	filters: TaskNoteFilters;
-	/** ③ 最近任务过滤：保留的行号集合；`null` = 未开启。 */
-	recentLines: Set<number> | null;
+	/** 四层过滤的可见性上下文（②③ + 关键词 + 编辑态兜底）；逐卡 skip 的唯一判据。 */
+	visibilityCtx: CardVisibilityContext;
 	/** 卡片行号 → 该卡的续行 markdown（无续行的卡不出现） */
 	continuationMarkdown: Map<number, string>;
 	/** 卡片行号 → 该卡的续行行号数组（无续行的卡不出现） */
@@ -494,22 +533,28 @@ function renderChecklistGroup(options: {
 		sourcePath,
 		component,
 		editing,
-		filters,
-		recentLines,
+		visibilityCtx,
 		continuationMarkdown,
 		continuationLines,
 	} = options;
 	const listEl = bodyEl.createEl('ul', { cls: 'ioto-task-view__checklist' });
 
 	for (const item of items) {
-		// ③ 只显示最近任务：不属于末尾 N 组的行不生成 DOM（与 ② 同为独立 skip）。
-		if (recentLines && !recentLines.has(item.line)) {
-			continue;
-		}
 		const done = isChecklistItemDone(item);
-		// ② 只显示未完成：已完成卡不生成 DOM（collectCardLines 读 DOM，
+		// ②③ + 关键词：不可见卡不生成 DOM（collectCardLines 读 DOM，
 		// 隐藏卡天然不可达，↑↓ 自动跳过）；空 Section 不在此处隐藏。
-		if (filters.onlyPending && done) {
+		// 与「空态判定」同源（`isCardVisible`），避免两处漂移。
+		if (
+			!isCardVisible(
+				{
+					line: item.line,
+					done,
+					title: item.text,
+					continuation: continuationMarkdown.get(item.line),
+				},
+				visibilityCtx,
+			)
+		) {
 			continue;
 		}
 		const cardEl = listEl.createEl('li', {

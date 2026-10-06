@@ -71,10 +71,12 @@ import {
 	IOTO_TASK_VIEW_TYPE,
 	IOTOTaskView,
 	resolveModEnterHost,
+	resolveSearchHost,
 } from './views/iotoTaskView';
 import { probeEmbeddedEditorSupport } from './views/ioto-task/embedded-editor';
 import { installItemControlBridge } from './views/ioto-task/item-control-bridge';
 import { registerModEnterHandler } from './views/ioto-task/select-mode-scope';
+import { registerSearchHandler } from './views/ioto-task/search-scope';
 import {
 	IOTO_TASK_VIEW_HOVER_SOURCE_ID,
 	IOTO_TASKS_CENTER_TASK_HOVER_SOURCE_ID,
@@ -184,6 +186,13 @@ export default class IOTOTasksCenter extends Plugin {
 		this.app.keymap.pushScope(selectModeScope);
 		this.register(() => this.app.keymap.popScope(selectModeScope));
 
+		// IOTOTask 视图 Ctrl/Cmd+F 唤出关键词搜索条。核心 Keymap 在 window 捕获阶段
+		// 先吃带修饰键的按键，DOM 收不到，只能走 Scope（见 search-scope.ts）。
+		const searchScope = new Scope(this.app.scope);
+		registerSearchHandler(searchScope, () => resolveSearchHost(this.app));
+		this.app.keymap.pushScope(searchScope);
+		this.register(() => this.app.keymap.popScope(searchScope));
+
 		this.addCommand({
 			id: 'itc-open-as-ioto-task',
 			name: t('command.openAsIOTOTask'),
@@ -236,6 +245,25 @@ export default class IOTOTasksCenter extends Plugin {
 
 				if (!checking) {
 					view.triggerAddTask();
+				}
+
+				return true;
+			},
+		});
+		// Ctrl/Cmd+F 的移动端 / 命令面板入口（Q6：低频操作走命令面板，不占工具栏按钮位）。
+		this.addCommand({
+			id: 'itc-search-task-view',
+			name: t('command.searchTaskView'),
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(
+					IOTOTaskView,
+				);
+				if (!view) {
+					return false;
+				}
+
+				if (!checking) {
+					view.revealSearch();
 				}
 
 				return true;
