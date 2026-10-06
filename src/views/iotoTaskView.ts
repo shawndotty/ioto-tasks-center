@@ -66,6 +66,7 @@ import {
 	dedentLines,
 	findSectionByTitle,
 	indentContinuationLines,
+	indentLevelOf,
 	insertSoftBreak,
 	isTaskContinuationLine,
 	parentIndentLevelOfTaskLine,
@@ -73,9 +74,22 @@ import {
 	replaceTaskBody,
 	setTaskIndent,
 	SOFT_BREAK,
+	splitTaskLine,
 	taskBodyForEditor,
 	toggleTaskMarker,
 } from '../tasks-center/note-structure';
+import { isTemplateAvailableForProject } from '../tasks-center/batch-task-template';
+import { extractListPropertyValuesFromContent } from '../tasks-center/task-creation';
+import {
+	buildEntryTemplateLines,
+	extractEntryTemplateVariables,
+	renderEntryTemplate,
+	type EntryTemplateConfig,
+} from '../tasks-center/task-entry-template';
+import {
+	EntryTemplateSelectModal,
+	EntryTemplateVariablesModal,
+} from '../ui/entryTemplateModals';
 import {
 	collectCardLines,
 	pickAdjacentLine,
@@ -248,6 +262,8 @@ export class IOTOTaskView extends TextFileView {
 	private readonly appearanceStyleProvider: () => TaskViewAppearanceStyle;
 	private readonly recentTaskCountProvider: () => number;
 	private readonly exportOptionsProvider: () => TaskViewExportOptions;
+	/** 条目模板配置（只读快照，触发时取一次）。 */
+	private readonly entryTemplateProvider: () => EntryTemplateConfig;
 	/**
 	 * 导出重入锁（[[Plan-20261006-102142]] §三.6）：克隆几百张卡 + 内联样式可能耗时数秒，
 	 * 期间禁止重复触发（工具栏连点 / 命令面板重入）。
@@ -295,6 +311,7 @@ export class IOTOTaskView extends TextFileView {
 		appearanceStyleProvider: () => TaskViewAppearanceStyle,
 		recentTaskCountProvider: () => number,
 		exportOptionsProvider: () => TaskViewExportOptions,
+		entryTemplateProvider: () => EntryTemplateConfig,
 	) {
 		super(leaf);
 		this.allowNoFile = false;
@@ -302,6 +319,7 @@ export class IOTOTaskView extends TextFileView {
 		this.appearanceStyleProvider = appearanceStyleProvider;
 		this.recentTaskCountProvider = recentTaskCountProvider;
 		this.exportOptionsProvider = exportOptionsProvider;
+		this.entryTemplateProvider = entryTemplateProvider;
 	}
 
 	getViewType(): string {
@@ -1759,7 +1777,10 @@ export class IOTOTaskView extends TextFileView {
 		}
 	}
 
-	private async beginEdit(line: number): Promise<void> {
+	private async beginEdit(
+		line: number,
+		caretOffset?: number | null,
+	): Promise<void> {
 		if (!this.supportsInlineEdit() || !this.file) {
 			new Notice(t('notice.iotoTaskView.inlineEditUnavailable'));
 			return;
@@ -1844,6 +1865,10 @@ export class IOTOTaskView extends TextFileView {
 		this.applySelection(line);
 		// 焦点给编辑器（`applySelection` 刚把焦点放在卡片上）
 		handle.focus();
+		// 模板 `%%Cursor%%`：挂载后默认落末尾，这里覆盖到指定偏移（clamp 在 handle 内）。
+		if (typeof caretOffset === 'number') {
+			handle.setCursor(caretOffset);
+		}
 	}
 
 	private async commitEdit(): Promise<void> {
@@ -2580,6 +2605,8 @@ export class IOTOTaskView extends TextFileView {
 			insertAfterContinuations?: boolean;
 			/** 单任务新增/删除：开启「只显示最近任务」时补进出场动画（§2.5.1）。 */
 			animateRecentSwap?: boolean;
+			/** 插入后进入编辑态时的光标偏移（模板 `%%Cursor%%`；相对行 body）。 */
+			caretOffset?: number | null;
 		},
 	): Promise<void> {
 		const file = this.file;
@@ -2606,7 +2633,7 @@ export class IOTOTaskView extends TextFileView {
 
 		if (outcome.status !== 'conflict' && nextEditLine !== null) {
 			// beginEdit 内会把 selectedLine 落到新行上
-			await this.beginEdit(nextEditLine);
+			await this.beginEdit(nextEditLine, options?.caretOffset ?? null);
 			return;
 		}
 
@@ -2809,11 +2836,146 @@ export class IOTOTaskView extends TextFileView {
 		return this.file !== null && this.supportsInlineEdit();
 	}
 
+	/** 供 main.ts 的 checkCallback 判定「插入条目模板」命令是否可用（同 canAddTask 口径）。 */
+	canInsertEntryTemplate(): boolean {
+		return this.file !== null && this.supportsInlineEdit();
+	}
+
+	/** 当前笔记 frontmatter 的 `Project` 值（取第一个为当前项目名）。 */
+	private resolveCurrentProjectNames(): string[] {
+		return extractListPropertyValuesFromContent(this.data, 'Project');
+	}
+
+	private resolveCurrentSubject(): string {
+		return (
+			extractListPropertyValuesFromContent(this.data, 'Subject')[0] ?? ''
+		);
+	}
+
+	/**
+	 * 「插入条目模板…」主入口（[[Plan-20261006-225329]] §5.4）：
+	 * 门禁 → 项目过滤 → 选模板 → 收变量 → 求值/重定位 → 走 `runLineAction` 插入。
+	 */
+	async insertEntryTemplate(): Promise<void> {
+		if (!this.file || !this.supportsInlineEdit()) {
+			return; // 只读降级：静默（同「添加任务」口径 1605-1607）
+		}
+
+		const config = this.entryTemplateProvider();
+		if (!config.enabled || config.templates.length === 0) {
+			new Notice(t('notice.entryTemplate.notConfigured'));
+			return;
+		}
+
+		const projectNames = this.resolveCurrentProjectNames();
+		const currentProject = projectNames[0] ?? '';
+		const available = config.templates.filter((template) =>
+			isTemplateAvailableForProject(template, currentProject),
+		);
+		if (available.length === 0) {
+			new Notice(t('notice.entryTemplate.noTemplateForProject'));
+			return;
+		}
+
+		// 锚点在提交前快照：`commitEdit` 会清掉 `editingLine`。
+		const anchorLine = this.selectedLine ?? this.editingLine;
+		await this.commitEdit();
+
+		const onlyTemplate = available[0];
+		const template =
+			available.length === 1
+				? onlyTemplate
+				: await new EntryTemplateSelectModal(
+						this.app,
+						available,
+						currentProject,
+					).openAndGetValue();
+		if (!template) {
+			return;
+		}
+
+		const variables = extractEntryTemplateVariables(template.content);
+		let values: Record<string, string> = {};
+		if (variables.length > 0) {
+			const collected = await new EntryTemplateVariablesModal(
+				this.app,
+				variables,
+			).openAndGetValue();
+			if (!collected) {
+				return;
+			}
+			values = collected;
+		}
+
+		const rendered = renderEntryTemplate(template.content, values, {
+			now: new Date(),
+			project: currentProject,
+			subject: this.resolveCurrentSubject(),
+		});
+
+		if (anchorLine !== null) {
+			const raw = this.lineAt(anchorLine);
+			const parts = splitTaskLine(raw);
+			const built = buildEntryTemplateLines(rendered, {
+				line: raw,
+				indentLevel: parts ? indentLevelOf(parts.indent) : 0,
+				listMarker: parts?.listMarker ?? '- ',
+			});
+			if (built.lines.length === 0) {
+				return;
+			}
+			const nextEditLine =
+				anchorLine + 1 + this.countContinuationLines(anchorLine);
+			await this.runLineAction(
+				anchorLine,
+				raw,
+				(line) => [line, ...built.lines],
+				nextEditLine,
+				{
+					insertAfterContinuations: true,
+					animateRecentSwap: true,
+					caretOffset: built.firstLineCursorOffset,
+				},
+			);
+			return;
+		}
+
+		// 无锚点（极少）：退化为「追加到末条任务之后」的顶层落点，与 addTask 同口径。
+		const built = buildEntryTemplateLines(rendered, {
+			line: '- ',
+			indentLevel: 0,
+			listMarker: '- ',
+		});
+		if (built.lines.length === 0) {
+			return;
+		}
+		await this.appendTaskBlock(() => built.lines, {
+			caretOffset: built.firstLineCursorOffset,
+		});
+	}
+
 	/* ------------------------------------------------------------------ *
 	 * 批次 D — ④「添加任务」：三段式落点（文件末条 → 任务 Section 段首 → 文末建段）
 	 * ------------------------------------------------------------------ */
 
 	private async addTask(): Promise<void> {
+		await this.appendTaskBlock((referenceLine) => [
+			buildTopLevelTaskLine(referenceLine, ''),
+		]);
+	}
+
+	/**
+	 * 「添加任务」与「无锚点插入条目模板」共用的三段式落点：
+	 * 文件末条之后 → `任务` Section 段首 → 文末新建 `# 任务` 段。
+	 *
+	 * `buildNewLines(referenceLine)` 返回要追加的行（不含定位行本身）：既有的
+	 * 「添加任务」传「一条顶层空任务」，条目模板传模板展开后的多行。
+	 * 逐字保持原 `addTask` 的行为（[[Plan-20261006-225329]] §5.1）。
+	 */
+	private async appendTaskBlock(
+		buildNewLines: (referenceLine: string) => string[],
+		options?: { caretOffset?: number | null },
+	): Promise<void> {
 		const file = this.file;
 		if (!file || !this.supportsInlineEdit()) {
 			return;
@@ -2826,14 +2988,18 @@ export class IOTOTaskView extends TextFileView {
 		const last = items.length > 0 ? items[items.length - 1] : undefined;
 
 		if (last) {
-			// 文件级末条任务之后追加一条**顶层 0 级**任务。
+			// 文件级末条任务之后追加**顶层 0 级**任务。
 			// 落点跨过末条任务的续行，避免新任务插到续行之前（同 insertSibling）。
 			await this.runLineAction(
 				last.line,
 				this.lineAt(last.line),
-				(raw) => [raw, buildTopLevelTaskLine(raw, '')],
+				(raw) => [raw, ...buildNewLines(raw)],
 				last.line + 1 + this.countContinuationLines(last.line),
-				{ insertAfterContinuations: true, animateRecentSwap: true },
+				{
+					insertAfterContinuations: true,
+					animateRecentSwap: true,
+					caretOffset: options?.caretOffset,
+				},
 			);
 			return;
 		}
@@ -2844,12 +3010,12 @@ export class IOTOTaskView extends TextFileView {
 			await this.runLineAction(
 				section.startLine,
 				this.lineAt(section.startLine),
-				(heading) => [
-					heading,
-					buildTopLevelTaskLine('- ', ''),
-				],
+				(heading) => [heading, ...buildNewLines('- ')],
 				section.startLine + 1,
-				{ animateRecentSwap: true },
+				{
+					animateRecentSwap: true,
+					caretOffset: options?.caretOffset,
+				},
 			);
 			return;
 		}
@@ -2863,15 +3029,17 @@ export class IOTOTaskView extends TextFileView {
 		const lines = this.data.split('\n');
 		const lastIndex = lines.length - 1;
 		const lastLine = lines[lastIndex] ?? '';
-		const nextTask = buildTopLevelTaskLine('- ', '');
 
 		if (this.data.length === 0) {
 			await this.runLineAction(
 				0,
 				'',
-				() => [sectionTitle, nextTask],
+				() => [sectionTitle, ...buildNewLines('- ')],
 				1,
-				{ animateRecentSwap: true },
+				{
+					animateRecentSwap: true,
+					caretOffset: options?.caretOffset,
+				},
 			);
 			return;
 		}
@@ -2881,9 +3049,12 @@ export class IOTOTaskView extends TextFileView {
 			await this.runLineAction(
 				lastIndex,
 				lastLine,
-				() => ['', sectionTitle, nextTask],
+				() => ['', sectionTitle, ...buildNewLines('- ')],
 				lastIndex + 2,
-				{ animateRecentSwap: true },
+				{
+					animateRecentSwap: true,
+					caretOffset: options?.caretOffset,
+				},
 			);
 			return;
 		}
@@ -2891,9 +3062,12 @@ export class IOTOTaskView extends TextFileView {
 		await this.runLineAction(
 			lastIndex,
 			lastLine,
-			(raw) => [raw, '', sectionTitle, nextTask],
+			(raw) => [raw, '', sectionTitle, ...buildNewLines('- ')],
 			lastIndex + 3,
-			{ animateRecentSwap: true },
+			{
+				animateRecentSwap: true,
+				caretOffset: options?.caretOffset,
+			},
 		);
 	}
 

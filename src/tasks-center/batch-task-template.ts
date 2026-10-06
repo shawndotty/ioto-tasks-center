@@ -310,8 +310,10 @@ function resolveProjects(input: unknown): string[] {
 		.filter((entry) => entry.length > 0);
 }
 
+// 形参放宽为结构类型：批量模板与「条目模板」共用同一「项目范围」口径
+// （[[Plan-20261006-225329]] §二），行为不变、向后兼容。
 export function isTemplateAvailableForProject(
-	template: BatchTaskTemplate,
+	template: { projects: string[] },
 	projectName: string,
 ): boolean {
 	if (!template.projects || template.projects.length === 0) {

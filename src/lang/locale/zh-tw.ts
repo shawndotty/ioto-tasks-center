@@ -434,6 +434,45 @@ const zhTW = {
 	'modal.batchSelect.title': '選擇批次範本',
 	'modal.batchSelect.desc': '選擇一個範本，在目前專案下批次建立任務。',
 	'modal.batchSelect.empty': '暫無可用範本，請先在設定中配置。',
+	'settings.tabs.entryTemplates': '條目範本',
+	'settings.entryTemplates.heading': '任務條目範本',
+	'settings.entryTemplates.enabled.name': '啟用條目範本',
+	'settings.entryTemplates.enabled.desc':
+		'啟用後，可在任務檢視中使用範本快速插入一則任務條目。',
+	'settings.entryTemplates.empty': '暫無條目範本，點擊「新增範本」建立一個。',
+	'settings.entryTemplates.add': '新增範本',
+	'settings.entryTemplates.edit': '編輯',
+	'settings.entryTemplates.delete': '刪除',
+	'settings.entryTemplates.deleteConfirm.title': '刪除條目範本',
+	'settings.entryTemplates.deleteConfirm.desc':
+		'確定刪除範本「{0}」？此操作無法復原。',
+	'settings.entryTemplates.deleteConfirm.confirm': '刪除',
+	'settings.entryTemplates.editModal.title.new': '新增條目範本',
+	'settings.entryTemplates.editModal.title.edit': '編輯條目範本',
+	'settings.entryTemplates.editModal.name': '範本名稱',
+	'settings.entryTemplates.editModal.description': '說明（可選）',
+	'settings.entryTemplates.editModal.content': '範本正文（任務條目）',
+	'settings.entryTemplates.editModal.contentHint':
+		'首個非空行必須是任務條目（- [ ]）。每層用 2 個空格縮排。內建變數：{{date}}、{{time}}、{{project}}、{{subject}}、{{cursor}}；提示變數寫作 {{名稱}} 或 {{名稱:預設值}}。不要硬編碼 #ioto/depends/N（行號語義）。',
+	'settings.entryTemplates.editModal.contentPlaceholder':
+		'- [ ] 任務條目\n  - [ ] 子步驟\n說明續行',
+	'settings.entryTemplates.editModal.projects': '專案範圍',
+	'settings.entryTemplates.editModal.projectsDesc':
+		'指定哪些專案可使用該範本。留空表示所有專案可用。每行一個專案名稱。',
+	'settings.entryTemplates.editModal.projectsPlaceholder':
+		'例如：\nIOTO Task Center\n學習AI',
+	'settings.entryTemplates.editModal.invalid':
+		'範本名稱不能為空，且首個非空行必須是任務條目（- [ ]）。',
+	'modal.entryTemplateSelect.title': '選擇條目範本',
+	'modal.entryTemplateSelect.desc': '選擇要插入到選取卡片下方的範本。',
+	'modal.entryTemplateSelect.empty': '目前專案沒有可用的條目範本。',
+	'modal.entryTemplateVars.title': '填寫範本變數',
+	'modal.entryTemplateVars.desc': '為該範本中的變數填寫取值。',
+	'notice.entryTemplate.notConfigured':
+		'條目範本未啟用或未設定，請先在設定中設定。',
+	'notice.entryTemplate.noTemplateForProject':
+		'目前專案沒有可用的條目範本。',
+	'command.insertEntryTemplate': '在任務檢視中插入條目範本',
 	'modal.batchNameAffix.title': '設定任務名稱前後綴',
 	'modal.batchNameAffix.desc': '為批次建立的任務名稱加入前綴或後綴（可選）。',
 	'modal.batchNameAffix.prefix': '前綴',

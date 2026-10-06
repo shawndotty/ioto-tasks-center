@@ -17,6 +17,11 @@ import {
 	type BatchTemplateConfig,
 	type BatchTaskTemplate,
 } from './tasks-center/batch-task-template';
+import {
+	DEFAULT_ENTRY_TEMPLATE_CONFIG,
+	type EntryTemplateConfig,
+	type TaskEntryTemplate,
+} from './tasks-center/task-entry-template';
 import { listProjectFolders } from './tasks-center/data';
 import { ENABLED_TASK_CREATION_TYPE_ORDER } from './tasks-center/enabled-task-creation-types';
 import {
@@ -33,6 +38,7 @@ import { ImportModal } from './modals/ImportModal';
 import { TabbedSettings } from './ui/tabbed-settings';
 import { ConfirmModal } from './ui/confirmModal';
 import { BatchTemplateEditModal } from './ui/batchTemplateEditModal';
+import { EntryTemplateEditModal } from './ui/entryTemplateEditModal';
 
 export type ProjectListSortMode =
 	| 'incomplete-count'
@@ -122,6 +128,8 @@ export interface IOTOTasksCenterSettings {
 	taskTemplateConfigs: TaskTemplateConfigMap;
 	dateTaskDateFormat: string;
 	batchTemplateConfig: BatchTemplateConfig;
+	/** Task View「条目模板」库（[[Plan-20261006-225329]] §二）。 */
+	entryTemplateConfig: EntryTemplateConfig;
 	taskSearchEntryMode: TaskSearchEntryMode;
 	/**
 	 * 在任务中心打开任务笔记时，是否默认使用 IOTOTask 任务视图（默认 false）。
@@ -169,6 +177,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	taskTemplateConfigs: createDefaultTaskTemplateConfigMap(),
 	dateTaskDateFormat: DEFAULT_DATE_TASK_DATE_FORMAT,
 	batchTemplateConfig: { ...DEFAULT_BATCH_TEMPLATE_CONFIG },
+	entryTemplateConfig: { ...DEFAULT_ENTRY_TEMPLATE_CONFIG },
 	taskSearchEntryMode: 'inline',
 	useIOTOTaskViewAsDefault: false,
 	appearanceStyle: 'glass',
@@ -953,6 +962,143 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 				this.renderBatchTemplateSettings(containerEl);
 			},
 		);
+
+		tabbedSettings.addTab(
+			t('settings.tabs.entryTemplates'),
+			(containerEl) => {
+				this.renderEntryTemplateSettings(containerEl);
+			},
+		);
+	}
+
+	private renderEntryTemplateSettings(containerEl: HTMLElement): void {
+		containerEl.empty();
+
+		const config = this.plugin.settings.entryTemplateConfig;
+
+		new Setting(containerEl)
+			.setName(t('settings.entryTemplates.enabled.name'))
+			.setDesc(t('settings.entryTemplates.enabled.desc'))
+			.addToggle((toggle) =>
+				toggle.setValue(config.enabled).onChange(async (value) => {
+					await this.plugin.updateEntryTemplateConfig({
+						enabled: value,
+						templates: config.templates,
+					});
+					this.renderEntryTemplateSettings(containerEl);
+				}),
+			);
+
+		new Setting(containerEl)
+			.setName(t('settings.entryTemplates.heading'))
+			.setHeading()
+			.addButton((button) =>
+				button
+					.setButtonText(t('settings.entryTemplates.add'))
+					.setClass('ioto-tasks-center__batch-template-add')
+					.onClick(() => {
+						void this.openEntryTemplateEditor(containerEl, null);
+					}),
+			);
+
+		if (config.templates.length === 0) {
+			containerEl.createEl('p', {
+				text: t('settings.entryTemplates.empty'),
+				cls: 'ioto-tasks-center__settings-hint',
+			});
+		}
+
+		for (const template of config.templates) {
+			const rowEl = containerEl.createDiv({
+				cls: 'ioto-tasks-center__batch-template-row',
+			});
+			rowEl.createSpan({
+				cls: 'ioto-tasks-center__batch-template-row-name',
+				text: template.name,
+			});
+
+			const actionsEl = rowEl.createDiv({
+				cls: 'ioto-tasks-center__batch-template-row-actions',
+			});
+
+			const editButtonEl = actionsEl.createEl('button', {
+				text: t('settings.entryTemplates.edit'),
+			});
+			editButtonEl.type = 'button';
+			editButtonEl.addEventListener('click', () => {
+				void this.openEntryTemplateEditor(containerEl, template);
+			});
+
+			const deleteButtonEl = actionsEl.createEl('button', {
+				text: t('settings.entryTemplates.delete'),
+			});
+			deleteButtonEl.type = 'button';
+			deleteButtonEl.addEventListener('click', () => {
+				void this.confirmDeleteEntryTemplate(containerEl, template);
+			});
+		}
+	}
+
+	private async openEntryTemplateEditor(
+		containerEl: HTMLElement,
+		existing: TaskEntryTemplate | null,
+	): Promise<void> {
+		const availableProjects = this.resolveAvailableProjectNames();
+		const result = await new EntryTemplateEditModal(
+			this.app,
+			existing,
+			availableProjects,
+		).openAndGetValue();
+		if (!result) {
+			return;
+		}
+
+		const config = this.plugin.settings.entryTemplateConfig;
+		const nextTemplates =
+			existing === null
+				? [...config.templates, result]
+				: config.templates.map((template) =>
+						template.id === existing.id ? result : template,
+					);
+
+		await this.plugin.updateEntryTemplateConfig({
+			enabled: config.enabled,
+			templates: nextTemplates,
+		});
+		this.renderEntryTemplateSettings(containerEl);
+	}
+
+	private async confirmDeleteEntryTemplate(
+		containerEl: HTMLElement,
+		template: TaskEntryTemplate,
+	): Promise<void> {
+		const confirmed = await new ConfirmModal(
+			this.app,
+			t('settings.entryTemplates.deleteConfirm.title'),
+			{
+				descriptionText: t(
+					'settings.entryTemplates.deleteConfirm.desc',
+					[template.name],
+				),
+				confirmButtonText: t(
+					'settings.entryTemplates.deleteConfirm.confirm',
+				),
+				cancelButtonText: t('modal.cancel'),
+			},
+		).openAndConfirm();
+		if (!confirmed) {
+			return;
+		}
+
+		const config = this.plugin.settings.entryTemplateConfig;
+		const nextTemplates = config.templates.filter(
+			(entry) => entry.id !== template.id,
+		);
+		await this.plugin.updateEntryTemplateConfig({
+			enabled: config.enabled,
+			templates: nextTemplates,
+		});
+		this.renderEntryTemplateSettings(containerEl);
 	}
 
 	private renderBatchTemplateSettings(containerEl: HTMLElement): void {

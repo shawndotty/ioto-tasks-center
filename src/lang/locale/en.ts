@@ -470,6 +470,50 @@ const en = {
 		'Choose a template to batch-create tasks under the current project.',
 	'modal.batchSelect.empty':
 		'No templates available. Please configure one in settings first.',
+	'settings.tabs.entryTemplates': 'Entry Templates',
+	'settings.entryTemplates.heading': 'Task Entry Templates',
+	'settings.entryTemplates.enabled.name': 'Enable entry templates',
+	'settings.entryTemplates.enabled.desc':
+		'When enabled, you can insert a task entry from a template in the task view.',
+	'settings.entryTemplates.empty':
+		'No entry templates yet. Click "Add template" to create one.',
+	'settings.entryTemplates.add': 'Add template',
+	'settings.entryTemplates.edit': 'Edit',
+	'settings.entryTemplates.delete': 'Delete',
+	'settings.entryTemplates.deleteConfirm.title': 'Delete entry template',
+	'settings.entryTemplates.deleteConfirm.desc':
+		'Delete the template "{0}"? This cannot be undone.',
+	'settings.entryTemplates.deleteConfirm.confirm': 'Delete',
+	'settings.entryTemplates.editModal.title.new': 'New entry template',
+	'settings.entryTemplates.editModal.title.edit': 'Edit entry template',
+	'settings.entryTemplates.editModal.name': 'Template name',
+	'settings.entryTemplates.editModal.description': 'Description (optional)',
+	'settings.entryTemplates.editModal.content':
+		'Template content (task entry)',
+	'settings.entryTemplates.editModal.contentHint':
+		'The first non-empty line must be a task item (- [ ]). Indent with 2 spaces per level. Built-in variables: {{date}}, {{time}}, {{project}}, {{subject}}, {{cursor}}; use {{name}} or {{name:default}} for prompted variables. Do not hardcode #ioto/depends/N (it is line-number based).',
+	'settings.entryTemplates.editModal.contentPlaceholder':
+		'- [ ] Task entry\n  - [ ] Sub step\nNotes line',
+	'settings.entryTemplates.editModal.projects': 'Projects',
+	'settings.entryTemplates.editModal.projectsDesc':
+		'Specify which projects can use this template. Leave empty to allow all projects. One project name per line.',
+	'settings.entryTemplates.editModal.projectsPlaceholder':
+		'Example:\nIOTO Task Center\nAI Learning',
+	'settings.entryTemplates.editModal.invalid':
+		'Template name is required and the first non-empty line must be a task item (- [ ]).',
+	'modal.entryTemplateSelect.title': 'Select an entry template',
+	'modal.entryTemplateSelect.desc':
+		'Choose a template to insert below the selected card.',
+	'modal.entryTemplateSelect.empty':
+		'No templates available for this project.',
+	'modal.entryTemplateVars.title': 'Fill in template variables',
+	'modal.entryTemplateVars.desc':
+		'Enter values for the variables in this template.',
+	'notice.entryTemplate.notConfigured':
+		'Entry templates are disabled or not configured. Configure them in settings first.',
+	'notice.entryTemplate.noTemplateForProject':
+		'No entry template is available for the current project.',
+	'command.insertEntryTemplate': 'Insert entry template in task view',
 	'modal.batchNameAffix.title': 'Set task name affixes',
 	'modal.batchNameAffix.desc':
 		'Add a prefix or suffix to batch-created task names (optional).',

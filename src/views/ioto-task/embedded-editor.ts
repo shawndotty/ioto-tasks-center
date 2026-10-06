@@ -142,6 +142,8 @@ export interface EmbeddedEditorHandle {
 	getValue(): string;
 	setValue(value: string): void;
 	focus(): void;
+	/** 把光标落到 `offset`（clamp 到正文长度）；供模板 `%%Cursor%%` 落点使用。 */
+	setCursor(offset: number): void;
 	destroy(): void;
 }
 
@@ -387,10 +389,18 @@ export async function mountEmbeddedEditor(
 		component.addChild(editor);
 		controller.editMode = editor;
 		editor.set(initialValue ?? '');
-		// 进入编辑时把光标放到正文末尾，符合「点开继续写」的直觉。
+		// 把光标落到给定偏移（clamp 到正文长度）；默认落末尾，符合「点开继续写」的直觉。
+		const setCursorInternal = (offset: number) => {
+			try {
+				const length = Number(editor.cm.state.doc.length);
+				const anchor = Math.min(Math.max(offset, 0), length);
+				editor.cm.dispatch({ selection: { anchor, head: anchor } });
+			} catch {
+				/* ignore */
+			}
+		};
 		try {
-			const end = editor.cm.state.doc.length;
-			editor.cm.dispatch({ selection: { anchor: end, head: end } });
+			setCursorInternal(Number(editor.cm.state.doc.length));
 		} catch {
 			/* ignore */
 		}
@@ -544,6 +554,9 @@ export async function mountEmbeddedEditor(
 				} catch {
 					/* ignore */
 				}
+			},
+			setCursor: (offset: number) => {
+				setCursorInternal(offset);
 			},
 			destroy,
 		};

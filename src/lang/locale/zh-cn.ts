@@ -433,6 +433,45 @@ const zhCN = {
 	'modal.batchSelect.title': '选择批量模板',
 	'modal.batchSelect.desc': '选择一个模板，在当前项目下批量创建任务。',
 	'modal.batchSelect.empty': '暂无可用模板，请先在设置中配置。',
+	'settings.tabs.entryTemplates': '条目模板',
+	'settings.entryTemplates.heading': '任务条目模板',
+	'settings.entryTemplates.enabled.name': '启用条目模板',
+	'settings.entryTemplates.enabled.desc':
+		'启用后，可在任务视图中使用模板快速插入一条任务条目。',
+	'settings.entryTemplates.empty': '暂无条目模板，点击「添加模板」创建一个。',
+	'settings.entryTemplates.add': '添加模板',
+	'settings.entryTemplates.edit': '编辑',
+	'settings.entryTemplates.delete': '删除',
+	'settings.entryTemplates.deleteConfirm.title': '删除条目模板',
+	'settings.entryTemplates.deleteConfirm.desc':
+		'确定删除模板「{0}」？此操作不可撤销。',
+	'settings.entryTemplates.deleteConfirm.confirm': '删除',
+	'settings.entryTemplates.editModal.title.new': '新建条目模板',
+	'settings.entryTemplates.editModal.title.edit': '编辑条目模板',
+	'settings.entryTemplates.editModal.name': '模板名称',
+	'settings.entryTemplates.editModal.description': '说明（可选）',
+	'settings.entryTemplates.editModal.content': '模板正文（任务条目）',
+	'settings.entryTemplates.editModal.contentHint':
+		'首个非空行必须是任务条目（- [ ]）。每级用 2 个空格缩进。内置变量：{{date}}、{{time}}、{{project}}、{{subject}}、{{cursor}}；提示变量写作 {{名称}} 或 {{名称:默认值}}。不要硬编码 #ioto/depends/N（行号语义）。',
+	'settings.entryTemplates.editModal.contentPlaceholder':
+		'- [ ] 任务条目\n  - [ ] 子步骤\n说明续行',
+	'settings.entryTemplates.editModal.projects': '项目范围',
+	'settings.entryTemplates.editModal.projectsDesc':
+		'指定哪些项目可使用该模板。留空表示所有项目可用。每行一个项目名。',
+	'settings.entryTemplates.editModal.projectsPlaceholder':
+		'例如：\nIOTO Task Center\n学习AI',
+	'settings.entryTemplates.editModal.invalid':
+		'模板名称不能为空，且首个非空行必须是任务条目（- [ ]）。',
+	'modal.entryTemplateSelect.title': '选择条目模板',
+	'modal.entryTemplateSelect.desc': '选择要插入到选中卡片下方的模板。',
+	'modal.entryTemplateSelect.empty': '当前项目没有可用的条目模板。',
+	'modal.entryTemplateVars.title': '填写模板变量',
+	'modal.entryTemplateVars.desc': '为该模板中的变量填写取值。',
+	'notice.entryTemplate.notConfigured':
+		'条目模板未启用或未配置，请先在设置中配置。',
+	'notice.entryTemplate.noTemplateForProject':
+		'当前项目没有可用的条目模板。',
+	'command.insertEntryTemplate': '在任务视图中插入条目模板',
 	'modal.batchNameAffix.title': '设置任务名称前后缀',
 	'modal.batchNameAffix.desc': '为批量创建的任务名称添加前缀或后缀（可选）。',
 	'modal.batchNameAffix.prefix': '前缀',

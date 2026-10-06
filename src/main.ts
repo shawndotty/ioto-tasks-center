@@ -58,6 +58,11 @@ import {
 	normalizeBatchTemplateConfig,
 	type BatchTemplateConfig,
 } from './tasks-center/batch-task-template';
+import {
+	areEntryTemplateConfigsEqual,
+	normalizeEntryTemplateConfig,
+	type EntryTemplateConfig,
+} from './tasks-center/task-entry-template';
 import { isTaskNoteFile, buildTaskNoteMenu } from './tasks-center/task-note-menu';
 import {
 	IOTO_TASKS_CENTER_VIEW_TYPE,
@@ -173,6 +178,7 @@ export default class IOTOTasksCenter extends Plugin {
 					() => this.settings.appearanceStyle,
 					() => this.settings.recentTaskCount,
 					() => this.resolveExportOptions(),
+					() => this.settings.entryTemplateConfig,
 				),
 		);
 
@@ -245,6 +251,25 @@ export default class IOTOTasksCenter extends Plugin {
 
 				if (!checking) {
 					view.triggerAddTask();
+				}
+
+				return true;
+			},
+		});
+		// 低频操作走命令面板（不占工具栏按钮位，[[Discuss-20261006-223908]] §5.3）。
+		this.addCommand({
+			id: 'itc-insert-entry-template',
+			name: t('command.insertEntryTemplate'),
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(
+					IOTOTaskView,
+				);
+				if (!view || !view.canInsertEntryTemplate()) {
+					return false;
+				}
+
+				if (!checking) {
+					void view.insertEntryTemplate();
 				}
 
 				return true;
@@ -573,6 +598,9 @@ export default class IOTOTasksCenter extends Plugin {
 		);
 		this.settings.batchTemplateConfig = normalizeBatchTemplateConfig(
 			loadedData?.batchTemplateConfig,
+		);
+		this.settings.entryTemplateConfig = normalizeEntryTemplateConfig(
+			loadedData?.entryTemplateConfig,
 		);
 		this.settings.taskSearchEntryMode = normalizeTaskSearchEntryMode(
 			loadedData?.taskSearchEntryMode,
@@ -1022,6 +1050,24 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.batchTemplateConfig = nextConfig;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateEntryTemplateConfig(
+		config: EntryTemplateConfig,
+	): Promise<void> {
+		const nextConfig = normalizeEntryTemplateConfig(config);
+		if (
+			areEntryTemplateConfigsEqual(
+				this.settings.entryTemplateConfig,
+				nextConfig,
+			)
+		) {
+			return;
+		}
+
+		this.settings.entryTemplateConfig = nextConfig;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}

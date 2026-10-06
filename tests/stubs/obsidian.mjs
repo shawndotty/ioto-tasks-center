@@ -54,3 +54,81 @@ export const MarkdownRenderer = {
 };
 
 export const setIcon = () => {};
+
+// 以下为「视图宿主生命周期」测试加载 iotoTaskView.ts 所需的最小 UI 类。
+// iotoTaskView 静态引入了条目模板弹窗（entryTemplateModals / entryTemplateEditModal），
+// 这些弹窗继承 / 实例化 obsidian 的 UI 组件；测试只需 import 成功，不触发其运行路径。
+class FakeElement {
+	empty() {}
+	createEl() {
+		return new FakeElement();
+	}
+	createDiv() {
+		return new FakeElement();
+	}
+	createSpan() {
+		return new FakeElement();
+	}
+}
+
+export class Modal {
+	constructor(app) {
+		this.app = app;
+		this.contentEl = new FakeElement();
+	}
+	open() {}
+	close() {}
+	setTitle() {}
+}
+
+export class Setting {
+	constructor() {}
+	setName() {
+		return this;
+	}
+	setDesc() {
+		return this;
+	}
+	setHeading() {
+		return this;
+	}
+	setClass() {
+		return this;
+	}
+	addButton() {
+		return this;
+	}
+	addText() {
+		return this;
+	}
+	addTextArea() {
+		return this;
+	}
+	addToggle() {
+		return this;
+	}
+	addDropdown() {
+		return this;
+	}
+}
+
+export class ButtonComponent {
+	constructor() {}
+	setButtonText() {
+		return this;
+	}
+	setCta() {
+		return this;
+	}
+	setClass() {
+		return this;
+	}
+	onClick() {
+		return this;
+	}
+}
+
+export class TextComponent {}
+export class TextAreaComponent {}
+export class DropdownComponent {}
+export class ToggleComponent {}
