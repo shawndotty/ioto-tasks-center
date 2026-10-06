@@ -177,6 +177,14 @@ interface CommandRegistryLike {
 	commands?: Record<string, unknown>;
 }
 
+/**
+ * 工具栏按钮 `click` 回调拿到的指针上下文（[[Discuss-20261007-062838]] §三.②）。
+ * `shiftKey` 只在**真实指针**按下时为真，键盘激活合成的 click 恒为 false。
+ */
+interface ToolbarButtonClickContext {
+	shiftKey: boolean;
+}
+
 /** IOTOTask 视图供「条目控制」桥接读写当前编辑卡片的宿主（见 item-control-bridge.ts）。 */
 export interface ItemControlBridgeHost {
 	/** 视图打开的任务文件（必须是真 `TFile`，满足 ioto-settings 的 `instanceof` 判据） */
@@ -495,10 +503,10 @@ export class IOTOTaskView extends TextFileView {
 			cls: 'ioto-task-view__action',
 			icon: 'plus',
 			label: t('view.iotoTaskView.toolbar.addTask'),
-			title: t('view.iotoTaskView.toolbar.addTaskTooltip'),
+			title: this.addTaskTooltip(),
 			attr: { 'data-action': 'add-task' },
-			onClick: () => {
-				this.triggerAddTask();
+			onClick: (context) => {
+				this.triggerAddTask(context);
 			},
 		});
 
@@ -570,7 +578,7 @@ export class IOTOTaskView extends TextFileView {
 			label: string;
 			title: string;
 			attr: Record<string, string>;
-			onClick: () => void;
+			onClick: (context: ToolbarButtonClickContext) => void;
 		},
 	): HTMLButtonElement {
 		const btn = parentEl.createEl('button', {
@@ -590,9 +598,21 @@ export class IOTOTaskView extends TextFileView {
 			cls: 'ioto-task-view__toolbar-label',
 			text: options.label,
 		});
+		/**
+		 * 真实指针按下时采样一次 Shift（[[Discuss-20261007-062838]] §三.②）：
+		 * 按钮被聚焦后 Shift+Enter / Shift+Space 也会激活它，合成的 `click` 同样带
+		 * `shiftKey === true` —— 但不会先派发 `pointerdown`，以此只认真实指针。
+		 */
+		let pressedShift = false;
+		btn.addEventListener('pointerdown', (event) => {
+			pressedShift = event.shiftKey;
+		});
 		btn.addEventListener('click', (event) => {
 			event.preventDefault();
-			options.onClick();
+			// `detail > 0` 为兜底：键盘合成的 click 恒为 0（同 §三.② 备选判据）。
+			const shiftKey = pressedShift && event.detail > 0;
+			pressedShift = false;
+			options.onClick({ shiftKey });
 		});
 		return btn;
 	}
@@ -648,6 +668,8 @@ export class IOTOTaskView extends TextFileView {
 		this.toggleRecentEl?.setAttribute('title', this.recentTaskTitle());
 		// 只读态隐藏「添加任务」：插入后进不了编辑只会剩 Notice（§5.4）。
 		this.addTaskEl?.toggleClass('is-hidden', !this.supportsInlineEdit());
+		// 模板 hint 随「可用模板」显隐（每次刷新重取，避免设置改完 tooltip 滞后）。
+		this.addTaskEl?.setAttribute('title', this.addTaskTooltip());
 	}
 
 	/** ③ 按钮 tooltip：内插当前阈值（设置变更后由 `refreshToolbarState` 重取）。 */
@@ -655,6 +677,31 @@ export class IOTOTaskView extends TextFileView {
 		return t('view.iotoTaskView.toolbar.toggleRecentTooltip', [
 			String(this.recentTaskCountProvider()),
 		]);
+	}
+
+	/**
+	 * 「添加」按钮 tooltip：只在**当前笔记有可用条目模板**时才拼上 Shift+点击的提示
+	 * （[[Discuss-20261007-062838]] §三.①）——没说出来 ≈ 不存在；没模板时不教这个手势，
+	 * 免得用户按了 Shift 只看到一条「未配置模板」的 Notice 以为是没按到。
+	 */
+	private addTaskTooltip(): string {
+		const base = t('view.iotoTaskView.toolbar.addTaskTooltip');
+		if (!this.hasAvailableEntryTemplate()) {
+			return base;
+		}
+		return `${base}${t('view.iotoTaskView.toolbar.addTaskTemplateHint')}`;
+	}
+
+	/** 当前笔记是否有可用条目模板：与 `insertEntryTemplate()` 的项目过滤同口径。 */
+	private hasAvailableEntryTemplate(): boolean {
+		const config = this.entryTemplateProvider();
+		if (!config.enabled || config.templates.length === 0) {
+			return false;
+		}
+		const currentProject = this.resolveCurrentProjectNames()[0] ?? '';
+		return config.templates.some((template) =>
+			isTemplateAvailableForProject(template, currentProject),
+		);
 	}
 
 	/* ------------------------------------------------------------------ *
@@ -945,6 +992,14 @@ export class IOTOTaskView extends TextFileView {
 		if (this.filters.recentOnly) {
 			this.renderNote(this.data);
 		}
+	}
+
+	/**
+	 * 条目模板设置变更后由 `main.ts` 调用：重刷工具栏，只为更新「添加」按钮 tooltip 里的
+	 * 模板 hint（[[Discuss-20261007-062838]] §三.①）。不改 DOM 结构、不重绘列表。
+	 */
+	applyEntryTemplate(): void {
+		this.refreshToolbarState();
 	}
 
 	private async reloadFromVault(): Promise<void> {
@@ -2806,8 +2861,16 @@ export class IOTOTaskView extends TextFileView {
 		void this.toggleTask(line, cardEl);
 	}
 
-	/** 命令面板 / 快捷键入口：仅转发到 `addTask`，不复制逻辑。 */
-	triggerAddTask(): void {
+	/**
+	 * 命令面板 / 快捷键入口：仅转发到 `addTask`，不复制逻辑。
+	 * 工具栏 Shift+点击转调 `insertEntryTemplate()`
+	 * （[[Discuss-20261007-062838]] §六：`context` 缺省即普通添加）。
+	 */
+	triggerAddTask(context?: ToolbarButtonClickContext): void {
+		if (context?.shiftKey) {
+			void this.insertEntryTemplate();
+			return;
+		}
 		void this.addTask();
 	}
 

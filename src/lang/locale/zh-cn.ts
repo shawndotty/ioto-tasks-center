@@ -553,6 +553,7 @@ const zhCN = {
 	'view.iotoTaskView.toolbar.runTaskTooltip': '执行任务（交由 IOTO Settings）',
 	'view.iotoTaskView.toolbar.addTask': '添加',
 	'view.iotoTaskView.toolbar.addTaskTooltip': '在任务区添加一条任务',
+	'view.iotoTaskView.toolbar.addTaskTemplateHint': '（Shift+点击：用模板插入）',
 	'view.iotoTaskView.toolbar.toggleRecent': '最近任务',
 	'view.iotoTaskView.toolbar.toggleRecentTooltip': '只显示最近 {0} 个任务',
 	'view.iotoTaskView.empty.allDone': '所有任务已完成',

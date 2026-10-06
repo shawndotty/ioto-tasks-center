@@ -1290,6 +1290,7 @@ export default class IOTOTasksCenter extends Plugin {
 			if (view instanceof IOTOTaskView) {
 				view.applyAppearanceStyle();
 				view.applyRecentTaskCount();
+				view.applyEntryTemplate();
 			}
 		}
 	}

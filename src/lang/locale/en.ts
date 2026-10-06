@@ -602,6 +602,8 @@ const en = {
 	'view.iotoTaskView.toolbar.runTaskTooltip': 'Run tasks via IOTO Settings',
 	'view.iotoTaskView.toolbar.addTask': 'Add',
 	'view.iotoTaskView.toolbar.addTaskTooltip': 'Add a task to this note',
+	'view.iotoTaskView.toolbar.addTaskTemplateHint':
+		' (Shift+click: insert from template)',
 	'view.iotoTaskView.toolbar.toggleRecent': 'Recent',
 	'view.iotoTaskView.toolbar.toggleRecentTooltip': 'Show the last {0} tasks',
 	'view.iotoTaskView.empty.allDone': 'All tasks completed',
