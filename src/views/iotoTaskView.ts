@@ -2904,14 +2904,21 @@ export class IOTOTaskView extends TextFileView {
 		return this.file !== null && this.supportsInlineEdit();
 	}
 
-	/** 当前笔记 frontmatter 的 `Project` 值（取第一个为当前项目名）。 */
+	/**
+	 * 当前笔记 frontmatter 的 `Project` 值（取第一个为当前项目名）。
+	 * `this.data` 在 `setViewData` 之前仍是 `null`，而 `onOpen` 建工具栏时就会经
+	 * `hasAvailableEntryTemplate()` 走到这里 —— 若直接解引用会抛错、把 `buildToolbar()`
+	 * 打断在「添加」按钮之前，待 `setViewData` 再建一次就成了「两排 toolbar」
+	 * （[[Report-20261007-070144]]）。故先兜底成空串。
+	 */
 	private resolveCurrentProjectNames(): string[] {
-		return extractListPropertyValuesFromContent(this.data, 'Project');
+		return extractListPropertyValuesFromContent(this.data ?? '', 'Project');
 	}
 
 	private resolveCurrentSubject(): string {
 		return (
-			extractListPropertyValuesFromContent(this.data, 'Subject')[0] ?? ''
+			extractListPropertyValuesFromContent(this.data ?? '', 'Subject')[0] ??
+			''
 		);
 	}
 
