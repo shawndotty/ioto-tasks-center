@@ -16,6 +16,9 @@ const { MarkdownView } = await jiti.import('./stubs/obsidian.mjs');
 const {
 	ITEM_CONTROL_COMMAND_ID,
 	TASK_OUTLINK_COMMAND_ID,
+	RUN_TASK_COMMAND_ID,
+	RUN_TASK_DRY_RUN_COMMAND_ID,
+	RUN_TASK_CHECKLIST_COMMAND_ID,
 	IOTO_TASK_VIEW_TYPE,
 	resolveBridgedCommand,
 	shouldBridgeInTaskView,
@@ -61,6 +64,12 @@ test('resolveBridgedCommand：两条桥接命令各归一类', () => {
 	assert.equal(resolveBridgedCommand(TASK_OUTLINK_COMMAND_ID), 'task-outlink');
 });
 
+test('resolveBridgedCommand：执行任务三命令同归 run-task 族', () => {
+	assert.equal(resolveBridgedCommand(RUN_TASK_COMMAND_ID), 'run-task');
+	assert.equal(resolveBridgedCommand(RUN_TASK_DRY_RUN_COMMAND_ID), 'run-task');
+	assert.equal(resolveBridgedCommand(RUN_TASK_CHECKLIST_COMMAND_ID), 'run-task');
+});
+
 test('resolveBridgedCommand：其它命令 / 无 id → null（原样透传）', () => {
 	assert.equal(resolveBridgedCommand('other:cmd'), null);
 	assert.equal(resolveBridgedCommand(undefined), null);
@@ -88,6 +97,15 @@ test('命令 id / 视图类型标识与 ioto-settings 及本插件口径一致',
 	assert.equal(
 		TASK_OUTLINK_COMMAND_ID,
 		'ioto-settings:ioto-insert-outgoing-link',
+	);
+	assert.equal(RUN_TASK_COMMAND_ID, 'ioto-settings:ioto-run-task');
+	assert.equal(
+		RUN_TASK_DRY_RUN_COMMAND_ID,
+		'ioto-settings:ioto-run-task-dry-run',
+	);
+	assert.equal(
+		RUN_TASK_CHECKLIST_COMMAND_ID,
+		'ioto-settings:ioto-run-task-checklist',
 	);
 	assert.equal(IOTO_TASK_VIEW_TYPE, 'IOTOTask');
 });
@@ -300,4 +318,117 @@ test('installItemControlBridge：卸载后 executeCommand 复原，再派发不�
 	);
 	assert.equal(calls.original, 1);
 	assert.deepEqual(calls.seen[0], { real: MarkdownView }); // 未安装 shim
+});
+
+/* ------------------------------------------------------------------ *
+ * installItemControlBridge — 「执行任务」族：派发前 flush
+ * （[[Discuss-20261006-150839]] §三）
+ * ------------------------------------------------------------------ */
+
+/**
+ * 构造带「落盘原语」的 IOTOTask 活动视图桩。`events` 记录 flush 与 original 的
+ * 相对顺序，用于断言「flush 完成 → 才派发」；`seen` 记录派发期间
+ * `getActiveViewOfType(MarkdownView)` 的返回值，用于断言是否装了假视图 shim。
+ * `flush` 可注入（返回值 / 抛错）。
+ */
+function makeRunTaskApp(options = {}) {
+	const events = [];
+	const seen = [];
+	const flush = options.flush ?? (() => {
+		events.push('flush');
+		return Promise.resolve();
+	});
+	const workspace = {
+		activeLeaf: {
+			view: options.view ?? {
+				getViewType: () => IOTO_TASK_VIEW_TYPE,
+				flushInlineEdits: flush,
+			},
+		},
+		getActiveViewOfType: (type) => ({ real: type }),
+	};
+	const commands = {
+		executeCommand(command, evt) {
+			events.push('original');
+			seen.push(workspace.getActiveViewOfType(MarkdownView));
+			return { command, evt };
+		},
+	};
+	return { app: { commands, workspace }, commands, workspace, events, seen };
+}
+
+test('installItemControlBridge：run-task → 先 flush 再派发（严格顺序）', async () => {
+	const { app, commands, events } = makeRunTaskApp();
+	const uninstall = installItemControlBridge(app);
+
+	await commands.executeCommand({ id: RUN_TASK_COMMAND_ID });
+
+	assert.deepEqual(events, ['flush', 'original']);
+	uninstall();
+});
+
+test('installItemControlBridge：run-task 三命令都会触发 flush', async () => {
+	for (const id of [
+		RUN_TASK_COMMAND_ID,
+		RUN_TASK_DRY_RUN_COMMAND_ID,
+		RUN_TASK_CHECKLIST_COMMAND_ID,
+	]) {
+		const { app, commands, events } = makeRunTaskApp();
+		const uninstall = installItemControlBridge(app);
+		await commands.executeCommand({ id });
+		assert.deepEqual(events, ['flush', 'original'], id);
+		uninstall();
+	}
+});
+
+test('installItemControlBridge：run-task 在非 IOTOTask 视图 → 原样透传、不 flush', async () => {
+	const { app, commands, events } = makeRunTaskApp({
+		view: { getViewType: () => 'markdown' },
+	});
+	const uninstall = installItemControlBridge(app);
+
+	const result = await commands.executeCommand({ id: RUN_TASK_COMMAND_ID });
+
+	assert.deepEqual(events, ['original']);
+	assert.deepEqual(result, { command: { id: RUN_TASK_COMMAND_ID }, evt: undefined });
+	uninstall();
+});
+
+test('installItemControlBridge：run-task 视图缺 flushInlineEdits → 原样透传', async () => {
+	const { app, commands, events } = makeRunTaskApp({
+		view: { getViewType: () => IOTO_TASK_VIEW_TYPE },
+	});
+	const uninstall = installItemControlBridge(app);
+
+	await commands.executeCommand({ id: RUN_TASK_COMMAND_ID });
+
+	assert.deepEqual(events, ['original']);
+	uninstall();
+});
+
+test('installItemControlBridge：flush 抛错 → 吞掉异常后照常派发（不阻塞执行）', async () => {
+	const { app, commands, events } = makeRunTaskApp({
+		flush: () => {
+			events.push('flush');
+			return Promise.reject(new Error('write failed'));
+		},
+	});
+	const uninstall = installItemControlBridge(app);
+
+	await commands.executeCommand({ id: RUN_TASK_COMMAND_ID });
+
+	assert.deepEqual(events, ['flush', 'original']);
+	uninstall();
+});
+
+test('installItemControlBridge：run-task 不安装 MarkdownView shim', async () => {
+	const { app, commands, seen } = makeRunTaskApp();
+	const uninstall = installItemControlBridge(app);
+
+	await commands.executeCommand({ id: RUN_TASK_COMMAND_ID });
+
+	// 派发瞬间未被 shim 改写：仍是真实实现（flush 不依赖假视图）。
+	assert.equal(seen.length, 1);
+	assert.deepEqual(seen[0], { real: MarkdownView });
+	uninstall();
 });

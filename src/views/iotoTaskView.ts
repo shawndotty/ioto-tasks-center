@@ -2602,9 +2602,26 @@ export class IOTOTaskView extends TextFileView {
 	 * 批次 E — ③「执行任务」：派发 ioto-settings 命令（粒度交给对方）
 	 * ------------------------------------------------------------------ */
 
-	private async runTask(): Promise<void> {
-		// executeCommandById 同步派发，对方 resolveRunGate 会立刻读盘 → 先落盘。
+	/**
+	 * 视图级「编辑落盘」原语：把**标题**与**续写**两个编辑器都提交到磁盘。
+	 *
+	 * 供「执行任务」命令族在派发**前**调用（`item-control-bridge` 拦截层），
+	 * 因为 `ioto-settings` 的 `saveActiveNote` 只认 `MarkdownView`、会跳过
+	 * IOTOTask（`TextFileView`），若不落盘，Agent 的 `vault.read` 读到的是旧正文
+	 * （[[Discuss-20261006-150839]] §一）。
+	 *
+	 * 两个 `commit*` 在无编辑态时各自短路（幂等），故可无条件调用：
+	 * 无待写内容 → 不写盘、不加延迟（§四 Q3 默认「直通」）。
+	 */
+	async flushInlineEdits(): Promise<void> {
 		await this.commitEdit();
+		await this.commitContinuationEdit();
+	}
+
+	private async runTask(): Promise<void> {
+		// 先落盘（标题 + 续写），再派发：`executeCommandById` 内部走被包装的
+		// `executeCommand`，对方 `resolveRunGate` 会立刻读盘。
+		await this.flushInlineEdits();
 
 		const registry = (this.app as App & { commands?: CommandRegistryLike })
 			.commands;

@@ -1,11 +1,20 @@
 /**
- * 卡片动作区「命令族」桥接（[[Plan-20261003-105625]]、[[Plan-20261005-233822]]）。
+ * 卡片动作区「命令族」桥接（[[Plan-20261003-105625]]、[[Plan-20261005-233822]]、
+ * [[Discuss-20261006-150839]]）。
  *
  * 目标：在 IOTOTask 视图**卡片内联编辑态**下，让卡片动作区派发的两条 `ioto-settings`
  * 命令可用，并复用其原生弹窗，不改动 `ioto-settings`：
  *   - 「条目控制」（`ioto-settings:ioto-edit-item-controls`）：需要假视图 + 桥接编辑器；
  *   - 「插入出链」（`ioto-settings:ioto-insert-outgoing-link`）：命令本身就能跑通，
  *     桥接只负责**派发后的弹窗锚定**（与条目控制同源几何，见 `fit-anchored-popup.ts`）。
+ *
+ * 另有一类「同族命令」不弹窗，只需**派发前落盘**：
+ *   - 「执行任务」命令族（`ioto-run-task` / `-dry-run` / `-checklist`）：其对端
+ *     `saveActiveNote` 只认 `MarkdownView`，IOTOTask（`TextFileView`）会被 early
+ *     return → 编辑态里刚输入、尚未节流落盘的内容不会进 Agent 的 `vault.read`
+ *     （[[Discuss-20261006-150839]] §一）。故拦截层先 `flushInlineEdits()` 把标题
+ *     + 续写两个编辑器提交落盘，**再**派发命令——与工具栏「执行」按钮既有先例
+ *     同源（`iotoTaskView.runTask()`），本层把它前移到热键 / 命令面板这条路。
  *
  * 条目控制为什么需要桥接（Research §二）：该命令入口即
  * `getActiveViewOfType(MarkdownView)`，IOTOTask 是 `TextFileView` 的子类、不是
@@ -51,8 +60,18 @@ export const ITEM_CONTROL_COMMAND_ID = 'ioto-settings:ioto-edit-item-controls';
 /** 卡片动作区「插入出链」命令 id（与 `iotoTaskView.ts:131` 同值）。 */
 export const TASK_OUTLINK_COMMAND_ID = 'ioto-settings:ioto-insert-outgoing-link';
 
-/** 桥接命令族：两个弹窗共用「派发后锚定」，但入口处理不同。 */
-export type BridgedCommandKind = 'item-control' | 'task-outlink';
+/**
+ * 「执行任务」命令族（`ioto-settings: commands-service.ts:180/187/194`）。
+ * 三个命令语义一致（正则 / 干跑 / 清单），共享同一份「执行前落盘」需求，
+ * 故一起纳入桥接（[[Discuss-20261006-150839]] §四 Q2 默认）。
+ */
+export const RUN_TASK_COMMAND_ID = 'ioto-settings:ioto-run-task';
+export const RUN_TASK_DRY_RUN_COMMAND_ID = 'ioto-settings:ioto-run-task-dry-run';
+export const RUN_TASK_CHECKLIST_COMMAND_ID =
+	'ioto-settings:ioto-run-task-checklist';
+
+/** 桥接命令族：两个弹窗共用「派发后锚定」，执行任务族共用「派发前落盘」。 */
+export type BridgedCommandKind = 'item-control' | 'task-outlink' | 'run-task';
 
 /** 纯判据：命令 id → 桥接类别；非桥接命令返回 null。 */
 export function resolveBridgedCommand(id: unknown): BridgedCommandKind | null {
@@ -61,6 +80,13 @@ export function resolveBridgedCommand(id: unknown): BridgedCommandKind | null {
 	}
 	if (id === TASK_OUTLINK_COMMAND_ID) {
 		return 'task-outlink';
+	}
+	if (
+		id === RUN_TASK_COMMAND_ID ||
+		id === RUN_TASK_DRY_RUN_COMMAND_ID ||
+		id === RUN_TASK_CHECKLIST_COMMAND_ID
+	) {
+		return 'run-task';
 	}
 	return null;
 }
@@ -194,6 +220,39 @@ function resolveBridgeHost(app: App): ItemControlBridgeHost | null {
 	}
 }
 
+/** 提供「编辑落盘」原语的活动视图（鸭子类型，不 import 视图类）。 */
+interface FlushableView {
+	getViewType?: () => string;
+	flushInlineEdits?: () => Promise<void>;
+}
+
+/**
+ * 解析活动 IOTOTask 视图的**落盘原语**（`iotoTaskView.flushInlineEdits`）。
+ *
+ * 与 `resolveBridgeHost` 的区别：后者绑定「标题编辑器存活」（`editingLine` /
+ * `editingHandle`），只覆盖标题编辑器；本函数对**任一编辑态**（标题 / 续写）都返回，
+ * 因为 flush 是视图级的、内部两个 `commit*` 各自幂等短路。
+ * 非 IOTOTask 视图 / 缺原语 → `null`（命令原样透传，交回 ioto-settings 自己处理）。
+ */
+function resolveFlushableView(app: App): (() => Promise<void>) | null {
+	try {
+		// eslint-disable-next-line @typescript-eslint/no-deprecated
+		const view = app.workspace.activeLeaf?.view as unknown as
+			| FlushableView
+			| undefined;
+		if (view?.getViewType?.() !== IOTO_TASK_VIEW_TYPE) {
+			return null;
+		}
+		const flush = view.flushInlineEdits;
+		if (typeof flush !== 'function') {
+			return null;
+		}
+		return () => Promise.resolve(flush.call(view));
+	} catch {
+		return null;
+	}
+}
+
 /** `Commands.executeCommand` 的命令形状：判据只取 `id`。 */
 interface CommandLike {
 	id?: string;
@@ -218,6 +277,24 @@ export function installItemControlBridge(app: App): () => void {
 
 	commands.executeCommand = (command: unknown, evt?: unknown): unknown => {
 		const kind = resolveBridgedCommand((command as CommandLike | undefined)?.id);
+
+		if (kind === 'run-task') {
+			// 「执行任务」族：对端 `saveActiveNote` 只认 MarkdownView，IOTOTask 会被
+			// early return → 必须先让视图把未落盘的编辑（标题 + 续写）提交到磁盘，
+			// 再派发，保证 Agent 的 `vault.read` 读到完整内容（[[Discuss-20261006-150839]]）。
+			// 链式 `then` 保证「flush 完成 → 才执行命令」的顺序，而非并行赌时间。
+			const flush = resolveFlushableView(app);
+			if (!flush) {
+				return original(command, evt); // 非 IOTOTask / 无原语：原样透传
+			}
+			return flush()
+				.catch((error) => {
+					// 落盘失败不能连累执行：照 installItemControlBridge 的 catch 口径放行。
+					console.error('[IOTO Task] 执行任务前落盘失败，已跳过直接派发', error);
+				})
+				.then(() => original(command, evt));
+		}
+
 		const host = kind ? resolveBridgeHost(app) : null;
 		if (!kind || !host) {
 			return original(command, evt); // 其余命令 / 其余视图 / 非编辑态：原样透传
