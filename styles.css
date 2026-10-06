@@ -2591,6 +2591,43 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	--list-spacing: 0;
 }
 
+/* 续写区列表「左缩进」与编辑态逐像素对齐（[[Report-20261006-195229]]）。
+   上一轮只统一了字号 / 行高，左缩进仍是两套模型：
+   - 只读态：容器没有 `.markdown-rendered` 类，`<ul>/<ol>` 吃 UA 默认的
+     `padding-inline-start: 40px`，文本起笔在卡片内约 54px；
+   - 编辑态：核心 Live Preview 的「标记列 `--list-indent-editing`（0.75em）+
+     标记自身占宽」，一级文本起笔约 33px，差约 20px。
+   下面把只读列表换成与 LP 同构的模型：
+   - 顶层留出「标记列」`--list-indent-editing`（= 编辑器 `.cm-formatting-list` 的
+     padding），嵌套层再各加一个 `--list-indent`（= 编辑器里一个 tab-size / 制表位）；
+   - `list-style-position: inside` 让标记参与行内流（与 LP 的「标记 + 文本」同序）：
+     首行文本 = 标记列 + 标记宽；换行行落在标记列处，与编辑器一致；
+   - 无序列表把 UA `disc` 自带的宽间隔收窄成 LP 的 “- ” 宽度（实测同为 9.64px），
+     否则文本会被多推右约 8px。
+   实测（[[Test Normal List Under Task List]] + 3 层嵌套探针）：只读态与编辑态的文本
+   起笔逐值相同 —— ul 19.39px、ol 25.23px、嵌套 2/3 层 48.63 / 77.87px。 */
+.ioto-task-view__card-continuation .ioto-task-view__md ul,
+.ioto-task-view__card-continuation .ioto-task-view__md ol {
+	padding-inline-start: var(--list-indent-editing);
+}
+
+.ioto-task-view__card-continuation .ioto-task-view__md ul ul,
+.ioto-task-view__card-continuation .ioto-task-view__md ul ol,
+.ioto-task-view__card-continuation .ioto-task-view__md ol ul,
+.ioto-task-view__card-continuation .ioto-task-view__md ol ol {
+	padding-inline-start: var(--list-indent);
+}
+
+.ioto-task-view__card-continuation .ioto-task-view__md li {
+	list-style-position: inside;
+	margin-inline-start: 0;
+}
+
+.ioto-task-view__card-continuation .ioto-task-view__md ul > li::marker {
+	content: "• ";
+	color: var(--list-marker-color);
+}
+
 .ioto-task-view__card-text {
 	flex: 1 1 0; /* basis 0 → 与勾选框同处第一行，并由 grow 吃满剩余空间（Plan-20261003-191547） */
 	min-width: 0;
