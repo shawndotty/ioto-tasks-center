@@ -514,8 +514,6 @@ const zhTW = {
 	'view.iotoTaskView.toolbar.runTaskTooltip': '執行任務（交由 IOTO Settings）',
 	'view.iotoTaskView.toolbar.addTask': '新增',
 	'view.iotoTaskView.toolbar.addTaskTooltip': '在任務區新增一條任務',
-	'view.iotoTaskView.toolbar.exportImage': '匯出圖片',
-	'view.iotoTaskView.toolbar.exportImageTooltip': '把目前任務檢視匯出為 PNG 圖片',
 	'view.iotoTaskView.toolbar.toggleRecent': '最近任務',
 	'view.iotoTaskView.toolbar.toggleRecentTooltip': '只顯示最近 {0} 個任務',
 	'view.iotoTaskView.empty.allDone': '所有任務已完成',

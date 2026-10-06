@@ -557,9 +557,6 @@ const en = {
 	'view.iotoTaskView.toolbar.runTaskTooltip': 'Run tasks via IOTO Settings',
 	'view.iotoTaskView.toolbar.addTask': 'Add',
 	'view.iotoTaskView.toolbar.addTaskTooltip': 'Add a task to this note',
-	'view.iotoTaskView.toolbar.exportImage': 'Export',
-	'view.iotoTaskView.toolbar.exportImageTooltip':
-		'Export this task view as a PNG image',
 	'view.iotoTaskView.toolbar.toggleRecent': 'Recent',
 	'view.iotoTaskView.toolbar.toggleRecentTooltip': 'Show the last {0} tasks',
 	'view.iotoTaskView.empty.allDone': 'All tasks completed',

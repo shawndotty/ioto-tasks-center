@@ -264,7 +264,6 @@ export class IOTOTaskView extends TextFileView {
 	private toggleRecentEl: HTMLButtonElement | null = null;
 	private runTaskEl: HTMLButtonElement | null = null;
 	private addTaskEl: HTMLButtonElement | null = null;
-	private exportImageEl: HTMLButtonElement | null = null;
 	/** 过滤开关运行态：**每次 renderNote 从 `this.data`（frontmatter）重读**，不持久化。 */
 	private filters: TaskNoteFilters = {
 		onlyTaskBlocks: false,
@@ -457,18 +456,6 @@ export class IOTOTaskView extends TextFileView {
 			attr: { 'data-action': 'add-task' },
 			onClick: () => {
 				this.triggerAddTask();
-			},
-		});
-		// 「导出图片」按钮（[[Plan-20261006-102142]] §2.3）：只导出文件；「复制到剪贴板」
-		// 只给命令、不进工具栏（避免按钮拥挤）。只读视图也可导出，故不随 supportsInlineEdit 隐藏。
-		this.exportImageEl = this.createToolbarButton(rightEl, {
-			cls: 'ioto-task-view__action',
-			icon: 'image-down',
-			label: t('view.iotoTaskView.toolbar.exportImage'),
-			title: t('view.iotoTaskView.toolbar.exportImageTooltip'),
-			attr: { 'data-action': 'export-image' },
-			onClick: () => {
-				void this.exportAsImage();
 			},
 		});
 
