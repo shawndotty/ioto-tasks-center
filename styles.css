@@ -2569,6 +2569,28 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	overflow: visible;
 }
 
+/* 续写区编辑器与只读渲染「同字号 / 同行高」（[[Report-20261006-190640]]）。
+   只读态：`.card-continuation` 取 `--font-ui-small`（13px），行高取
+   `.ioto-task-view__md` 的 `1.6`（列表项 `li` 实测 13px / 20.8px，无额外行距）。
+   编辑态却是**核心 Markdown 编辑器**：`.markdown-source-view { font-size:
+   var(--font-text-size) }`（16px）+ `.markdown-source-view.mod-cm6 .cm-scroller
+   { line-height: var(--line-height-normal) }`（1.5 → 24px），列表行再吃一层
+   `.mod-cm6 .HyperMD-list-line.cm-line { padding: var(--list-spacing) }`
+   （app.css:13236，本机 0.3em → 4.8px×2），一行下来 33.57px，比只读态高出一截。
+   这里把字号 / 行高 / 列表行距一起收敛到只读态，三种状态（普通 / 选中 / 编辑）
+   的字号与行高完全一致。选择器特指度均高于核心那条（0,4,0 > 0,3,0 / 0,2,0 > 0,1,0），
+   不依赖样式表加载顺序。 */
+.ioto-task-view__continuation-editor .markdown-source-view {
+	font-size: var(--font-ui-small);
+}
+
+.ioto-task-view__continuation-editor .markdown-source-view.mod-cm6 .cm-scroller {
+	line-height: 1.6;
+	/* 列表行的上下 padding 来自 `var(--list-spacing)`（em 值，随字号变），
+	   置 0 才能与只读态的无行距列表逐像素对齐。 */
+	--list-spacing: 0;
+}
+
 .ioto-task-view__card-text {
 	flex: 1 1 0; /* basis 0 → 与勾选框同处第一行，并由 grow 吃满剩余空间（Plan-20261003-191547） */
 	min-width: 0;
