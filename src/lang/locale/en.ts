@@ -537,6 +537,8 @@ const en = {
 	'command.openAsIOTOTask': 'Open as IOTO task view',
 	'command.openAsMarkdown': 'Open as Markdown',
 	'command.addTask': 'Add task in IOTO task view',
+	'command.exportTaskViewImage': 'Export task view as image',
+	'command.copyTaskViewImage': 'Copy task view image to clipboard',
 	'menu.openAsIOTOTask': 'Open as IOTO task view',
 	'menu.openAsMarkdown': 'Open as Markdown',
 	'view.iotoTaskView.fallbackTitle': 'Task view',
@@ -555,12 +557,30 @@ const en = {
 	'view.iotoTaskView.toolbar.runTaskTooltip': 'Run tasks via IOTO Settings',
 	'view.iotoTaskView.toolbar.addTask': 'Add',
 	'view.iotoTaskView.toolbar.addTaskTooltip': 'Add a task to this note',
+	'view.iotoTaskView.toolbar.exportImage': 'Export',
+	'view.iotoTaskView.toolbar.exportImageTooltip':
+		'Export this task view as a PNG image',
 	'view.iotoTaskView.toolbar.toggleRecent': 'Recent',
 	'view.iotoTaskView.toolbar.toggleRecentTooltip': 'Show the last {0} tasks',
 	'view.iotoTaskView.empty.allDone': 'All tasks completed',
 	'settings.recentTaskCount.name': 'Recent task count',
 	'settings.recentTaskCount.desc':
 		'Number of top-level tasks kept by "Recent" in Task view (default 3).',
+	'settings.exportImage.section': 'Export as image',
+	'settings.exportImage.widthMode.name': 'Export width',
+	'settings.exportImage.widthMode.desc':
+		'Follow the current view width, or reflow the image to a fixed pixel width.',
+	'settings.exportImage.widthMode.view': 'Follow view width',
+	'settings.exportImage.widthMode.fixed': 'Fixed width',
+	'settings.exportImage.fixedWidth.name': 'Fixed export width (px)',
+	'settings.exportImage.fixedWidth.desc':
+		'Used when the export width is fixed (320–2000).',
+	'settings.exportImage.scale.name': 'Export scale',
+	'settings.exportImage.scale.desc':
+		'Pixel ratio of the exported image (1–4, step 0.5; default 2).',
+	'settings.exportImage.header.name': 'Add header to export',
+	'settings.exportImage.header.desc':
+		'Prepend a header band with the note name and date to the exported image.',
 	'view.iotoTaskView.tasksSectionTitle': 'Tasks',
 	'view.iotoTaskView.badge.depends': 'Depends ×{0}',
 	'view.iotoTaskView.badge.dependsIndex': 'Depends #{0}',
@@ -583,6 +603,21 @@ const en = {
 		'Task text does not support line breaks.',
 	'notice.iotoTaskView.runTaskUnavailable':
 		'The IOTO Settings plugin is not enabled; cannot run tasks.',
+	'notice.exportTaskViewImage.generating': 'Generating image…',
+	'notice.exportTaskViewImage.saved': 'Task view exported to {0}',
+	'notice.exportTaskViewImage.copied': 'Task view image copied to clipboard.',
+	'notice.exportTaskViewImage.copyFailed':
+		'Failed to copy the image to the clipboard.',
+	'notice.exportTaskViewImage.failed':
+		'Failed to export the task view image.',
+	'notice.exportTaskViewImage.partial':
+		'Some embedded content (e.g. iframes or canvas) could not be captured.',
+	'notice.exportTaskViewImage.glassDegraded':
+		'The glass theme was exported on a solid background (frosted glass is flattened).',
+	'notice.exportTaskViewImage.scaleReduced':
+		'Export scale reduced to {0}× to stay under the canvas size limit.',
+	'notice.exportTaskViewImage.heightCapped':
+		'Image height was capped at the canvas size limit; the export may be cut off.',
 	'notice.openAsIOTOTaskNoFile': 'No task file is open.',
 	'notice.openAsIOTOTaskNotTaskNote': 'This file is not a task note.',
 } as const;

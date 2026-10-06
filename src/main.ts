@@ -36,11 +36,16 @@ import {
 	TaskListTimeFilter,
 	TaskSearchEntryMode,
 	TaskViewAppearanceStyle,
+	TaskViewExportOptions,
+	TaskViewExportWidthMode,
 	normalizeConfiguredInputRootPath,
 	normalizeConfiguredOutcomeRootPath,
 	normalizeConfiguredOutputRootPath,
 	normalizeConfiguredTasksRootPath,
 	normalizeEnabledTaskCreationTypes,
+	normalizeExportImageFixedWidth,
+	normalizeExportImageScale,
+	normalizeExportImageWidthMode,
 	normalizeTaskLinkBadgeBackgroundMode,
 	normalizeProjectCategoryOptions,
 	normalizeProjectListGroupMode,
@@ -165,6 +170,7 @@ export default class IOTOTasksCenter extends Plugin {
 					() => this.supportsInlineEdit,
 					() => this.settings.appearanceStyle,
 					() => this.settings.recentTaskCount,
+					() => this.resolveExportOptions(),
 				),
 		);
 
@@ -230,6 +236,44 @@ export default class IOTOTasksCenter extends Plugin {
 
 				if (!checking) {
 					view.triggerAddTask();
+				}
+
+				return true;
+			},
+		});
+		// 导出任务视图为图片（[[Plan-20261006-102142]] §2.4）。两条命令共用同一套门控与
+		// 视图实现，区别只在最后「落盘附件」还是「写系统剪贴板」。
+		this.addCommand({
+			id: 'itc-export-task-view-image',
+			name: t('command.exportTaskViewImage'),
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(
+					IOTOTaskView,
+				);
+				if (!view) {
+					return false;
+				}
+
+				if (!checking) {
+					void view.exportAsImage();
+				}
+
+				return true;
+			},
+		});
+		this.addCommand({
+			id: 'itc-copy-task-view-image',
+			name: t('command.copyTaskViewImage'),
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(
+					IOTOTaskView,
+				);
+				if (!view) {
+					return false;
+				}
+
+				if (!checking) {
+					void view.copyImageToClipboard();
 				}
 
 				return true;
@@ -508,6 +552,18 @@ export default class IOTOTasksCenter extends Plugin {
 		this.settings.recentTaskCount = normalizeRecentTaskCount(
 			this.settings.recentTaskCount,
 		);
+		// 导出图片设置：非数 / 越界一律回落默认（对齐 normalizeRecentTaskCount 的做法）
+		this.settings.exportImageWidthMode = normalizeExportImageWidthMode(
+			this.settings.exportImageWidthMode,
+		);
+		this.settings.exportImageFixedWidth = normalizeExportImageFixedWidth(
+			this.settings.exportImageFixedWidth,
+		);
+		this.settings.exportImageScale = normalizeExportImageScale(
+			this.settings.exportImageScale,
+		);
+		this.settings.exportImageWithHeader =
+			this.settings.exportImageWithHeader === true;
 	}
 
 	async saveSettings() {
@@ -670,6 +726,60 @@ export default class IOTOTasksCenter extends Plugin {
 		this.settings.recentTaskCount = count;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
+	}
+
+	/**
+	 * 组装 Task View 导出图片的运行时设置（供视图构造时注入的 provider 调用）。
+	 * 惰性求值：每次导出都重取，改设置后**无需**即时刷视图（[[Plan-20261006-102142]] §2.5）。
+	 */
+	resolveExportOptions(): TaskViewExportOptions {
+		return {
+			widthMode: this.settings.exportImageWidthMode,
+			fixedWidth: this.settings.exportImageFixedWidth,
+			scale: this.settings.exportImageScale,
+			withHeader: this.settings.exportImageWithHeader,
+		};
+	}
+
+	// 导出设置改动**不**即时刷视图（下一次导出才读 provider），故不带 applySettingsToOpenViews。
+	async updateExportImageWidthMode(
+		mode: TaskViewExportWidthMode,
+	): Promise<void> {
+		if (this.settings.exportImageWidthMode === mode) {
+			return;
+		}
+
+		this.settings.exportImageWidthMode = mode;
+		await this.saveSettings();
+	}
+
+	async updateExportImageFixedWidth(value: unknown): Promise<void> {
+		const width = normalizeExportImageFixedWidth(value);
+		if (this.settings.exportImageFixedWidth === width) {
+			return;
+		}
+
+		this.settings.exportImageFixedWidth = width;
+		await this.saveSettings();
+	}
+
+	async updateExportImageScale(value: unknown): Promise<void> {
+		const scale = normalizeExportImageScale(value);
+		if (this.settings.exportImageScale === scale) {
+			return;
+		}
+
+		this.settings.exportImageScale = scale;
+		await this.saveSettings();
+	}
+
+	async updateExportImageWithHeader(value: boolean): Promise<void> {
+		if (this.settings.exportImageWithHeader === value) {
+			return;
+		}
+
+		this.settings.exportImageWithHeader = value;
+		await this.saveSettings();
 	}
 
 	async updateShowTaskSubtaskCount(show: boolean): Promise<void> {

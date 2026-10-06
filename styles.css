@@ -3658,3 +3658,43 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 	right: auto; /* 撤销核心的水平居中（left 由行内样式给） */
 	margin: 0;
 }
+
+/* ============================================================
+   IOTOTask 视图 · 导出为图片瞬间（[[Plan-20261006-102142]] §2.7 / 三.1）
+   - 导出拍的是 `.ioto-task-view__scroll` 的**离屏克隆**（`src/export.ts`），`is-exporting`
+     挂在那个克隆宿主上（实时视图不再被加类）。克隆上「选中 / 待删除确认」等瞬时态已被
+     直接摘除；这里补的是**无法摘掉**（摘了会串内容）的编辑态焦点框 / 光标，以及过渡与动画。
+   - 该块放在文件末尾：与 `.is-glass/.is-modern/.is-simple` 下的选中/编辑规则同特指度，
+     靠源顺序胜出（只作用于一次性克隆，不影响正常交互）。
+   ============================================================ */
+
+.ioto-task-view.is-exporting .ioto-task-view__card.is-selected,
+.ioto-task-view.is-exporting .ioto-task-view__card.is-editing {
+	outline: none;
+	box-shadow: none;
+}
+
+/* 🔑 导出瞬间禁用过渡 / 动画：卡片带 `transition: background-color 120ms ...`，
+   若不禁用，摘掉 `.is-selected` 后 html-to-image 在同一 tick 内读计算样式，
+   拿到的仍是**过渡起点的旧高亮**（实测 2× 出图里选中卡仍带蓝色底 + 光晕）。
+   禁掉过渡后类变更立即生效，克隆到的是目标态。 */
+.ioto-task-view.is-exporting,
+.ioto-task-view.is-exporting * {
+	transition: none !important;
+	animation: none !important;
+}
+
+.ioto-task-view.is-exporting .ioto-task-view__card.is-selected:focus-visible {
+	outline: none;
+}
+
+/* 编辑态光标：导出的静态图里不该出现闪烁的光标条 */
+.ioto-task-view.is-exporting .ioto-task-view__card-editor .cm-content,
+.ioto-task-view.is-exporting .ioto-task-view__continuation-editor .cm-content {
+	caret-color: transparent;
+}
+
+/* 待删除确认遮罩：只在交互中出现，不入图 */
+.ioto-task-view.is-exporting .ioto-task-view__delete-confirm {
+	display: none;
+}

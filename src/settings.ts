@@ -1,5 +1,9 @@
 import { App, Notice, PluginSettingTab, Setting, TFile } from 'obsidian';
 import { t } from './lang/helpter';
+import {
+	clampExportScale,
+	DEFAULT_EXPORT_SCALE,
+} from './export';
 import IOTOTasksCenter from './main';
 import { DEFAULT_DATE_TASK_DATE_FORMAT } from './tasks-center/date-task-format';
 import {
@@ -75,6 +79,22 @@ export type TaskLinkBadgeBackgroundMode = 'multicolor' | 'monochrome';
  */
 export type TaskViewAppearanceStyle = 'glass' | 'modern' | 'simple' | 'card';
 
+/** 任务视图导出图片的宽度口径：跟随视图宽度（默认）或固定像素。 */
+export type TaskViewExportWidthMode = 'view' | 'fixed';
+
+/** 任务视图导出图片的运行时设置（由 `main.ts` 组装成 provider 交给视图，见 [[Plan-20261006-102142]] §2.3）。 */
+export interface TaskViewExportOptions {
+	widthMode: TaskViewExportWidthMode;
+	fixedWidth: number;
+	scale: number;
+	withHeader: boolean;
+}
+
+/** 固定宽度允许区间（px，[[Plan-20261006-102142]] §2.5）。 */
+export const EXPORT_IMAGE_FIXED_WIDTH_MIN = 320;
+export const EXPORT_IMAGE_FIXED_WIDTH_MAX = 2000;
+export const DEFAULT_EXPORT_IMAGE_FIXED_WIDTH = 900;
+
 export interface IOTOTasksCenterSettings {
 	tasksRootPath: string;
 	inputRootPath: string;
@@ -112,6 +132,14 @@ export interface IOTOTasksCenterSettings {
 	appearanceStyle: TaskViewAppearanceStyle;
 	/** Task View「显示最近任务」保留的顶级任务数。 */
 	recentTaskCount: number;
+	/** Task View 导出图片的宽度口径（`view` 跟随视图 / `fixed` 固定 px）。 */
+	exportImageWidthMode: TaskViewExportWidthMode;
+	/** `exportImageWidthMode === 'fixed'` 时的宽度（px）。 */
+	exportImageFixedWidth: number;
+	/** 导出图片的像素倍率（1–4，步长 0.5）。 */
+	exportImageScale: number;
+	/** 导出图片是否带页眉（文件名 + 日期，默认关闭，[[Plan-20261006-102142]] Q3）。 */
+	exportImageWithHeader: boolean;
 }
 
 export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
@@ -145,6 +173,10 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	useIOTOTaskViewAsDefault: false,
 	appearanceStyle: 'glass',
 	recentTaskCount: 3,
+	exportImageWidthMode: 'view',
+	exportImageFixedWidth: DEFAULT_EXPORT_IMAGE_FIXED_WIDTH,
+	exportImageScale: 2,
+	exportImageWithHeader: false,
 };
 
 export { normalizeEnabledTaskCreationTypes } from './tasks-center/enabled-task-creation-types';
@@ -218,6 +250,49 @@ export function normalizeRecentTaskCount(value: unknown): number {
 
 	const floored = Math.floor(parsed);
 	return floored < 1 ? DEFAULT_SETTINGS.recentTaskCount : floored;
+}
+
+export function isTaskViewExportWidthMode(
+	value: unknown,
+): value is TaskViewExportWidthMode {
+	return value === 'view' || value === 'fixed';
+}
+
+export function getTaskViewExportWidthModeOptions(): Record<
+	TaskViewExportWidthMode,
+	string
+> {
+	return {
+		view: t('settings.exportImage.widthMode.view'),
+		fixed: t('settings.exportImage.widthMode.fixed'),
+	};
+}
+
+export function normalizeExportImageWidthMode(
+	value: unknown,
+): TaskViewExportWidthMode {
+	return isTaskViewExportWidthMode(value) ? value : 'view';
+}
+
+/** 固定宽度归一化：非数 / 越界回落默认，再取整。 */
+export function normalizeExportImageFixedWidth(value: unknown): number {
+	const parsed = typeof value === 'number' ? value : Number(value);
+	if (!Number.isFinite(parsed)) {
+		return DEFAULT_EXPORT_IMAGE_FIXED_WIDTH;
+	}
+	const rounded = Math.round(parsed);
+	if (rounded < EXPORT_IMAGE_FIXED_WIDTH_MIN) {
+		return EXPORT_IMAGE_FIXED_WIDTH_MIN;
+	}
+	if (rounded > EXPORT_IMAGE_FIXED_WIDTH_MAX) {
+		return EXPORT_IMAGE_FIXED_WIDTH_MAX;
+	}
+	return rounded;
+}
+
+/** 导出倍率归一化：委托 `export.ts` 的夹取（非数 / 越界回落默认，按 0.5 步长取整）。 */
+export function normalizeExportImageScale(value: unknown): number {
+	return clampExportScale(value);
 }
 
 export function getTaskListGroupModeOptions(): Record<
@@ -553,6 +628,77 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 						.setValue(String(this.plugin.settings.recentTaskCount))
 						.onChange(async (value) => {
 							await this.plugin.updateRecentTaskCount(value);
+						}),
+				);
+
+			// 「导出图片」小节（[[Plan-20261006-102142]] §2.5）：改这些设置**无需**即时刷视图，
+			// 下一次导出时才读取（provider 惰性求值）。
+			new Setting(containerEl)
+				.setName(t('settings.exportImage.section'))
+				.setHeading();
+
+			new Setting(containerEl)
+				.setName(t('settings.exportImage.widthMode.name'))
+				.setDesc(t('settings.exportImage.widthMode.desc'))
+				.addDropdown((dropdown) => {
+					const options = getTaskViewExportWidthModeOptions();
+					for (const [value, label] of Object.entries(options)) {
+						dropdown.addOption(value, label);
+					}
+
+					dropdown
+						.setValue(this.plugin.settings.exportImageWidthMode)
+						.onChange(async (value) => {
+							if (!isTaskViewExportWidthMode(value)) {
+								return;
+							}
+
+							await this.plugin.updateExportImageWidthMode(
+								value,
+							);
+						});
+				});
+
+			new Setting(containerEl)
+				.setName(t('settings.exportImage.fixedWidth.name'))
+				.setDesc(t('settings.exportImage.fixedWidth.desc'))
+				.addText((text) =>
+					text
+						.setPlaceholder(
+							String(DEFAULT_EXPORT_IMAGE_FIXED_WIDTH),
+						)
+						.setValue(
+							String(this.plugin.settings.exportImageFixedWidth),
+						)
+						.onChange(async (value) => {
+							await this.plugin.updateExportImageFixedWidth(
+								value,
+							);
+						}),
+				);
+
+			new Setting(containerEl)
+				.setName(t('settings.exportImage.scale.name'))
+				.setDesc(t('settings.exportImage.scale.desc'))
+				.addText((text) =>
+					text
+						.setPlaceholder(String(DEFAULT_EXPORT_SCALE))
+						.setValue(String(this.plugin.settings.exportImageScale))
+						.onChange(async (value) => {
+							await this.plugin.updateExportImageScale(value);
+						}),
+				);
+
+			new Setting(containerEl)
+				.setName(t('settings.exportImage.header.name'))
+				.setDesc(t('settings.exportImage.header.desc'))
+				.addToggle((toggle) =>
+					toggle
+						.setValue(this.plugin.settings.exportImageWithHeader)
+						.onChange(async (value) => {
+							await this.plugin.updateExportImageWithHeader(
+								value,
+							);
 						}),
 				);
 

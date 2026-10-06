@@ -38,7 +38,21 @@ import {
 } from 'obsidian';
 
 import { t } from '../lang/helpter';
-import type { TaskViewAppearanceStyle } from '../settings';
+import {
+	buildExportFileName,
+	canvasToBlob,
+	captureTaskViewCanvas,
+	clampExportScale,
+	composeExportHeader,
+	copyCanvasToClipboard,
+	readableTextColor,
+	saveCanvasToVault,
+	resolveExportBackground,
+} from '../export';
+import type {
+	TaskViewAppearanceStyle,
+	TaskViewExportOptions,
+} from '../settings';
 import {
 	readBooleanProperty,
 	readScalarProperty,
@@ -225,6 +239,12 @@ export class IOTOTaskView extends TextFileView {
 	private readonly supportsInlineEdit: () => boolean;
 	private readonly appearanceStyleProvider: () => TaskViewAppearanceStyle;
 	private readonly recentTaskCountProvider: () => number;
+	private readonly exportOptionsProvider: () => TaskViewExportOptions;
+	/**
+	 * 导出重入锁（[[Plan-20261006-102142]] §三.6）：克隆几百张卡 + 内联样式可能耗时数秒，
+	 * 期间禁止重复触发（工具栏连点 / 命令面板重入）。
+	 */
+	private isExporting = false;
 	/**
 	 * 视图级稳定对象：否则弹窗无法复用 / 关闭
 	 * （与 `iotoTasksCenterView` 同一口径，[[Plan-20261004-004408]] §3.2 ④）。
@@ -244,6 +264,7 @@ export class IOTOTaskView extends TextFileView {
 	private toggleRecentEl: HTMLButtonElement | null = null;
 	private runTaskEl: HTMLButtonElement | null = null;
 	private addTaskEl: HTMLButtonElement | null = null;
+	private exportImageEl: HTMLButtonElement | null = null;
 	/** 过滤开关运行态：**每次 renderNote 从 `this.data`（frontmatter）重读**，不持久化。 */
 	private filters: TaskNoteFilters = {
 		onlyTaskBlocks: false,
@@ -256,12 +277,14 @@ export class IOTOTaskView extends TextFileView {
 		supportsInlineEdit: () => boolean,
 		appearanceStyleProvider: () => TaskViewAppearanceStyle,
 		recentTaskCountProvider: () => number,
+		exportOptionsProvider: () => TaskViewExportOptions,
 	) {
 		super(leaf);
 		this.allowNoFile = false;
 		this.supportsInlineEdit = supportsInlineEdit;
 		this.appearanceStyleProvider = appearanceStyleProvider;
 		this.recentTaskCountProvider = recentTaskCountProvider;
+		this.exportOptionsProvider = exportOptionsProvider;
 	}
 
 	getViewType(): string {
@@ -434,6 +457,18 @@ export class IOTOTaskView extends TextFileView {
 			attr: { 'data-action': 'add-task' },
 			onClick: () => {
 				this.triggerAddTask();
+			},
+		});
+		// 「导出图片」按钮（[[Plan-20261006-102142]] §2.3）：只导出文件；「复制到剪贴板」
+		// 只给命令、不进工具栏（避免按钮拥挤）。只读视图也可导出，故不随 supportsInlineEdit 隐藏。
+		this.exportImageEl = this.createToolbarButton(rightEl, {
+			cls: 'ioto-task-view__action',
+			icon: 'image-down',
+			label: t('view.iotoTaskView.toolbar.exportImage'),
+			title: t('view.iotoTaskView.toolbar.exportImageTooltip'),
+			attr: { 'data-action': 'export-image' },
+			onClick: () => {
+				void this.exportAsImage();
 			},
 		});
 
@@ -2569,6 +2604,159 @@ export class IOTOTaskView extends TextFileView {
 		}
 
 		await Promise.resolve(registry.executeCommandById(RUN_TASK_COMMAND_ID));
+	}
+
+	/* ------------------------------------------------------------------ *
+	 * 导出为图片（[[Plan-20261006-102142]]，路线依据 [[Discuss-20261006-101334]]）
+	 * ------------------------------------------------------------------ */
+
+	/** 命令 / 工具栏入口：把当前所见导出为 PNG 附件（按内容全高的长图，写库内附件目录）。 */
+	async exportAsImage(): Promise<void> {
+		const captured = await this.captureForExport();
+		if (!captured) {
+			return;
+		}
+
+		try {
+			const path = await saveCanvasToVault(
+				this.app,
+				captured.canvas,
+				buildExportFileName(captured.baseName, new Date()),
+				{ sourcePath: this.file?.path },
+			);
+			new Notice(t('notice.exportTaskViewImage.saved', [path]));
+		} catch (error) {
+			console.error('[ioto-tasks-center] save exported image failed', error);
+			new Notice(t('notice.exportTaskViewImage.failed'));
+		}
+	}
+
+	/** 命令入口：把当前所见复制到系统剪贴板（恒 PNG）。桌面失败回退 Electron 原生剪贴板。 */
+	async copyImageToClipboard(): Promise<void> {
+		const captured = await this.captureForExport();
+		if (!captured) {
+			return;
+		}
+
+		try {
+			await copyCanvasToClipboard(captured.canvas);
+			new Notice(t('notice.exportTaskViewImage.copied'));
+			return;
+		} catch {
+			// 落到 Electron 回退（桌面）；移动端 / 无权限下同样会失败，最终给 Notice（不静默）。
+		}
+
+		if (await this.copyCanvasViaElectron(captured.canvas)) {
+			new Notice(t('notice.exportTaskViewImage.copied'));
+			return;
+		}
+		new Notice(t('notice.exportTaskViewImage.copyFailed'));
+	}
+
+	/**
+	 * 导出共用链：重入锁 → 生成中 Notice → 解析宽度 / 背景 / 倍率 → 光栅化。
+	 *
+	 * **完全不改实时 DOM**（含滚动位置、选中态、卡片类）：`captureTaskViewCanvas` 拍的是
+	 * 重建后的离屏克隆，瞬时态（选中 / 待删除确认）在克隆上摘除（[[Plan-20261006-102142]] §三.7）。
+	 */
+	private async captureForExport(): Promise<{
+		canvas: HTMLCanvasElement;
+		baseName: string;
+	} | null> {
+		if (this.isExporting) {
+			return null;
+		}
+
+		const scrollEl = this.contentEl.querySelector<HTMLElement>(
+			IOTO_TASK_SCROLL_SELECTOR,
+		);
+		if (!scrollEl || scrollEl.scrollHeight <= 0) {
+			new Notice(t('notice.exportTaskViewImage.failed'));
+			return null;
+		}
+
+		this.isExporting = true;
+		new Notice(t('notice.exportTaskViewImage.generating'));
+		try {
+			const options = this.exportOptionsProvider();
+			const width =
+				options.widthMode === 'fixed'
+					? options.fixedWidth
+					: scrollEl.clientWidth;
+			const backgroundColor = resolveExportBackground(this.contentEl);
+			const desiredScale = clampExportScale(options.scale);
+
+			const result = await captureTaskViewCanvas(scrollEl, {
+				width,
+				desiredScale,
+				backgroundColor,
+			});
+
+			const baseName =
+				this.app.workspace.getActiveFile()?.basename ??
+				this.file?.basename ??
+				this.getDisplayText();
+			const canvas = options.withHeader
+				? composeExportHeader(result.canvas, {
+						title: baseName,
+						at: new Date(),
+						backgroundColor,
+						textColor: readableTextColor(backgroundColor),
+						scale: result.scale,
+					})
+				: result.canvas;
+
+			// 逐条如实提示：降倍率 / 封顶 / 拍不到内容 / 玻璃主题降级（[[Plan-20261006-102142]] §三.5）。
+			if (result.scale < desiredScale) {
+				new Notice(
+					t('notice.exportTaskViewImage.scaleReduced', [
+						String(result.scale),
+					]),
+				);
+			}
+			if (result.heightCapped) {
+				new Notice(t('notice.exportTaskViewImage.heightCapped'));
+			}
+			if (result.partial) {
+				new Notice(t('notice.exportTaskViewImage.partial'));
+			}
+			if (this.appearanceStyleProvider() === 'glass') {
+				new Notice(t('notice.exportTaskViewImage.glassDegraded'));
+			}
+
+			return { canvas, baseName };
+		} catch (error) {
+			console.error('[ioto-tasks-center] capture task view failed', error);
+			new Notice(t('notice.exportTaskViewImage.failed'));
+			return null;
+		} finally {
+			this.isExporting = false;
+		}
+	}
+
+	/** 桌面回退：`navigator.clipboard` 不可用时走 Electron 原生剪贴板；失败返回 false（由调用方提示）。 */
+	private async copyCanvasViaElectron(
+		canvas: HTMLCanvasElement,
+	): Promise<boolean> {
+		try {
+			const blob = await canvasToBlob(canvas, 'image/png');
+			const buffer = await blob.arrayBuffer();
+			// 渲染进程 `require('electron')` 可用（nodeIntegration 开启，见 [[reference_obsidian_renderer_electron_access]]）；
+			// 移动端没有 `require`，故整段包在 try 里。`require` / `Buffer` 由 nodeIntegration 提供，
+			// 不是浏览器全局（本插件 eslint globals 为 browser），这里就地声明。
+			/* eslint-disable no-undef, @typescript-eslint/no-require-imports */
+			const electron = require('electron') as {
+				clipboard: { writeImage: (image: unknown) => void };
+				nativeImage: { createFromBuffer: (data: Buffer) => unknown };
+			};
+			electron.clipboard.writeImage(
+				electron.nativeImage.createFromBuffer(Buffer.from(buffer)),
+			);
+			/* eslint-enable no-undef, @typescript-eslint/no-require-imports */
+			return true;
+		} catch {
+			return false;
+		}
 	}
 }
 
