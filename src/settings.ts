@@ -185,7 +185,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	batchTemplateConfig: { ...DEFAULT_BATCH_TEMPLATE_CONFIG },
 	entryTemplateConfig: { ...DEFAULT_ENTRY_TEMPLATE_CONFIG },
 	taskSearchEntryMode: 'inline',
-	useIOTOTaskViewAsDefault: false,
+	useIOTOTaskViewAsDefault: true,
 	appearanceStyle: 'glass',
 	recentTaskCount: 3,
 	exportImageWidthMode: 'view',
