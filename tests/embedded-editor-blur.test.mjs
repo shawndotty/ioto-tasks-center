@@ -87,6 +87,13 @@ test('OVERLAY_FOCUS_GUARD_SELECTOR：契约覆盖宿主 quickPanel 与卡片动�
 			'.ioto-task-view__card-action-btn',
 		),
 	);
+	// 编辑态内点本卡勾选框要保焦，否则 blur 提交先销毁编辑器（Report-20261007-092357）。
+	// 必须带 `.is-editing` 限定：非编辑态 / 别的卡的勾选框仍走原 blur 语义。
+	assert.ok(
+		OVERLAY_FOCUS_GUARD_SELECTOR.includes(
+			'.ioto-task-view__card.is-editing .ioto-task-view__card-checkbox',
+		),
+	);
 });
 
 test('isOverlayFocusGuardTarget：命中 quickPanel → true', () => {

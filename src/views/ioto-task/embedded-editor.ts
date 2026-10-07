@@ -60,9 +60,15 @@ export const OVERLAY_FOCUS_SELECTOR =
  * 而出链命令读 `activeEditor?.editor`、条目控制走桥接 `getItemControlHost`，
  * 两者都要求编辑态存活（[[Plan-20261005-111411]] §三 步骤 5，坑 A）。并入本守卫
  * 让 mousedown 不移动焦点、click 照常派发。
+ *
+ * 「正在编辑的这张卡」自己的勾选框 `.ioto-task-view__card-checkbox` 同理：它是
+ * `<button>`（可聚焦），点下去会把焦点移出 CM 编辑器 → blur 提交 → 销毁编辑器，
+ * 编辑态先退出、click 才切换状态（[[Report-20261007-092357]] 根因）。并入本守卫
+ * 让编辑态内勾选就地完成。**只在 `.is-editing` 限定下命中**：点别的卡的勾选框时
+ * 仍走原有 blur 提交语义，跨卡行为零变化。
  */
 export const OVERLAY_FOCUS_GUARD_SELECTOR =
-	'.ioto-quick-panel, .ioto-task-view__card-action-btn';
+	'.ioto-quick-panel, .ioto-task-view__card-action-btn, .ioto-task-view__card.is-editing .ioto-task-view__card-checkbox';
 
 /**
  * 纯判断：给定元素，其是否落在 `selector` 内。

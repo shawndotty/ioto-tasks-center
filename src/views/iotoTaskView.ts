@@ -1984,6 +1984,14 @@ export class IOTOTaskView extends TextFileView {
 			return;
 		}
 
+		// ② 开启且该行现已完成：编辑期间这张卡由「编辑中兜底」保持可见，退出编辑
+		// 边界要整树重绘才能真正收走（refreshCard 不重算可见性）（[[Report-20261007-092357]] §5.3）。
+		const committed = splitTaskLine(this.lineAt(line));
+		if (this.filters.onlyPending && committed?.checked.toLowerCase() === 'x') {
+			this.renderNote(this.data);
+			return;
+		}
+
 		// 纯文本提交「行数 / 缩进 / 其它卡片」全都没变，就地刷新单卡即可：
 		// 既不会跳顶，也不会因整树重建吞掉正在进行的第二次点击（[[Plan-20261003-094145]] §5.3）。
 		this.refreshCard(line);
@@ -2739,6 +2747,12 @@ export class IOTOTaskView extends TextFileView {
 			);
 		}
 
+		// 编辑态内勾选：blur 提交若在途，先等它落定再定位，避免两次写盘对同一行
+		// 互相错位（[[Report-20261007-092357]] §5.5）。正常操作下恒为 null，无副作用。
+		if (this.pendingCommit) {
+			await this.pendingCommit;
+		}
+
 		const originalLine = this.lineAt(line);
 		const outcome = await commitTaskLineAction(this.app, file, {
 			line,
@@ -2750,8 +2764,21 @@ export class IOTOTaskView extends TextFileView {
 			this.data = outcome.content;
 			this.lastLoadedText = outcome.content;
 
+			// 编辑态内勾选：写盘后同步快照，等价于 autosaveEdit 的收尾，否则随后的
+			// blur / autosave 提交会拿旧 originalLine 判 conflict → 整树重建冲掉编辑态
+			// （[[Report-20261007-092357]] §2.3-1）。
+			if (this.editingLine === line) {
+				this.editingOriginalLine = this.lineAt(line);
+			}
+
 			// ② 开启时把新完成的任务「就地移除」（不整树重建，避免跳顶）。
-			if (this.filters.onlyPending && nextMarker === 'x') {
+			// 编辑态例外：该卡由「编辑中兜底」保持可见，就地移除等于把编辑器连根拔掉；
+			// 退出编辑时改走 `doCommitEdit` 末尾的 `renderNote` 收尾（§5.3）。
+			if (
+				this.filters.onlyPending &&
+				nextMarker === 'x' &&
+				this.editingLine !== line
+			) {
 				// ⚠️ 落点必须用 pickAdjacentLine 取**真实**相邻行号：② 只动 DOM、
 				// 不动文件行，行号不漂移；`pickLineAfterDelete` 的 −1 假设会让选中
 				// 指向一张不存在的卡（[[Plan-20261004-110845]] §5.2）。
