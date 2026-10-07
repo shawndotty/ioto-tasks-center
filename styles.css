@@ -2256,7 +2256,7 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	display: inline-flex;
 	align-items: center;
 	gap: 5px;
-	padding: 4px 10px;
+	padding: 6px 10px;
 	font-size: var(--font-ui-smaller);
 	line-height: 1.2;
 	color: var(--text-muted);
@@ -2266,6 +2266,7 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	box-shadow: none;
 	cursor: pointer;
 	transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+	height: auto;
 }
 
 .ioto-task-view__toggle:hover,
@@ -3047,6 +3048,7 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	background: var(--ioto-tv-glass-bg);
 	border-color: var(--ioto-tv-glass-border);
 	border-radius: var(--ioto-tv-radius-pill);
+	height: auto;
 }
 
 /* glass 基底 (0,3,0) 会盖掉通用 :hover 的边框，这里用 (0,4,0) 明确补回玻璃面悬浮态。
@@ -3402,6 +3404,7 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	border-color: transparent;
 	border-radius: var(--ioto-tv-radius-pill);
 	transition: background-color var(--ioto-tv-motion), color var(--ioto-tv-motion);
+	height: auto;
 }
 
 .ioto-task-view.is-modern .ioto-task-view__toggle:hover,
@@ -3643,6 +3646,7 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	border-radius: var(--ioto-tv-radius-pill);
 	color: var(--text-muted);
 	transition: background-color var(--ioto-tv-motion), color var(--ioto-tv-motion), border-color var(--ioto-tv-motion);
+	height: auto;
 }
 
 .ioto-task-view.is-simple .ioto-task-view__toggle:hover,
@@ -4067,6 +4071,7 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	border-radius: var(--ioto-tv-radius-row);
 	color: var(--text-muted);
 	transition: background-color var(--ioto-tv-m-motion), color var(--ioto-tv-m-motion), border-color var(--ioto-tv-m-motion);
+	height: auto;
 }
 
 .ioto-task-view.is-morandi .ioto-task-view__toggle:hover,
