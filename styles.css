@@ -2438,6 +2438,7 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	border-radius: var(--ioto-tv-radius);
 	/* 待删除确认遮罩的定位上下文（inset:0 即覆盖整卡，含续行块与动作区）。 */
 	position: relative;
+	overflow-wrap: anywhere;
 }
 
 .ioto-task-view__card[data-task="x"],
