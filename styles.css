@@ -4235,6 +4235,25 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 	--view-top-spacing-markdown: 0;
 }
 
+/* 🔴 5-A：视图根**绝不能是可滚动容器**（[[Research-20261007-224625]]）。
+   核心 `.workspace-leaf-content .view-content`（0,2,0）给的是 `overflow: auto`，本插件靠
+   `overflow: hidden` 压它 —— 但 `hidden` 只是「不显示滚动条」，元素**仍是滚动容器**：
+   进入卡片编辑时核心内嵌 CodeMirror 会 `.focus()`，浏览器会把最近的可滚动祖先（正是本视图根）
+   滚到「能看见光标」的位置，于是**常驻 toolbar（正常流里第一个子元素）被顶进自身裁剪区**，
+   表现为顶栏整条消失 / 只露下半截，且编辑结束后无人把 `scrollTop` 复位
+   （真机复现：编辑前 scrollTop 0、toolbar 全高 48.57px；编辑后 scrollTop 22.9~44.9px、
+   可视高度只剩 25.7px / ~4px）。可滚动余量主要来自玻璃皮肤的 Aurora `::before`
+   （`transform: scale(1.15)` 让四边各溢出 ~7.5%，手机竖屏实测 52px）。
+   解法：改用 `overflow: clip` —— clip **不生成滚动容器**，程序化 / 焦点驱动的滚动一律失效，
+   工具栏永远贴在视图顶；内层 `__scroll`（`overflow-y: auto`）的滚动完全不受影响。
+   前一句 `overflow: hidden` 作旧内核兜底（不支持 clip 时退回原行为）。
+   选择器 (0,2,0)：追平核心的 `auto` 并靠「插件样式表在 app.css 之后」的源序胜出，
+   同时压过 `.ioto-task-view`（0,1,0）与同特异度但在前的 `.ioto-task-view.is-glass`。 */
+.view-content.ioto-task-view {
+	overflow: hidden;
+	overflow: clip;
+}
+
 /* 1-B + 观感补偿：底部预留导航栏空间 + 两侧补回核心的 12px
    选择器特异度 (0,3,0)，与玻璃皮肤的 padding 规则同级、源序在后 → 稳赢。
    --ioto-tv-scroll-pad 仅玻璃皮肤定义（手机 12px / 桌面 20px），其余皮肤回退 8px，
