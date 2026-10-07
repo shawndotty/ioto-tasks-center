@@ -2336,6 +2336,7 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	box-shadow: none;
 	color: var(--text-muted);
 	cursor: pointer;
+	height: auto;
 }
 
 .ioto-task-view__section-toggle:hover {
@@ -3099,6 +3100,7 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	justify-content: center;
 	/* width: 34px; */
 	/* height: 34px; */
+	height: auto;
 	padding: 0;
 	flex: 0 0 auto;
 	border-radius: 10px;
