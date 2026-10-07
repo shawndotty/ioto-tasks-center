@@ -186,6 +186,7 @@ export function renderTaskNote(options: RenderTaskNoteOptions): void {
 	const searchQuery = options.searchQuery ?? '';
 	const sections = parseSections(content);
 	const scrollEl = containerEl.createDiv({ cls: 'ioto-task-view__scroll' });
+	reportScrollToMobileNavbar(options.app, scrollEl);
 	attachTaskNoteLinkDelegates(scrollEl, options.links);
 
 	let roots = getTopLevelSections(sections);
@@ -1087,4 +1088,27 @@ function renderMarkdownChunk(options: {
 		sourcePath,
 		component,
 	);
+}
+
+/** 核心 `app.mobileNavbar` 的鸭子类型面（不在 obsidian.d.ts 公开面）。 */
+interface MobileNavbarLike {
+	onScroll?: (containerEl: Element, scrollTop: number) => void;
+}
+
+/**
+ * 1-A：把内层滚动容器的滚动上报给核心，驱动 `.mobile-navbar` 的「下滑隐藏 / 上滑恢复」。
+ * 核心内部 API（[[Research-20261007-105032]] §四 1-A）→ 存在性判断 + 静默降级：
+ * 桌面或未来核心移除该 API 时，1-B 的底部留白仍是兜底。
+ * 监听随每次 render 新建的 scrollEl 一起丢弃 → 无累积、无泄漏（同 :216 的委托口径）。
+ */
+function reportScrollToMobileNavbar(app: App | undefined, scrollEl: HTMLElement): void {
+	const navbar = (app as unknown as { mobileNavbar?: MobileNavbarLike } | undefined)
+		?.mobileNavbar;
+	if (typeof navbar?.onScroll !== 'function') {
+		return;
+	}
+	const onScroll = navbar.onScroll.bind(navbar);
+	scrollEl.addEventListener('scroll', () => {
+		onScroll(scrollEl, scrollEl.scrollTop);
+	});
 }

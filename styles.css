@@ -4199,6 +4199,42 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 }
 
 /* ============================================================
+   IOTOTask 视图 · 移动端布局修复（[[Research-20261007-105032]] / [[Plan-20261007-111215]]）
+   - 问题二（键盘）：核心把 .view-content 的 padding-bottom 撑成键盘高度 → 内容盒被压成 0。
+     解法 2-A：手机端把 padding 归零，与核心 markdown / backlink / outgoing-link 视图同套路。
+   - 问题一（导航栏）：80px fixed 导航栏不占流、只跟随核心上报的滚动隐藏；本视图用内层
+     滚动容器、从不上报。解法 1-B：给滚动容器预留 --view-bottom-spacing 底部留白（静态兜底）。
+   - 观感补偿：归零后把核心原本提供的 12px 内边距补回工具栏 / 滚动区两侧，保持原观感。
+   - 4-A：卡片内嵌编辑器不吃主视图顶距（[[Research-20261007-113833]] / [[Plan-20261007-115120]]）。
+   ⚠️ 必须写在 glass/modern/simple/morandi 四个皮肤段之后（源顺序赢同特异度规则）。
+   ============================================================ */
+
+/* 2-A：键盘弹出不再撑爆内容盒（实测 __body 0px → 241px）
+   4-A（[[Research-20261007-113833]]）：把核心「给主 Markdown 视图让开悬浮顶栏」的顶距变量
+   在本视图内归零 —— 卡片内嵌编辑器不是主视图，不需要让开头栏。自定义属性可继承：核心规则
+   `.view-content … .cm-scroller { padding-top: var(--view-top-spacing-markdown) }` 在本元素后代
+   求值时取到归零值 → 顶距消失（不参与特异度竞争，核心选择器再长也不怕）。
+   实测：.cm-scroller padding-top 99.71px → 0px，编辑态卡片 177.4px → 79.3px。 */
+.is-phone .ioto-task-view {
+	padding: 0;
+	--view-top-spacing-markdown: 0;
+}
+
+/* 1-B + 观感补偿：底部预留导航栏空间 + 两侧补回核心的 12px
+   选择器特异度 (0,3,0)，与玻璃皮肤的 padding 规则同级、源序在后 → 稳赢。
+   --ioto-tv-scroll-pad 仅玻璃皮肤定义（手机 12px / 桌面 20px），其余皮肤回退 8px，
+   正好等于「核心 12px + 自身内边距」的原始有效值。 */
+.is-phone .ioto-task-view .ioto-task-view__scroll {
+	padding-inline: calc(var(--ioto-tv-scroll-pad, 8px) + 12px);
+	padding-bottom: var(--view-bottom-spacing, 96px);
+}
+
+/* 观感补偿：工具栏两侧同补 12px（工具栏 padding 无皮肤覆写，安全） */
+.is-phone .ioto-task-view__toolbar {
+	padding-inline: calc(var(--ioto-tv-pad-x) + 12px);
+}
+
+/* ============================================================
    IOTOTask 视图 · 导出为图片瞬间（[[Plan-20261006-102142]] §2.7 / 三.1）
    - 导出拍的是 `.ioto-task-view__scroll` 的**离屏克隆**（`src/export.ts`），`is-exporting`
      挂在那个克隆宿主上（实时视图不再被加类）。克隆上「选中 / 待删除确认」等瞬时态已被
