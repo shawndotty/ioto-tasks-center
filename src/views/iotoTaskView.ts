@@ -1759,6 +1759,20 @@ export class IOTOTaskView extends TextFileView {
 	}
 
 	/**
+	 * AI 条目来源开放契约（ioto-settings）：声明「当前选中卡片 = AI 条目来源」。
+	 *
+	 * 鸭子类型实现——不 import `ioto-settings`；只服务移动端 API 通道的
+	 * 「任务条目模式」（桌面走 CLI，不进此路径）。`selectedLine` 是 0-based
+	 * 文件行号，与对端 `resolveCursorItem` 同口径；`this.data` 是 TextFileView
+	 * 内存整篇正文（派发前已 flush，与磁盘一致）。
+	 * 见 [[Plan-20261007-161702]] §五。
+	 */
+	getAITaskItemSource(): { file: TFile; line: number; text: string } | null {
+		if (!this.file || this.selectedLine === null) return null;
+		return { file: this.file, line: this.selectedLine, text: this.data };
+	}
+
+	/**
 	 * 面板确认后的整行写回：复用 `commitTaskLineAction`（原子 + 冲突定位），
 	 * 成功后走 `applyOutcome` 红线同步 `data` / `lastLoadedText`，并同步
 	 * `editingOriginalLine`，避免随后的 blur 提交误判冲突。
