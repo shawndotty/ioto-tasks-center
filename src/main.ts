@@ -179,6 +179,7 @@ export default class IOTOTasksCenter extends Plugin {
 					() => this.settings.recentTaskCount,
 					() => this.resolveExportOptions(),
 					() => this.settings.entryTemplateConfig,
+					() => this.settings.showTaskViewDeleteButtonOnDesktop,
 				),
 		);
 
@@ -620,6 +621,9 @@ export default class IOTOTasksCenter extends Plugin {
 		);
 		this.settings.exportImageWithHeader =
 			this.settings.exportImageWithHeader === true;
+		// Task View 桌面端删除按钮：非 true 一律回落 false（默认关闭）
+		this.settings.showTaskViewDeleteButtonOnDesktop =
+			this.settings.showTaskViewDeleteButtonOnDesktop === true;
 	}
 
 	async saveSettings() {
@@ -780,6 +784,18 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.recentTaskCount = count;
+		await this.saveSettings();
+		this.applySettingsToOpenViews();
+	}
+
+	async updateShowTaskViewDeleteButtonOnDesktop(
+		value: boolean,
+	): Promise<void> {
+		if (this.settings.showTaskViewDeleteButtonOnDesktop === value) {
+			return;
+		}
+
+		this.settings.showTaskViewDeleteButtonOnDesktop = value;
 		await this.saveSettings();
 		this.applySettingsToOpenViews();
 	}
@@ -1291,6 +1307,7 @@ export default class IOTOTasksCenter extends Plugin {
 				view.applyAppearanceStyle();
 				view.applyRecentTaskCount();
 				view.applyEntryTemplate();
+				view.applyDeleteButtonSetting();
 			}
 		}
 	}

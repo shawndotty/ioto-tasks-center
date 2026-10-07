@@ -272,6 +272,8 @@ export class IOTOTaskView extends TextFileView {
 	private readonly exportOptionsProvider: () => TaskViewExportOptions;
 	/** 条目模板配置（只读快照，触发时取一次）。 */
 	private readonly entryTemplateProvider: () => EntryTemplateConfig;
+	/** 桌面端是否显示工具栏「删除」按钮（移动端恒显示，见 `refreshDeleteButtonVisibility`）。 */
+	private readonly deleteButtonOnDesktopProvider: () => boolean;
 	/**
 	 * 导出重入锁（[[Plan-20261006-102142]] §三.6）：克隆几百张卡 + 内联样式可能耗时数秒，
 	 * 期间禁止重复触发（工具栏连点 / 命令面板重入）。
@@ -296,6 +298,8 @@ export class IOTOTaskView extends TextFileView {
 	private toggleRecentEl: HTMLButtonElement | null = null;
 	private runTaskEl: HTMLButtonElement | null = null;
 	private addTaskEl: HTMLButtonElement | null = null;
+	/** 工具栏「删除」入口（[[Plan-20261007-194826]]）：仅在有选中卡且未编辑时可见。 */
+	private deleteTaskEl: HTMLButtonElement | null = null;
 	/**
 	 * 搜索关键词：**瞬态**，不进 `getState` / 不写 frontmatter / 关闭即归零
 	 * （[[Plan-20261006-161121]] §2.3a、§三.3）。
@@ -320,6 +324,7 @@ export class IOTOTaskView extends TextFileView {
 		recentTaskCountProvider: () => number,
 		exportOptionsProvider: () => TaskViewExportOptions,
 		entryTemplateProvider: () => EntryTemplateConfig,
+		deleteButtonOnDesktopProvider: () => boolean,
 	) {
 		super(leaf);
 		this.allowNoFile = false;
@@ -328,6 +333,7 @@ export class IOTOTaskView extends TextFileView {
 		this.recentTaskCountProvider = recentTaskCountProvider;
 		this.exportOptionsProvider = exportOptionsProvider;
 		this.entryTemplateProvider = entryTemplateProvider;
+		this.deleteButtonOnDesktopProvider = deleteButtonOnDesktopProvider;
 	}
 
 	getViewType(): string {
@@ -487,6 +493,19 @@ export class IOTOTaskView extends TextFileView {
 			attr: { 'data-filter': 'recent' },
 			onClick: () => {
 				void this.toggleFilter('recentOnly');
+			},
+		});
+		// 删除按钮建在「执行」之前：`toolbar-right` 右锚（`margin-inline-start:auto`），
+		// 显隐只改右簇左边界，「执行 / 添加」不平移（[[Plan-20261007-194826]] §六.4）。
+		// 初值显隐交给末尾的 `refreshToolbarState()`（建栏时 `selectedLine` 为 null，自动隐藏）。
+		this.deleteTaskEl = this.createToolbarButton(rightEl, {
+			cls: 'ioto-task-view__action',
+			icon: 'trash-2',
+			label: t('view.iotoTaskView.toolbar.deleteTask'),
+			title: t('view.iotoTaskView.toolbar.deleteTaskTooltip'),
+			attr: { 'data-action': 'delete-task' },
+			onClick: () => {
+				this.requestDeleteSelected();
 			},
 		});
 		this.runTaskEl = this.createToolbarButton(rightEl, {
@@ -670,6 +689,55 @@ export class IOTOTaskView extends TextFileView {
 		this.addTaskEl?.toggleClass('is-hidden', !this.supportsInlineEdit());
 		// 模板 hint 随「可用模板」显隐（每次刷新重取，避免设置改完 tooltip 滞后）。
 		this.addTaskEl?.setAttribute('title', this.addTaskTooltip());
+		// 兜底重算删除按钮显隐（建栏 / clear / 设置热切换等整栏刷新点，§4.4 落点 A）。
+		this.refreshDeleteButtonVisibility();
+	}
+
+	/**
+	 * 刷新工具栏「删除」按钮的显隐与 pending 态（[[Plan-20261007-194826]] §4.3）。
+	 *
+	 * 判据三条全真才显示：
+	 *  - 未在**标题**编辑（`editingLine`）：`beginEdit` 结尾会 `applySelection`，编辑态
+	 *    `selectedLine` 仍指向该行，只判 `selectedLine` 会在编辑时冒出删除按钮；
+	 *  - 未在**续行**编辑（`continuationLine`）：续行编辑不置 `editingLine`，同理会误显示；
+	 *  - 有可命中的选中卡（复用 `canToggleSelectedFromScope()` 口径）：否则选中行已被
+	 *    过滤 / 折叠时按钮还在、点了静默失败；
+	 *  - 且 `Platform.isMobile` **或** 桌面端设置已开启（含平板，勿用 CSS `.is-phone`）。
+	 *
+	 * pending 期间加 `is-pending` + `aria-pressed`，向用户传达「再点即删」。
+	 */
+	private refreshDeleteButtonVisibility(): void {
+		const hasSelectedCard =
+			this.selectedLine !== null && this.queryCard(this.selectedLine) !== null;
+		const show =
+			this.editingLine === null &&
+			this.continuationLine === null &&
+			hasSelectedCard &&
+			(Platform.isMobile || this.deleteButtonOnDesktopProvider());
+		this.deleteTaskEl?.toggleClass('is-hidden', !show);
+
+		const pending = this.pendingDeleteLine !== null;
+		this.deleteTaskEl?.toggleClass('is-pending', pending);
+		this.deleteTaskEl?.setAttribute('aria-pressed', pending ? 'true' : 'false');
+	}
+
+	/** 设置热切换：只重算删除按钮显隐，不整栏重刷、不重绘（[[Plan-20261007-194826]] §4.7）。 */
+	applyDeleteButtonSetting(): void {
+		this.refreshDeleteButtonVisibility();
+	}
+
+	/**
+	 * 工具栏「删除」入口：把当前选中行交给既有二次确认链（[[Discuss-20261007-193721]] §三.1）。
+	 *
+	 * 判据保证按钮仅在「有可命中选中卡」时可见，故空选中为不可达的防御出口：
+	 * 静默 return 即可（`enterPendingDelete` 内部还会再用 `queryCard` 兜一次）。
+	 */
+	private requestDeleteSelected(): void {
+		const line = this.selectedLine;
+		if (line === null) {
+			return;
+		}
+		this.requestDelete(line);
 	}
 
 	/** ③ 按钮 tooltip：内插当前阈值（设置变更后由 `refreshToolbarState` 重取）。 */
@@ -824,10 +892,12 @@ export class IOTOTaskView extends TextFileView {
 		const cardEl = this.queryCard(line);
 		if (!cardEl) {
 			this.selectedLine = null;
+			this.refreshDeleteButtonVisibility();
 			return;
 		}
 		cardEl.addClass('is-selected');
 		this.scrollCardIntoView(cardEl);
+		this.refreshDeleteButtonVisibility();
 		// 🔴 不 cardEl.focus()：Obsidian 查找条语义是焦点留在查找框
 	}
 
@@ -1116,6 +1186,8 @@ export class IOTOTaskView extends TextFileView {
 			// `renderNote` 也会被后台 `reloadFromVault` 触发，抢焦点会打断用户输入
 			// （[[Plan-20261003-194909]] §5.1f）。
 			this.syncSelectionClass();
+			// 整树重建后重算删除按钮显隐（落点 A 在 `bodyEl.empty()` 之前、DOM 还是旧的，§4.4 坑 B）。
+			this.refreshDeleteButtonVisibility();
 			// 结果集变化后同步定位按钮可用态（无命中 → 两个按钮 disabled）。
 			this.refreshSearchNavState();
 
@@ -1400,12 +1472,14 @@ export class IOTOTaskView extends TextFileView {
 		if (!cardEl) {
 			// 行号已漂移 / 卡片被折叠：交由后续整树渲染兜底
 			this.selectedLine = null;
+			this.refreshDeleteButtonVisibility();
 			return;
 		}
 
 		cardEl.addClass('is-selected');
 		cardEl.focus({ preventScroll: true });
 		this.scrollCardIntoView(cardEl);
+		this.refreshDeleteButtonVisibility();
 	}
 
 	/**
@@ -1607,6 +1681,8 @@ export class IOTOTaskView extends TextFileView {
 		this.pendingDeleteEl = overlay;
 		cardEl.addClass('is-pending-delete');
 		cardEl.focus({ preventScroll: true });
+		// 同步工具栏删除按钮的 pending 视觉态（§4.5）。
+		this.refreshDeleteButtonVisibility();
 	}
 
 	/**
@@ -1619,6 +1695,9 @@ export class IOTOTaskView extends TextFileView {
 		this.pendingDeleteEl = null;
 		const line = this.pendingDeleteLine;
 		this.pendingDeleteLine = null;
+		// 同步工具栏删除按钮的 pending 视觉态（§4.5）；确认成功后由 `confirmPendingDelete`
+		// 先经此回到非 pending，再走 `deleteSelected`。
+		this.refreshDeleteButtonVisibility();
 		if (line !== null) {
 			const cardEl = this.queryCard(line);
 			cardEl?.removeClass('is-pending-delete');
@@ -2531,6 +2610,9 @@ export class IOTOTaskView extends TextFileView {
 		}
 		// 动作区也按最新 `data` 重建（幂等），覆盖 blur 提交等所有「就地刷单卡」路径。
 		this.refreshCardActions(line);
+		// 标题纯文本提交（`doCommitEdit` 已清 `editingLine`）不走 renderNote，
+		// 必须在此重算删除按钮显隐，否则退出编辑后按钮不回来（§4.4 落点 D / 坑 6）。
+		this.refreshDeleteButtonVisibility();
 	}
 
 	/**
@@ -2717,6 +2799,7 @@ export class IOTOTaskView extends TextFileView {
 
 		// 没有后继编辑目标（删空首行 / 冲突回滚）：原卡已不存在，清掉选中避免悬空态
 		this.selectedLine = null;
+		this.refreshDeleteButtonVisibility();
 	}
 
 	private applyOutcome(outcome: CommitOutcome): void {
@@ -2847,6 +2930,7 @@ export class IOTOTaskView extends TextFileView {
 					this.applySelection(next);
 				} else {
 					this.selectedLine = null;
+					this.refreshDeleteButtonVisibility();
 				}
 			}
 		} else if (outcome.status === 'conflict') {

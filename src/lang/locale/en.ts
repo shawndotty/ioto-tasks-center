@@ -594,6 +594,8 @@ const en = {
 	'view.iotoTaskView.continuationEditHint': 'Click to edit the continuation',
 	'view.iotoTaskView.selectedHint':
 		'Selected: Enter to edit · Del to delete · ↑↓ to move · Cmd+Enter to toggle · Cmd+↑↓ to jump',
+	'view.iotoTaskView.selectedHintMobile':
+		'Selected: Enter to edit · ↑↓ to move · Cmd+Enter to toggle · Delete via the top toolbar',
 	'view.iotoTaskView.toolbar.toggleTaskBlocks': 'Task blocks',
 	'view.iotoTaskView.toolbar.toggleTaskBlocksTooltip':
 		'Show only sections that contain a task list',
@@ -601,6 +603,9 @@ const en = {
 	'view.iotoTaskView.toolbar.togglePendingTooltip': 'Hide completed tasks',
 	'view.iotoTaskView.toolbar.runTask': 'Run',
 	'view.iotoTaskView.toolbar.runTaskTooltip': 'Run tasks via IOTO Settings',
+	'view.iotoTaskView.toolbar.deleteTask': 'Delete',
+	'view.iotoTaskView.toolbar.deleteTaskTooltip':
+		'Delete the selected task (click again to confirm)',
 	'view.iotoTaskView.toolbar.addTask': 'Add',
 	'view.iotoTaskView.toolbar.addTaskTooltip': 'Add a task to this note',
 	'view.iotoTaskView.toolbar.addTaskTemplateHint':
@@ -616,6 +621,10 @@ const en = {
 	'settings.recentTaskCount.name': 'Recent task count',
 	'settings.recentTaskCount.desc':
 		'Number of top-level tasks kept by "Recent" in Task view (default 3).',
+	'settings.showTaskViewDeleteButtonOnDesktop.name':
+		'Show toolbar delete button',
+	'settings.showTaskViewDeleteButtonOnDesktop.desc':
+		'Show the delete button in the Task view toolbar on desktop; always shown on mobile.',
 	'settings.exportImage.section': 'Export as image',
 	'settings.exportImage.widthMode.name': 'Export width',
 	'settings.exportImage.widthMode.desc':

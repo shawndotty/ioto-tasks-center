@@ -14,6 +14,7 @@
 import {
 	Keymap,
 	MarkdownRenderer,
+	Platform,
 	setIcon,
 	type App,
 	type Component,
@@ -597,7 +598,11 @@ function renderChecklistGroup(options: {
 			cls: 'ioto-task-view__card-text',
 			attr: {
 				title: selected
-					? t('view.iotoTaskView.selectedHint')
+					? t(
+							Platform.isMobile
+								? 'view.iotoTaskView.selectedHintMobile'
+								: 'view.iotoTaskView.selectedHint',
+						)
 					: t('view.iotoTaskView.selectCardHint'),
 			},
 		});

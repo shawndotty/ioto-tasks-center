@@ -546,12 +546,15 @@ const zhCN = {
 	'view.iotoTaskView.selectCardHint': '点击选中，再点编辑',
 	'view.iotoTaskView.continuationEditHint': '点击编辑补充说明',
 	'view.iotoTaskView.selectedHint': '已选中：Enter 编辑 · Del 删除 · ↑↓ 切换 · Cmd+Enter 完成 · Cmd+↑↓ 首尾',
+	'view.iotoTaskView.selectedHintMobile': '已选中：Enter 编辑 · ↑↓ 切换 · Cmd+Enter 完成 · 删除见顶部工具栏',
 	'view.iotoTaskView.toolbar.toggleTaskBlocks': '只显示任务',
 	'view.iotoTaskView.toolbar.toggleTaskBlocksTooltip': '只显示包含任务列表的章节',
 	'view.iotoTaskView.toolbar.togglePending': '未完成',
 	'view.iotoTaskView.toolbar.togglePendingTooltip': '隐藏已完成任务',
 	'view.iotoTaskView.toolbar.runTask': '执行',
 	'view.iotoTaskView.toolbar.runTaskTooltip': '执行任务（交由 IOTO Settings）',
+	'view.iotoTaskView.toolbar.deleteTask': '删除',
+	'view.iotoTaskView.toolbar.deleteTaskTooltip': '删除选中的任务（再次点击确认）',
 	'view.iotoTaskView.toolbar.addTask': '添加',
 	'view.iotoTaskView.toolbar.addTaskTooltip': '在任务区添加一条任务',
 	'view.iotoTaskView.toolbar.addTaskTemplateHint': '（Shift+点击：用模板插入）',
@@ -566,6 +569,9 @@ const zhCN = {
 	'settings.recentTaskCount.name': '最近任务数量',
 	'settings.recentTaskCount.desc':
 		'Task View「最近任务」保留的顶级任务数（默认 3）。',
+	'settings.showTaskViewDeleteButtonOnDesktop.name': '显示工具栏删除按钮',
+	'settings.showTaskViewDeleteButtonOnDesktop.desc':
+		'在桌面端 Task View 工具栏显示删除按钮；移动端始终显示。',
 	'settings.exportImage.section': '导出图片',
 	'settings.exportImage.widthMode.name': '导出宽度',
 	'settings.exportImage.widthMode.desc':

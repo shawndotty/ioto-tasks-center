@@ -154,6 +154,8 @@ export interface IOTOTasksCenterSettings {
 	exportImageScale: number;
 	/** 导出图片是否带页眉（文件名 + 日期，默认关闭，[[Plan-20261006-102142]] Q3）。 */
 	exportImageWithHeader: boolean;
+	/** Task View 桌面端是否在工具栏显示「删除」按钮（默认 false；移动端恒显示）。 */
+	showTaskViewDeleteButtonOnDesktop: boolean;
 }
 
 export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
@@ -192,6 +194,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	exportImageFixedWidth: DEFAULT_EXPORT_IMAGE_FIXED_WIDTH,
 	exportImageScale: 2,
 	exportImageWithHeader: false,
+	showTaskViewDeleteButtonOnDesktop: false,
 };
 
 export { normalizeEnabledTaskCreationTypes } from './tasks-center/enabled-task-creation-types';
@@ -645,6 +648,22 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 						.setValue(String(this.plugin.settings.recentTaskCount))
 						.onChange(async (value) => {
 							await this.plugin.updateRecentTaskCount(value);
+						}),
+				);
+
+			new Setting(containerEl)
+				.setName(t('settings.showTaskViewDeleteButtonOnDesktop.name'))
+				.setDesc(t('settings.showTaskViewDeleteButtonOnDesktop.desc'))
+				.addToggle((toggle) =>
+					toggle
+						.setValue(
+							this.plugin.settings
+								.showTaskViewDeleteButtonOnDesktop,
+						)
+						.onChange(async (value) => {
+							await this.plugin.updateShowTaskViewDeleteButtonOnDesktop(
+								value,
+							);
 						}),
 				);
 

@@ -2307,6 +2307,13 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	display: none;
 }
 
+/* 删除按钮「已进入二次确认」态（[[Plan-20261007-194826]] §4.6）：向用户传达「再点即删」。 */
+.ioto-task-view__action.is-pending {
+	color: var(--text-on-accent);
+	background: var(--ioto-tv-accent);
+	border-color: var(--ioto-tv-accent);
+}
+
 .ioto-task-view__section {
 	border: 1px solid var(--ioto-tv-border);
 	border-radius: var(--ioto-tv-radius);
