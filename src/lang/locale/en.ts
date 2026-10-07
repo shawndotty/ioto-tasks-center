@@ -340,11 +340,12 @@ const en = {
 		'When off, opening task notes from Task Center falls back to plain Markdown. The command and context-menu entries are unaffected.',
 	'settings.appearanceStyle.name': 'IOTOTask view appearance',
 	'settings.appearanceStyle.desc':
-		'Choose the visual style of the IOTOTask view: Glass (dark aurora + glassmorphism, default), Modern (borderless layered surfaces with large radii and soft shadows), Simple (white surface + tinted header band + hairline separators + pill buttons), or Card (classic flat cards).',
+		'Choose the visual style of the IOTOTask view: Glass (dark aurora + glassmorphism, default), Modern (borderless layered surfaces with large radii and soft shadows), Simple (white surface + tinted header band + hairline separators + pill buttons), Card (classic flat cards), or Morandi (built-in low-saturation warm palette + generous line height, an accessibility-first look easier on dry eyes / astigmatism).',
 	'settings.appearanceStyle.glass': 'Glass (recommended)',
 	'settings.appearanceStyle.modern': 'Modern',
 	'settings.appearanceStyle.simple': 'Simple',
 	'settings.appearanceStyle.card': 'Card (classic)',
+	'settings.appearanceStyle.morandi': 'Morandi (low-glare)',
 	'settings.heading.subtasks': 'Subtasks',
 	'settings.subtasks.showCount.name': 'Show subtask count',
 	'settings.subtasks.showCount.desc':

@@ -82,8 +82,14 @@ export type TaskLinkBadgeBackgroundMode = 'multicolor' | 'monochrome';
  * - `modern`：现代扁平（无边框分层 + 圆角 + 极浅投影，介于 glass 与 card 之间）
  * - `simple`：简洁（白卡 + 浅灰表头带 + 发丝分隔线 + 药丸按钮，最克制）
  * - `card`：经典扁平卡片（有边框 + 左侧实心强调线，最克制）
+ * - `morandi`：莫兰迪（护眼）（自带低饱和暖色板 + 宽行高 / 大字距 / 无眩光，无障碍优先）
  */
-export type TaskViewAppearanceStyle = 'glass' | 'modern' | 'simple' | 'card';
+export type TaskViewAppearanceStyle =
+	| 'glass'
+	| 'modern'
+	| 'simple'
+	| 'card'
+	| 'morandi';
 
 /** 任务视图导出图片的宽度口径：跟随视图宽度（默认）或固定像素。 */
 export type TaskViewExportWidthMode = 'view' | 'fixed';
@@ -401,6 +407,7 @@ export function getTaskViewAppearanceStyleOptions(): Record<
 		modern: t('settings.appearanceStyle.modern'),
 		simple: t('settings.appearanceStyle.simple'),
 		card: t('settings.appearanceStyle.card'),
+		morandi: t('settings.appearanceStyle.morandi'),
 	};
 }
 
@@ -411,7 +418,8 @@ export function isTaskViewAppearanceStyle(
 		value === 'glass' ||
 		value === 'modern' ||
 		value === 'simple' ||
-		value === 'card'
+		value === 'card' ||
+		value === 'morandi'
 	);
 }
 
