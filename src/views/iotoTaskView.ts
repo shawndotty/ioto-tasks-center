@@ -733,7 +733,9 @@ export class IOTOTaskView extends TextFileView {
 	/**
 	 * 刷新工具栏「删除」按钮的显隐与 pending 态（[[Plan-20261007-194826]] §4.3）。
 	 *
-	 * 判据三条全真才显示：
+	 * 判据全真才显示：
+	 *  - 未在**放大**态（`zoomLine`）：方案 A 下放大 ≡ 单卡编辑面，删除入口整体停用，
+	 *    删除须先「缩小」退出放大（[[Discuss-20261008-173935]] Q3）；
 	 *  - 未在**标题**编辑（`editingLine`）：`beginEdit` 结尾会 `applySelection`，编辑态
 	 *    `selectedLine` 仍指向该行，只判 `selectedLine` 会在编辑时冒出删除按钮；
 	 *  - 未在**续行**编辑（`continuationLine`）：续行编辑不置 `editingLine`，同理会误显示；
@@ -747,6 +749,7 @@ export class IOTOTaskView extends TextFileView {
 		const hasSelectedCard =
 			this.selectedLine !== null && this.queryCard(this.selectedLine) !== null;
 		const show =
+			this.zoomLine === null &&
 			this.editingLine === null &&
 			this.continuationLine === null &&
 			hasSelectedCard &&
@@ -920,6 +923,10 @@ export class IOTOTaskView extends TextFileView {
 	 * 与 `applySelection` 的区别就在这里——后者会 `cardEl.focus()`，会跳出搜索框。
 	 */
 	private highlightMatch(line: number): void {
+		// 方案 A：放大态 = 单卡编辑面，搜索定位不改选中态（避免破坏「放大 ≡ 编辑」）
+		if (this.zoomLine !== null) {
+			return;
+		}
 		this.cancelPendingDelete(false);
 		const prev = this.selectedLine;
 		if (prev !== null && prev !== line) {
@@ -1223,6 +1230,10 @@ export class IOTOTaskView extends TextFileView {
 			// `renderNote` 也会被后台 `reloadFromVault` 触发，抢焦点会打断用户输入
 			// （[[Plan-20261003-194909]] §5.1f）。
 			this.syncSelectionClass();
+			// 放大态跨重绘回填（[[Discuss-20261008-171512]] 方案 A 步骤 1/2）：
+			// `zoomLine` 是内存真源，整树重建后须与选中态同口径回填，否则放大视觉丢失、
+			// 与 `zoomLine` 错位（图标说放大、界面没放大）。
+			this.restoreZoom();
 			// 整树重建后重算删除按钮显隐（落点 A 在 `bodyEl.empty()` 之前、DOM 还是旧的，§4.4 坑 B）。
 			this.refreshDeleteButtonVisibility();
 			// 结果集变化后同步定位按钮可用态（无命中 → 两个按钮 disabled）。
@@ -1301,10 +1312,16 @@ export class IOTOTaskView extends TextFileView {
 	 * 只按 `selectedLine` 回填 `.is-selected`，不抢焦点。
 	 * 过滤 / 折叠后选中卡可能已不在 DOM（[[Plan-20261004-110845]] §5.5）：
 	 * 退化为「第一张可见卡」或 `null`，避免悬空选中。
+	 *
+	 * 方案 A（[[Discuss-20261008-173935]]）：放大态恒为单卡编辑面，`zoomLine` 非空时
+	 * 整体跳过——内部 `selectedLine` 仍保留（AI 条目来源需要），但不再回填可见选中类。
 	 */
 	private syncSelectionClass(): void {
 		const line = this.selectedLine;
 		if (line === null) {
+			return;
+		}
+		if (this.zoomLine !== null) {
 			return;
 		}
 
@@ -1410,6 +1427,9 @@ export class IOTOTaskView extends TextFileView {
 						toggleZoom: (line: number) => {
 							this.toggleZoomCard(line);
 						},
+						focusZoomEditor: (line: number) => {
+							this.focusZoomEditor(line);
+						},
 					}
 				: {}),
 		};
@@ -1423,12 +1443,37 @@ export class IOTOTaskView extends TextFileView {
 		if (this.zoomLine === line) {
 			this.exitZoom();
 		} else {
-			this.enterZoom(line);
+			void this.enterZoom(line);
 		}
 	}
 
-	/** 放大：只加类 / 显隐，一个 DOM 节点都不重建。 */
-	private enterZoom(line: number): void {
+	/**
+	 * 放大（[[Discuss-20261008-173935]] 方案 A）：**放大 ≡ 常驻编辑态**——
+	 * 先把编辑器确保挂到该卡上，再套放大类；放大卡恒为「单卡编辑面」，不再有选中态。
+	 * 编辑器挂不上（不支持内联编辑 / 目标卡缺失 / 挂载降级）则放弃放大，不留半程状态。
+	 */
+	private async enterZoom(line: number): Promise<void> {
+		if (!this.supportsInlineEdit() || !this.queryCard(line)) {
+			return;
+		}
+		// 先置真源：`applySelection` 读到 `zoomLine` 才不会给放大卡补 `.is-selected`
+		this.zoomLine = line;
+		if (this.editingLine !== line || !this.editingHandle) {
+			await this.beginEdit(line);
+		}
+		if (this.editingLine !== line) {
+			// 编辑器挂不上（降级）：宁可退出，也不留「放大但只读」
+			this.zoomLine = null;
+			return;
+		}
+		this.applyZoomDom(line);
+	}
+
+	/**
+	 * 放大态纯 DOM：隐藏其余 Section / 分组 / 卡片，抬高当前卡（不重建、不抢焦点）。
+	 * 单独抽出，供 `enterZoom`（先确保编辑）与重绘回填复用。
+	 */
+	private applyZoomDom(line: number): void {
 		const cardEl = this.queryCard(line);
 		const sectionEl =
 			cardEl?.closest<HTMLElement>('.ioto-task-view__section') ?? null;
@@ -1437,7 +1482,8 @@ export class IOTOTaskView extends TextFileView {
 			return;
 		}
 
-		this.zoomLine = line;
+		// 方案 A：放大期间不出现选中态（清掉可能残留的 `.is-selected`）
+		cardEl.removeClass('is-selected');
 
 		// ① 其他顶层 Section 整体隐藏
 		this.bodyEl
@@ -1475,7 +1521,11 @@ export class IOTOTaskView extends TextFileView {
 		this.syncZoomButton(cardEl);
 	}
 
-	/** 缩小：删净放大类，与 `enterZoom` 对称；幂等。 */
+	/**
+	 * 缩小：删净放大类，与 `enterZoom` 对称；幂等。
+	 * 方案 A（Q5）：退出放大**不动编辑态**——编辑器仍在、卡片保持 `.is-editing`，
+	 * 此后再点空白才走常规「失焦提交 → 回落选中」（回到两段式状态机）。
+	 */
 	private exitZoom(): void {
 		this.zoomLine = null;
 		// 先记住放大卡（清类后 `is-zoomed` 即消失），供按钮翻面还原用。
@@ -1490,6 +1540,36 @@ export class IOTOTaskView extends TextFileView {
 				el.removeClass('is-zoomed');
 			});
 		this.syncZoomButton(zoomedCard);
+	}
+
+	/**
+	 * 整树重建后回填放大态（[[Discuss-20261008-171512]] 方案 A 步骤 1）。
+	 *
+	 * 方案 A（[[Discuss-20261008-173935]]）叠加：放大 **≡** 编辑。`bodyEl.empty()` 已把
+	 * 编辑器 DOM 摘除（`editingHandle` 悬空），故这里先有序回收悬空句柄、再由 `enterZoom`
+	 * 重挂编辑器——否则会出现「`.is-editing` 在、编辑器没了」的空壳。目标卡不存在则
+	 * 兜底退出并一并收口编辑态。
+	 */
+	private restoreZoom(): void {
+		const line = this.zoomLine;
+		if (line === null) {
+			return;
+		}
+		if (!this.queryCard(line)) {
+			// 卡片被删 / 行漂移落空 / 被折叠：宁可不放大，也不放大错卡（Q3）
+			this.zoomLine = null;
+			this.destroyActiveEditor();
+			this.editingLine = null;
+			this.editingOriginalLine = '';
+			return;
+		}
+		// 重绘必然摘除编辑器 DOM：句柄悬空即回收，交由 enterZoom 重挂（保持「放大 ≡ 编辑」）
+		if (this.editingHandle) {
+			this.destroyActiveEditor();
+			this.editingLine = null;
+			this.editingOriginalLine = '';
+		}
+		void this.enterZoom(line);
 	}
 
 	/**
@@ -1676,6 +1756,9 @@ export class IOTOTaskView extends TextFileView {
 	/**
 	 * 增量切选中：**绝不整树重绘**——重绘会让 `scrollTop` 归零，还会吞掉连续按键
 	 * （[[Research-20261003-091331]] §3.1、[[Plan-20261003-094145]] §5.3）。
+	 *
+	 * 方案 A（[[Discuss-20261008-173935]]）：当 `line === zoomLine` 时只更新内部
+	 * `selectedLine`、**不加** `.is-selected`（放大卡恒编辑，选中语义整体停用）。
 	 */
 	private applySelection(line: number): void {
 		// 任何改选中的入口都先撤遮罩（坑 C / Q2）；焦点交给下面的 cardEl.focus
@@ -1694,7 +1777,10 @@ export class IOTOTaskView extends TextFileView {
 			return;
 		}
 
-		cardEl.addClass('is-selected');
+		// 方案 A：放大态恒编辑、不出现选中态——内部 `selectedLine` 保留，但跳过加类
+		if (this.zoomLine !== line) {
+			cardEl.addClass('is-selected');
+		}
 		cardEl.focus({ preventScroll: true });
 		this.scrollCardIntoView(cardEl);
 		this.refreshDeleteButtonVisibility();
@@ -2157,6 +2243,12 @@ export class IOTOTaskView extends TextFileView {
 			return;
 		}
 
+		// 方案 A：放大态只服务放大那张卡。要编辑别的卡（添加任务 / 插入模板 / 拆行等
+		// 会 beginEdit 新行）先退出放大，回到常规两段式状态机，避免「放大错卡」错位。
+		if (this.zoomLine !== null && this.zoomLine !== line) {
+			this.exitZoom();
+		}
+
 		// 切换卡片：先提交上一个（标题编辑器 + 续行编辑器互相排斥）
 		await this.commitEdit();
 		await this.commitContinuationEdit();
@@ -2223,6 +2315,12 @@ export class IOTOTaskView extends TextFileView {
 					}
 					// blur 提交会写同一行的最终值，先撤掉待写的那次（内容相同，属无效写）
 					this.autosave.cancel();
+					// 方案 A：放大卡失焦**只落盘、不退出编辑态**（否则回落选中态）。
+					// 编辑器不销毁、`.is-editing` 保留；焦点由随后的点击处理器交还编辑器。
+					if (this.zoomLine === line) {
+						void this.flushZoomEdit();
+						return;
+					}
 					void this.commitEdit().then(() => {
 						// 提交完成后按需把焦点还原到卡片（点空白的修复路径）
 						this.restoreSelectionFocusAfterBlurCommit(line);
@@ -2334,7 +2432,6 @@ export class IOTOTaskView extends TextFileView {
 		if (nextBody.includes('\n')) {
 			new Notice(t('notice.iotoTaskView.bodyMultilineRejected'));
 			this.editingLine = null;
-			this.exitZoom();
 			await this.reloadFromVault();
 			this.renderNote(this.data);
 			return;
@@ -2346,7 +2443,6 @@ export class IOTOTaskView extends TextFileView {
 			nextBody,
 		});
 		this.editingLine = null;
-		this.exitZoom();
 		this.applyOutcome(outcome);
 
 		if (outcome.status === 'conflict') {
@@ -2367,6 +2463,33 @@ export class IOTOTaskView extends TextFileView {
 		// 纯文本提交「行数 / 缩进 / 其它卡片」全都没变，就地刷新单卡即可：
 		// 既不会跳顶，也不会因整树重建吞掉正在进行的第二次点击（[[Plan-20261003-094145]] §5.3）。
 		this.refreshCard(line);
+	}
+
+	/**
+	 * 放大态失焦 / `Esc` 的落盘（[[Discuss-20261008-173935]] 方案 A Q1/Q4）：
+	 * **只写盘、不退出编辑态**——复用 `autosaveEdit`（不 `destroy`、不 `clear editingLine`、
+	 * 不 `refreshCard`），卡片保持 `.is-editing`，不会回落选中态。幂等：无变更 / 无编辑器时短路。
+	 */
+	private async flushZoomEdit(): Promise<void> {
+		if (this.zoomLine === null) {
+			return;
+		}
+		await this.autosaveEdit();
+	}
+
+	/**
+	 * 放大态点击卡片：把焦点交还内嵌编辑器（方案 A）。
+	 * 编辑器已在则仅 `focus()`；若因整树重绘瞬时缺位，则幂等重挂（`enterZoom`）。
+	 */
+	private focusZoomEditor(line: number): void {
+		if (this.zoomLine !== line) {
+			return;
+		}
+		if (this.editingLine === line && this.editingHandle) {
+			this.editingHandle.focus();
+			return;
+		}
+		void this.enterZoom(line);
 	}
 
 	/* ------------------------------------------------------------------ *
@@ -2889,9 +3012,6 @@ export class IOTOTaskView extends TextFileView {
 		}
 
 		cardEl.removeClass('is-editing');
-		if (this.zoomLine === line) {
-			this.exitZoom();
-		}
 		const textEl = cardEl.querySelector<HTMLElement>(
 			'.ioto-task-view__card-text',
 		);
@@ -2939,6 +3059,15 @@ export class IOTOTaskView extends TextFileView {
 	private onEditorEscape(): void {
 		const line = this.editingLine;
 		if (line === null || this.editingHandle === null) {
+			return;
+		}
+
+		// 方案 A（[[Discuss-20261008-173935]] Q4）：放大态 Esc = **提交文本 + 保持编辑态**，
+		// 不再回落选中态。延后一拍：避免在核心编辑器自己的 keydown 回调里同步动作。
+		if (this.zoomLine === line) {
+			window.setTimeout(() => {
+				void this.flushZoomEdit();
+			}, 0);
 			return;
 		}
 

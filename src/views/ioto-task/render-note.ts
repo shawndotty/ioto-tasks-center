@@ -125,6 +125,12 @@ export interface TaskNoteEditing {
 	 * **缺省 = 按钮不渲染**（只读 / 不支持内联编辑时不显示）。
 	 */
 	toggleZoom?(line: number): void;
+	/**
+	 * 放大态点击卡片：把焦点交还内嵌编辑器（[[Discuss-20261008-173935]] 方案 A）。
+	 * 放大卡点击一律走这里——不走「未选中 → 先选中」两段式，也不回落选中态。
+	 * **缺省 = 放大不可用**（只读 / 不支持内联编辑时不显示放大按钮）。
+	 */
+	focusZoomEditor?(line: number): void;
 }
 
 /** 链接交互回调（由 `IOTOTaskView` 注入；只读态同样生效）。 */
@@ -673,6 +679,12 @@ function renderChecklistGroup(options: {
 				}
 				return;
 			}
+			// 方案 A（[[Discuss-20261008-173935]]）：放大态 = 单卡编辑面。点击卡片空白 /
+			// 正文区一律聚焦内嵌编辑器，不走「未选中 → 先选中」两段式、也不回落选中态。
+			if (editing.zoomLine === item.line) {
+				editing.focusZoomEditor?.(item.line);
+				return;
+			}
 			// 「不支持内联编辑」时保留原 Notice 路径，不进选择态
 			if (!editing.enabled) {
 				editing.beginEdit(item.line);
@@ -709,6 +721,12 @@ function renderChecklistGroup(options: {
 				}
 				// 只有卡片本体真正持有焦点时才响应（点了正文里的其他交互元素时不响应）
 				if (target !== cardEl) {
+					return;
+				}
+				// 方案 A（[[Discuss-20261008-173935]]）：放大态 = 单卡编辑面，卡片级键位
+				// （↑↓ 导航 / Delete 删除 / Tab 缩进 / Shift+Enter 建同级）整体停用；
+				// 编辑器自身键位由内嵌编辑器处理，删除入口须先「缩小」退出放大。
+				if (editing.zoomLine === item.line) {
 					return;
 				}
 
