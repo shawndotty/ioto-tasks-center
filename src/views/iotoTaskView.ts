@@ -1531,24 +1531,24 @@ export class IOTOTaskView extends TextFileView {
 	 * 此后再点空白才走常规「失焦提交 → 回落选中」（回到两段式状态机）。
 	 */
 	private exitZoom(): void {
+		// 先记住放大行号：清类后 `.is-zoomed` 即消失，用行号定位才可靠
+		// （重绘产出的新 DOM 不带放大类，按类找会落空、按钮不翻面 → [[Research-20261008-210807]]）。
+		const line = this.zoomLine;
 		this.zoomLine = null;
-		// 先记住放大卡（清类后 `is-zoomed` 即消失），供按钮翻面还原用。
-		const zoomedCard =
-			this.bodyEl?.querySelector<HTMLElement>(
-				'.ioto-task-view__card.is-zoomed',
-			) ?? null;
 		this.bodyEl
 			?.querySelectorAll<HTMLElement>('.is-zoom-hidden, .is-zoomed')
 			.forEach((el) => {
 				el.removeClass('is-zoom-hidden');
 				el.removeClass('is-zoomed');
 			});
-		this.syncZoomButton(zoomedCard);
+		// 用行号定位放大卡（而非 `.is-zoomed`）：任何时刻都自洽，供按钮翻面与滚入用。
+		const cardEl = line !== null ? this.queryCard(line) : null;
+		this.syncZoomButton(cardEl);
 
 		// 摘类后内容恢复完整高度，但 scrollTop 仍停在放大期被夹取的小值，
 		// 目标卡可能落到视口外 → 复调既有「必要时才滚」的滚入（[[Plan-20261008-181508]]）。
-		if (zoomedCard) {
-			this.scrollCardIntoView(zoomedCard);
+		if (cardEl) {
+			this.scrollCardIntoView(cardEl);
 		}
 	}
 
@@ -3225,6 +3225,16 @@ export class IOTOTaskView extends TextFileView {
 		const file = this.file;
 		if (!file) {
 			return;
+		}
+
+		// 结构性变更要把编辑面挪到「别的行」（新建 / 拆行 / 删空行）时，先在**重绘之前**
+		// 同步退放大：否则 renderNote 的 restoreZoom() 会 fire-and-forget 地 enterZoom(旧行)，
+		// 与下面的 beginEdit(nextEditLine) 抢同一份 editingLine/editingHandle → 双编辑器、
+		// 旧卡残留 .is-editing、放大按钮图标错位。判据 `nextEditLine !== zoomLine` 天然排除
+		// 「放大态内缩进」（nextEditLine === line === zoomLine），保持缩进不退出放大。
+		// 见 [[Research-20261008-210807]] 方案 A 落点 1。
+		if (this.zoomLine !== null && this.zoomLine !== nextEditLine) {
+			this.exitZoom();
 		}
 
 		this.destroyActiveEditor();
