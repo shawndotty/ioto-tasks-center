@@ -330,6 +330,8 @@ export class IOTOTaskView extends TextFileView {
 	private toggleTaskBlocksEl: HTMLButtonElement | null = null;
 	private togglePendingEl: HTMLButtonElement | null = null;
 	private toggleRecentEl: HTMLButtonElement | null = null;
+	/** 工具栏「搜索任务」开关按钮：按下态 = 搜索条已展开。 */
+	private searchToggleEl: HTMLButtonElement | null = null;
 	private runTaskEl: HTMLButtonElement | null = null;
 	private addTaskEl: HTMLButtonElement | null = null;
 	/** 工具栏「删除」入口（[[Plan-20261007-194826]]）：仅在有选中卡且未编辑时可见。 */
@@ -532,6 +534,18 @@ export class IOTOTaskView extends TextFileView {
 				void this.toggleFilter('recentOnly');
 			},
 		});
+		// ④ 搜索任务：左簇第 4 个 toggle，紧挨「最近任务」右侧（[[Plan-20261009-064624]]）。
+		// 复用 __toggle 类：按下态直接用四套主题既有的 [aria-pressed="true"] 样式，零 CSS。
+		this.searchToggleEl = this.createToolbarButton(leftEl, {
+			cls: 'ioto-task-view__toggle',
+			icon: 'search',
+			label: t('view.iotoTaskView.toolbar.toggleSearch'),
+			title: t('view.iotoTaskView.toolbar.toggleSearchTooltip'),
+			attr: { 'data-action': 'toggle-search' },
+			onClick: () => {
+				this.toggleSearch();
+			},
+		});
 		// 删除按钮建在「执行」之前：`toolbar-right` 右锚（`margin-inline-start:auto`），
 		// 显隐只改右簇左边界，「执行 / 添加」不平移（[[Plan-20261007-194826]] §六.4）。
 		// 初值显隐交给末尾的 `refreshToolbarState()`（建栏时 `selectedLine` 为 null，自动隐藏）。
@@ -728,6 +742,8 @@ export class IOTOTaskView extends TextFileView {
 		this.addTaskEl?.setAttribute('title', this.addTaskTooltip());
 		// 兜底重算删除按钮显隐（建栏 / clear / 设置热切换等整栏刷新点，§4.4 落点 A）。
 		this.refreshDeleteButtonVisibility();
+		// 搜索按钮按下态：建栏 / renderNote / 设置热切换等整栏刷新点同步（[[Plan-20261009-064624]]）。
+		this.refreshSearchToggleState();
 	}
 
 	/**
@@ -822,6 +838,7 @@ export class IOTOTaskView extends TextFileView {
 			this.buildToolbar();
 		}
 		this.searchBarEl?.removeClass('is-hidden');
+		this.refreshSearchToggleState();
 		const input = this.searchInputEl;
 		if (!input) {
 			return;
@@ -835,6 +852,31 @@ export class IOTOTaskView extends TextFileView {
 		} else {
 			focus();
 		}
+	}
+
+	/** 搜索条是否处于展开态（唯一的真源 = searchbar 的有无 is-hidden）。 */
+	private isSearchOpen(): boolean {
+		return this.searchBarEl !== null && !this.searchBarEl.hasClass('is-hidden');
+	}
+
+	/**
+	 * 工具栏「搜索任务」按钮：未展开 → 同命令 revealSearch()；已展开 → 同 ×/Esc closeSearch()。
+	 * 复用既有开关语义，不新增第三种状态（[[Plan-20261009-064624]] §四）。
+	 */
+	private toggleSearch(): void {
+		if (this.isSearchOpen()) {
+			this.closeSearch();
+		} else {
+			this.revealSearch();
+		}
+	}
+
+	/** 把搜索条真实显隐回写到按钮按下态（除整栏刷新外的三处显隐变更点调用）。 */
+	private refreshSearchToggleState(): void {
+		this.searchToggleEl?.setAttribute(
+			'aria-pressed',
+			this.isSearchOpen() ? 'true' : 'false',
+		);
 	}
 
 	private onSearchInput(): void {
@@ -870,6 +912,7 @@ export class IOTOTaskView extends TextFileView {
 			this.searchDebounce = null;
 		}
 		this.searchBarEl?.addClass('is-hidden');
+		this.refreshSearchToggleState();
 		if (this.searchQuery !== '' || (this.searchInputEl?.value ?? '') !== '') {
 			this.searchQuery = '';
 			if (this.searchInputEl) {
@@ -966,6 +1009,7 @@ export class IOTOTaskView extends TextFileView {
 			this.searchInputEl.value = '';
 		}
 		this.searchBarEl?.addClass('is-hidden');
+		this.refreshSearchToggleState();
 	}
 
 	/** 从 `this.data`（frontmatter）重读过滤开关；缺失 = 关。 */

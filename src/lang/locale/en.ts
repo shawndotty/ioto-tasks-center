@@ -613,6 +613,8 @@ const en = {
 		' (Shift+click: insert from template)',
 	'view.iotoTaskView.toolbar.toggleRecent': 'Recent',
 	'view.iotoTaskView.toolbar.toggleRecentTooltip': 'Show the last {0} tasks',
+	'view.iotoTaskView.toolbar.toggleSearch': 'Search tasks',
+	'view.iotoTaskView.toolbar.toggleSearchTooltip': 'Search tasks (click again to close)',
 	'view.iotoTaskView.empty.allDone': 'All tasks completed',
 	'view.iotoTaskView.empty.noMatch': 'No matching tasks: {0}',
 	'view.iotoTaskView.search.placeholder': 'Search tasks…',

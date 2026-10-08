@@ -561,6 +561,8 @@ const zhCN = {
 	'view.iotoTaskView.toolbar.addTaskTemplateHint': '（Shift+点击：用模板插入）',
 	'view.iotoTaskView.toolbar.toggleRecent': '最近任务',
 	'view.iotoTaskView.toolbar.toggleRecentTooltip': '只显示最近 {0} 个任务',
+	'view.iotoTaskView.toolbar.toggleSearch': '搜索任务',
+	'view.iotoTaskView.toolbar.toggleSearchTooltip': '搜索任务（再次点击关闭）',
 	'view.iotoTaskView.empty.allDone': '所有任务已完成',
 	'view.iotoTaskView.empty.noMatch': '无匹配任务：{0}',
 	'view.iotoTaskView.search.placeholder': '搜索任务…',

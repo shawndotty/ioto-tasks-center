@@ -562,6 +562,8 @@ const zhTW = {
 	'view.iotoTaskView.toolbar.addTaskTemplateHint': '（Shift+點擊：用範本插入）',
 	'view.iotoTaskView.toolbar.toggleRecent': '最近任務',
 	'view.iotoTaskView.toolbar.toggleRecentTooltip': '只顯示最近 {0} 個任務',
+	'view.iotoTaskView.toolbar.toggleSearch': '搜尋任務',
+	'view.iotoTaskView.toolbar.toggleSearchTooltip': '搜尋任務（再次點擊關閉）',
 	'view.iotoTaskView.empty.allDone': '所有任務已完成',
 	'view.iotoTaskView.empty.noMatch': '無符合任務：{0}',
 	'view.iotoTaskView.search.placeholder': '搜尋任務…',
