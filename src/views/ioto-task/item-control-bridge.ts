@@ -347,19 +347,40 @@ export function installItemControlBridge(app: App): () => void {
 		if (kind === 'external-writeback') {
 			// 写回窗口（[[Research-20261008-105532]] 方案 A）：命令会中途 openLinkText
 			// 抢焦 → 内嵌编辑器将被 blur 销毁 → 事后 replaceSelection 打在死文档上。
-			// 窗口期挂起 blur，命令 Promise settle 后补提交，把回填链接落盘。
+			// 窗口期挂起 blur，命令真正跑完后补提交，把回填链接落盘。
 			const view = resolveExternalWritebackView(app);
 			if (!view || !view.beginExternalEditorWriteback?.()) {
 				return original(command, evt); // 非 IOTOTask / 非编辑态：原样透传
 			}
-			let result: unknown;
+			// ⚠️ 核心 `Commands.executeCommand` 只返回 `boolean`，**丢弃 callback 的
+			// 返回值（Promise）**（[[Research-20261008-124548]] §二.1）。若拿它的返回值
+			// 当释放信号，`Promise.resolve(true)` 在第一个微任务就关窗口——早于模板做任何
+			// 事。故临时包装命令对象的回调，捕获其真实返回值（Promise），用它决定窗口
+			// 关闭时机（核心的 `a5()` 在同步段内调用回调，包装可即刻还原、无并发窗）。
+			const cmd = command as {
+				callback?: (...args: unknown[]) => unknown;
+				checkCallback?: (...args: unknown[]) => unknown;
+			};
+			const slot: 'callback' | 'checkCallback' =
+				typeof cmd.checkCallback === 'function' ? 'checkCallback' : 'callback';
+			const originalCallback = cmd[slot];
+			let pending: unknown;
+			if (typeof originalCallback === 'function') {
+				cmd[slot] = function (this: unknown, ...args: unknown[]): unknown {
+					pending = originalCallback.apply(this, args);
+					return pending;
+				};
+			}
 			try {
-				result = original(command, evt);
+				original(command, evt); // 同步段内触发包装后的回调 → 捕获其 Promise
 			} catch (error) {
+				cmd[slot] = originalCallback; // 立即还原（无并发窗口）
+				// 同步段异常：先释放窗口再上抛，避免编辑态被无限挂起。
 				view.endExternalEditorWriteback?.();
 				throw error;
 			}
-			return Promise.resolve(result).then(
+			cmd[slot] = originalCallback; // 回调已在同步段被调用，立即还原
+			return Promise.resolve(pending).then(
 				(value) => {
 					view.endExternalEditorWriteback?.();
 					return value;

@@ -446,22 +446,30 @@ test('installItemControlBridge：run-task 不安装 MarkdownView shim', async ()
 
 /* ------------------------------------------------------------------ *
  * installItemControlBridge — 「外部写回窗口」族（Templater 模板命令）
- * （[[Plan-20261008-113227]] §5.3 / §七.2）
+ * （[[Plan-20261008-113227]] §5.3 / [[Research-20261008-124548]] §四）
  * ------------------------------------------------------------------ */
 
 /**
- * 构造带「外部写回窗口」原语的 IOTOTask 活动视图桩。`events` 记录
- * begin / original / end 的相对顺序，用于断言「begin → 派发 → settle 后 end」。
- * `beginReturn` 控制 begin 是否进入窗口；`original` 可注入同步抛错 / rejected Promise。
+ * 构造带「外部写回窗口」原语的 IOTOTask 活动视图桩。
+ *
+ * **贴近真实核心契约**（[[Research-20261008-124548]] §二.1、§二.4 反假阳性）：
+ * 核心 `Commands.executeCommand` 只在同步段调用 `command.callback()`（内部 `a5()`）
+ * 后**返回 `boolean`**、**丢弃 callback 的返回值（Promise）**。故桩内 `original`
+ * 负责同步调用命令回调并返回 `true`；`events` 用 `callback` 标记「命令真正跑完」的
+ * 时机，供断言「end 只在 callback settle 之后触发」。
+ *
+ * `beginReturn` 控制 begin 是否进入窗口；`original` 可整体替换（模拟同步抛错）。
  */
 function makeExternalWritebackApp(options = {}) {
 	const events = [];
 	const beginReturn = options.beginReturn ?? true;
 	const originalImpl =
 		options.original ??
-		((command, evt) => {
+		((command) => {
 			events.push('original');
-			return { command, evt };
+			// 核心 a5()：同步调用回调，回调返回值被丢弃（此处桥接层已临时包装它）。
+			command.callback?.();
+			return true; // ★ 只返回 boolean，绝不返回 callback 的 Promise
 		});
 	const view =
 		options.view ??
@@ -487,14 +495,48 @@ function makeExternalWritebackApp(options = {}) {
 
 const TEMPLATER_ID = `${TEMPLATER_COMMAND_PREFIX}0-辅助/x.md`;
 
-test('installItemControlBridge：external-writeback → begin 先于 original，original 先于 end', async () => {
+/** 造带 callback 的 templater 命令对象（真实命令都带 callback，见 Research §二.1）。 */
+function templaterCommand(callback) {
+	return { id: TEMPLATER_ID, callback };
+}
+
+test('installItemControlBridge：external-writeback → begin 先于 original，original/callback 先于 end', async () => {
 	const { app, commands, events } = makeExternalWritebackApp();
 	const uninstall = installItemControlBridge(app);
 
-	const result = await commands.executeCommand({ id: TEMPLATER_ID });
+	await commands.executeCommand(
+		templaterCommand(() => {
+			events.push('callback');
+		}),
+	);
 
-	assert.deepEqual(events, ['begin', 'original', 'end']);
-	assert.deepEqual(result, { command: { id: TEMPLATER_ID }, evt: undefined });
+	assert.deepEqual(events, ['begin', 'original', 'callback', 'end']);
+	uninstall();
+});
+
+test('installItemControlBridge：end 只在命令 callback 的 Promise settle 后触发（核心只给 boolean）', async () => {
+	let releaseCallback;
+	const callbackGate = new Promise((resolve) => {
+		releaseCallback = resolve;
+	});
+	const { app, commands, events } = makeExternalWritebackApp();
+	const uninstall = installItemControlBridge(app);
+
+	const pending = commands.executeCommand(
+		templaterCommand(() => {
+			events.push('callback');
+			return callbackGate; // 挂起，模拟模板的异步工作（建文件 / 抢焦 / 写回）
+		}),
+	);
+
+	// 宏任务时间片后：已同步派发到 callback，但命令未完成 → 窗口必须仍开着（end 未触发）。
+	await new Promise((resolve) => setTimeout(resolve, 20));
+	assert.deepEqual(events, ['begin', 'original', 'callback']);
+	assert.equal(events.includes('end'), false);
+
+	releaseCallback('ok');
+	await pending;
+	assert.deepEqual(events, ['begin', 'original', 'callback', 'end']);
 	uninstall();
 });
 
@@ -504,10 +546,14 @@ test('installItemControlBridge：external-writeback 非 IOTOTask → 原样透�
 	});
 	const uninstall = installItemControlBridge(app);
 
-	const result = await commands.executeCommand({ id: TEMPLATER_ID });
+	const result = await commands.executeCommand(
+		templaterCommand(() => {
+			events.push('callback');
+		}),
+	);
 
-	assert.deepEqual(events, ['original']);
-	assert.deepEqual(result, { command: { id: TEMPLATER_ID }, evt: undefined });
+	assert.deepEqual(events, ['original', 'callback']);
+	assert.equal(result, true);
 	uninstall();
 });
 
@@ -517,9 +563,13 @@ test('installItemControlBridge：external-writeback 视图缺原语 → 原样�
 	});
 	const uninstall = installItemControlBridge(app);
 
-	await commands.executeCommand({ id: TEMPLATER_ID });
+	await commands.executeCommand(
+		templaterCommand(() => {
+			events.push('callback');
+		}),
+	);
 
-	assert.deepEqual(events, ['original']);
+	assert.deepEqual(events, ['original', 'callback']);
 	uninstall();
 });
 
@@ -529,27 +579,43 @@ test('installItemControlBridge：begin 返回 false（非编辑态）→ 不进�
 	});
 	const uninstall = installItemControlBridge(app);
 
-	const result = await commands.executeCommand({ id: TEMPLATER_ID });
+	await commands.executeCommand(
+		templaterCommand(() => {
+			events.push('callback');
+		}),
+	);
 
-	assert.deepEqual(events, ['begin', 'original']);
-	assert.deepEqual(result, { command: { id: TEMPLATER_ID }, evt: undefined });
+	assert.deepEqual(events, ['begin', 'original', 'callback']);
 	uninstall();
 });
 
-test('installItemControlBridge：external-writeback original 返回 rejected Promise → end 仍调用且异常上抛', async () => {
-	const { app, commands, events } = makeExternalWritebackApp({
-		original: () => {
-			events.push('original');
-			return Promise.reject(new Error('template failed'));
-		},
-	});
+test('installItemControlBridge：命令无 callback（同步命令）→ 仍在微任务释放窗口（等价现状）', async () => {
+	const { app, commands, events } = makeExternalWritebackApp();
+	const uninstall = installItemControlBridge(app);
+
+	await commands.executeCommand({ id: TEMPLATER_ID });
+
+	assert.deepEqual(events, ['begin', 'original', 'end']);
+	uninstall();
+});
+
+test('installItemControlBridge：external-writeback 命令回调返回 rejected Promise → end 仍调用且异常上抛', async () => {
+	const { app, commands, events } = makeExternalWritebackApp();
 	const uninstall = installItemControlBridge(app);
 
 	await assert.rejects(
-		() => Promise.resolve(commands.executeCommand({ id: TEMPLATER_ID })),
+		() =>
+			Promise.resolve(
+				commands.executeCommand(
+					templaterCommand(() => {
+						events.push('callback');
+						return Promise.reject(new Error('template failed'));
+					}),
+				),
+			),
 		/template failed/,
 	);
-	assert.deepEqual(events, ['begin', 'original', 'end']); // 窗口不悬挂
+	assert.deepEqual(events, ['begin', 'original', 'callback', 'end']); // 窗口不悬挂
 	uninstall();
 });
 
