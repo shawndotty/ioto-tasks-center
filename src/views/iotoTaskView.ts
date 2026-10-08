@@ -72,6 +72,7 @@ import {
 	isTaskContinuationLine,
 	parentIndentLevelOfTaskLine,
 	parseChecklistItems,
+	parseSections,
 	replaceTaskBody,
 	setTaskIndent,
 	SOFT_BREAK,
@@ -123,6 +124,7 @@ import {
 	prepareSwapTransition,
 } from './ioto-task/list-transition';
 import {
+	getSectionStateKey,
 	renderCardActions,
 	renderTaskNote,
 	type TaskNoteEditing,
@@ -2164,7 +2166,16 @@ export class IOTOTaskView extends TextFileView {
 			return;
 		}
 
-		const cardEl = this.queryCard(line);
+		let cardEl = this.queryCard(line);
+		if (!cardEl) {
+			// 目标卡不在 DOM：多半是其 Section 处于折叠态（`renderSection` 折叠时直接
+			// return，卡片根本不生成）。先展开目标 Section 再重绘一次，否则「添加了却
+			// 看不到 / 进不了编辑」（[[Discuss-20261008-164745]] §四·2 / Q3）。
+			if (this.expandSectionContaining(line)) {
+				this.renderNote(this.data);
+				cardEl = this.queryCard(line);
+			}
+		}
 		if (!cardEl) {
 			return;
 		}
@@ -2247,6 +2258,43 @@ export class IOTOTaskView extends TextFileView {
 		if (typeof caretOffset === 'number') {
 			handle.setCursor(caretOffset);
 		}
+
+		// 方案 A1（[[Discuss-20261008-164745]] §三）：把「滚入目标卡」推迟到下一帧。
+		// `renderNote` 里 `restoreIotoTaskScroll` 会**排一个 rAF**（ioto-task-scroll.ts:133-141），
+		// 下一帧把 `scrollTop` 写回重建前的位置；`applySelection` 的同步滚入会被它覆盖，
+		// 导致新增任务虽获得焦点却重新掉出视口（列表越长越明显）。rAF 回调按注册顺序 FIFO，
+		// 这里注册更晚 → 后跑 → 成为最后一个写 `scrollTop` 的人。`nearest` 只在必要时滚，
+		// 已在视口内的卡零跳动。落在 `beginEdit` 这条共用链上，「添加任务」/`Enter` 拆行/
+		// 条目模板插入三条路径一并修复。`cardEl` 可能因上面的展开重绘而失效，故重新取卡。
+		if (typeof window !== 'undefined' && window.requestAnimationFrame) {
+			window.requestAnimationFrame(() => {
+				const target = this.queryCard(line);
+				if (target) {
+					this.scrollCardIntoView(target);
+				}
+			});
+		}
+	}
+
+	/**
+	 * 目标行所在的 Section 若处于折叠态，就地展开它；返回是否发生了展开。
+	 *
+	 * 只有**顶层 Section** 会进 `collapsedSections`（`renderTaskNote` 只对 roots 调
+	 * `renderSection`），所以按「命中 key 在集合内」判定即可，无需再算顶层结构。
+	 * 展开后调用方需重绘一次才能取到卡片（[[Discuss-20261008-164745]] §四·2 / Q3）。
+	 */
+	private expandSectionContaining(line: number): boolean {
+		for (const section of parseSections(this.data)) {
+			const key = getSectionStateKey(section);
+			if (!this.collapsedSections.has(key)) {
+				continue;
+			}
+			if (line >= section.startLine && line <= section.endLine) {
+				this.collapsedSections.delete(key);
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private async commitEdit(): Promise<void> {
