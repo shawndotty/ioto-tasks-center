@@ -1180,6 +1180,10 @@ export class IOTOTaskView extends TextFileView {
 			const animate =
 				options?.animateRecentSwap === true &&
 				this.filters.recentOnly &&
+				// 放大态下同 Section 其余卡是 `display: none`（`.is-zoom-hidden`），
+				// 此态采几何会把隐藏卡量成 0×0，退出的卡被搬到视口原点、以 0 宽渲染成
+				// 竖排文字闪现（[[Research-20261008-191548]]）。放大期间不动画。
+				this.zoomLine === null &&
 				!this.prefersReducedMotion();
 			const scrollElBefore =
 				this.bodyEl?.querySelector<HTMLElement>(
