@@ -100,6 +100,7 @@ export interface TaskViewExportOptions {
 	fixedWidth: number;
 	scale: number;
 	withHeader: boolean;
+	withFooter: boolean;
 }
 
 /** 固定宽度允许区间（px，[[Plan-20261006-102142]] §2.5）。 */
@@ -154,6 +155,8 @@ export interface IOTOTasksCenterSettings {
 	exportImageScale: number;
 	/** 导出图片是否带页眉（文件名 + 日期，默认关闭，[[Plan-20261006-102142]] Q3）。 */
 	exportImageWithHeader: boolean;
+	/** 导出图片是否带页尾（固定英文品牌标语，默认关闭，[[Discuss-20261008-091032]]）。 */
+	exportImageWithFooter: boolean;
 	/** Task View 桌面端是否在工具栏显示「删除」按钮（默认 false；移动端恒显示）。 */
 	showTaskViewDeleteButtonOnDesktop: boolean;
 }
@@ -194,6 +197,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	exportImageFixedWidth: DEFAULT_EXPORT_IMAGE_FIXED_WIDTH,
 	exportImageScale: 2,
 	exportImageWithHeader: false,
+	exportImageWithFooter: false,
 	showTaskViewDeleteButtonOnDesktop: false,
 };
 
@@ -733,6 +737,19 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 						.setValue(this.plugin.settings.exportImageWithHeader)
 						.onChange(async (value) => {
 							await this.plugin.updateExportImageWithHeader(
+								value,
+							);
+						}),
+				);
+
+			new Setting(containerEl)
+				.setName(t('settings.exportImage.footer.name'))
+				.setDesc(t('settings.exportImage.footer.desc'))
+				.addToggle((toggle) =>
+					toggle
+						.setValue(this.plugin.settings.exportImageWithFooter)
+						.onChange(async (value) => {
+							await this.plugin.updateExportImageWithFooter(
 								value,
 							);
 						}),

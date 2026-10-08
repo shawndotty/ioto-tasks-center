@@ -640,6 +640,9 @@ const en = {
 	'settings.exportImage.header.name': 'Add header to export',
 	'settings.exportImage.header.desc':
 		'Prepend a header band with the note name and date to the exported image.',
+	'settings.exportImage.footer.name': 'Add footer to export',
+	'settings.exportImage.footer.desc':
+		'Center a fixed brand slogan at the bottom of the exported image (English only, identical across languages).',
 	'view.iotoTaskView.tasksSectionTitle': 'Tasks',
 	'view.iotoTaskView.badge.depends': 'Depends ×{0}',
 	'view.iotoTaskView.badge.dependsIndex': 'Depends #{0}',

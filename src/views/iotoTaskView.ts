@@ -43,6 +43,7 @@ import {
 	canvasToBlob,
 	captureTaskViewCanvas,
 	clampExportScale,
+	composeExportFooter,
 	composeExportHeader,
 	copyCanvasToClipboard,
 	readableTextColor,
@@ -3404,7 +3405,7 @@ export class IOTOTaskView extends TextFileView {
 				this.app.workspace.getActiveFile()?.basename ??
 				this.file?.basename ??
 				this.getDisplayText();
-			const canvas = options.withHeader
+			let canvas = options.withHeader
 				? composeExportHeader(result.canvas, {
 						title: baseName,
 						at: new Date(),
@@ -3413,6 +3414,14 @@ export class IOTOTaskView extends TextFileView {
 						scale: result.scale,
 					})
 				: result.canvas;
+			// 先页眉、后页尾，各自只在一端追加，互不干扰（[[Discuss-20261008-091032]] §2.4）。
+			if (options.withFooter) {
+				canvas = composeExportFooter(canvas, {
+					backgroundColor,
+					textColor: readableTextColor(backgroundColor),
+					scale: result.scale,
+				});
+			}
 
 			// 逐条如实提示：降倍率 / 封顶 / 拍不到内容 / 玻璃主题降级（[[Plan-20261006-102142]] §三.5）。
 			if (result.scale < desiredScale) {

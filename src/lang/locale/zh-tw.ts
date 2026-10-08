@@ -588,6 +588,9 @@ const zhTW = {
 	'settings.exportImage.header.name': '匯出時新增頁首',
 	'settings.exportImage.header.desc':
 		'在匯出圖片頂部加上一條含筆記名與日期的頁首帶。',
+	'settings.exportImage.footer.name': '匯出時新增頁尾',
+	'settings.exportImage.footer.desc':
+		'在匯出圖片底部置中加上品牌標語（固定英文，各語言一致）。',
 	'view.iotoTaskView.tasksSectionTitle': '任務',
 	'view.iotoTaskView.badge.depends': '依賴×{0}',
 	'view.iotoTaskView.badge.dependsIndex': '依賴#{0}',

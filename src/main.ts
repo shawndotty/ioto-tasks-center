@@ -622,6 +622,8 @@ export default class IOTOTasksCenter extends Plugin {
 		);
 		this.settings.exportImageWithHeader =
 			this.settings.exportImageWithHeader === true;
+		this.settings.exportImageWithFooter =
+			this.settings.exportImageWithFooter === true;
 		// Task View 桌面端删除按钮：非 true 一律回落 false（默认关闭）
 		this.settings.showTaskViewDeleteButtonOnDesktop =
 			this.settings.showTaskViewDeleteButtonOnDesktop === true;
@@ -811,6 +813,7 @@ export default class IOTOTasksCenter extends Plugin {
 			fixedWidth: this.settings.exportImageFixedWidth,
 			scale: this.settings.exportImageScale,
 			withHeader: this.settings.exportImageWithHeader,
+			withFooter: this.settings.exportImageWithFooter,
 		};
 	}
 
@@ -852,6 +855,15 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		this.settings.exportImageWithHeader = value;
+		await this.saveSettings();
+	}
+
+	async updateExportImageWithFooter(value: boolean): Promise<void> {
+		if (this.settings.exportImageWithFooter === value) {
+			return;
+		}
+
+		this.settings.exportImageWithFooter = value;
 		await this.saveSettings();
 	}
 

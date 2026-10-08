@@ -587,6 +587,9 @@ const zhCN = {
 	'settings.exportImage.header.name': '导出时添加页眉',
 	'settings.exportImage.header.desc':
 		'在导出图片顶部加上一条含笔记名与日期的页眉带。',
+	'settings.exportImage.footer.name': '导出时添加页尾',
+	'settings.exportImage.footer.desc':
+		'在导出图片底部居中加上品牌标语（固定英文，各语言一致）。',
 	'view.iotoTaskView.tasksSectionTitle': '任务',
 	'view.iotoTaskView.badge.depends': '依赖×{0}',
 	'view.iotoTaskView.badge.dependsIndex': '依赖#{0}',

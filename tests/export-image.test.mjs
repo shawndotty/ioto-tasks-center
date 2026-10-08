@@ -22,7 +22,9 @@ const jiti = createJiti(import.meta.url, {
 const {
 	buildExportFileName,
 	clampExportScale,
+	composeExportFooter,
 	computeCanvasScaleLimit,
+	fitFontSize,
 	formatExportDate,
 	hasUncapturableContent,
 	isOpaqueBackground,
@@ -31,6 +33,7 @@ const {
 	readableTextColor,
 	CANVAS_MAX_SIDE,
 	DEFAULT_EXPORT_SCALE,
+	EXPORT_FOOTER_SLOGAN,
 	EXPORT_SCALE_MAX,
 	EXPORT_SCALE_MIN,
 } = await jiti.import('../src/export.ts');
@@ -173,4 +176,129 @@ test('readableTextColor：深底给浅字，浅底给深字', () => {
 
 test('formatExportDate：YYYY-MM-DD HH:mm', () => {
 	assert.equal(formatExportDate(new Date(2026, 9, 6, 9, 5)), '2026-10-06 09:05');
+});
+
+/* ------------------------------------------------------------------ *
+ * 可选页尾（[[Discuss-20261008-091032]]，默认关闭）
+ * ------------------------------------------------------------------ */
+
+test('EXPORT_FOOTER_SLOGAN：逐字节固定，不被翻译 / 不被规范化', () => {
+	assert.equal(
+		EXPORT_FOOTER_SLOGAN,
+		'IOTO - Your Super Utility Vehicle To Explore The Knowledge Land',
+	);
+});
+
+// 线性度量（宽度 = 字符数 × 0.5 × 字号），便于构造确定的收敛用例。
+const linearMeasure = (text, size) => text.length * size * 0.5;
+
+test('fitFontSize：宽度够用时保持基准字号', () => {
+	assert.equal(
+		fitFontSize(EXPORT_FOOTER_SLOGAN, 600, 13, 9, linearMeasure),
+		13,
+	);
+});
+
+test('fitFontSize：宽度不够时按比例缩小并收敛（下限与基准之间）', () => {
+	const maxWidth = 372;
+	const size = fitFontSize(
+		EXPORT_FOOTER_SLOGAN,
+		maxWidth,
+		13,
+		9,
+		linearMeasure,
+	);
+	assert.ok(size >= 9 && size < 13, `expected 9 <= ${size} < 13`);
+	assert.ok(
+		linearMeasure(EXPORT_FOOTER_SLOGAN, size) <= maxWidth + 1e-6,
+		'the chosen size must fit within maxWidth',
+	);
+});
+
+test('fitFontSize：极窄时缩到下限，绝不返回 < min 或非有限数', () => {
+	assert.equal(fitFontSize(EXPORT_FOOTER_SLOGAN, 200, 13, 9, linearMeasure), 9);
+	assert.equal(fitFontSize(EXPORT_FOOTER_SLOGAN, 1, 13, 9, linearMeasure), 9);
+});
+
+// 记录型 2D 上下文 + 假 canvas：验证 `composeExportFooter` 的真实几何与居中，
+// 而不依赖浏览器 canvas（export.ts 里的 `createEl` 是 Obsidian 注入的全局）。
+class RecordingCtx {
+	constructor() {
+		this.calls = { fillRect: [], drawImage: [], fillText: [] };
+		this.font = '';
+		this.globalAlpha = 1;
+		this.textAlign = 'start';
+		this.textBaseline = 'alphabetic';
+		this.fillStyle = '#000';
+	}
+	fillRect(...args) {
+		this.calls.fillRect.push(args);
+	}
+	drawImage(...args) {
+		this.calls.drawImage.push(args);
+	}
+	fillText(text, x, y, maxWidth) {
+		this.calls.fillText.push({
+			text,
+			x,
+			y,
+			maxWidth,
+			font: this.font,
+			alpha: this.globalAlpha,
+			align: this.textAlign,
+		});
+	}
+	measureText(text) {
+		// 与 linearMeasure 同构：宽度 = 字符数 × 0.5 × 字号。
+		return { width: text.length * 0.5 * Number.parseFloat(this.font) };
+	}
+}
+class FakeCanvas {
+	constructor() {
+		this.width = 0;
+		this.height = 0;
+		this.ctx = new RecordingCtx();
+	}
+	getContext() {
+		return this.ctx;
+	}
+}
+
+test('composeExportFooter：底部追加一条带、居中绘制标语、source 原样贴上', () => {
+	const prevCreateEl = globalThis.createEl;
+	globalThis.createEl = () => new FakeCanvas();
+	try {
+		const source = new FakeCanvas();
+		source.width = 800;
+		source.height = 600;
+		const out = composeExportFooter(source, {
+			backgroundColor: '#1e1e1e',
+			textColor: '#f5f5f5',
+			scale: 2,
+		});
+
+		// 高度 = 内容高 + (topPad 14 + 基准字号 13 + bottomPad 14) × scale 2 = 600 + 82。
+		assert.equal(out.width, 800);
+		assert.equal(out.height, 682);
+		// 整幅先用底色填满，再把内容图原样贴在左上角。
+		assert.deepEqual(out.ctx.calls.fillRect[0], [0, 0, 800, 682]);
+		assert.equal(out.ctx.calls.drawImage[0][0], source);
+		assert.equal(out.ctx.calls.drawImage[0][1], 0);
+		assert.equal(out.ctx.calls.drawImage[0][2], 0);
+
+		const ft = out.ctx.calls.fillText[0];
+		assert.ok(ft, 'should draw exactly one text line');
+		assert.equal(ft.text, EXPORT_FOOTER_SLOGAN);
+		assert.equal(ft.align, 'center');
+		assert.equal(ft.alpha, 0.7);
+		// 居中：x = canvas.width / 2；留白下限 maxWidth = width - 2×pad(=24×2)。
+		assert.equal(ft.x, 400);
+		assert.equal(ft.maxWidth, 704);
+		// 自适应缩字号：介于 [9×2, 13×2] 之间；基线 y = source.height + topPad + 字号。
+		const fontPx = Number.parseFloat(ft.font);
+		assert.ok(fontPx >= 18 && fontPx <= 26, `font size ${fontPx} out of range`);
+		assert.ok(Math.abs(ft.y - (600 + 28 + fontPx)) < 1e-6);
+	} finally {
+		globalThis.createEl = prevCreateEl;
+	}
 });

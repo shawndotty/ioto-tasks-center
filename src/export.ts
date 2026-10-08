@@ -26,6 +26,21 @@ export const DEFAULT_EXPORT_SCALE = 2;
 /** 出图四周的留白（CSS px）；各倍率下乘过倍率再加，视觉留白一致。 */
 export const EXPORT_PADDING = 24;
 
+/**
+ * 页尾固定的品牌标语：**全语言共用，刻意不进 `lang/locale`**（需求要求各语言一致，
+ * [[Discuss-20261008-091032]] §2.2）。照抄原文，`-` 两侧各一个空格、词首大写都不要「顺手规范化」，
+ * 以便单测逐字节断言。
+ */
+export const EXPORT_FOOTER_SLOGAN =
+	'IOTO - Your Super Utility Vehicle To Explore The Knowledge Land';
+
+/** 页尾标语基准字号（CSS px）。 */
+const FOOTER_FONT_SIZE = 13;
+/** 页尾标语窄图自适应时的最小字号下限（CSS px），见 `fitFontSize`。 */
+const FOOTER_FONT_SIZE_MIN = 9;
+/** 页尾标语不透明度：弱于正文、略强于页眉里 `0.65` 的日期行（[[Discuss-20261008-091032]] §2.1）。 */
+const FOOTER_ALPHA = 0.7;
+
 /** canvas 单边硬上限（px）。 */
 export const CANVAS_MAX_SIDE = 16384;
 /** canvas 总面积硬上限（px²，约 2.68 亿）。 */
@@ -350,6 +365,39 @@ export function formatExportDate(at: Date): string {
 }
 
 /**
+ * 窄图自适应缩字号（[[Discuss-20261008-091032]] Q1-A）：`text` 在 `basePx` 下放不下 `maxWidthPx`
+ * 时按线性比例估算目标字号，再循环收敛（度量随字号非线性，故需迭代），下限 `minPx`。
+ *
+ * 返回恒落在 `[min, base]`；仍放不下时由调用方交给 `fillText` 的 `maxWidth` 去压 —— 尽量少压，
+ * 避免整句被横向压扁。`measure(text, sizePx)` 由调用方注入（真实环境包 `ctx.measureText`），
+ * 以便纯函数零 DOM 单测。
+ */
+export function fitFontSize(
+	text: string,
+	maxWidthPx: number,
+	basePx: number,
+	minPx: number,
+	measure: (text: string, sizePx: number) => number,
+): number {
+	const min = Math.max(1, minPx);
+	const base = Math.max(min, basePx);
+	const maxWidth = Math.max(1, maxWidthPx);
+	const baseWidth = measure(text, base);
+	if (!Number.isFinite(baseWidth) || baseWidth <= maxWidth) {
+		return base;
+	}
+	let size = (base * maxWidth) / baseWidth;
+	for (let i = 0; i < 6 && size > min; i += 1) {
+		const width = measure(text, size);
+		if (!Number.isFinite(width) || width <= maxWidth) {
+			return size;
+		}
+		size = (size * maxWidth) / width;
+	}
+	return min;
+}
+
+/**
  * 可选页眉（[[Plan-20261006-102142]] Q3，默认关闭）：在内容图上方合成一条「文件名 + 日期」带。
  * 走 canvas 二次合成而不是往实时 DOM 注入节点，零 DOM 改动、零闪烁。
  */
@@ -395,6 +443,63 @@ export function composeExportHeader(
 	ctx.globalAlpha = 1;
 
 	ctx.drawImage(source, 0, headerHeight);
+	return canvas;
+}
+
+/**
+ * 可选页尾（[[Discuss-20261008-091032]]，默认关闭）：在内容图**下方**合成一条品牌标语带
+ * （`EXPORT_FOOTER_SLOGAN` 固定英文、全语言一致，底部居中）。与 `composeExportHeader` 完全同构 ——
+ * 只在内容图一端追加、不碰实时 DOM、零闪烁；两者独立可同时开。
+ *
+ * 窄图放不下时先按 Q1-A 自适应缩字号（下限 `FOOTER_FONT_SIZE_MIN`），仍放不下才交给 `fillText`
+ * 的 `maxWidth` 压缩，避免单纯把整句字形横向压扁。
+ */
+export function composeExportFooter(
+	source: HTMLCanvasElement,
+	opts: { backgroundColor: string; textColor: string; scale: number },
+): HTMLCanvasElement {
+	const scale = clampExportScale(opts.scale);
+	const pad = Math.round(EXPORT_PADDING * scale);
+	const topPad = Math.round(14 * scale);
+	const baseTextSize = Math.round(FOOTER_FONT_SIZE * scale);
+	const bottomPad = Math.round(14 * scale);
+	const footerHeight = topPad + baseTextSize + bottomPad;
+
+	const canvas = createEl('canvas');
+	canvas.width = source.width;
+	canvas.height = source.height + footerHeight;
+	const ctx = canvas.getContext('2d');
+	if (!ctx) {
+		return source; // 拿不到 2d 上下文就退回无页尾图
+	}
+	ctx.fillStyle = opts.backgroundColor;
+	ctx.fillRect(0, 0, canvas.width, canvas.height);
+	ctx.drawImage(source, 0, 0);
+
+	const maxWidth = Math.max(1, canvas.width - pad * 2);
+	const textSize = fitFontSize(
+		EXPORT_FOOTER_SLOGAN,
+		maxWidth,
+		baseTextSize,
+		Math.round(FOOTER_FONT_SIZE_MIN * scale),
+		(text, sizePx) => {
+			ctx.font = `${sizePx}px sans-serif`;
+			return ctx.measureText(text).width;
+		},
+	);
+
+	ctx.textAlign = 'center';
+	ctx.textBaseline = 'alphabetic';
+	ctx.globalAlpha = FOOTER_ALPHA;
+	ctx.fillStyle = opts.textColor;
+	ctx.font = `${textSize}px sans-serif`;
+	ctx.fillText(
+		EXPORT_FOOTER_SLOGAN,
+		canvas.width / 2,
+		source.height + topPad + textSize,
+		maxWidth,
+	);
+	ctx.globalAlpha = 1;
 	return canvas;
 }
 
