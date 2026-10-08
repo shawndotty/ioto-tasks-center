@@ -535,6 +535,7 @@ const zhTW = {
 	'notice.batchEdit.deleteFailed': '{0} 個任務刪除失敗。',
 	'command.openAsIOTOTask': '以 IOTO 任務檢視開啟',
 	'command.openAsMarkdown': '以 Markdown 開啟',
+	'command.toggleTaskView': '切換 Markdown 與 IOTO 任務檢視',
 	'command.addTask': '在 IOTO 任務檢視中新增任務',
 	'command.searchTaskView': '在任務視圖中搜尋',
 	'command.exportTaskViewImage': '匯出任務檢視為圖片',

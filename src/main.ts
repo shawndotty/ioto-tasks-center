@@ -1,5 +1,6 @@
 import {
 	FileView,
+	MarkdownView,
 	Menu,
 	Notice,
 	Plugin,
@@ -233,6 +234,35 @@ export default class IOTOTasksCenter extends Plugin {
 
 				if (!checking) {
 					void this.setLeafToMarkdown(view.leaf);
+				}
+
+				return true;
+			},
+		});
+		// 单键双向切换（[[Discuss-20261008-214919]] 方案 A）：给已存在的两个方向配一个
+		// 「状态感知」的合并键，执行路径 100% 复用 openFileAsIOTOTask / setLeafToMarkdown，
+		// 不新增切换实现。保留原两条命令不动（避免丢用户已绑定的快捷键）。
+		this.addCommand({
+			id: 'itc-toggle-task-view',
+			name: t('command.toggleTaskView'),
+			checkCallback: (checking) => {
+				const leaf = this.app.workspace.getMostRecentLeaf();
+				if (!leaf) {
+					return false;
+				}
+
+				const direction = this.resolveTaskViewToggleDirection(leaf);
+				if (!direction) {
+					return false;
+				}
+
+				if (!checking) {
+					if (direction === 'to-markdown') {
+						void this.setLeafToMarkdown(leaf);
+					} else if (leaf.view instanceof MarkdownView && leaf.view.file) {
+						// 显式传入活动叶子作 targetLeaf，贴合「切换作用于眼前这个叶子」的语义。
+						void this.openFileAsIOTOTask(leaf.view.file, leaf);
+					}
 				}
 
 				return true;
@@ -1192,6 +1222,29 @@ export default class IOTOTasksCenter extends Plugin {
 					void this.setLeafToMarkdown(taskLeaf);
 				}),
 		);
+	}
+
+	/**
+	 * 「切换 Markdown / 任务视图」命令的方向判据（[[Discuss-20261008-214919]] 方案 A）。
+	 * 只看「活动叶子的视图类型」而非「文件是否任务笔记」——同一任务笔记可能同时在
+	 * Markdown 与任务视图两个 Tab 中，切换必须作用于用户眼前的那个叶子。
+	 * checkCallback 与执行分支共用此判据，避免两处口径日后漂移。
+	 */
+	private resolveTaskViewToggleDirection(
+		leaf: WorkspaceLeaf,
+	): 'to-markdown' | 'to-task-view' | null {
+		const view = leaf.view;
+		if (view instanceof IOTOTaskView) {
+			return 'to-markdown';
+		}
+		if (
+			view instanceof MarkdownView &&
+			view.file &&
+			isTaskNoteFile(view.file, this.settings.tasksRootPath)
+		) {
+			return 'to-task-view';
+		}
+		return null;
 	}
 
 	private async openFileAsIOTOTask(

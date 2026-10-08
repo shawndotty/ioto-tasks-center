@@ -534,6 +534,7 @@ const zhCN = {
 	'notice.batchEdit.deleteFailed': '{0} 个任务删除失败。',
 	'command.openAsIOTOTask': '以 IOTO 任务视图打开',
 	'command.openAsMarkdown': '以 Markdown 打开',
+	'command.toggleTaskView': '切换 Markdown 与 IOTO 任务视图',
 	'command.addTask': '在 IOTO 任务视图中添加任务',
 	'command.searchTaskView': '在任务视图中搜索',
 	'command.exportTaskViewImage': '导出任务视图为图片',

@@ -581,6 +581,7 @@ const en = {
 	'notice.batchEdit.deleteFailed': 'Failed to delete {0} task(s).',
 	'command.openAsIOTOTask': 'Open as IOTO task view',
 	'command.openAsMarkdown': 'Open as Markdown',
+	'command.toggleTaskView': 'Toggle Markdown / task view',
 	'command.addTask': 'Add task in IOTO task view',
 	'command.searchTaskView': 'Search in task view',
 	'command.exportTaskViewImage': 'Export task view as image',
