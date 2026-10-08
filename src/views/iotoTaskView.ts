@@ -3763,23 +3763,29 @@ export class IOTOTaskView extends TextFileView {
 
 	/**
 	 * 桥接层调用：命令结束（无论成败）关闭窗口。
-	 * 期间发生过 blur（换视图）或内容变更（模板写回）→ 补一次提交：
-	 * 把含回填链接的最新正文写盘 + 退出编辑态 + 刷新卡片（复用既有提交原语）。
+	 * 期间发生过 blur（换视图）或内容变更（模板写回）→ 补一次落盘：
+	 * 把含回填链接的最新正文写盘 + **保持编辑态**（与 v256 / `flushZoomEdit` 同口径）。
+	 *
+	 * `[[Plan-20261008-184418]]` 方案 A：终止动作由 `commitEdit`（提交并退出编辑）改为
+	 * `autosaveEdit`（只落盘、保持编辑）。不改窗口机制、不加开关、不动数据。
 	 */
 	endExternalEditorWriteback(): void {
 		if (!this.externalWritebackActive) {
 			return;
 		}
-		const shouldCommit =
+		const shouldFlush =
 			this.externalWritebackBlurred || this.externalWritebackDirty;
 		this.externalWritebackActive = false;
 		this.externalWritebackBlurred = false;
 		this.externalWritebackDirty = false;
-		if (!shouldCommit) {
+		if (!shouldFlush) {
 			return;
 		}
-		// 标题 / 续行互斥，各自幂等短路；commit 内部已 destroyActiveEditor + 写盘 + 刷新。
-		void this.commitEdit().then(() => this.commitContinuationEdit());
+		// 写回窗口关闭 = 只落盘、不退出编辑态（与 v256 / flushZoomEdit 同口径）：
+		// 链接照旧写盘，卡片保持 .is-editing，不再回落成裸 .is-selected。
+		// autosaveEdit 不 destroy、不清 editingLine、不 refreshCard，并会刷新
+		// editingOriginalLine，不给下一次提交留假 conflict（[[Report-20261008-183809]]）。
+		void this.autosaveEdit();
 	}
 
 	private async runTask(): Promise<void> {
