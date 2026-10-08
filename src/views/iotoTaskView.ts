@@ -267,6 +267,15 @@ export class IOTOTaskView extends TextFileView {
 	);
 	/** 自动落盘进行中：与 `pendingCommit`（blur 提交）互斥，避免并发写同一行 */
 	private autosaveRunning = false;
+	/**
+	 * 外部写回窗口（[[Research-20261008-105532]] 方案 A）：Templater 等命令运行期
+	 * 挂起 blur 销毁，使事后的 `replaceSelection` 落在活编辑器上。
+	 */
+	private externalWritebackActive = false;
+	/** 窗口内是否发生过 blur（换视图等）→ 结束后据此补一次提交退出编辑态。 */
+	private externalWritebackBlurred = false;
+	/** 窗口内文档是否变更（模板写回）→ 结束后据此补一次提交（无 blur 也要落盘）。 */
+	private externalWritebackDirty = false;
 	private readonly supportsInlineEdit: () => boolean;
 	private readonly appearanceStyleProvider: () => TaskViewAppearanceStyle;
 	private readonly recentTaskCountProvider: () => number;
@@ -1985,7 +1994,16 @@ export class IOTOTaskView extends TextFileView {
 				onDeleteEmpty: () => this.onEditorDeleteEmpty(),
 				onIndent: (delta) => this.onEditorIndent(delta),
 				onEscape: () => this.onEditorEscape(),
+				shouldDeferBlur: () => this.externalWritebackActive,
+				onBlurDeferred: () => {
+					this.externalWritebackBlurred = true;
+				},
 				onBlur: () => {
+					// 兜底：窗口内即便被直接调用也不提交（主短路在 embedded-editor）。
+					if (this.externalWritebackActive) {
+						this.externalWritebackBlurred = true;
+						return;
+					}
 					// blur 提交会写同一行的最终值，先撤掉待写的那次（内容相同，属无效写）
 					this.autosave.cancel();
 					void this.commitEdit().then(() => {
@@ -1994,6 +2012,10 @@ export class IOTOTaskView extends TextFileView {
 					});
 				},
 				onChange: () => {
+					if (this.externalWritebackActive) {
+						this.externalWritebackDirty = true;
+						return;
+					}
 					this.autosave.schedule();
 				},
 			},
@@ -2165,8 +2187,24 @@ export class IOTOTaskView extends TextFileView {
 				onDeleteEmpty: () => this.onContinuationDeleteEmpty(),
 				onIndent: () => false, // Tab 放行给核心（插入缩进），本期不接管
 				onEscape: () => this.onContinuationEscape(),
-				onBlur: () => void this.commitContinuationEdit(),
-				onChange: () => this.autosave.schedule(),
+				shouldDeferBlur: () => this.externalWritebackActive,
+				onBlurDeferred: () => {
+					this.externalWritebackBlurred = true;
+				},
+				onBlur: () => {
+					if (this.externalWritebackActive) {
+						this.externalWritebackBlurred = true;
+						return;
+					}
+					void this.commitContinuationEdit();
+				},
+				onChange: () => {
+					if (this.externalWritebackActive) {
+						this.externalWritebackDirty = true;
+						return;
+					}
+					this.autosave.schedule();
+				},
 			},
 		});
 		if (!handle) {
@@ -2253,8 +2291,24 @@ export class IOTOTaskView extends TextFileView {
 				onDeleteEmpty: () => this.onContinuationDeleteEmpty(),
 				onIndent: () => false,
 				onEscape: () => this.onContinuationEscape(),
-				onBlur: () => void this.commitContinuationEdit(),
-				onChange: () => this.autosave.schedule(),
+				shouldDeferBlur: () => this.externalWritebackActive,
+				onBlurDeferred: () => {
+					this.externalWritebackBlurred = true;
+				},
+				onBlur: () => {
+					if (this.externalWritebackActive) {
+						this.externalWritebackBlurred = true;
+						return;
+					}
+					void this.commitContinuationEdit();
+				},
+				onChange: () => {
+					if (this.externalWritebackActive) {
+						this.externalWritebackDirty = true;
+						return;
+					}
+					this.autosave.schedule();
+				},
 			},
 		});
 		if (!handle) {
@@ -3294,6 +3348,44 @@ export class IOTOTaskView extends TextFileView {
 	async flushInlineEdits(): Promise<void> {
 		await this.commitEdit();
 		await this.commitContinuationEdit();
+	}
+
+	/**
+	 * 桥接层调用：开启「外部写回窗口」（[[Research-20261008-105532]] 方案 A）。
+	 * 未处于任一编辑态（标题 / 续行）→ 返回 false，桥接层原样透传。
+	 */
+	beginExternalEditorWriteback(): boolean {
+		if (this.editingLine === null && this.continuationLine === null) {
+			return false;
+		}
+		this.externalWritebackActive = true;
+		this.externalWritebackBlurred = false;
+		this.externalWritebackDirty = false;
+		// 窗口内不自动落盘：写回与退出统一由 endExternalEditorWriteback 收口，
+		// 避免模板中途写盘先销毁编辑器（方案 A 的反向风险）。
+		this.autosave.cancel();
+		return true;
+	}
+
+	/**
+	 * 桥接层调用：命令结束（无论成败）关闭窗口。
+	 * 期间发生过 blur（换视图）或内容变更（模板写回）→ 补一次提交：
+	 * 把含回填链接的最新正文写盘 + 退出编辑态 + 刷新卡片（复用既有提交原语）。
+	 */
+	endExternalEditorWriteback(): void {
+		if (!this.externalWritebackActive) {
+			return;
+		}
+		const shouldCommit =
+			this.externalWritebackBlurred || this.externalWritebackDirty;
+		this.externalWritebackActive = false;
+		this.externalWritebackBlurred = false;
+		this.externalWritebackDirty = false;
+		if (!shouldCommit) {
+			return;
+		}
+		// 标题 / 续行互斥，各自幂等短路；commit 内部已 destroyActiveEditor + 写盘 + 刷新。
+		void this.commitEdit().then(() => this.commitContinuationEdit());
 	}
 
 	private async runTask(): Promise<void> {

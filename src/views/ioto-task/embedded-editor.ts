@@ -169,6 +169,14 @@ export interface EmbeddedEditorHandlers {
 	onBlur: () => void;
 	/** 文档内容变化（不含 IME 组字中间态）：宿主据此排一次自动落盘 */
 	onChange: () => void;
+	/**
+	 * 外部写回窗口（Templater 等命令运行期）：为真时 blur **只挂起**，
+	 * 不销毁编辑器 / 不还原 activeEditor / 不提交，使模板跑完后的
+	 * `replaceSelection` 落在活文档上（[[Research-20261008-105532]] 方案 A）。
+	 */
+	shouldDeferBlur?: () => boolean;
+	/** 挂起期间记录「发生过 blur」；窗口结束时由宿主决定是否补提交。 */
+	onBlurDeferred?: () => void;
 }
 
 export interface MountEmbeddedEditorOptions {
@@ -331,6 +339,12 @@ export async function mountEmbeddedEditor(
 								// registerActiveEditor 挂载时那次 setTimeout 的再登记不被短路。
 								window.setTimeout(() => {
 									if (destroyed) {
+										return;
+									}
+									// 外部写回窗口：挂起 blur（不销毁 / 不还原 / 不提交），
+									// 让模板跑完后的 replaceSelection 落在活文档上（方案 A）。
+									if (handlers.shouldDeferBlur?.()) {
+										handlers.onBlurDeferred?.();
 										return;
 									}
 									const activeEl =

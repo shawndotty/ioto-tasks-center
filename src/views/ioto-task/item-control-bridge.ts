@@ -70,8 +70,22 @@ export const RUN_TASK_DRY_RUN_COMMAND_ID = 'ioto-settings:ioto-run-task-dry-run'
 export const RUN_TASK_CHECKLIST_COMMAND_ID =
 	'ioto-settings:ioto-run-task-checklist';
 
-/** 桥接命令族：两个弹窗共用「派发后锚定」，执行任务族共用「派发前落盘」。 */
-export type BridgedCommandKind = 'item-control' | 'task-outlink' | 'run-task';
+/**
+ * Templater 模板热键命令前缀（`Insert <template>` → `templater-obsidian:<模板路径>`）。
+ * 这些命令会中途打开/切换笔记、事后再写回活动编辑器，需要写回窗口
+ * （[[Research-20261008-105532]] §一、§五 A）。
+ */
+export const TEMPLATER_COMMAND_PREFIX = 'templater-obsidian:';
+
+/**
+ * 桥接命令族：两个弹窗共用「派发后锚定」，执行任务族共用「派发前落盘」，
+ * external-writeback 族（Templater 模板命令）共用「命令运行期挂起 blur 销毁」。
+ */
+export type BridgedCommandKind =
+	| 'item-control'
+	| 'task-outlink'
+	| 'run-task'
+	| 'external-writeback';
 
 /** 纯判据：命令 id → 桥接类别；非桥接命令返回 null。 */
 export function resolveBridgedCommand(id: unknown): BridgedCommandKind | null {
@@ -87,6 +101,9 @@ export function resolveBridgedCommand(id: unknown): BridgedCommandKind | null {
 		id === RUN_TASK_CHECKLIST_COMMAND_ID
 	) {
 		return 'run-task';
+	}
+	if (typeof id === 'string' && id.startsWith(TEMPLATER_COMMAND_PREFIX)) {
+		return 'external-writeback';
 	}
 	return null;
 }
@@ -253,6 +270,38 @@ function resolveFlushableView(app: App): (() => Promise<void>) | null {
 	}
 }
 
+/** 提供「外部写回窗口」原语的活动视图（鸭子类型，不 import 视图类）。 */
+interface ExternalWritebackView {
+	getViewType?: () => string;
+	beginExternalEditorWriteback?: () => boolean;
+	endExternalEditorWriteback?: () => void;
+}
+
+/**
+ * 解析活动 IOTOTask 视图的「外部写回窗口」原语（`begin/endExternalEditorWriteback`）。
+ * 非 IOTOTask 视图 / 缺原语 → `null`（命令原样透传）。
+ */
+function resolveExternalWritebackView(app: App): ExternalWritebackView | null {
+	try {
+		// eslint-disable-next-line @typescript-eslint/no-deprecated
+		const view = app.workspace.activeLeaf?.view as unknown as
+			| ExternalWritebackView
+			| undefined;
+		if (view?.getViewType?.() !== IOTO_TASK_VIEW_TYPE) {
+			return null;
+		}
+		if (
+			typeof view.beginExternalEditorWriteback !== 'function' ||
+			typeof view.endExternalEditorWriteback !== 'function'
+		) {
+			return null;
+		}
+		return view;
+	} catch {
+		return null;
+	}
+}
+
 /** `Commands.executeCommand` 的命令形状：判据只取 `id`。 */
 interface CommandLike {
 	id?: string;
@@ -293,6 +342,33 @@ export function installItemControlBridge(app: App): () => void {
 					console.error('[IOTO Task] 执行任务前落盘失败，已跳过直接派发', error);
 				})
 				.then(() => original(command, evt));
+		}
+
+		if (kind === 'external-writeback') {
+			// 写回窗口（[[Research-20261008-105532]] 方案 A）：命令会中途 openLinkText
+			// 抢焦 → 内嵌编辑器将被 blur 销毁 → 事后 replaceSelection 打在死文档上。
+			// 窗口期挂起 blur，命令 Promise settle 后补提交，把回填链接落盘。
+			const view = resolveExternalWritebackView(app);
+			if (!view || !view.beginExternalEditorWriteback?.()) {
+				return original(command, evt); // 非 IOTOTask / 非编辑态：原样透传
+			}
+			let result: unknown;
+			try {
+				result = original(command, evt);
+			} catch (error) {
+				view.endExternalEditorWriteback?.();
+				throw error;
+			}
+			return Promise.resolve(result).then(
+				(value) => {
+					view.endExternalEditorWriteback?.();
+					return value;
+				},
+				(error: unknown) => {
+					view.endExternalEditorWriteback?.();
+					throw error;
+				},
+			);
 		}
 
 		const host = kind ? resolveBridgeHost(app) : null;

@@ -19,6 +19,7 @@ const {
 	RUN_TASK_COMMAND_ID,
 	RUN_TASK_DRY_RUN_COMMAND_ID,
 	RUN_TASK_CHECKLIST_COMMAND_ID,
+	TEMPLATER_COMMAND_PREFIX,
 	IOTO_TASK_VIEW_TYPE,
 	resolveBridgedCommand,
 	shouldBridgeInTaskView,
@@ -71,6 +72,16 @@ test('resolveBridgedCommand：执行任务三命令同归 run-task 族', () => {
 });
 
 test('resolveBridgedCommand：其它命令 / 无 id → null（原样透传）', () => {
+	assert.equal(resolveBridgedCommand('other:cmd'), null);
+	assert.equal(resolveBridgedCommand(undefined), null);
+});
+
+test('resolveBridgedCommand：templater 前缀 → external-writeback；不破坏既有判据', () => {
+	assert.equal(TEMPLATER_COMMAND_PREFIX, 'templater-obsidian:');
+	assert.equal(
+		resolveBridgedCommand(`${TEMPLATER_COMMAND_PREFIX}0-辅助/x.md`),
+		'external-writeback',
+	);
 	assert.equal(resolveBridgedCommand('other:cmd'), null);
 	assert.equal(resolveBridgedCommand(undefined), null);
 });
@@ -430,5 +441,128 @@ test('installItemControlBridge：run-task 不安装 MarkdownView shim', async ()
 	// 派发瞬间未被 shim 改写：仍是真实实现（flush 不依赖假视图）。
 	assert.equal(seen.length, 1);
 	assert.deepEqual(seen[0], { real: MarkdownView });
+	uninstall();
+});
+
+/* ------------------------------------------------------------------ *
+ * installItemControlBridge — 「外部写回窗口」族（Templater 模板命令）
+ * （[[Plan-20261008-113227]] §5.3 / §七.2）
+ * ------------------------------------------------------------------ */
+
+/**
+ * 构造带「外部写回窗口」原语的 IOTOTask 活动视图桩。`events` 记录
+ * begin / original / end 的相对顺序，用于断言「begin → 派发 → settle 后 end」。
+ * `beginReturn` 控制 begin 是否进入窗口；`original` 可注入同步抛错 / rejected Promise。
+ */
+function makeExternalWritebackApp(options = {}) {
+	const events = [];
+	const beginReturn = options.beginReturn ?? true;
+	const originalImpl =
+		options.original ??
+		((command, evt) => {
+			events.push('original');
+			return { command, evt };
+		});
+	const view =
+		options.view ??
+		{
+			getViewType: () => IOTO_TASK_VIEW_TYPE,
+			beginExternalEditorWriteback: () => {
+				events.push('begin');
+				return beginReturn;
+			},
+			endExternalEditorWriteback: () => {
+				events.push('end');
+			},
+		};
+	const workspace = {
+		activeLeaf: { view },
+		getActiveViewOfType: (type) => ({ real: type }),
+	};
+	const commands = {
+		executeCommand: (command, evt) => originalImpl(command, evt),
+	};
+	return { app: { commands, workspace }, commands, workspace, view, events };
+}
+
+const TEMPLATER_ID = `${TEMPLATER_COMMAND_PREFIX}0-辅助/x.md`;
+
+test('installItemControlBridge：external-writeback → begin 先于 original，original 先于 end', async () => {
+	const { app, commands, events } = makeExternalWritebackApp();
+	const uninstall = installItemControlBridge(app);
+
+	const result = await commands.executeCommand({ id: TEMPLATER_ID });
+
+	assert.deepEqual(events, ['begin', 'original', 'end']);
+	assert.deepEqual(result, { command: { id: TEMPLATER_ID }, evt: undefined });
+	uninstall();
+});
+
+test('installItemControlBridge：external-writeback 非 IOTOTask → 原样透传（begin 未调用）', async () => {
+	const { app, commands, events } = makeExternalWritebackApp({
+		view: { getViewType: () => 'markdown' },
+	});
+	const uninstall = installItemControlBridge(app);
+
+	const result = await commands.executeCommand({ id: TEMPLATER_ID });
+
+	assert.deepEqual(events, ['original']);
+	assert.deepEqual(result, { command: { id: TEMPLATER_ID }, evt: undefined });
+	uninstall();
+});
+
+test('installItemControlBridge：external-writeback 视图缺原语 → 原样透传', async () => {
+	const { app, commands, events } = makeExternalWritebackApp({
+		view: { getViewType: () => IOTO_TASK_VIEW_TYPE },
+	});
+	const uninstall = installItemControlBridge(app);
+
+	await commands.executeCommand({ id: TEMPLATER_ID });
+
+	assert.deepEqual(events, ['original']);
+	uninstall();
+});
+
+test('installItemControlBridge：begin 返回 false（非编辑态）→ 不进窗口，end 未调用', async () => {
+	const { app, commands, events } = makeExternalWritebackApp({
+		beginReturn: false,
+	});
+	const uninstall = installItemControlBridge(app);
+
+	const result = await commands.executeCommand({ id: TEMPLATER_ID });
+
+	assert.deepEqual(events, ['begin', 'original']);
+	assert.deepEqual(result, { command: { id: TEMPLATER_ID }, evt: undefined });
+	uninstall();
+});
+
+test('installItemControlBridge：external-writeback original 返回 rejected Promise → end 仍调用且异常上抛', async () => {
+	const { app, commands, events } = makeExternalWritebackApp({
+		original: () => {
+			events.push('original');
+			return Promise.reject(new Error('template failed'));
+		},
+	});
+	const uninstall = installItemControlBridge(app);
+
+	await assert.rejects(
+		() => Promise.resolve(commands.executeCommand({ id: TEMPLATER_ID })),
+		/template failed/,
+	);
+	assert.deepEqual(events, ['begin', 'original', 'end']); // 窗口不悬挂
+	uninstall();
+});
+
+test('installItemControlBridge：external-writeback original 同步抛错 → end 调用后异常上抛', () => {
+	const { app, commands, events } = makeExternalWritebackApp({
+		original: () => {
+			events.push('original');
+			throw new Error('sync boom');
+		},
+	});
+	const uninstall = installItemControlBridge(app);
+
+	assert.throws(() => commands.executeCommand({ id: TEMPLATER_ID }), /sync boom/);
+	assert.deepEqual(events, ['begin', 'original', 'end']); // 同步段异常也释放窗口
 	uninstall();
 });
