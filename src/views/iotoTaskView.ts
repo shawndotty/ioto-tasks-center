@@ -1540,6 +1540,12 @@ export class IOTOTaskView extends TextFileView {
 				el.removeClass('is-zoomed');
 			});
 		this.syncZoomButton(zoomedCard);
+
+		// 摘类后内容恢复完整高度，但 scrollTop 仍停在放大期被夹取的小值，
+		// 目标卡可能落到视口外 → 复调既有「必要时才滚」的滚入（[[Plan-20261008-181508]]）。
+		if (zoomedCard) {
+			this.scrollCardIntoView(zoomedCard);
+		}
 	}
 
 	/**
