@@ -2480,6 +2480,17 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	outline-offset: 2px;
 }
 
+/* 编辑态勾选框靠上对齐（[[Plan-20261008-213128]] 条目 50）。
+   卡片是 flex + align-items:center，勾选框与正文同处第一行；正文在编辑时随
+   输入增高，居中的勾选框会被交叉轴中点带着一路下移。这里只给编辑态的勾选框
+   覆盖 align-self:flex-start（align-self 恒优先于容器 align-items），普通态 /
+   选择态保持居中不变。放大态 ≡ 常驻编辑态（[[Discuss-20261008-173935]]），
+   故一并覆盖，保证放大卡编辑时也恒靠上。 */
+.ioto-task-view__card.is-editing .ioto-task-view__card-checkbox,
+.ioto-task-view__card.is-zoomed .ioto-task-view__card-checkbox {
+	align-self: flex-start;
+}
+
 /* 经典卡片主题（非玻璃）：勾选框图标在未完成态为空字符串（只有完成态 setIcon('check')），
    仅靠图标无法在未完成态显形，故用 CSS 外框补出「未选中的空框」。
    玻璃主题已有自己的 24px 方块，用 :not(.is-glass) 排除，避免叠加。
