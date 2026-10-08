@@ -601,6 +601,8 @@ const zhCN = {
 	'view.iotoTaskView.badge.turnsUnlimited': '不限轮数',
 	'view.iotoTaskView.cardActions.insertOutgoingLink': '插入出链',
 	'view.iotoTaskView.cardActions.editItemControls': '编辑条目控制',
+	'view.iotoTaskView.cardActions.zoomIn': '放大',
+	'view.iotoTaskView.cardActions.zoomOut': '缩小',
 	'view.iotoTaskView.deleteConfirm.confirm': '确认删除',
 	'view.iotoTaskView.deleteConfirm.cancel': '取消',
 	'view.iotoTaskView.deleteConfirm.aria': '删除确认',

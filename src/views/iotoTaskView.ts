@@ -217,6 +217,11 @@ export class IOTOTaskView extends TextFileView {
 	private isRendering = false;
 	private editingLine: number | null = null;
 	/**
+	 * 聚焦放大态的文件行号（0 基）；非放大 `null`。**瞬态**：不进 `getState`，
+	 * 且在退出编辑 / 换文件 / 清空时解除（[[Discuss-20261008-111641]] §2.5）。
+	 */
+	private zoomLine: number | null = null;
+	/**
 	 * 选择态行号（[[Plan-20261003-194909]] §四）。
 	 *
 	 * `idle → selected → editing` 显式状态机的载体：**同一时刻只有一张卡片被选中**，
@@ -369,6 +374,7 @@ export class IOTOTaskView extends TextFileView {
 
 		this.data = data;
 		this.lastLoadedText = data;
+		this.zoomLine = null;
 		this.renderNote(data);
 	}
 
@@ -376,6 +382,7 @@ export class IOTOTaskView extends TextFileView {
 		this.destroyActiveEditor();
 		this.destroyContinuationEditor();
 		this.editingLine = null;
+		this.zoomLine = null;
 		this.continuationLine = null;
 		this.continuationOriginalLines = [];
 		this.selectedLine = null;
@@ -1303,6 +1310,7 @@ export class IOTOTaskView extends TextFileView {
 		const readDeletePending = (): boolean => this.pendingDeleteLine !== null;
 		// 🔴 对象字面量里的 `this` 指向对象本身，故必须走箭头读取器。
 		const readEditingLine = (): number | null => this.editingLine;
+		const readZoomLine = (): number | null => this.zoomLine;
 		// 卡片动作区按钮：仅在「支持内联编辑」且「目标命令已注册」时才注入，
 		// 缺省即渲染层隐藏按钮（Q5：只读 / ioto-settings 未启用 → 隐藏）。
 		const inlineEdit = this.supportsInlineEdit();
@@ -1334,6 +1342,9 @@ export class IOTOTaskView extends TextFileView {
 			// 🔴 必须是 getter：关键词过滤读实时值，供「编辑中的卡无条件保留」兜底。
 			get editingLine() {
 				return readEditingLine();
+			},
+			get zoomLine() {
+				return readZoomLine();
 			},
 			beginEdit: (line) => {
 				void this.beginEdit(line);
@@ -1370,7 +1381,116 @@ export class IOTOTaskView extends TextFileView {
 							),
 					}
 				: {}),
+			...(inlineEdit
+				? {
+						toggleZoom: (line: number) => {
+							this.toggleZoomCard(line);
+						},
+					}
+				: {}),
 		};
+	}
+
+	/* ------------------------------------------------------------------ *
+	 * 聚焦放大：瞬态 DOM 开关（不重绘，保住编辑器光标）
+	 * ------------------------------------------------------------------ */
+
+	private toggleZoomCard(line: number): void {
+		if (this.zoomLine === line) {
+			this.exitZoom();
+		} else {
+			this.enterZoom(line);
+		}
+	}
+
+	/** 放大：只加类 / 显隐，一个 DOM 节点都不重建。 */
+	private enterZoom(line: number): void {
+		const cardEl = this.queryCard(line);
+		const sectionEl =
+			cardEl?.closest<HTMLElement>('.ioto-task-view__section') ?? null;
+		const groupListEl = cardEl?.parentElement ?? null;
+		if (!cardEl || !sectionEl) {
+			return;
+		}
+
+		this.zoomLine = line;
+
+		// ① 其他顶层 Section 整体隐藏
+		this.bodyEl
+			?.querySelectorAll<HTMLElement>('.ioto-task-view__section')
+			.forEach((sec) => {
+				if (sec !== sectionEl) {
+					sec.addClass('is-zoom-hidden');
+				}
+			});
+
+		// ② 本 Section：只留放大卡所在的清单分组；其余分组 / 非任务正文块一并隐藏（Q1）。
+		//    标题栏不在 section-body 内，天然保留（Q2）。
+		sectionEl
+			.querySelector('.ioto-task-view__section-body')
+			?.querySelectorAll<HTMLElement>(':scope > *')
+			.forEach((child) => {
+				if (child !== groupListEl) {
+					child.addClass('is-zoom-hidden');
+				}
+			});
+
+		// ③ 同分组内其他卡隐藏
+		groupListEl
+			?.querySelectorAll<HTMLElement>(':scope > .ioto-task-view__card')
+			.forEach((card) => {
+				if (card !== cardEl) {
+					card.addClass('is-zoom-hidden');
+				}
+			});
+
+		// ④ 抬高输入区（数值由 CSS 决定，见 6.6）
+		cardEl.addClass('is-zoomed');
+
+		// ⑤ 按钮就地翻面（点击不重建动作区，见 Discuss-20261008-111641 §2.3-4）
+		this.syncZoomButton(cardEl);
+	}
+
+	/** 缩小：删净放大类，与 `enterZoom` 对称；幂等。 */
+	private exitZoom(): void {
+		this.zoomLine = null;
+		// 先记住放大卡（清类后 `is-zoomed` 即消失），供按钮翻面还原用。
+		const zoomedCard =
+			this.bodyEl?.querySelector<HTMLElement>(
+				'.ioto-task-view__card.is-zoomed',
+			) ?? null;
+		this.bodyEl
+			?.querySelectorAll<HTMLElement>('.is-zoom-hidden, .is-zoomed')
+			.forEach((el) => {
+				el.removeClass('is-zoom-hidden');
+				el.removeClass('is-zoomed');
+			});
+		this.syncZoomButton(zoomedCard);
+	}
+
+	/**
+	 * 就地同步放大按钮的图标与文案：点击切换是纯 DOM 开关，不会重建动作区，
+	 * 故须手动翻面（否则点了放大图标仍停在「放大」）。
+	 */
+	private syncZoomButton(cardEl: HTMLElement | null): void {
+		if (!cardEl) {
+			return;
+		}
+		const btn = cardEl.querySelector<HTMLElement>(
+			'.ioto-task-view__card-action-btn[data-action="toggle-zoom"]',
+		);
+		if (!btn) {
+			return;
+		}
+		const zoomed = this.zoomLine !== null;
+		const label = t(
+			zoomed
+				? 'view.iotoTaskView.cardActions.zoomOut'
+				: 'view.iotoTaskView.cardActions.zoomIn',
+		);
+		setIcon(btn, zoomed ? 'minimize-2' : 'maximize-2');
+		btn.setAttribute('aria-label', label);
+		btn.setAttribute('title', label);
 	}
 
 	/**
@@ -2080,6 +2200,7 @@ export class IOTOTaskView extends TextFileView {
 		if (nextBody.includes('\n')) {
 			new Notice(t('notice.iotoTaskView.bodyMultilineRejected'));
 			this.editingLine = null;
+			this.exitZoom();
 			await this.reloadFromVault();
 			this.renderNote(this.data);
 			return;
@@ -2091,6 +2212,7 @@ export class IOTOTaskView extends TextFileView {
 			nextBody,
 		});
 		this.editingLine = null;
+		this.exitZoom();
 		this.applyOutcome(outcome);
 
 		if (outcome.status === 'conflict') {
@@ -2633,6 +2755,9 @@ export class IOTOTaskView extends TextFileView {
 		}
 
 		cardEl.removeClass('is-editing');
+		if (this.zoomLine === line) {
+			this.exitZoom();
+		}
 		const textEl = cardEl.querySelector<HTMLElement>(
 			'.ioto-task-view__card-text',
 		);

@@ -654,6 +654,8 @@ const en = {
 	'view.iotoTaskView.badge.turnsUnlimited': 'no turn limit',
 	'view.iotoTaskView.cardActions.insertOutgoingLink': 'Insert outgoing link',
 	'view.iotoTaskView.cardActions.editItemControls': 'Edit item controls',
+	'view.iotoTaskView.cardActions.zoomIn': 'Zoom in',
+	'view.iotoTaskView.cardActions.zoomOut': 'Zoom out',
 	'view.iotoTaskView.deleteConfirm.confirm': 'Confirm delete',
 	'view.iotoTaskView.deleteConfirm.cancel': 'Cancel',
 	'view.iotoTaskView.deleteConfirm.aria': 'Delete confirmation',

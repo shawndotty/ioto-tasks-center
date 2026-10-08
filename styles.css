@@ -2727,6 +2727,28 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	height: 16px;
 }
 
+/* ============================================================
+   IOTOTask 视图 · 卡片「聚焦放大」瞬态（Discuss-20261008-111641）
+   - 只作用于编辑态卡片；纯交互瞬时类，不持久化、不入导出图。
+   - 其他 Section / 其他卡片 / 本 Section 的非任务分组与正文块：整体隐藏。
+   ============================================================ */
+/* 特异性 (0,4,0)：加 `.ioto-task-view .ioto-task-view__body` 前缀，压过 glass 等外观变体
+   在卡片上声明的 `display`（如 `.ioto-task-view.is-glass .ioto-task-view__card` 的 (0,3,0)）。
+   见 Research-20261008-121009 方案 A。 */
+.ioto-task-view .ioto-task-view__body .ioto-task-view__section.is-zoom-hidden,
+.ioto-task-view .ioto-task-view__body .ioto-task-view__card.is-zoom-hidden,
+.ioto-task-view .ioto-task-view__body .ioto-task-view__section-body > .is-zoom-hidden {
+	display: none;
+}
+
+/* 放大卡：抬高输入区。基线 `.ioto-task-view__card-editor { min-height: 1.6em }`。 */
+.ioto-task-view__card.is-zoomed {
+	min-height: 8em;
+}
+.ioto-task-view__card.is-zoomed .ioto-task-view__card-editor {
+	min-height: 6em;
+}
+
 /* ------------------------------------------------------------------ *
  * 待删除确认遮罩（选择态 Delete 首按后盖在当前卡上）
  * [[Plan-20261005-141853]] §四 步骤 8 / Q4 / Q8

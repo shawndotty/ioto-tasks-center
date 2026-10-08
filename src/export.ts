@@ -205,7 +205,12 @@ export interface CaptureResult {
 const VIEW_ROOT_SELECTOR = '.ioto-task-view';
 
 /** 只在交互中出现的瞬时态类，导出前从**克隆**上摘掉（不碰实时 DOM）。 */
-const TRANSIENT_CLASSES = ['is-selected', 'is-pending-delete'];
+const TRANSIENT_CLASSES = [
+	'is-selected',
+	'is-pending-delete',
+	'is-zoom-hidden', // 新增：放大时不把「被隐藏的兄弟卡」一起拍进图
+	'is-zoomed', // 新增：还原被抬高的高度
+];
 
 /** 待删除确认遮罩的类名（整块剔除）。 */
 const DELETE_CONFIRM_SELECTOR = '.ioto-task-view__delete-confirm';

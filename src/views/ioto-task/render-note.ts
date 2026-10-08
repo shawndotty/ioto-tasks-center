@@ -115,6 +115,16 @@ export interface TaskNoteEditing {
 	 * **缺省 = 按钮不渲染**（同上）。
 	 */
 	editItemControls?(line: number): void;
+	/**
+	 * 当前处于「聚焦放大」态的文件行号（getter，读实时值）；非放大态 `null`。
+	 * 与 `editingLine` 同源——放大只在编辑态存在，故通常等于 `editingLine`。
+	 */
+	readonly zoomLine?: number | null;
+	/**
+	 * 切换「聚焦放大」：对同一行再次调用即缩小（幂等，纯 DOM 开关，不重绘）。
+	 * **缺省 = 按钮不渲染**（只读 / 不支持内联编辑时不显示）。
+	 */
+	toggleZoom?(line: number): void;
 }
 
 /** 链接交互回调（由 `IOTOTaskView` 注入；只读态同样生效）。 */
@@ -933,6 +943,22 @@ function renderCardActionButtons(
 			label: t('view.iotoTaskView.cardActions.editItemControls'),
 			action: 'edit-item-controls',
 			onClick: () => editing.editItemControls?.(line),
+		});
+	}
+
+	if (editing.toggleZoom) {
+		// 图标随实时放大态自洽：`renderCardActions` 会被条目控制写回后
+		// 的 `refreshCardActions` 就地重建，若写死 'maximize-2' 会把已放大的卡画回「放大」。
+		const zoomed = editing.zoomLine === line;
+		createCardActionButton(containerEl, {
+			icon: zoomed ? 'minimize-2' : 'maximize-2',
+			label: t(
+				zoomed
+					? 'view.iotoTaskView.cardActions.zoomOut'
+					: 'view.iotoTaskView.cardActions.zoomIn',
+			),
+			action: 'toggle-zoom',
+			onClick: () => editing.toggleZoom?.(line),
 		});
 	}
 }
