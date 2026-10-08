@@ -1,4 +1,5 @@
 import {
+	FileView,
 	Menu,
 	Notice,
 	Plugin,
@@ -1190,12 +1191,26 @@ export default class IOTOTasksCenter extends Plugin {
 			return;
 		}
 
-		const leaf = targetLeaf ?? this.app.workspace.getLeaf(false);
+		const leaf = targetLeaf ?? this.resolveInPlaceLeaf(file);
 		await leaf.setViewState({
 			type: IOTO_TASK_VIEW_TYPE,
 			active: true,
 			state: { file: file.path },
 		});
+	}
+
+	/**
+	 * 解析「就地替换」的目标叶子。
+	 * 不能直接用 getLeaf(false)：它内部走 getUnpinnedLeaf()，会跳过被锁定（pin）的
+	 * 标签页并另开新标签页（见 Discuss-20261008-082657 §一/§二）。
+	 * 这里优先复用当前正显示该文件的活动叶子（含被锁定的），没有才回退。
+	 */
+	private resolveInPlaceLeaf(file: TFile): WorkspaceLeaf {
+		const activeView = this.app.workspace.getActiveViewOfType(FileView);
+		if (activeView?.file?.path === file.path) {
+			return activeView.leaf;
+		}
+		return this.app.workspace.getLeaf(false);
 	}
 
 	private async setLeafToMarkdown(leaf: WorkspaceLeaf): Promise<void> {
