@@ -2129,7 +2129,7 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 .ioto-task-view__scroll {
 	flex: 1 1 auto;
 	overflow-y: auto;
-	padding: var(--size-4-4, 16px);
+	padding: var(--size-4-3, 16px);
 	display: flex;
 	flex-direction: column;
 	gap: var(--ioto-tv-gap);
@@ -2148,6 +2148,7 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	gap: var(--ioto-tv-gap);
 	padding: var(--ioto-tv-pad-y) var(--ioto-tv-pad-x);
 	border-bottom: 1px solid var(--ioto-tv-border);
+	padding-top: 0;
 }
 
 .ioto-task-view__toolbar-left,
@@ -3084,6 +3085,7 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	z-index: 1;
 	padding: var(--ioto-tv-scroll-pad);
 	gap: var(--ioto-tv-section-gap);
+	padding-top: 12px;
 }
 
 /* 控制栏同样要浮在 Aurora 背景层（`::before`，z-index:0）之上 */
