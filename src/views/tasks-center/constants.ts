@@ -123,3 +123,19 @@ export function getTaskDropValidationMessage(
 			return t('view.notice.invalidDropUnavailable');
 	}
 }
+
+// 视图内 DOM 选择器常量（从 iotoTasksCenterView 抽取，供子模块共用）。
+export const TASK_LIST_CLASS = 'ioto-tasks-center__task-list';
+export const TASK_ROW_CLASS = 'ioto-tasks-center__task-row';
+export const TAB_BUTTON_SELECTOR = '.ioto-tasks-center__tab';
+export const TAB_COUNT_SELECTOR = '.ioto-tasks-center__tab-count';
+export const TASK_FILTER_SWITCHER_SELECTOR =
+	'.ioto-tasks-center__task-filter-switcher';
+export const TASK_LIST_DESC_SELECTOR =
+	'.ioto-tasks-center__pane--tasks .ioto-tasks-center__task-list-desc';
+export const TASK_SEARCH_ROW_SELECTOR =
+	'.ioto-tasks-center__pane--tasks .ioto-tasks-center__task-search-row';
+export const HEADER_TOGGLE_BUTTON_SELECTOR =
+	'.ioto-tasks-center__pane--tasks .ioto-tasks-center__header-toggle-button';
+
+export type TaskOpenTarget = 'adjacent-preview' | 'current-pane-tab';

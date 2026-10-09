@@ -1,16 +1,9 @@
 import {
 	type HoverPopover,
 	ItemView,
-	MarkdownView,
-	Menu,
-	Platform,
-	setIcon,
 	TFile,
 	WorkspaceLeaf,
 } from 'obsidian';
-
-import { PROJECT_METADATA_FILE_NAME } from '../tasks-center/project-metadata';
-import { resolveCursorMarkerSearchStart } from '../tasks-center/cursor-marker';
 
 import type { TaskPriorityValue } from '../tasks-center/task-priority';
 
@@ -32,14 +25,7 @@ import type {
 	TaskListTimeFilter,
 	TaskSearchEntryMode,
 } from '../settings';
-import {
-	getTaskListGroupModeOptions,
-	getTaskListSortModeOptions,
-	getTaskListTimeFilterOptions,
-} from '../settings';
 import { t } from '../lang/helpter';
-import { isTaskNoteFile } from '../tasks-center/task-note-menu';
-import { IOTO_TASK_VIEW_TYPE } from './iotoTaskView';
 import type {
 	IncompleteChecklistItem,
 	ProjectFolderEntry,
@@ -53,7 +39,6 @@ import {
 } from '../ui/task-outlink-popover';
 import { TaskStatusChecklistPopover } from '../ui/task-status-checklist-popover';
 import { TaskSearchModal } from '../ui/task-search-modal';
-import { shouldSkipOpeningTask } from './task-preview-state';
 import {
 	handleTaskDragStart,
 	handleTaskDragOver,
@@ -70,15 +55,8 @@ import {
 	clearCurrentTaskDropTargetClasses,
 	removeDraggedTaskParent,
 } from './tasks-center/drag-controller';
-import {
-	getTaskFilterCounts,
-	getTaskFilterTabs,
-	isTaskFilterTab,
-	matchesTaskFilterTab,
-	type TaskFilterTab,
-} from './task-filter-tabs';
+import { type TaskFilterTab } from './task-filter-tabs';
 import * as SearchController from './tasks-center/search-controller';
-import { filterTasksByTime } from './tasks-center/task-time-filter';
 import {
 	refreshFromVaultChange,
 	loadProjects,
@@ -106,35 +84,29 @@ import {
 } from './tasks-center/task-operations';
 import { captureProjectListScrollTop } from './project-list-scroll';
 import { captureTaskListScrollTop } from './task-list-scroll';
+import { renderProjectsPane } from './tasks-center/projects-pane-renderer';
 import {
-	buildDirectChildTasksByParentPath,
-	buildVisibleTaskHierarchy,
-} from './task-hierarchy';
+	renderTasksPane as renderTasksPaneFn,
+} from './tasks-center/tasks-pane-renderer';
+import { renderTaskRows as renderTaskRowsFn } from './tasks-center/task-row-renderer';
 import {
-	buildTaskHoverPreviewPayload,
-	hasActiveTaskHoverPopover,
-	shouldTriggerTaskHoverPreview,
-} from './task-hover-preview';
+	bindTaskSubtaskPopover as bindTaskSubtaskPopoverFn,
+	bindTaskOutlinkPopover as bindTaskOutlinkPopoverFn,
+	bindTaskStatusChecklistPopover as bindTaskStatusChecklistPopoverFn,
+} from './tasks-center/popover-controller';
 import {
-	buildTaskPresentationSections,
-	sortTasksForPresentation,
-} from './task-list-presentation';
+	queueOutlinkBadgeUpdate as queueOutlinkBadgeUpdateFn,
+	updateTaskOutlinkBadges as updateTaskOutlinkBadgesFn,
+} from './tasks-center/outlink-badge-sync';
 import {
-	COMPACT_LAYOUT_BREAKPOINT,
 	getWorkspaceLeafId,
-	HOVER_PREVIEW_REFRESH_RETRY_MS,
-	NARROW_LAYOUT_BREAKPOINT,
 	parseViewState,
+	type TaskOpenTarget,
 } from './tasks-center/constants';
 import { createTaskSearchSession } from './tasks-center/task-search-session';
-import {
-	buildTaskSearchStamp,
-	orderTasksBySearchHits,
-	type TaskSearchHit,
-} from './tasks-center/task-search-index';
+import type { TaskSearchHit } from './tasks-center/task-search-index';
 import {
 	renderTaskSearchRow as renderTaskSearchRowFn,
-	updateTaskSearchCountText,
 } from './tasks-center/task-search-row';
 import {
 	getActiveTaskPath as getActiveTaskPathFn,
@@ -152,39 +124,69 @@ import {
 	showTaskPriorityMenu,
 	showTaskSubtaskTypeMenu,
 } from './tasks-center/menus';
-import { renderProjectsPane } from './tasks-center/projects-pane-renderer';
 import {
-	renderTaskListBody as renderTaskListBodyFn,
-	renderTasksPane as renderTasksPaneFn,
-} from './tasks-center/tasks-pane-renderer';
-import { renderTaskRows as renderTaskRowsFn } from './tasks-center/task-row-renderer';
-import { toggleSetMember } from './tasks-center/helpers';
+	setTaskSearchQuery as setTaskSearchQueryFn,
+	focusTaskSearch as focusTaskSearchFn,
+	focusFirstTaskRow as focusFirstTaskRowFn,
+	getTaskSearchSummary as getTaskSearchSummaryFn,
+	getTaskSearchHit as getTaskSearchHitFn,
+	applyTaskSearch as applyTaskSearchFn,
+	getTaskFilterCounts as getTaskFilterCountsFn,
+	getTaskFilterSwitcherLabel as getTaskFilterSwitcherLabelFn,
+	renderTaskListIncremental as renderTaskListIncrementalFn,
+	syncTaskSearchCount as syncTaskSearchCountFn,
+} from './tasks-center/task-search-ops';
+import { renderTaskTabs as renderTaskTabsFn } from './tasks-center/task-tabs-renderer';
 import {
-	bindTaskSubtaskPopover as bindTaskSubtaskPopoverFn,
-	bindTaskOutlinkPopover as bindTaskOutlinkPopoverFn,
-	bindTaskStatusChecklistPopover as bindTaskStatusChecklistPopoverFn,
-} from './tasks-center/popover-controller';
+	getTasksForActiveTab as getTasksForActiveTabFn,
+	getVisibleTasks as getVisibleTasksFn,
+	getTaskPresentationSections as getTaskPresentationSectionsFn,
+	isTaskGroupCollapsed as isTaskGroupCollapsedFn,
+	isProjectGroupCollapsed as isProjectGroupCollapsedFn,
+	toggleTaskGroupCollapsed as toggleTaskGroupCollapsedFn,
+	toggleProjectGroupCollapsed as toggleProjectGroupCollapsedFn,
+	isSubtasksCollapsed as isSubtasksCollapsedFn,
+	toggleSubtasksCollapsed as toggleSubtasksCollapsedFn,
+	toggleBatchEditMode as toggleBatchEditModeFn,
+	toggleTaskSelected as toggleTaskSelectedFn,
+	getSelectedTasks as getSelectedTasksFn,
+	selectAllVisibleTasks as selectAllVisibleTasksFn,
+	clearSelection as clearSelectionFn,
+	syncCollapsedTaskGroups as syncCollapsedTaskGroupsFn,
+	syncCollapsedProjectGroups as syncCollapsedProjectGroupsFn,
+	getTaskListDescription as getTaskListDescriptionFn,
+	buildDirectChildTasksForCurrentProject as buildDirectChildTasksForCurrentProjectFn,
+} from './tasks-center/task-list-queries';
 import {
-	queueOutlinkBadgeUpdate as queueOutlinkBadgeUpdateFn,
-	updateTaskOutlinkBadges as updateTaskOutlinkBadgesFn,
-} from './tasks-center/outlink-badge-sync';
+	triggerTaskHoverPreview as triggerTaskHoverPreviewFn,
+	shouldDeferVaultRefresh as shouldDeferVaultRefreshFn,
+	scheduleDeferredVaultRefresh as scheduleDeferredVaultRefreshFn,
+	clearDeferredVaultRefreshState as clearDeferredVaultRefreshStateFn,
+} from './tasks-center/deferred-refresh';
+import {
+	renderCompactProjectSwitcher as renderCompactProjectSwitcherFn,
+	isMobileTaskListLayout as isMobileTaskListLayoutFn,
+	toggleTaskListHeaderExpanded as toggleTaskListHeaderExpandedFn,
+	applyTaskListHeaderCollapsed as applyTaskListHeaderCollapsedFn,
+	canSwitchProjects as canSwitchProjectsFn,
+	startResizeObserver as startResizeObserverFn,
+	stopResizeObserver as stopResizeObserverFn,
+} from './tasks-center/compact-layout';
+import {
+	renderTaskFilterEmptyState as renderTaskFilterEmptyStateFn,
+	renderTaskSearchEmptyState as renderTaskSearchEmptyStateFn,
+	renderState as renderStateFn,
+} from './tasks-center/empty-states';
+import {
+	openTaskFile as openTaskFileFn,
+	openTaskFileAtChecklist as openTaskFileAtChecklistFn,
+	openOutlinkFileInPreview as openOutlinkFileInPreviewFn,
+	openProjectSpecByProject as openProjectSpecByProjectFn,
+	openFileInPreview as openFileInPreviewFn,
+	findReusablePreviewLeaf as findReusablePreviewLeafFn,
+} from './tasks-center/task-file-opening';
 
 export const IOTO_TASKS_CENTER_VIEW_TYPE = 'IOTOTasksCenter';
-
-const TASK_LIST_CLASS = 'ioto-tasks-center__task-list';
-const TASK_ROW_CLASS = 'ioto-tasks-center__task-row';
-const TAB_BUTTON_SELECTOR = '.ioto-tasks-center__tab';
-const TAB_COUNT_SELECTOR = '.ioto-tasks-center__tab-count';
-const TASK_FILTER_SWITCHER_SELECTOR =
-	'.ioto-tasks-center__task-filter-switcher';
-const TASK_LIST_DESC_SELECTOR =
-	'.ioto-tasks-center__pane--tasks .ioto-tasks-center__task-list-desc';
-const TASK_SEARCH_ROW_SELECTOR =
-	'.ioto-tasks-center__pane--tasks .ioto-tasks-center__task-search-row';
-const HEADER_TOGGLE_BUTTON_SELECTOR =
-	'.ioto-tasks-center__pane--tasks .ioto-tasks-center__header-toggle-button';
-
-type TaskOpenTarget = 'adjacent-preview' | 'current-pane-tab';
 
 export class IOTOTasksCenterView extends ItemView {
 	projects: ProjectFolderEntry[] = [];
@@ -206,7 +208,7 @@ export class IOTOTasksCenterView extends ItemView {
 	isRemoveUpTaskDropTarget = false;
 	previewLeaf: WorkspaceLeaf | null = null;
 	readonly lastOpenedTaskByProject = new Map<string, string>();
-	private readonly hoverPreviewParent: { hoverPopover: HoverPopover | null } =
+	public readonly hoverPreviewParent: { hoverPopover: HoverPopover | null } =
 		{
 			hoverPopover: null,
 		};
@@ -231,15 +233,15 @@ export class IOTOTasksCenterView extends ItemView {
 	isCompactLayout = false;
 	isNarrowLayout = false;
 	public isTaskListHeaderExpanded = false;
-	private readonly collapsedTaskGroups = new Set<string>();
-	private readonly collapsedProjectGroups = new Set<string>();
+	public readonly collapsedTaskGroups = new Set<string>();
+	public readonly collapsedProjectGroups = new Set<string>();
 	readonly collapsedSubtaskParents = new Set<string>();
 	public isBatchEditMode = false;
 	readonly selectedTaskPaths = new Set<string>();
 	projectListScrollTop = 0;
 	taskListScrollTop = 0;
 	refreshToken = 0;
-	private resizeObserver: ResizeObserver | null = null;
+	public resizeObserver: ResizeObserver | null = null;
 	readonly getTasksRootPath: () => string;
 	readonly getProjectListSortMode: () => ProjectListSortMode;
 	readonly getProjectListGroupMode: () => ProjectListGroupMode;
@@ -288,8 +290,8 @@ export class IOTOTasksCenterView extends ItemView {
 	readonly getBatchTemplateConfig: () => BatchTemplateConfig;
 	readonly getTaskSearchEntryMode: () => TaskSearchEntryMode;
 	readonly getUseIOTOTaskViewAsDefault: () => boolean;
-	private readonly taskSearchSession = createTaskSearchSession();
-	private taskFilterCountsCache: {
+	public readonly taskSearchSession = createTaskSearchSession();
+	public taskFilterCountsCache: {
 		key: string;
 		counts: Record<TaskFilterTab, number>;
 	} | null = null;
@@ -541,17 +543,7 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	async openProjectSpecByProject(project: ProjectFolderEntry): Promise<void> {
-		const filePath = `${project.path}/${PROJECT_METADATA_FILE_NAME}`;
-		const abstractFile = this.app.vault.getAbstractFileByPath(filePath);
-		const file =
-			abstractFile instanceof TFile
-				? abstractFile
-				: await this.app.vault.create(
-						filePath,
-						'---\nIOTOProject:\n---\n',
-					);
-		const leaf = this.ensurePreviewLeaf();
-		await leaf.openFile(file, { active: true });
+		return openProjectSpecByProjectFn(this, project);
 	}
 
 	async triggerBatchCreateFromTemplate(): Promise<void> {
@@ -580,13 +572,11 @@ export class IOTOTasksCenterView extends ItemView {
 	 * 桌面把面板拖窄时同样缺空间，一起生效更符合"省空间"的初衷。
 	 */
 	public isMobileTaskListLayout(): boolean {
-		return Platform.isMobile || this.isCompactLayout;
+		return isMobileTaskListLayoutFn(this);
 	}
 
 	public toggleTaskListHeaderExpanded(): void {
-		this.isTaskListHeaderExpanded = !this.isTaskListHeaderExpanded;
-		this.applyTaskListHeaderCollapsed();
-		this.app.workspace.requestSaveLayout();
+		toggleTaskListHeaderExpandedFn(this);
 	}
 
 	/**
@@ -594,31 +584,7 @@ export class IOTOTasksCenterView extends ItemView {
 	 * 避免滚动位置跳动与搜索框失焦。
 	 */
 	public applyTaskListHeaderCollapsed(): void {
-		// `modal` 搜索模式下没有搜索行，也不渲染开关，此时描述保持可见。
-		const collapsed =
-			this.isMobileTaskListLayout()
-			&& this.isTaskSearchInline()
-			&& !this.isTaskListHeaderExpanded;
-		this.contentEl
-			.querySelector<HTMLElement>(TASK_LIST_DESC_SELECTOR)
-			?.toggleClass('is-hidden', collapsed);
-		this.contentEl
-			.querySelector<HTMLElement>(TASK_SEARCH_ROW_SELECTOR)
-			?.toggleClass('is-hidden', collapsed);
-
-		const toggleEl = this.contentEl.querySelector<HTMLElement>(
-			HEADER_TOGGLE_BUTTON_SELECTOR,
-		);
-		if (!toggleEl) {
-			return;
-		}
-
-		setIcon(toggleEl, collapsed ? 'eye-off' : 'eye');
-		const label = collapsed
-			? t('view.tasksPane.showHeaderExtras')
-			: t('view.tasksPane.hideHeaderExtras');
-		toggleEl.ariaLabel = label;
-		toggleEl.title = label;
+		applyTaskListHeaderCollapsedFn(this);
 	}
 
 	renderTaskSearchRow(container: HTMLElement): void {
@@ -629,133 +595,43 @@ export class IOTOTasksCenterView extends ItemView {
 	 * 只重绘任务列表，不触碰搜索行与 header —— 保证输入过程中焦点与输入法 composition 不中断。
 	 */
 	public renderTaskListIncremental(): void {
-		const listEl = this.contentEl.querySelector<HTMLElement>(
-			`.${TASK_LIST_CLASS}`,
-		);
-		if (!listEl) {
-			this.render();
-			return;
-		}
-
-		this.outlinkPopover?.close();
-		this.taskStatusChecklistPopover?.close();
-		renderTaskListBodyFn(this, listEl);
-		this.updateTaskTabCounts();
-		this.updateTaskListDescriptionText();
-		this.syncTaskSearchCount();
+		renderTaskListIncrementalFn(this);
 	}
 
 	public setTaskSearchQuery(value: string): void {
-		const query = value.trim();
-		if (
-			this.taskSearchQuery === query &&
-			this.taskSearchInputValue === value
-		) {
-			return;
-		}
-
-		this.taskSearchInputValue = value;
-		this.taskSearchQuery = query;
-		this.taskListScrollTop = 0;
-		this.renderTaskListIncremental();
+		setTaskSearchQueryFn(this, value);
 	}
 
 	syncTaskSearchCount(): void {
-		updateTaskSearchCountText(this, this.taskSearchCountEl);
+		syncTaskSearchCountFn(this);
 	}
 
 	focusTaskSearch(): void {
-		const inputEl = this.taskSearchInputEl;
-		if (!inputEl?.isConnected) {
-			this.openTaskSearchModal();
-			return;
-		}
-
-		inputEl.focus();
-		inputEl.select();
+		focusTaskSearchFn(this);
 	}
 
 	focusFirstTaskRow(): void {
-		const rowEl = this.contentEl.querySelector<HTMLElement>(
-			`.${TASK_ROW_CLASS}`,
-		);
-		rowEl?.focus();
+		focusFirstTaskRowFn(this);
 	}
 
 	getTaskSearchSummary(): { matched: number; total: number } | null {
-		if (!this.taskSearchQuery.trim()) {
-			return null;
-		}
-
-		const timeFilter = this.getTaskListTimeFilter();
-		const total = filterTasksByTime(
-			this.getTasksForActiveTab(),
-			timeFilter,
-		).length;
-		return {
-			matched: this.getVisibleTasks().length,
-			total,
-		};
+		return getTaskSearchSummaryFn(this);
 	}
 
 	getTaskSearchHit(taskPath: string): TaskSearchHit | null {
-		return (
-			this.taskSearchSession.resolve(this.tasks, this.taskSearchQuery)?.get(
-				taskPath,
-			) ?? null
-		);
+		return getTaskSearchHitFn(this, taskPath);
 	}
 
-	private applyTaskSearch(tasks: TaskFileEntry[]): TaskFileEntry[] {
-		return orderTasksBySearchHits(
-			tasks,
-			this.taskSearchSession.resolve(this.tasks, this.taskSearchQuery),
-		);
+	public applyTaskSearch(tasks: TaskFileEntry[]): TaskFileEntry[] {
+		return applyTaskSearchFn(this, tasks);
 	}
 
-	private updateTaskTabCounts(): void {
-		const counts = this.getTaskFilterCounts();
-		const tabButtonEls =
-			this.contentEl.querySelectorAll<HTMLElement>(TAB_BUTTON_SELECTOR);
-		for (const tabButtonEl of Array.from(tabButtonEls)) {
-			const tabKey = tabButtonEl.dataset.tabKey;
-			if (!isTaskFilterTab(tabKey)) {
-				continue;
-			}
-
-			const countEl = tabButtonEl.querySelector<HTMLElement>(
-				TAB_COUNT_SELECTOR,
-			);
-			countEl?.setText(`${counts[tabKey]}`);
-		}
-
-		const switcherEl = this.contentEl.querySelector<HTMLElement>(
-			TASK_FILTER_SWITCHER_SELECTOR,
-		);
-		if (switcherEl) {
-			const label = this.getTaskFilterSwitcherLabel();
-			switcherEl.setText(label);
-			switcherEl.ariaLabel = label;
-			switcherEl.title = label;
-		}
+	public getTaskFilterCounts(): Record<TaskFilterTab, number> {
+		return getTaskFilterCountsFn(this);
 	}
 
-	private updateTaskListDescriptionText(): void {
-		const descEl = this.contentEl.querySelector<HTMLElement>(
-			TASK_LIST_DESC_SELECTOR,
-		);
-		descEl?.setText(this.getTaskListDescription());
-	}
-
-	private getTaskFilterSwitcherLabel(): string {
-		const counts = this.getTaskFilterCounts();
-		const activeTab = getTaskFilterTabs().find(
-			(tab) => tab.key === this.activeTaskFilterTab,
-		);
-		return t('view.taskFilterSwitcher.current', [
-			activeTab?.label ?? t('view.filter.current'),
-			String(activeTab ? counts[activeTab.key] : 0),
-		]);
+	public getTaskFilterSwitcherLabel(): string {
+		return getTaskFilterSwitcherLabelFn(this);
 	}
 
 	renderTaskRows(
@@ -777,10 +653,7 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	buildDirectChildTasksForCurrentProject(): Map<string, TaskFileEntry[]> {
-		const orderedTasks = buildVisibleTaskHierarchy(
-			sortTasksForPresentation(this.tasks, this.getTaskListSortMode()),
-		);
-		return buildDirectChildTasksByParentPath(orderedTasks);
+		return buildDirectChildTasksForCurrentProjectFn(this);
 	}
 
 	bindTaskSubtaskPopover(
@@ -806,11 +679,7 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	async openOutlinkFileInPreview(file: TFile): Promise<void> {
-		const leaf = this.ensurePreviewLeaf();
-		await leaf.openFile(file, {
-			active: true,
-		});
-		this.previewLeaf = leaf;
+		return openOutlinkFileInPreviewFn(this, file);
 	}
 
 	queueOutlinkBadgeUpdate(taskPath: string): void {
@@ -826,56 +695,15 @@ export class IOTOTasksCenterView extends ItemView {
 		task: TaskFileEntry,
 		rowEl: HTMLButtonElement,
 	): void {
-		if (!shouldTriggerTaskHoverPreview(event, rowEl)) {
-			return;
-		}
-
-		this.app.workspace.trigger(
-			'hover-link',
-			buildTaskHoverPreviewPayload({
-				event,
-				rowEl,
-				taskPath: task.path,
-				hoverParent: this.hoverPreviewParent,
-			}),
-		);
+		triggerTaskHoverPreviewFn(this, event, task, rowEl);
 	}
 
 	shouldDeferVaultRefresh(): boolean {
-		return (
-			hasActiveTaskHoverPopover(this.hoverPreviewParent) ||
-			this.deferVaultRefreshForSubtaskCreation
-		);
+		return shouldDeferVaultRefreshFn(this);
 	}
 
 	scheduleDeferredVaultRefresh(): void {
-		if (this.deferredVaultRefreshTimer !== null) {
-			return;
-		}
-
-		this.deferredVaultRefreshTimer = window.setTimeout(() => {
-			this.deferredVaultRefreshTimer = null;
-			if (!this.pendingVaultRefresh) {
-				return;
-			}
-
-			if (this.shouldDeferVaultRefresh()) {
-				this.scheduleDeferredVaultRefresh();
-				return;
-			}
-
-			void this.refreshAfterDeferredHoverPreview();
-		}, HOVER_PREVIEW_REFRESH_RETRY_MS);
-	}
-
-	private async refreshAfterDeferredHoverPreview(): Promise<void> {
-		this.pendingVaultRefresh = false;
-		if (this.selectedProject) {
-			await this.refreshCurrentProjectTasks();
-			return;
-		}
-
-		await this.refreshFromVaultChange();
+		scheduleDeferredVaultRefreshFn(this);
 	}
 
 	canCreateTask(): boolean {
@@ -883,29 +711,11 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	canSwitchProjects(): boolean {
-		return (
-			!this.isProjectsLoading &&
-			!this.isTasksLoading &&
-			this.projects.length > 0
-		);
+		return canSwitchProjectsFn(this);
 	}
 
-	private renderCompactProjectSwitcher(container: HTMLElement): void {
-		const toolbarEl = container.createDiv({
-			cls: 'ioto-tasks-center__compact-toolbar',
-		});
-		const buttonLabel = this.getProjectSwitcherLabel();
-		const projectSwitcherEl = toolbarEl.createEl('button', {
-			cls: 'ioto-tasks-center__project-switcher',
-			text: buttonLabel,
-		});
-		projectSwitcherEl.type = 'button';
-		projectSwitcherEl.disabled = !this.canSwitchProjects();
-		projectSwitcherEl.ariaLabel = buttonLabel;
-		projectSwitcherEl.title = buttonLabel;
-		projectSwitcherEl.addEventListener('click', (event: MouseEvent) => {
-			void this.showProjectSwitcherMenu(event);
-		});
+	public renderCompactProjectSwitcher(container: HTMLElement): void {
+		renderCompactProjectSwitcherFn(this, container);
 	}
 
 	private canSearchTasks(): boolean {
@@ -1071,397 +881,96 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	clearDeferredVaultRefreshState(): void {
-		this.pendingVaultRefresh = false;
-		if (this.deferredVaultRefreshTimer !== null) {
-			window.clearTimeout(this.deferredVaultRefreshTimer);
-			this.deferredVaultRefreshTimer = null;
-		}
+		clearDeferredVaultRefreshStateFn(this);
 	}
 
-	private getProjectSwitcherLabel(): string {
-		if (this.isProjectsLoading) {
-			return t('view.projectSwitcher.loadingProjects');
-		}
-
-		if (this.isTasksLoading) {
-			return t('view.projectSwitcher.loadingTasks');
-		}
-
-		if (!this.selectedProject) {
-			return t('view.projectSwitcher.default');
-		}
-
-		return t('view.projectSwitcher.current', [this.selectedProject]);
+	public startResizeObserver(): void {
+		startResizeObserverFn(this);
 	}
 
-	private async showProjectSwitcherMenu(event: MouseEvent): Promise<void> {
-		if (!this.canSwitchProjects()) {
-			return;
-		}
-
-		const menu = new Menu();
-		for (const project of this.projects) {
-			const isCurrentProject = project.name === this.selectedProject;
-			menu.addItem((item) =>
-				item
-					.setTitle(
-						isCurrentProject
-							? t('view.projectSwitcher.currentSuffix', [
-									project.name,
-								])
-							: project.name,
-					)
-					.onClick(() => {
-						if (isCurrentProject) {
-							return;
-						}
-
-						void this.selectProject(project.name);
-					}),
-			);
-		}
-
-		menu.showAtMouseEvent(event);
-	}
-
-	private startResizeObserver(): void {
-		if (this.resizeObserver || typeof ResizeObserver === 'undefined') {
-			this.syncCompactLayout(this.contentEl.clientWidth);
-			return;
-		}
-
-		this.resizeObserver = new ResizeObserver((entries) => {
-			const entry = entries[0];
-			this.syncCompactLayout(
-				entry?.contentRect.width ?? this.contentEl.clientWidth,
-			);
-		});
-		this.resizeObserver.observe(this.contentEl);
-		this.syncCompactLayout(this.contentEl.clientWidth);
-	}
-
-	private stopResizeObserver(): void {
-		this.resizeObserver?.disconnect();
-		this.resizeObserver = null;
-	}
-
-	private syncCompactLayout(width: number): void {
-		if (width <= 0) {
-			return;
-		}
-
-		const nextCompactLayout = width <= COMPACT_LAYOUT_BREAKPOINT;
-		const nextNarrowLayout = width < NARROW_LAYOUT_BREAKPOINT;
-		if (
-			this.isCompactLayout === nextCompactLayout &&
-			this.isNarrowLayout === nextNarrowLayout
-		) {
-			return;
-		}
-
-		this.isCompactLayout = nextCompactLayout;
-		this.isNarrowLayout = nextNarrowLayout;
-		if (this.contentEl.isConnected) {
-			this.render();
-		}
+	public stopResizeObserver(): void {
+		stopResizeObserverFn(this);
 	}
 
 	renderTaskTabs(container: HTMLElement): void {
-		const tabBarEl = container.createDiv({
-			cls: 'ioto-tasks-center__tabs-bar',
-		});
-
-		if (this.isCompactLayout) {
-			this.renderCompactTaskFilterSwitcher(tabBarEl);
-		} else {
-			const taskFilterTabs = getTaskFilterTabs();
-			const tabListEl = tabBarEl.createDiv({
-				cls: 'ioto-tasks-center__tabs ioto-tasks-center__tabs-list',
-			});
-			const counts = this.getTaskFilterCounts();
-
-			for (const tab of taskFilterTabs) {
-				const tabButtonEl = tabListEl.createEl('button', {
-					cls: 'ioto-tasks-center__tab',
-				});
-				tabButtonEl.type = 'button';
-				tabButtonEl.dataset.tabKey = tab.key;
-				tabButtonEl.createSpan({
-					cls: 'ioto-tasks-center__tab-label',
-					text: tab.label,
-				});
-				tabButtonEl.createSpan({
-					cls: 'ioto-tasks-center__tab-count',
-					text: `${counts[tab.key]}`,
-				});
-
-				if (tab.key === this.activeTaskFilterTab) {
-					tabButtonEl.addClass('is-active');
-				}
-
-				tabButtonEl.addEventListener('click', () => {
-					if (tab.key === this.activeTaskFilterTab) {
-						return;
-					}
-
-					this.activeTaskFilterTab = tab.key;
-					this.render();
-				});
-			}
-		}
-
-		const settingsContainerEl = tabBarEl.createDiv({
-			cls: 'ioto-tasks-center__tabs-settings',
-		});
-		const settingsButtonEl = settingsContainerEl.createEl('button', {
-			cls: 'ioto-tasks-center__tab-settings-button',
-		});
-		settingsButtonEl.type = 'button';
-		settingsButtonEl.ariaLabel = t('view.taskListSettings');
-		settingsButtonEl.title = t('view.taskListSettings');
-		setIcon(settingsButtonEl, 'sliders-horizontal');
-		settingsButtonEl.addEventListener('click', (event: MouseEvent) => {
-			this.showTaskPresentationMenu(event);
-		});
-	}
-
-	private renderCompactTaskFilterSwitcher(tabBarEl: HTMLElement): void {
-		const buttonLabel = this.getTaskFilterSwitcherLabel();
-		const switcherEl = tabBarEl.createEl('button', {
-			cls: 'ioto-tasks-center__task-filter-switcher',
-			text: buttonLabel,
-		});
-		switcherEl.type = 'button';
-		switcherEl.ariaLabel = buttonLabel;
-		switcherEl.title = buttonLabel;
-		switcherEl.addEventListener('click', (event: MouseEvent) => {
-			this.showTaskFilterSwitcherMenu(event);
-		});
-	}
-
-	private showTaskFilterSwitcherMenu(event: MouseEvent): void {
-		const counts = this.getTaskFilterCounts();
-		const menu = new Menu();
-		for (const tab of getTaskFilterTabs()) {
-			const isActive = tab.key === this.activeTaskFilterTab;
-			menu.addItem((item) => {
-				item.setTitle(
-					t('view.taskFilterSwitcher.menuItem', [
-						tab.label,
-						String(counts[tab.key]),
-					]),
-				);
-				if (isActive) {
-					item.setIcon('check');
-				}
-				item.onClick(() => {
-					if (isActive) {
-						return;
-					}
-
-					this.activeTaskFilterTab = tab.key;
-					this.render();
-				});
-			});
-		}
-
-		menu.showAtMouseEvent(event);
+		renderTaskTabsFn(this, container);
 	}
 
 	getTasksForActiveTab(): TaskFileEntry[] {
-		return this.tasks.filter((task) =>
-			this.matchesTaskFilterTab(task, this.activeTaskFilterTab),
-		);
+		return getTasksForActiveTabFn(this);
 	}
 
 	getVisibleTasks(): TaskFileEntry[] {
-		const byTab = this.getTasksForActiveTab();
-		const bySearch = this.applyTaskSearch(byTab);
-		return filterTasksByTime(bySearch, this.getTaskListTimeFilter());
+		return getVisibleTasksFn(this);
 	}
 
 	getTaskPresentationSections(tasks: TaskFileEntry[]) {
-		return buildTaskPresentationSections(tasks, {
-			sortMode: this.taskSearchQuery.trim()
-				? 'relevance'
-				: this.getTaskListSortMode(),
-			groupMode: this.getTaskListGroupMode(),
-		});
+		return getTaskPresentationSectionsFn(this, tasks);
 	}
 
 	isTaskGroupCollapsed(sectionKey: string): boolean {
-		return this.collapsedTaskGroups.has(sectionKey);
+		return isTaskGroupCollapsedFn(this, sectionKey);
 	}
 
 	isProjectGroupCollapsed(groupKey: string): boolean {
-		return this.collapsedProjectGroups.has(groupKey);
+		return isProjectGroupCollapsedFn(this, groupKey);
 	}
 
 	toggleTaskGroupCollapsed(sectionKey: string): void {
-		toggleSetMember(this.collapsedTaskGroups, sectionKey);
-		this.render();
+		toggleTaskGroupCollapsedFn(this, sectionKey);
 	}
 
 	toggleProjectGroupCollapsed(groupKey: string): void {
-		toggleSetMember(this.collapsedProjectGroups, groupKey);
-		this.render();
+		toggleProjectGroupCollapsedFn(this, groupKey);
 	}
 
 	isSubtasksCollapsed(taskPath: string): boolean {
-		return this.collapsedSubtaskParents.has(taskPath);
+		return isSubtasksCollapsedFn(this, taskPath);
 	}
 
 	toggleSubtasksCollapsed(taskPath: string): void {
-		toggleSetMember(this.collapsedSubtaskParents, taskPath);
-		this.render();
+		toggleSubtasksCollapsedFn(this, taskPath);
 	}
 
 	toggleBatchEditMode(): void {
-		this.isBatchEditMode = !this.isBatchEditMode;
-		if (!this.isBatchEditMode) {
-			this.selectedTaskPaths.clear();
-		}
-		this.render();
+		toggleBatchEditModeFn(this);
 	}
 
 	toggleTaskSelected(taskPath: string): void {
-		toggleSetMember(this.selectedTaskPaths, taskPath);
-		this.render();
+		toggleTaskSelectedFn(this, taskPath);
 	}
 
 	getSelectedTasks(): TaskFileEntry[] {
-		return this.tasks.filter((task) =>
-			this.selectedTaskPaths.has(task.path),
-		);
+		return getSelectedTasksFn(this);
 	}
 
 	selectAllVisibleTasks(): void {
-		const visibleTasks = this.getVisibleTasks();
-		const allSelected = visibleTasks.every((task) =>
-			this.selectedTaskPaths.has(task.path),
-		);
-		this.selectedTaskPaths.clear();
-		if (!allSelected) {
-			for (const task of visibleTasks) {
-				this.selectedTaskPaths.add(task.path);
-			}
-		}
-		this.render();
+		selectAllVisibleTasksFn(this);
 	}
 
 	clearSelection(): void {
-		this.selectedTaskPaths.clear();
-		this.render();
+		clearSelectionFn(this);
 	}
 
 	syncCollapsedTaskGroups(
 		sections: Array<{ key: string; label: string | null }>,
 	): void {
-		const groupMode = this.getTaskListGroupMode();
-		if (groupMode === 'none') {
-			this.collapsedTaskGroups.clear();
-			return;
-		}
-
-		const validKeys = new Set(
-			sections
-				.filter((section) => section.label)
-				.map((section) => section.key),
-		);
-		for (const key of [...this.collapsedTaskGroups]) {
-			if (!validKeys.has(key)) {
-				this.collapsedTaskGroups.delete(key);
-			}
-		}
+		syncCollapsedTaskGroupsFn(this, sections);
 	}
 
 	syncCollapsedProjectGroups(sections: Array<{ groupKey: string }>): void {
-		const groupMode = this.getProjectListGroupMode();
-		if (groupMode === 'none') {
-			this.collapsedProjectGroups.clear();
-			return;
-		}
-
-		const validKeys = new Set(sections.map((section) => section.groupKey));
-		for (const key of [...this.collapsedProjectGroups]) {
-			if (!validKeys.has(key)) {
-				this.collapsedProjectGroups.delete(key);
-			}
-		}
+		syncCollapsedProjectGroupsFn(this, sections);
 	}
 
 	getTaskListDescription(): string {
-		const taskListSortModeOptions = getTaskListSortModeOptions();
-		const taskListGroupModeOptions = getTaskListGroupModeOptions();
-		if (!this.selectedProject) {
-			return t('view.description.noneSelected');
-		}
-
-		const sortDescription =
-			taskListSortModeOptions[this.getTaskListSortMode()];
-		const groupMode = this.getTaskListGroupMode();
-		const groupDescription =
-			groupMode === 'none'
-				? ''
-				: t('view.description.groupPrefix', [
-						taskListGroupModeOptions[groupMode],
-					]);
-		const priorityDescription = this.getShowTaskPriority()
-			? t('view.description.priorityVisible')
-			: '';
-		const timeFilter = this.getTaskListTimeFilter();
-		const timeFilterOpts = getTaskListTimeFilterOptions();
-		const timeFilterDescription =
-			timeFilter !== 'none'
-				? t('view.description.timeFilter', [timeFilterOpts[timeFilter]])
-				: '';
-		const searchSummary = this.getTaskSearchSummary();
-		const searchDescription = searchSummary
-			? t('view.description.search', [
-					String(searchSummary.matched),
-					String(searchSummary.total),
-				])
-			: '';
-		return `${t('view.description.currentProject', [
-			this.selectedProject,
-			String(this.tasks.length),
-			sortDescription,
-			groupDescription,
-			priorityDescription,
-			timeFilterDescription,
-		])}${searchDescription}`;
-	}
-
-	private getTaskFilterCounts(): Record<TaskFilterTab, number> {
-		const timeFilter = this.getTaskListTimeFilter();
-		const key = [
-			buildTaskSearchStamp(this.tasks),
-			this.taskSearchQuery,
-			timeFilter,
-		].join('|');
-		if (this.taskFilterCountsCache?.key === key) {
-			return this.taskFilterCountsCache.counts;
-		}
-
-		const counts = getTaskFilterCounts(
-			filterTasksByTime(this.applyTaskSearch(this.tasks), timeFilter),
-		);
-		this.taskFilterCountsCache = { key, counts };
-		return counts;
-	}
-
-	private matchesTaskFilterTab(
-		task: TaskFileEntry,
-		tab: TaskFilterTab,
-	): boolean {
-		return matchesTaskFilterTab(task, tab);
+		return getTaskListDescriptionFn(this);
 	}
 
 	showProjectPresentationMenu(event: MouseEvent): void {
 		showProjectPresentationMenu(this, event);
 	}
 
-	private showTaskPresentationMenu(event: MouseEvent): void {
+	public showTaskPresentationMenu(event: MouseEvent): void {
 		showTaskPresentationMenu(this, event);
 	}
 
@@ -1478,26 +987,11 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	renderTaskFilterEmptyState(container: HTMLElement): void {
-		const taskFilterTabs = getTaskFilterTabs();
-		const tabLabel =
-			taskFilterTabs.find((tab) => tab.key === this.activeTaskFilterTab)
-				?.label ?? t('view.label.currentFilter');
-		this.renderState(
-			container,
-			t('view.filter.emptyTitle'),
-			t('view.filter.emptyDesc', [tabLabel]),
-			'is-empty',
-		);
+		renderTaskFilterEmptyStateFn(this, container);
 	}
 
 	renderTaskSearchEmptyState(container: HTMLElement): void {
-		const keyword = this.taskSearchQuery.trim();
-		this.renderState(
-			container,
-			t('view.search.emptyTitle'),
-			t('view.search.emptyDesc', [keyword]),
-			'is-empty',
-		);
+		renderTaskSearchEmptyStateFn(this, container);
 	}
 
 	renderState(
@@ -1506,17 +1000,7 @@ export class IOTOTasksCenterView extends ItemView {
 		description: string,
 		stateClass: 'is-empty' | 'is-loading',
 	): void {
-		const stateEl = container.createDiv({
-			cls: `ioto-tasks-center__state ${stateClass}`,
-		});
-		stateEl.createDiv({
-			cls: 'ioto-tasks-center__state-title',
-			text: title,
-		});
-		stateEl.createDiv({
-			cls: 'ioto-tasks-center__state-desc',
-			text: description,
-		});
+		renderStateFn(this, container, title, description, stateClass);
 	}
 
 	private getCachedTaskPath(projectName: string): string | null {
@@ -1529,106 +1013,14 @@ export class IOTOTasksCenterView extends ItemView {
 			target?: TaskOpenTarget;
 		},
 	): Promise<void> {
-		const target = options?.target ?? 'adjacent-preview';
-		if (target === 'current-pane-tab') {
-			const file = this.app.vault.getAbstractFileByPath(task.path);
-			if (!(file instanceof TFile)) {
-				return;
-			}
-
-			await this.openFileInCurrentPaneTab(file);
-			return;
-		}
-
-		const previewLeafAvailable = Boolean(
-			this.previewLeaf && this.isLeafAvailable(this.previewLeaf),
-		);
-		const previewedFilePath = this.getPreviewLeafFilePath();
-		if (
-			shouldSkipOpeningTask({
-				targetTaskPath: task.path,
-				openedTaskPath: this.openedTaskPath,
-				previewLeafAvailable,
-				previewedFilePath,
-			})
-		) {
-			this.activatePreviewLeaf();
-			return;
-		}
-
-		const file = this.app.vault.getAbstractFileByPath(task.path);
-		if (!(file instanceof TFile)) {
-			return;
-		}
-
-		await this.openFileInPreview(file);
+		return openTaskFileFn(this, task, options);
 	}
 
 	async openTaskFileAtChecklist(
 		taskPath: string,
 		item: IncompleteChecklistItem,
 	): Promise<void> {
-		const file = this.app.vault.getAbstractFileByPath(taskPath);
-		if (!(file instanceof TFile)) {
-			return;
-		}
-
-		this.openingTaskPath = file.path;
-		this.render();
-
-		try {
-			const leaf = this.ensurePreviewLeaf();
-			await leaf.setViewState({
-				type: 'markdown',
-				active: true,
-				state: {
-					file: file.path,
-					mode: 'source',
-				},
-			});
-			this.previewLeaf = leaf;
-			this.openedTaskPath = file.path;
-			if (this.selectedProject) {
-				this.lastOpenedTaskByProject.set(
-					this.selectedProject,
-					file.path,
-				);
-			}
-
-			this.app.workspace.setActiveLeaf(leaf, { focus: true });
-			const view = leaf.view;
-			if (
-				!(view instanceof MarkdownView) ||
-				view.file?.path !== file.path
-			) {
-				return;
-			}
-
-			const editor = view.editor;
-			const lastLine = editor.lastLine();
-			const line = Math.max(0, Math.min(item.line, lastLine));
-			const lineText = editor.getLine(line);
-			const startCh = Math.max(
-				0,
-				Math.min(item.selectionStartCh, lineText.length),
-			);
-			const fallbackEndCh = lineText.trimEnd().length;
-			const endCh = Math.max(
-				startCh,
-				Math.min(
-					Math.max(item.selectionEndCh, fallbackEndCh),
-					lineText.length,
-				),
-			);
-
-			editor.setSelection({ line, ch: startCh }, { line, ch: endCh });
-			editor.focus();
-		} catch {
-			await this.openFileInPreview(file);
-		} finally {
-			this.openingTaskPath = null;
-			this.render();
-		}
+		return openTaskFileAtChecklistFn(this, taskPath, item);
 	}
 
 	async updateTaskPriority(
@@ -1654,233 +1046,11 @@ export class IOTOTasksCenterView extends ItemView {
 		return confirmAndDeleteTask(this, task);
 	}
 
-	private async refreshCurrentProjectTasks(): Promise<void> {
-		if (!this.selectedProject) {
-			return;
-		}
-
-		this.isTasksLoading = true;
-		this.render();
-		await this.loadTasks(this.selectedProject);
-	}
-
 	async openFileInPreview(
 		file: TFile,
 		options?: { cursorOffset?: number | null },
 	): Promise<void> {
-		this.openingTaskPath = file.path;
-		this.render();
-
-		try {
-			const leaf = this.ensurePreviewLeaf();
-			const query = this.taskSearchQuery.trim();
-			const cursorOffset = options?.cursorOffset;
-			const hasCursorOffset = typeof cursorOffset === 'number';
-			if (query) {
-				await leaf.setViewState({
-					type: 'markdown',
-					active: true,
-					state: {
-						file: file.path,
-						mode: 'source',
-					},
-				});
-			} else if (
-				this.getUseIOTOTaskViewAsDefault() &&
-				!hasCursorOffset &&
-				isTaskNoteFile(file, this.getTasksRootPath())
-			) {
-				// 任务笔记「打开即任务视图」；受 useIOTOTaskViewAsDefault 设置门控，
-				// 带搜索词或光标标记时仍走 markdown，
-				// 因为滚动到命中与落光标都依赖 MarkdownView 的 CodeMirror。
-				await leaf.setViewState({
-					type: IOTO_TASK_VIEW_TYPE,
-					active: true,
-					state: {
-						file: file.path,
-					},
-				});
-			} else {
-				await leaf.openFile(file, {
-					active: true,
-				});
-			}
-			this.previewLeaf = leaf;
-			this.openedTaskPath = file.path;
-			if (this.selectedProject) {
-				this.lastOpenedTaskByProject.set(
-					this.selectedProject,
-					file.path,
-				);
-			}
-
-			if (query) {
-				await this.scrollPreviewToFirstMatch(leaf, file, query);
-			}
-
-			if (hasCursorOffset) {
-				await this.focusPreviewEditorAtOffset(
-					leaf,
-					file,
-					cursorOffset,
-				);
-			}
-		} finally {
-			this.openingTaskPath = null;
-			this.render();
-		}
-	}
-
-	/**
-	 * 把预览叶子切到源码模式并把光标落到正文指定偏移。
-	 *
-	 * `bodyOffset` 是相对正文起始（frontmatter 之后）的偏移；打开时用当前内容的
-	 * frontmatter 长度折算成绝对位置，因此创建后 frontmatter 再变长也不会漂移。
-	 * 仅在创建任务笔记命中 `%%Cursor%%` 且该文件会留给用户时调用；无标记时
-	 * 完全不触发，因此默认打开模式不受影响（见方案 §3.5、§5.3）。
-	 */
-	private async focusPreviewEditorAtOffset(
-		leaf: WorkspaceLeaf,
-		file: TFile,
-		bodyOffset: number,
-	): Promise<void> {
-		try {
-			let view: MarkdownView | null =
-				leaf.view instanceof MarkdownView ? leaf.view : null;
-			const needsSourceMode =
-				!view ||
-				view.file?.path !== file.path ||
-				view.getMode() !== 'source';
-			if (needsSourceMode) {
-				await leaf.setViewState({
-					type: 'markdown',
-					active: true,
-					state: {
-						file: file.path,
-						mode: 'source',
-					},
-				});
-				view = leaf.view instanceof MarkdownView ? leaf.view : null;
-			}
-
-			if (!view || view.file?.path !== file.path) {
-				return;
-			}
-
-			this.app.workspace.setActiveLeaf(leaf, { focus: true });
-			const editor = view.editor;
-			const content = editor.getValue();
-			const absoluteOffset =
-				resolveCursorMarkerSearchStart(content) + bodyOffset;
-			const clampedOffset = Math.max(
-				0,
-				Math.min(absoluteOffset, content.length),
-			);
-			const position = editor.offsetToPos(clampedOffset);
-			editor.setCursor(position);
-			editor.scrollIntoView({ from: position, to: position }, true);
-			editor.focus();
-		} catch {
-			// 标记已在创建阶段被剥离，聚焦失败不应影响创建流程。
-		}
-	}
-
-	private async openFileInCurrentPaneTab(file: TFile): Promise<void> {
-		const existingLeaf = this.findLeafInCurrentTabGroupByFilePath(
-			file.path,
-		);
-		if (existingLeaf) {
-			this.openedTaskPath = file.path;
-			if (this.selectedProject) {
-				this.lastOpenedTaskByProject.set(
-					this.selectedProject,
-					file.path,
-				);
-			}
-			this.app.workspace.setActiveLeaf(existingLeaf, { focus: true });
-			return;
-		}
-
-		this.openingTaskPath = file.path;
-		this.render();
-
-		try {
-			const leaf = this.app.workspace.getLeaf('tab');
-			await leaf.openFile(file, {
-				active: true,
-			});
-			this.openedTaskPath = file.path;
-			if (this.selectedProject) {
-				this.lastOpenedTaskByProject.set(
-					this.selectedProject,
-					file.path,
-				);
-			}
-
-			this.app.workspace.setActiveLeaf(leaf, { focus: true });
-		} finally {
-			this.openingTaskPath = null;
-			this.render();
-		}
-	}
-
-	private findLeafInCurrentTabGroupByFilePath(
-		filePath: string,
-	): WorkspaceLeaf | null {
-		const currentTabs = this.leaf.parent;
-		let matchedLeaf: WorkspaceLeaf | null = null;
-
-		this.app.workspace.iterateAllLeaves((leaf) => {
-			if (
-				matchedLeaf ||
-				leaf === this.leaf ||
-				leaf.parent !== currentTabs
-			) {
-				return;
-			}
-
-			const viewState = leaf.getViewState();
-			if (viewState.type !== 'markdown') {
-				return;
-			}
-
-			const candidatePath = viewState.state?.file;
-			if (
-				typeof candidatePath === 'string' &&
-				candidatePath === filePath
-			) {
-				matchedLeaf = leaf;
-			}
-		});
-
-		return matchedLeaf;
-	}
-
-	private async scrollPreviewToFirstMatch(
-		leaf: WorkspaceLeaf,
-		file: TFile,
-		query: string,
-	): Promise<void> {
-		const view = leaf.view;
-		if (!(view instanceof MarkdownView) || view.file?.path !== file.path) {
-			return;
-		}
-
-		const editor = view.editor;
-		const normalizedQuery = query.toLocaleLowerCase();
-		const lineCount = editor.lineCount();
-		for (let line = 0; line < lineCount; line++) {
-			const lineText = editor.getLine(line);
-			const ch = lineText.toLocaleLowerCase().indexOf(normalizedQuery);
-			if (ch !== -1) {
-				const from = { line, ch };
-				const to = { line, ch: ch + query.length };
-				editor.setSelection(from, to);
-				editor.scrollIntoView({ from, to }, true);
-				editor.focus();
-				return;
-			}
-		}
+		return openFileInPreviewFn(this, file, options);
 	}
 
 	getActiveTaskPath(): string | null {
@@ -1891,7 +1061,7 @@ export class IOTOTasksCenterView extends ItemView {
 		return getPreviewLeafFilePathFn(this);
 	}
 
-	private activatePreviewLeaf(): void {
+	public activatePreviewLeaf(): void {
 		activatePreviewLeafFn(this);
 	}
 
@@ -1904,14 +1074,7 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	findReusablePreviewLeaf(): WorkspaceLeaf | null {
-		if (this.openedTaskPath) {
-			const openedFileLeaf = this.findLeafByFilePath(this.openedTaskPath);
-			if (openedFileLeaf && openedFileLeaf !== this.leaf) {
-				return openedFileLeaf;
-			}
-		}
-
-		return null;
+		return findReusablePreviewLeafFn(this);
 	}
 
 	findLeafByFilePath(filePath: string): WorkspaceLeaf | null {

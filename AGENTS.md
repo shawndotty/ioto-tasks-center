@@ -108,6 +108,13 @@ src/
       task-search-index.ts, task-search-session.ts, task-search-row.ts,
       fuzzy-match.ts             # Fuzzy search: index cache + Obsidian internal API wrapper
       touch-gesture.ts           # Mobile long-press drag gestures
+      task-search-ops.ts         # Task search query/focus/summary/filter counts/incremental render (split from iotoTasksCenterView)
+      task-tabs-renderer.ts      # Task tabs + compact filter switcher (split from iotoTasksCenterView)
+      task-list-queries.ts       # Visible tasks/collapse/batch edit/description (split from iotoTasksCenterView)
+      deferred-refresh.ts        # Hover preview + deferred vault refresh (split from iotoTasksCenterView)
+      compact-layout.ts         # Project switcher + resize observer + header toggle (split from iotoTasksCenterView)
+      empty-states.ts           # Filter/search empty states (split from iotoTasksCenterView)
+      task-file-opening.ts      # Task file opening + preview editor ops (split from iotoTasksCenterView)
   ui/                            # Modals and popovers
     taskCreationModal.ts, taskNameModal.ts, batchTaskModals.ts,
     batchTemplateEditModal.ts, confirmModal.ts, tabbed-settings.ts,
