@@ -1,4 +1,4 @@
-import type { IOTOTaskView } from '../iotoTaskView';
+import type { TaskViewHost } from './task-view-host';
 
 /**
  * 视图级「编辑落盘」原语：把**标题**与**续写**两个编辑器都提交到磁盘。
@@ -11,7 +11,7 @@ import type { IOTOTaskView } from '../iotoTaskView';
  * 两个 `commit*` 在无编辑态时各自短路（幂等），故可无条件调用：
  * 无待写内容 → 不写盘、不加延迟（§四 Q3 默认「直通」）。
  */
-export async function flushInlineEdits(view: IOTOTaskView): Promise<void> {
+export async function flushInlineEdits(view: TaskViewHost): Promise<void> {
 	await view.commitEdit();
 	await view.commitContinuationEdit();
 }
@@ -20,7 +20,7 @@ export async function flushInlineEdits(view: IOTOTaskView): Promise<void> {
  * 桥接层调用：开启「外部写回窗口」（[[Research-20261008-105532]] 方案 A）。
  * 未处于任一编辑态（标题 / 续行）→ 返回 false，桥接层原样透传。
  */
-export function beginExternalEditorWriteback(view: IOTOTaskView): boolean {
+export function beginExternalEditorWriteback(view: TaskViewHost): boolean {
 	if (view.editingLine === null && view.continuationLine === null) {
 		return false;
 	}
@@ -41,7 +41,7 @@ export function beginExternalEditorWriteback(view: IOTOTaskView): boolean {
  * `[[Plan-20261008-184418]]` 方案 A：终止动作由 `commitEdit`（提交并退出编辑）改为
  * `autosaveEdit`（只落盘、保持编辑）。不改窗口机制、不加开关、不动数据。
  */
-export function endExternalEditorWriteback(view: IOTOTaskView): void {
+export function endExternalEditorWriteback(view: TaskViewHost): void {
 	if (!view.externalWritebackActive) {
 		return;
 	}

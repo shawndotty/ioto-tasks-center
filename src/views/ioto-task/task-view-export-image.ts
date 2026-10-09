@@ -13,11 +13,11 @@ import {
 	saveCanvasToVault,
 	resolveExportBackground,
 } from '../../export';
-import type { IOTOTaskView } from '../iotoTaskView';
+import type { TaskViewHost } from './task-view-host';
 import { IOTO_TASK_SCROLL_SELECTOR } from './ioto-task-scroll';
 
 /** 命令 / 工具栏入口：把当前所见导出为 PNG 附件（按内容全高的长图，写库内附件目录）。 */
-export async function exportAsImage(view: IOTOTaskView): Promise<void> {
+export async function exportAsImage(view: TaskViewHost): Promise<void> {
 	const captured = await captureForExport(view);
 	if (!captured) {
 		return;
@@ -38,7 +38,7 @@ export async function exportAsImage(view: IOTOTaskView): Promise<void> {
 }
 
 /** 命令入口：把当前所见复制到系统剪贴板（恒 PNG）。桌面失败回退 Electron 原生剪贴板。 */
-export async function copyImageToClipboard(view: IOTOTaskView): Promise<void> {
+export async function copyImageToClipboard(view: TaskViewHost): Promise<void> {
 	const captured = await captureForExport(view);
 	if (!captured) {
 		return;
@@ -65,7 +65,7 @@ export async function copyImageToClipboard(view: IOTOTaskView): Promise<void> {
  * **完全不改实时 DOM**（含滚动位置、选中态、卡片类）：`captureTaskViewCanvas` 拍的是
  * 重建后的离屏克隆，瞬时态（选中 / 待删除确认）在克隆上摘除（[[Plan-20261006-102142]] §三.7）。
  */
-export async function captureForExport(view: IOTOTaskView): Promise<{
+export async function captureForExport(view: TaskViewHost): Promise<{
 	canvas: HTMLCanvasElement;
 	baseName: string;
 } | null> {
@@ -150,7 +150,7 @@ export async function captureForExport(view: IOTOTaskView): Promise<{
 
 /** 桌面回退：`navigator.clipboard` 不可用时走 Electron 原生剪贴板；失败返回 false（由调用方提示）。 */
 export async function copyCanvasViaElectron(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	canvas: HTMLCanvasElement,
 ): Promise<boolean> {
 	try {

@@ -20,11 +20,11 @@ import {
 	IOTO_TASK_VIEW_HOVER_SOURCE_ID,
 	type TaskHoverPreviewPayload,
 } from '../task-hover-preview';
-import type { IOTOTaskView } from '../iotoTaskView';
+import type { TaskViewHost } from './task-view-host';
 
 /** 视图级渲染主入口：重建列表容器，保留常驻外壳，处理动画 / 选中回填 / 命令就绪补偿。 */
 export function renderNote(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	data: string,
 	options?: {
 		skipAnchorRestore?: boolean;
@@ -178,7 +178,7 @@ export function renderNote(
  * 同步定格，因此等待期间用户看到的是「起点态」而非最终态。
  */
 export function scheduleListPlay(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	callback: () => void,
 ): void {
 	const raf = (cb: FrameRequestCallback): number =>
@@ -187,14 +187,14 @@ export function scheduleListPlay(
 }
 
 /** 立即作废并收尾上一场进出场动画（幂等；无动画时为 no-op）。 */
-export function cancelListTransition(view: IOTOTaskView): void {
+export function cancelListTransition(view: TaskViewHost): void {
 	view.listTransitionToken += 1;
 	view.listTransitionCleanup?.();
 	view.listTransitionCleanup = null;
 }
 
 /** 系统「减弱动态效果」偏好：JS 侧预判（CSS 侧另有兜底）。 */
-export function prefersReducedMotion(view: IOTOTaskView): boolean {
+export function prefersReducedMotion(view: TaskViewHost): boolean {
 	return (
 		window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ===
 		true
@@ -209,7 +209,7 @@ export function prefersReducedMotion(view: IOTOTaskView): boolean {
  * 方案 A（[[Discuss-20261008-173935]]）：放大态恒为单卡编辑面，`zoomLine` 非空时
  * 整体跳过——内部 `selectedLine` 仍保留（AI 条目来源需要），但不再回填可见选中类。
  */
-export function syncSelectionClass(view: IOTOTaskView): void {
+export function syncSelectionClass(view: TaskViewHost): void {
 	const line = view.selectedLine;
 	if (line === null) {
 		return;
@@ -235,7 +235,7 @@ export function syncSelectionClass(view: IOTOTaskView): void {
 }
 
 /** 外部 vault.modify 触发重读重绘；编辑期间由 editingLine / continuationLine 抑制。 */
-export async function reloadFromVault(view: IOTOTaskView): Promise<void> {
+export async function reloadFromVault(view: TaskViewHost): Promise<void> {
 	const file = view.file;
 	if (!file) {
 		return;
@@ -260,7 +260,7 @@ export async function reloadFromVault(view: IOTOTaskView): Promise<void> {
  * 卡片动作区编辑控制器（渲染层通过回调调用）。读实时 `view.xxx` 值；
  * 两个 ioto-settings 命令按钮仅在「支持内联编辑」+「命令已注册」时注入。
  */
-export function buildEditingController(view: IOTOTaskView): TaskNoteEditing {
+export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 	// 箭头函数读实时值，供下面的 getter 转发（不写 `const self = this`）
 	const readSelected = (): number | null => view.selectedLine;
 	const readDeletePending = (): boolean => view.pendingDeleteLine !== null;
@@ -352,7 +352,7 @@ export function buildEditingController(view: IOTOTaskView): TaskNoteEditing {
  * 渲染层只产 HTML，点击与 hover 是视图自己的职责
  * （[[Research-20261004-001616]] §四）。
  */
-export function buildLinkController(view: IOTOTaskView): TaskNoteLinks {
+export function buildLinkController(view: TaskViewHost): TaskNoteLinks {
 	return {
 		open: (linktext, newLeaf) => {
 			const sourcePath = view.file?.path ?? '';

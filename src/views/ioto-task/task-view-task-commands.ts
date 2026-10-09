@@ -21,7 +21,7 @@ import {
 	EntryTemplateSelectModal,
 	EntryTemplateVariablesModal,
 } from '../../ui/entryTemplateModals';
-import type { IOTOTaskView } from '../iotoTaskView';
+import type { TaskViewHost } from './task-view-host';
 import {
 	RUN_TASK_COMMAND_ID,
 	type CommandRegistryLike,
@@ -36,7 +36,7 @@ import { runLineAction } from './task-view-editor-handlers';
  * （[[Discuss-20261007-062838]] §六：`context` 缺省即普通添加）。
  */
 export function triggerAddTask(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	context?: ToolbarButtonClickContext,
 ): void {
 	if (context?.shiftKey) {
@@ -47,12 +47,12 @@ export function triggerAddTask(
 }
 
 /** 供 main.ts 的 checkCallback 判定命令是否可用：与按钮只读态隐藏同口径。 */
-export function canAddTask(view: IOTOTaskView): boolean {
+export function canAddTask(view: TaskViewHost): boolean {
 	return view.file !== null && view.supportsInlineEdit();
 }
 
 /** 供 main.ts 的 checkCallback 判定「插入条目模板」命令是否可用（同 canAddTask 口径）。 */
-export function canInsertEntryTemplate(view: IOTOTaskView): boolean {
+export function canInsertEntryTemplate(view: TaskViewHost): boolean {
 	return view.file !== null && view.supportsInlineEdit();
 }
 
@@ -63,11 +63,11 @@ export function canInsertEntryTemplate(view: IOTOTaskView): boolean {
  * 打断在「添加」按钮之前，待 `setViewData` 再建一次就成了「两排 toolbar」
  * （[[Report-20261007-070144]]）。故先兜底成空串。
  */
-export function resolveCurrentProjectNames(view: IOTOTaskView): string[] {
+export function resolveCurrentProjectNames(view: TaskViewHost): string[] {
 	return extractListPropertyValuesFromContent(view.data ?? '', 'Project');
 }
 
-export function resolveCurrentSubject(view: IOTOTaskView): string {
+export function resolveCurrentSubject(view: TaskViewHost): string {
 	return (
 		extractListPropertyValuesFromContent(view.data ?? '', 'Subject')[0] ??
 		''
@@ -78,7 +78,7 @@ export function resolveCurrentSubject(view: IOTOTaskView): string {
  * 「插入条目模板…」主入口（[[Plan-20261006-225329]] §5.4）：
  * 门禁 → 项目过滤 → 选模板 → 收变量 → 求值/重定位 → 走 `runLineAction` 插入。
  */
-export async function insertEntryTemplate(view: IOTOTaskView): Promise<void> {
+export async function insertEntryTemplate(view: TaskViewHost): Promise<void> {
 	if (!view.file || !view.supportsInlineEdit()) {
 		return; // 只读降级：静默（同「添加任务」口径 1605-1607）
 	}
@@ -177,7 +177,7 @@ export async function insertEntryTemplate(view: IOTOTaskView): Promise<void> {
 	});
 }
 
-export async function addTask(view: IOTOTaskView): Promise<void> {
+export async function addTask(view: TaskViewHost): Promise<void> {
 	await appendTaskBlock(view, (referenceLine) => [
 		buildTopLevelTaskLine(referenceLine, ''),
 	]);
@@ -192,7 +192,7 @@ export async function addTask(view: IOTOTaskView): Promise<void> {
  * 逐字保持原 `addTask` 的行为（[[Plan-20261006-225329]] §5.1）。
  */
 export async function appendTaskBlock(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	buildNewLines: (referenceLine: string) => string[],
 	options?: { caretOffset?: number | null },
 ): Promise<void> {
@@ -297,14 +297,14 @@ export async function appendTaskBlock(
 }
 
 /** 按当前语言标题（去空白精确相等、多命中取最靠前）找 `任务`/`Tasks` Section。 */
-export function findTasksSection(view: IOTOTaskView): ReturnType<typeof findSectionByTitle> {
+export function findTasksSection(view: TaskViewHost): ReturnType<typeof findSectionByTitle> {
 	return findSectionByTitle(
 		view.data,
 		t('view.iotoTaskView.tasksSectionTitle'),
 	);
 }
 
-export async function runTask(view: IOTOTaskView): Promise<void> {
+export async function runTask(view: TaskViewHost): Promise<void> {
 	// 先落盘（标题 + 续写），再派发：`executeCommandById` 内部走被包装的
 	// `executeCommand`，对方 `resolveRunGate` 会立刻读盘。
 	await view.flushInlineEdits();

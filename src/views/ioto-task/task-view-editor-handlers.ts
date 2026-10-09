@@ -24,7 +24,7 @@ import {
 	type CommitOutcome,
 	type TaskLineTransform,
 } from './commit-task-line';
-import type { IOTOTaskView } from '../iotoTaskView';
+import type { TaskViewHost } from './task-view-host';
 import { lineAt } from './task-view-helpers';
 
 /**
@@ -34,7 +34,7 @@ import { lineAt } from './task-view-helpers';
  * 提交走 `commitEdit`，无冲突时就地刷单卡（`refreshCard` 去 `is-editing`、
  * 保留 `.is-selected`），因此既不跳顶也不丢数据。
  */
-export function onEditorEscape(view: IOTOTaskView): void {
+export function onEditorEscape(view: TaskViewHost): void {
 	const line = view.editingLine;
 	if (line === null || view.editingHandle === null) {
 		return;
@@ -75,7 +75,7 @@ export function onEditorEscape(view: IOTOTaskView): void {
  * 不会被触发；dispatch 触发 `onChange → autosave`，`<br>` 在**不退出编辑态**的情况
  * 下自动落盘，Live Preview 立即渲染为折行。续写区不注册 `onSoftBreak`，语义不受影响。
  */
-export function onEditorSoftBreak(view: IOTOTaskView, cm: EditorView): boolean {
+export function onEditorSoftBreak(view: TaskViewHost, cm: EditorView): boolean {
 	if (!view.editingHandle || view.editingLine === null) {
 		return false;
 	}
@@ -93,7 +93,7 @@ export function onEditorSoftBreak(view: IOTOTaskView, cm: EditorView): boolean {
 }
 
 export function onEditorEnter(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	cm: EditorView,
 	shiftKey: boolean,
 ): boolean {
@@ -146,7 +146,7 @@ export function onEditorEnter(
 	return true;
 }
 
-export function onEditorDeleteEmpty(view: IOTOTaskView): boolean {
+export function onEditorDeleteEmpty(view: TaskViewHost): boolean {
 	const line = view.editingLine;
 	if (line === null) {
 		return false;
@@ -165,7 +165,7 @@ export function onEditorDeleteEmpty(view: IOTOTaskView): boolean {
 	return true;
 }
 
-export function onEditorIndent(view: IOTOTaskView, delta: number): boolean {
+export function onEditorIndent(view: TaskViewHost, delta: number): boolean {
 	const line = view.editingLine;
 	if (line === null) {
 		return false;
@@ -184,7 +184,7 @@ export function onEditorIndent(view: IOTOTaskView, delta: number): boolean {
 }
 
 export async function runLineAction(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	line: number,
 	originalLine: string,
 	transform: TaskLineTransform,
@@ -242,7 +242,7 @@ export async function runLineAction(
 }
 
 /** 写盘 outcome 的统一收口：conflict 弹 Notice；`ok` 同步 `data` / `lastLoadedText`。 */
-export function applyOutcome(view: IOTOTaskView, outcome: CommitOutcome): void {
+export function applyOutcome(view: TaskViewHost, outcome: CommitOutcome): void {
 	if (outcome.status === 'conflict') {
 		new Notice(t('notice.iotoTaskView.commitConflict'));
 	}
@@ -252,7 +252,7 @@ export function applyOutcome(view: IOTOTaskView, outcome: CommitOutcome): void {
 /** 🔴 红线：写盘成功后 `data` 与 `lastLoadedText` 必须一起更新，
  * 否则 `getViewData()` 会返回过期字节、被 TextFileView 写回去。 */
 export function syncCommittedContent(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	outcome: CommitOutcome,
 ): void {
 	if (outcome.status === 'ok') {
@@ -262,7 +262,7 @@ export function syncCommittedContent(
 }
 
 export async function toggleTask(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	line: number,
 	cardEl: HTMLElement,
 ): Promise<void> {

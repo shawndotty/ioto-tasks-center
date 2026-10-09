@@ -8,7 +8,7 @@ import {
 	commitTaskLineAction,
 	type CommitOutcome,
 } from './commit-task-line';
-import type { IOTOTaskView } from '../iotoTaskView';
+import type { TaskViewHost } from './task-view-host';
 import type { ItemControlBridgeHost } from './task-view-constants';
 import { lineAt, queryCard } from './task-view-helpers';
 
@@ -17,7 +17,7 @@ import { lineAt, queryCard } from './task-view-helpers';
  * 见 item-control-bridge.ts 与 [[Plan-20261003-105625]] §5.5。
  */
 export function getItemControlHost(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 ): ItemControlBridgeHost | null {
 	const line = view.editingLine;
 	const file = view.file;
@@ -62,7 +62,7 @@ export function getItemControlHost(
  * 鸭子类型实现——不 import `ioto-settings`；面板的挂载 / 清理 / 定位全部
  * 由对端 `PanelService` 管理（见 [[Plan-20261005-070644]] §五）。
  */
-export function getQuickPanelHost(view: IOTOTaskView): HTMLElement | null {
+export function getQuickPanelHost(view: TaskViewHost): HTMLElement | null {
 	return view.contentEl ?? null;
 }
 
@@ -76,7 +76,7 @@ export function getQuickPanelHost(view: IOTOTaskView): HTMLElement | null {
  * 见 [[Plan-20261007-161702]] §五。
  */
 export function getAITaskItemSource(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 ): { file: TFile; line: number; text: string } | null {
 	if (!view.file || view.selectedLine === null) return null;
 	return { file: view.file, line: view.selectedLine, text: view.data };
@@ -88,7 +88,7 @@ export function getAITaskItemSource(
  * `editingOriginalLine`，避免随后的 blur 提交误判冲突。
  */
 export async function commitFromItemControl(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	line: number,
 	originalLine: string,
 	nextLine: string,

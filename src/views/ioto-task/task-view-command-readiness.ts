@@ -2,7 +2,7 @@ import type { App } from 'obsidian';
 import { Notice } from 'obsidian';
 
 import { t } from '../../lang/helpter';
-import type { IOTOTaskView } from '../iotoTaskView';
+import type { TaskViewHost } from './task-view-host';
 import { collectCardLines } from './card-navigation';
 import {
 	EDIT_ITEM_CONTROLS_COMMAND_ID,
@@ -17,7 +17,7 @@ import {
  * 照 `runTask()` 的判据抽成方法，供编辑控制器按可用性隐藏按钮
  * （[[Plan-20261005-111411]] §三 步骤 4）。
  */
-export function canDispatch(view: IOTOTaskView, commandId: string): boolean {
+export function canDispatch(view: TaskViewHost, commandId: string): boolean {
 	const registry = (view.app as App & { commands?: CommandRegistryLike })
 		.commands;
 	return Boolean(
@@ -31,7 +31,7 @@ export function canDispatch(view: IOTOTaskView, commandId: string): boolean {
  * 派发 ioto-settings 命令（照 `runTask()` 口径）。正常情况下按钮已按可用性
  * 隐藏，走到这里说明存在竞态（命令刚被注销），给 `Notice` 兜底不静默。
  */
-export function dispatchCommand(view: IOTOTaskView, commandId: string): void {
+export function dispatchCommand(view: TaskViewHost, commandId: string): void {
 	const registry = (view.app as App & { commands?: CommandRegistryLike })
 		.commands;
 	if (!canDispatch(view, commandId)) {
@@ -45,7 +45,7 @@ export function dispatchCommand(view: IOTOTaskView, commandId: string): void {
  * 卡片动作区两条 ioto-settings 命令是否均已注册（补偿判据）。
  * 与 `buildEditingController` 里决定是否注入两个回调的口径完全一致。
  */
-export function areCardActionCommandsReady(view: IOTOTaskView): boolean {
+export function areCardActionCommandsReady(view: TaskViewHost): boolean {
 	return (
 		canDispatch(view, INSERT_OUTGOING_LINK_COMMAND_ID) &&
 		canDispatch(view, EDIT_ITEM_CONTROLS_COMMAND_ID)
@@ -53,7 +53,7 @@ export function areCardActionCommandsReady(view: IOTOTaskView): boolean {
 }
 
 /** 取消在途的命令就绪补偿轮询（幂等；命令已齐 / 视图卸载时收口）。 */
-export function clearCommandReadinessTimer(view: IOTOTaskView): void {
+export function clearCommandReadinessTimer(view: TaskViewHost): void {
 	if (view.commandReadinessTimer !== null) {
 		window.clearTimeout(view.commandReadinessTimer);
 		view.commandReadinessTimer = null;
@@ -71,7 +71,7 @@ export function clearCommandReadinessTimer(view: IOTOTaskView): void {
  * 幂等：命令已齐或已有在途轮询时直接返回，连续重绘共用一趟，避免叠加轮询。
  * 补建走 `refreshCardActions`（只重建动作区），**不整树重绘**、不打断内联编辑。
  */
-export function awaitCommandReadiness(view: IOTOTaskView): void {
+export function awaitCommandReadiness(view: TaskViewHost): void {
 	if (areCardActionCommandsReady(view)) {
 		clearCommandReadinessTimer(view);
 		return;

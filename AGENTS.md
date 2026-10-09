@@ -189,6 +189,18 @@ Layering 约束：子模块**反向**引用宿主（视图/设置）的类型时
 
 **How enforced**：已由 `verbatimModuleSyntax`（类型误用值语法 → 编译报错 `TS1484`）+ `dependency-cruiser`（值图有环 → `npm run dep:check` / CI 报红）**双重门禁**保障；本段仅作「为什么」说明，**不是唯一防线**。（方案出处：`Plan-20261009-142035`；叶子类型模块先例：`src/views/ioto-task/render-note-types.ts`。）
 
+### View state access discipline
+
+任务视图（`IOTOTaskView`）拆出的子模块访问视图状态时，遵循以下纪律：
+
+- **读**：只读字段走 `readonly` 声明或 getter；不要为了取一个值而先写后读。
+- **写**：改状态**集中在少数「状态迁移点」**（如 `task-view-selection` / `task-view-inline-edit` / `task-view-zoom` / `task-view-continuation-edit`），不要在多个模块零散直写同一字段。
+- **新增跨模块访问**：优先给 barrel 加**薄委托方法**，而不是直接摸状态字段。
+
+**Why**：拆分子模块后，barrel 的状态字段以默认（public）修饰符暴露、被子模块直读写约 130 处；`private` 只是编译期修饰符，本次拆分**刻意**选择了「`view` 首参 + 薄委托」而非接口化（成本差异所致，见 `Report-20261009-104208` §四.2）。
+
+**How enforced**：由 `TaskViewHost` 契约接口（`src/views/ioto-task/task-view-host.ts`，编译期拦下未声明成员的访问）+ `scripts/check-view-writes.mjs`（拦下未登记的直写）保障；本段仅作「为什么」说明，**不是唯一防线**。（方案出处：`Plan-20261009-155708`；迁移先例：`SettingsUpdaterHost` / `ProjectCenterViewContext`。）
+
 ### Settings lifecycle
 
 - Every setting has a `normalize*` function applied on load (`loadSettings`) and on update (see `src/settings-normalizers.ts` and `src/tasks-center/*`).

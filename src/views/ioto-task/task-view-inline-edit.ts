@@ -11,11 +11,11 @@ import { normalizeQuery } from './task-query-filter';
 import { commitTaskText } from './commit-task-line';
 import { mountEmbeddedEditor } from './embedded-editor';
 import { getSectionStateKey, renderCardActions } from './render-note';
-import type { IOTOTaskView } from '../iotoTaskView';
+import type { TaskViewHost } from './task-view-host';
 import { lineAt, queryCard } from './task-view-helpers';
 
 /** 销毁标题编辑器：先撤 autosave、置空 handle、再 destroy（防递归）。 */
-export function destroyActiveEditor(view: IOTOTaskView): void {
+export function destroyActiveEditor(view: TaskViewHost): void {
 	// 编辑器没了，待写的那次也就没意义了（blur 提交会写最终值）
 	view.autosave.cancel();
 	const handle = view.editingHandle;
@@ -31,7 +31,7 @@ export function destroyActiveEditor(view: IOTOTaskView): void {
 }
 
 export async function beginEdit(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	line: number,
 	caretOffset?: number | null,
 ): Promise<void> {
@@ -183,7 +183,7 @@ export async function beginEdit(
  * 展开后调用方需重绘一次才能取到卡片（[[Discuss-20261008-164745]] §四·2 / Q3）。
  */
 export function expandSectionContaining(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	line: number,
 ): boolean {
 	for (const section of parseSections(view.data)) {
@@ -199,7 +199,7 @@ export function expandSectionContaining(
 	return false;
 }
 
-export async function commitEdit(view: IOTOTaskView): Promise<void> {
+export async function commitEdit(view: TaskViewHost): Promise<void> {
 	if (view.pendingCommit) {
 		await view.pendingCommit;
 		return;
@@ -221,7 +221,7 @@ export async function commitEdit(view: IOTOTaskView): Promise<void> {
 	}
 }
 
-export async function doCommitEdit(view: IOTOTaskView): Promise<void> {
+export async function doCommitEdit(view: TaskViewHost): Promise<void> {
 	const handle = view.editingHandle;
 	const line = view.editingLine;
 	const originalLine = view.editingOriginalLine;
@@ -275,7 +275,7 @@ export async function doCommitEdit(view: IOTOTaskView): Promise<void> {
  * 不重建卡片、不碰正文区与内联编辑器，因此不丢编辑态、不影响滚动位置。
  * `queryCard` 未命中（行漂移 / 卡片被折叠）时静默跳过，交后续整树渲染兜底。
  */
-export function refreshCardActions(view: IOTOTaskView, line: number): void {
+export function refreshCardActions(view: TaskViewHost, line: number): void {
 	const cardEl = queryCard(view, line);
 	if (!cardEl) {
 		return;
@@ -295,7 +295,7 @@ export function refreshCardActions(view: IOTOTaskView, line: number): void {
  * 前提：调用方只改了该行**正文**（`replaceTaskBody` 保留 checked / indent / controls）。
  * 若将来提交语义扩展到改 `data-task` / `data-indent` 等属性，这里会漏更新，需改回整树重建。
  */
-export function refreshCard(view: IOTOTaskView, line: number): void {
+export function refreshCard(view: TaskViewHost, line: number): void {
 	const cardEl = queryCard(view, line);
 	if (!cardEl) {
 		// 行号漂移 / 卡片被折叠：退回整树重建。
@@ -352,7 +352,7 @@ export function refreshCard(view: IOTOTaskView, line: number): void {
  * 🔴 红线：成功后必须刷新 `editingOriginalLine`，否则下一次落盘的
  * `lines[index] === originalLine` 校验失配 → 判 conflict → 整树重建冲掉编辑态。
  */
-export async function autosaveEdit(view: IOTOTaskView): Promise<void> {
+export async function autosaveEdit(view: TaskViewHost): Promise<void> {
 	// 续行编辑态：只写盘、不退出编辑（与标题自动落盘同构）
 	if (view.continuationHandle && view.continuationLine !== null) {
 		await view.autosaveContinuation();

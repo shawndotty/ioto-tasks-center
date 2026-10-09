@@ -1,9 +1,9 @@
 import { t } from '../../lang/helpter';
 import { setIcon } from 'obsidian';
-import type { IOTOTaskView } from '../iotoTaskView';
+import type { TaskViewHost } from './task-view-host';
 import { queryCard } from './task-view-helpers';
 
-export function toggleZoomCard(view: IOTOTaskView, line: number): void {
+export function toggleZoomCard(view: TaskViewHost, line: number): void {
 	if (view.zoomLine === line) {
 		view.exitZoom();
 	} else {
@@ -16,7 +16,7 @@ export function toggleZoomCard(view: IOTOTaskView, line: number): void {
  * 先把编辑器确保挂到该卡上，再套放大类；放大卡恒为「单卡编辑面」，不再有选中态。
  * 编辑器挂不上（不支持内联编辑 / 目标卡缺失 / 挂载降级）则放弃放大，不留半程状态。
  */
-export async function enterZoom(view: IOTOTaskView, line: number): Promise<void> {
+export async function enterZoom(view: TaskViewHost, line: number): Promise<void> {
 	if (!view.supportsInlineEdit() || !queryCard(view, line)) {
 		return;
 	}
@@ -37,7 +37,7 @@ export async function enterZoom(view: IOTOTaskView, line: number): Promise<void>
  * 放大态纯 DOM：隐藏其余 Section / 分组 / 卡片，抬高当前卡（不重建、不抢焦点）。
  * 单独抽出，供 `enterZoom`（先确保编辑）与重绘回填复用。
  */
-export function applyZoomDom(view: IOTOTaskView, line: number): void {
+export function applyZoomDom(view: TaskViewHost, line: number): void {
 	const cardEl = queryCard(view, line);
 	const sectionEl =
 		cardEl?.closest<HTMLElement>('.ioto-task-view__section') ?? null;
@@ -90,7 +90,7 @@ export function applyZoomDom(view: IOTOTaskView, line: number): void {
  * 方案 A（Q5）：退出放大**不动编辑态**——编辑器仍在、卡片保持 `.is-editing`，
  * 此后再点空白才走常规「失焦提交 → 回落选中」（回到两段式状态机）。
  */
-export function exitZoom(view: IOTOTaskView): void {
+export function exitZoom(view: TaskViewHost): void {
 	// 先记住放大行号：清类后 `.is-zoomed` 即消失，用行号定位才可靠
 	// （重绘产出的新 DOM 不带放大类，按类找会落空、按钮不翻面 → [[Research-20261008-210807]]）。
 	const line = view.zoomLine;
@@ -120,7 +120,7 @@ export function exitZoom(view: IOTOTaskView): void {
  * 重挂编辑器——否则会出现「`.is-editing` 在、编辑器没了」的空壳。目标卡不存在则
  * 兜底退出并一并收口编辑态。
  */
-export function restoreZoom(view: IOTOTaskView): void {
+export function restoreZoom(view: TaskViewHost): void {
 	const line = view.zoomLine;
 	if (line === null) {
 		return;
@@ -147,7 +147,7 @@ export function restoreZoom(view: IOTOTaskView): void {
  * 故须手动翻面（否则点了放大图标仍停在「放大」）。
  */
 export function syncZoomButton(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	cardEl: HTMLElement | null,
 ): void {
 	if (!cardEl) {
@@ -175,7 +175,7 @@ export function syncZoomButton(
  * **只写盘、不退出编辑态**——复用 `autosaveEdit`（不 `destroy`、不 `clear editingLine`、
  * 不 `refreshCard`），卡片保持 `.is-editing`，不会回落选中态。幂等：无变更 / 无编辑器时短路。
  */
-export async function flushZoomEdit(view: IOTOTaskView): Promise<void> {
+export async function flushZoomEdit(view: TaskViewHost): Promise<void> {
 	if (view.zoomLine === null) {
 		return;
 	}
@@ -186,7 +186,7 @@ export async function flushZoomEdit(view: IOTOTaskView): Promise<void> {
  * 放大态点击卡片：把焦点交还内嵌编辑器（方案 A）。
  * 编辑器已在则仅 `focus()`；若因整树重绘瞬时缺位，则幂等重挂（`enterZoom`）。
  */
-export function focusZoomEditor(view: IOTOTaskView, line: number): void {
+export function focusZoomEditor(view: TaskViewHost, line: number): void {
 	if (view.zoomLine !== line) {
 		return;
 	}

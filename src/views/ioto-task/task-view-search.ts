@@ -1,11 +1,11 @@
 import { collectCardLines, pickAdjacentLine } from './card-navigation';
-import type { IOTOTaskView } from '../iotoTaskView';
+import type { TaskViewHost } from './task-view-host';
 import { SEARCH_DEBOUNCE_MS } from './task-view-constants';
 import { queryCard } from './task-view-helpers';
 import type { SearchHost } from './search-scope';
 
 /** Mod+F / 命令入口：显示搜索条并聚焦输入框（Q6 移动端复用它）。 */
-export function revealSearch(view: IOTOTaskView): void {
+export function revealSearch(view: TaskViewHost): void {
 	if (!view.searchBarEl?.isConnected) {
 		view.buildToolbar();
 	}
@@ -27,7 +27,7 @@ export function revealSearch(view: IOTOTaskView): void {
 }
 
 /** 搜索条是否处于展开态（唯一的真源 = searchbar 的有无 is-hidden）。 */
-export function isSearchOpen(view: IOTOTaskView): boolean {
+export function isSearchOpen(view: TaskViewHost): boolean {
 	return view.searchBarEl !== null && !view.searchBarEl.hasClass('is-hidden');
 }
 
@@ -35,7 +35,7 @@ export function isSearchOpen(view: IOTOTaskView): boolean {
  * 工具栏「搜索任务」按钮：未展开 → 同命令 revealSearch()；已展开 → 同 ×/Esc closeSearch()。
  * 复用既有开关语义，不新增第三种状态（[[Plan-20261009-064624]] §四）。
  */
-export function toggleSearch(view: IOTOTaskView): void {
+export function toggleSearch(view: TaskViewHost): void {
 	if (isSearchOpen(view)) {
 		view.closeSearch();
 	} else {
@@ -44,14 +44,14 @@ export function toggleSearch(view: IOTOTaskView): void {
 }
 
 /** 把搜索条真实显隐回写到按钮按下态（除整栏刷新外的三处显隐变更点调用）。 */
-export function refreshSearchToggleState(view: IOTOTaskView): void {
+export function refreshSearchToggleState(view: TaskViewHost): void {
 	view.searchToggleEl?.setAttribute(
 		'aria-pressed',
 		isSearchOpen(view) ? 'true' : 'false',
 	);
 }
 
-export function onSearchInput(view: IOTOTaskView): void {
+export function onSearchInput(view: TaskViewHost): void {
 	const value = view.searchInputEl?.value ?? '';
 	if (view.searchDebounce !== null) {
 		window.clearTimeout(view.searchDebounce);
@@ -67,7 +67,7 @@ export function onSearchInput(view: IOTOTaskView): void {
  * 边界：与当前关键词相同则跳过（避免无意义的整树重建）。
  */
 export async function applySearchQuery(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	value: string,
 ): Promise<void> {
 	if (value === view.searchQuery) {
@@ -81,7 +81,7 @@ export async function applySearchQuery(
 }
 
 /** 关闭 + 清空（`关闭` 按钮与 `Esc` 共用）。 */
-export function closeSearch(view: IOTOTaskView): void {
+export function closeSearch(view: TaskViewHost): void {
 	if (view.searchDebounce !== null) {
 		window.clearTimeout(view.searchDebounce);
 		view.searchDebounce = null;
@@ -106,7 +106,7 @@ export function closeSearch(view: IOTOTaskView): void {
 }
 
 /** `上一个`/`下一个`：在**可见卡**（= 命中卡）间定位，环绕，焦点留在搜索框。 */
-export function stepMatch(view: IOTOTaskView, delta: 1 | -1): void {
+export function stepMatch(view: TaskViewHost, delta: 1 | -1): void {
 	const lines = collectCardLines(view.contentEl);
 	if (lines.length === 0) {
 		return;
@@ -138,7 +138,7 @@ export function stepMatch(view: IOTOTaskView, delta: 1 | -1): void {
  * 定位到某张卡：**加选中类 + 滚动入视口，但不抢焦点**（保持搜索框焦点）。
  * 与 `applySelection` 的区别就在这里——后者会 `cardEl.focus()`，会跳出搜索框。
  */
-export function highlightMatch(view: IOTOTaskView, line: number): void {
+export function highlightMatch(view: TaskViewHost, line: number): void {
 	// 方案 A：放大态 = 单卡编辑面，搜索定位不改选中态（避免破坏「放大 ≡ 编辑」）
 	if (view.zoomLine !== null) {
 		return;
@@ -162,7 +162,7 @@ export function highlightMatch(view: IOTOTaskView, line: number): void {
 }
 
 /** 无命中时禁用两个定位按钮。 */
-export function refreshSearchNavState(view: IOTOTaskView): void {
+export function refreshSearchNavState(view: TaskViewHost): void {
 	const has = collectCardLines(view.contentEl).length > 0;
 	view.searchPrevEl?.toggleAttribute('disabled', !has);
 	view.searchNextEl?.toggleAttribute('disabled', !has);
@@ -172,7 +172,7 @@ export function refreshSearchNavState(view: IOTOTaskView): void {
  * 释放搜索瞬态：清 debounce 计时器、归零关键词、清输入框、收起搜索条。
  * **不重绘**（调用方按需决定）；用于销毁 / 清空视图（[[Plan-20261006-161121]] §2.3f）。
  */
-export function resetSearchState(view: IOTOTaskView): void {
+export function resetSearchState(view: TaskViewHost): void {
 	if (view.searchDebounce !== null) {
 		window.clearTimeout(view.searchDebounce);
 		view.searchDebounce = null;
@@ -189,12 +189,12 @@ export function resetSearchState(view: IOTOTaskView): void {
  * 能否由 scope 接管 Mod+F：非编辑态（保留内嵌编辑器的 Cmd+F 查找）。
  * 非 active 视图由 `resolveSearchHost` 先挡掉（返回 `null` → 放行）。
  */
-export function canRevealSearchFromScope(view: IOTOTaskView): boolean {
+export function canRevealSearchFromScope(view: TaskViewHost): boolean {
 	return view.editingLine === null && view.continuationLine === null;
 }
 
 /** 暴露给 search scope 的宿主（照 `modEnterHost` 范式）。 */
-export function searchHost(view: IOTOTaskView): SearchHost {
+export function searchHost(view: TaskViewHost): SearchHost {
 	return {
 		canRevealSearch: () => canRevealSearchFromScope(view),
 		revealSearch: () => view.revealSearch(),

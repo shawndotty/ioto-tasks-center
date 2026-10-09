@@ -4,7 +4,7 @@ import {
 	writeScalarProperties,
 } from '../../tasks-center/frontmatter-properties';
 import type { TaskNoteFilters } from './render-note-types';
-import type { IOTOTaskView } from '../iotoTaskView';
+import type { TaskViewHost } from './task-view-host';
 import {
 	FILTER_PROPERTY_NAMES,
 	PROPERTY_ONLY_PENDING,
@@ -14,7 +14,7 @@ import {
 import { lineAt } from './task-view-helpers';
 
 /** 从 `view.data`（frontmatter）重读过滤开关；缺失 = 关。 */
-export function reloadFilters(view: IOTOTaskView): void {
+export function reloadFilters(view: TaskViewHost): void {
 	view.filters = {
 		onlyTaskBlocks: readBooleanProperty(
 			view.data,
@@ -30,7 +30,7 @@ export function reloadFilters(view: IOTOTaskView): void {
  * 按 frontmatter 行数变化平移 `selectedLine` / `collapsedSections`，再整树重绘。
  */
 export async function toggleFilter(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	kind: keyof TaskNoteFilters,
 ): Promise<void> {
 	const file = view.file;
@@ -84,7 +84,7 @@ export async function toggleFilter(
  * （[[Plan-20261004-110845]] §5.1）。插入点恒在 frontmatter，故正文整体平移。
  */
 export function shiftTrackedLines(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	delta: number,
 	oldContent: string,
 	newContent: string,

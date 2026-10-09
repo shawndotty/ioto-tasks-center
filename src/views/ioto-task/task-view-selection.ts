@@ -8,7 +8,7 @@ import {
 	collectCardLines,
 	pickLineAfterDelete,
 } from './card-navigation';
-import type { IOTOTaskView } from '../iotoTaskView';
+import type { TaskViewHost } from './task-view-host';
 import type { ModEnterHost } from './select-mode-scope';
 
 /**
@@ -17,7 +17,7 @@ import type { ModEnterHost } from './select-mode-scope';
  * 正编辑**其它**卡片时先提交（mousedown 的 blur 已经先跑过一次，这里是兜底，
  * 例如方向键移动或 `Option+I` 面板关闭后重新选中）。已在本卡编辑态则忽略。
  */
-export function select(view: IOTOTaskView, line: number): void {
+export function select(view: TaskViewHost, line: number): void {
 	// 换选中即离开 pending 语境：先撤遮罩（幂等，焦点交给随后的 applySelection）
 	view.cancelPendingDelete(false);
 	if (view.editingLine !== null && view.editingLine !== line) {
@@ -37,7 +37,7 @@ export function select(view: IOTOTaskView, line: number): void {
  * 方案 A（[[Discuss-20261008-173935]]）：当 `line === zoomLine` 时只更新内部
  * `selectedLine`、**不加** `.is-selected`（放大卡恒编辑，选中语义整体停用）。
  */
-export function applySelection(view: IOTOTaskView, line: number): void {
+export function applySelection(view: TaskViewHost, line: number): void {
 	// 任何改选中的入口都先撤遮罩（坑 C / Q2）；焦点交给下面的 cardEl.focus
 	view.cancelPendingDelete(false);
 	const prev = view.selectedLine;
@@ -77,7 +77,7 @@ export function applySelection(view: IOTOTaskView, line: number): void {
  * 残留选中类，并与 Esc 路径共用同一套语义。
  */
 export function restoreSelectionFocusAfterBlurCommit(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	line: number,
 ): void {
 	if (view.selectedLine !== line) {
@@ -106,7 +106,7 @@ export function restoreSelectionFocusAfterBlurCommit(
  * 选择落到「原位置的下一张，否则上一张」。
  */
 export async function deleteSelected(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	line: number,
 ): Promise<void> {
 	const file = view.file;
@@ -167,7 +167,7 @@ export async function deleteSelected(
  * `commitTaskLineAction` 记为 `unchanged`，无写入、无重绘（幂等）。
  */
 export async function indentSelected(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	line: number,
 	delta: number,
 ): Promise<void> {
@@ -213,7 +213,7 @@ export async function indentSelected(
  * 两套语义。非同一行（理论上不会发生）视为一次新的确认请求。
  */
 export async function requestDelete(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	line: number,
 ): Promise<void> {
 	if (view.pendingDeleteLine === line) {
@@ -237,7 +237,7 @@ export async function requestDelete(
  * 焦点**不移动**（仍留在 `cardEl`）：键盘全部走既有卡片 `keydown`，避免在视图里
  * 重写一套 `collectCardLines`/`pickAdjacentLine` 导航（[[Plan-20261005-141853]] 步骤 5）。
  */
-export function enterPendingDelete(view: IOTOTaskView, line: number): void {
+export function enterPendingDelete(view: TaskViewHost, line: number): void {
 	const cardEl = view.queryCard( line);
 	if (!cardEl) {
 		// 行已漂移：静默放弃，不进 pending
@@ -302,7 +302,7 @@ export function enterPendingDelete(view: IOTOTaskView, line: number): void {
  * 只移除遮罩类与 DOM，**不动 `selectedLine`**：取消后卡片仍保持 `.is-selected`。
  */
 export function cancelPendingDelete(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	refocus = true,
 ): void {
 	view.pendingDeleteEl?.remove();
@@ -327,7 +327,7 @@ export function cancelPendingDelete(
  * **不另写行号计算**——`nextLine`、conflict/unchanged、整树重建、选择回填全部沿用
  * 既有链路（坑 G）。
  */
-export function confirmPendingDelete(view: IOTOTaskView): void {
+export function confirmPendingDelete(view: TaskViewHost): void {
 	const line = view.pendingDeleteLine;
 	if (line === null) {
 		return;
@@ -345,7 +345,7 @@ export function confirmPendingDelete(view: IOTOTaskView): void {
  * 原行不变，故新行恒为 `line + 1`。
  */
 export async function insertSibling(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	line: number,
 ): Promise<void> {
 	const originalLine = view.lineAt( line);
@@ -372,7 +372,7 @@ export async function insertSibling(
  * 两态语义不同是 Johnny 拍板保留的（[[Plan-20261004-222507]] §七）。
  */
 export async function beginContinuationOrNew(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	line: number,
 ): Promise<void> {
 	if (!view.supportsInlineEdit() || !view.file) {
@@ -393,7 +393,7 @@ export async function beginContinuationOrNew(
  * `block:'nearest'` 只在确实出视口时才滚动（[[Plan-20261003-094145]] §5.4）。
  * `select` 与 `beginEdit` 共用。
  */
-export function scrollCardIntoView(view: IOTOTaskView, cardEl: HTMLElement): void {
+export function scrollCardIntoView(view: TaskViewHost, cardEl: HTMLElement): void {
 	const rect = cardEl.getBoundingClientRect();
 	const scrollEl = view.contentEl.querySelector<HTMLElement>(
 		'.ioto-task-view__scroll',
@@ -411,7 +411,7 @@ export function scrollCardIntoView(view: IOTOTaskView, cardEl: HTMLElement): voi
  * 正文，此时改标志位会让随后的 blur 提交判成冲突并丢字 —— 与原先
  * `render-note.ts` Enter 分支的那条红线一致。
  */
-export function canToggleSelectedFromScope(view: IOTOTaskView): boolean {
+export function canToggleSelectedFromScope(view: TaskViewHost): boolean {
 	if (view.editingLine !== null) {
 		return false;
 	}
@@ -427,7 +427,7 @@ export function canToggleSelectedFromScope(view: IOTOTaskView): boolean {
 }
 
 /** scope 命中后的执行：复用点 checkbox 的同一条链路（乐观更新 + 原子写回）。 */
-export function toggleSelectedFromScope(view: IOTOTaskView): void {
+export function toggleSelectedFromScope(view: TaskViewHost): void {
 	const line = view.selectedLine;
 	if (line === null) {
 		return;
@@ -440,7 +440,7 @@ export function toggleSelectedFromScope(view: IOTOTaskView): void {
 }
 
 /** 暴露给 select-mode scope 的宿主；由 `resolveModEnterHost` 按 active leaf 取用。 */
-export function modEnterHost(view: IOTOTaskView): ModEnterHost {
+export function modEnterHost(view: TaskViewHost): ModEnterHost {
 	return {
 		canToggleSelected: () => canToggleSelectedFromScope(view),
 		toggleSelected: () => toggleSelectedFromScope(view),

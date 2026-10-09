@@ -15,7 +15,7 @@ import {
 	type CommitOutcome,
 } from './commit-task-line';
 import { mountEmbeddedEditor } from './embedded-editor';
-import type { IOTOTaskView } from '../iotoTaskView';
+import type { TaskViewHost } from './task-view-host';
 
 /**
  * 点续行块进入就地多行编辑。
@@ -25,7 +25,7 @@ import type { IOTOTaskView } from '../iotoTaskView';
  * - 提交 / 失焦走 `commitContinuationEdit`，整树重建（续行行数会变，后续卡会漂）。
  */
 export async function beginContinuationEdit(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	line: number,
 ): Promise<void> {
 	if (!view.supportsInlineEdit() || !view.file) {
@@ -136,7 +136,7 @@ export async function beginContinuationEdit(
  * 提交统一走 `commitContinuationEdit` 的「任务行展开」分支。
  */
 export async function beginNewContinuationEdit(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	line: number,
 ): Promise<void> {
 	if (!view.supportsInlineEdit() || !view.file) {
@@ -240,7 +240,7 @@ export async function beginNewContinuationEdit(
 }
 
 /** 续行编辑器：`Enter` / `Shift+Enter` 都在光标处换行，不新建任务。 */
-export function onContinuationEnter(view: IOTOTaskView, cm: EditorView): boolean {
+export function onContinuationEnter(view: TaskViewHost, cm: EditorView): boolean {
 	const sel = cm.state.selection.main;
 	cm.dispatch({
 		changes: { from: sel.from, to: sel.to, insert: '\n' },
@@ -251,13 +251,13 @@ export function onContinuationEnter(view: IOTOTaskView, cm: EditorView): boolean
 }
 
 /** 空内容 `Backspace`：删除整段续行并退出编辑。 */
-export function onContinuationDeleteEmpty(view: IOTOTaskView): boolean {
+export function onContinuationDeleteEmpty(view: TaskViewHost): boolean {
 	window.setTimeout(() => void view.commitContinuationEdit(true), 0);
 	return true;
 }
 
 /** `Esc`：先提交、再落回本卡选择态（与标题编辑器同构）。 */
-export function onContinuationEscape(view: IOTOTaskView): void {
+export function onContinuationEscape(view: TaskViewHost): void {
 	const line = view.continuationLine;
 	if (line === null || view.continuationHandle === null) {
 		return;
@@ -287,7 +287,7 @@ export function onContinuationEscape(view: IOTOTaskView): void {
  * - `conflict` 拉权威内容重绘；`unchanged` 不写盘、不重绘。
  */
 export async function commitContinuationEdit(
-	view: IOTOTaskView,
+	view: TaskViewHost,
 	forceEmpty = false,
 ): Promise<void> {
 	const handle = view.continuationHandle;
@@ -363,7 +363,7 @@ export async function commitContinuationEdit(
 }
 
 /** 销毁续行编辑器：去 DOM 编辑态 + 卸载 handle + 置空（比对 `destroyActiveEditor`）。 */
-export function destroyContinuationEditor(view: IOTOTaskView): void {
+export function destroyContinuationEditor(view: TaskViewHost): void {
 	view.autosave.cancel();
 	const handle = view.continuationHandle;
 	// 先置空，保证随后触发的 blur 走到 commitContinuationEdit 时直接短路。
@@ -399,7 +399,7 @@ export function destroyContinuationEditor(view: IOTOTaskView): void {
  * 不 destroy、不 `renderNote`（避免编辑被打断）；成功后刷新续行块快照
  * （起止行号 + 原文），否则下一次落盘用旧序列判 `conflict`。
  */
-export async function autosaveContinuation(view: IOTOTaskView): Promise<void> {
+export async function autosaveContinuation(view: TaskViewHost): Promise<void> {
 	if (view.continuationIsNew) {
 		return; // 草稿不自动落盘：首次写入统一由 blur / Esc 的 commitContinuationEdit 完成
 	}

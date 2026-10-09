@@ -2,12 +2,12 @@ import { Platform, setIcon } from 'obsidian';
 
 import { t } from '../../lang/helpter';
 import { isTemplateAvailableForProject } from '../../tasks-center/batch-task-template';
-import type { IOTOTaskView } from '../iotoTaskView';
+import type { TaskViewHost } from './task-view-host';
 import type { ToolbarButtonClickContext } from './task-view-constants';
 import { queryCard } from './task-view-helpers';
 
 /** 建常驻外壳：`__toolbar`（固定）+ `__body`（可滚）。幂等，重绘不重建。 */
-export function buildToolbar(view: IOTOTaskView): void {
+export function buildToolbar(view: TaskViewHost): void {
 	if (view.toolbarEl?.isConnected && view.bodyEl?.isConnected) {
 		return;
 	}
@@ -241,7 +241,7 @@ function createSearchButton(
  * 按 `view.filters` 刷新栏态：两个 toggle 的 `aria-pressed`；只读态隐藏「添加任务」。
  * `aria-pressed` 以**属性真源**为准（`renderNote` 每次刷新），不缓存按钮内部状态。
  */
-export function refreshToolbarState(view: IOTOTaskView): void {
+export function refreshToolbarState(view: TaskViewHost): void {
 	view.toggleTaskBlocksEl?.setAttribute(
 		'aria-pressed',
 		view.filters.onlyTaskBlocks ? 'true' : 'false',
@@ -281,7 +281,7 @@ export function refreshToolbarState(view: IOTOTaskView): void {
  *
  * pending 期间加 `is-pending` + `aria-pressed`，向用户传达「再点即删」。
  */
-export function refreshDeleteButtonVisibility(view: IOTOTaskView): void {
+export function refreshDeleteButtonVisibility(view: TaskViewHost): void {
 	const hasSelectedCard =
 		view.selectedLine !== null && queryCard(view, view.selectedLine) !== null;
 	const show =
@@ -298,7 +298,7 @@ export function refreshDeleteButtonVisibility(view: IOTOTaskView): void {
 }
 
 /** 设置热切换：只重算删除按钮显隐，不整栏重刷、不重绘（[[Plan-20261007-194826]] §4.7）。 */
-export function applyDeleteButtonSetting(view: IOTOTaskView): void {
+export function applyDeleteButtonSetting(view: TaskViewHost): void {
 	refreshDeleteButtonVisibility(view);
 }
 
@@ -308,7 +308,7 @@ export function applyDeleteButtonSetting(view: IOTOTaskView): void {
  * 判据保证按钮仅在「有可命中选中卡」时可见，故空选中为不可达的防御出口：
  * 静默 return 即可（`enterPendingDelete` 内部还会再用 `queryCard` 兜一次）。
  */
-function requestDeleteSelected(view: IOTOTaskView): void {
+function requestDeleteSelected(view: TaskViewHost): void {
 	const line = view.selectedLine;
 	if (line === null) {
 		return;
@@ -317,7 +317,7 @@ function requestDeleteSelected(view: IOTOTaskView): void {
 }
 
 /** ③ 按钮 tooltip：内插当前阈值（设置变更后由 `refreshToolbarState` 重取）。 */
-function recentTaskTitle(view: IOTOTaskView): string {
+function recentTaskTitle(view: TaskViewHost): string {
 	return t('view.iotoTaskView.toolbar.toggleRecentTooltip', [
 		String(view.recentTaskCountProvider()),
 	]);
@@ -328,7 +328,7 @@ function recentTaskTitle(view: IOTOTaskView): string {
  * （[[Discuss-20261007-062838]] §三.①）——没说出来 ≈ 不存在；没模板时不教这个手势，
  * 免得用户按了 Shift 只看到一条「未配置模板」的 Notice 以为是没按到。
  */
-function addTaskTooltip(view: IOTOTaskView): string {
+function addTaskTooltip(view: TaskViewHost): string {
 	const base = t('view.iotoTaskView.toolbar.addTaskTooltip');
 	if (!hasAvailableEntryTemplate(view)) {
 		return base;
@@ -337,7 +337,7 @@ function addTaskTooltip(view: IOTOTaskView): string {
 }
 
 /** 当前笔记是否有可用条目模板：与 `insertEntryTemplate()` 的项目过滤同口径。 */
-function hasAvailableEntryTemplate(view: IOTOTaskView): boolean {
+function hasAvailableEntryTemplate(view: TaskViewHost): boolean {
 	const config = view.entryTemplateProvider();
 	if (!config.enabled || config.templates.length === 0) {
 		return false;
@@ -355,7 +355,7 @@ function hasAvailableEntryTemplate(view: IOTOTaskView): boolean {
  * 无需整树重建（`contentEl` 的类在 `renderNote` 的 `empty()` 后仍然保留）。
  * 见 [[Plan-20261003-215547]] §7.1、[[Plan-20261005-200436]]、[[Plan-20261005-230336]]、[[Plan-20261007-063658]]。
  */
-export function applyAppearanceStyle(view: IOTOTaskView): void {
+export function applyAppearanceStyle(view: TaskViewHost): void {
 	const style = view.appearanceStyleProvider();
 	view.contentEl.toggleClass('is-glass', style === 'glass');
 	view.contentEl.toggleClass('is-modern', style === 'modern');
@@ -368,7 +368,7 @@ export function applyAppearanceStyle(view: IOTOTaskView): void {
  * 刷新按钮 tooltip；仅当「显示最近任务」开启时重绘（阈值变化需重算分组），
  * 其余情况不动 DOM（[[Plan-20261005-101007]] §2.6）。
  */
-export function applyRecentTaskCount(view: IOTOTaskView): void {
+export function applyRecentTaskCount(view: TaskViewHost): void {
 	refreshToolbarState(view);
 	if (view.filters.recentOnly) {
 		view.renderNote(view.data);
@@ -379,6 +379,6 @@ export function applyRecentTaskCount(view: IOTOTaskView): void {
  * 条目模板设置变更后由 `main.ts` 调用：重刷工具栏，只为更新「添加」按钮 tooltip 里的
  * 模板 hint（[[Discuss-20261007-062838]] §三.①）。不改 DOM 结构、不重绘列表。
  */
-export function applyEntryTemplate(view: IOTOTaskView): void {
+export function applyEntryTemplate(view: TaskViewHost): void {
 	refreshToolbarState(view);
 }
