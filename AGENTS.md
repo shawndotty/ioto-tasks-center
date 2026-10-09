@@ -61,7 +61,10 @@ npm run build:deploy  # build + zip + tag + release to GitHub & Gitee (see "Vers
 ```
 src/
   main.ts                        # Plugin entry: IOTOTasksCenter lifecycle only
-  settings.ts                    # Settings interface, defaults, normalizers, settings tab
+  settings.ts                    # Settings barrel: re-exports public API + slim SettingTab class
+  settings-types.ts              # Settings types, constants, DEFAULT_SETTINGS
+  settings-options.ts            # get*Options + is*Mode type guards
+  settings-normalizers.ts        # normalize* functions
   tasks-center/                  # Core domain logic (no DOM/UI)
     types.ts                     # Shared types, default root paths, path normalizers
     task-creation.ts             # Task file creation, templates, frontmatter helpers
@@ -104,6 +107,10 @@ src/
     taskCreationModal.ts, taskNameModal.ts, batchTaskModals.ts,
     batchTemplateEditModal.ts, confirmModal.ts, tabbed-settings.ts,
     task-outlink-popover.ts, task-search-modal.ts, task-status-checklist-popover.ts
+    settings-tab/                  # Settings tab section renderers (split from settings.ts)
+      helpers.ts, basic-general-section.ts, basic-display-section.ts,
+      task-types-section.ts, task-templates-section.ts,
+      batch-templates-section.ts, entry-templates-section.ts
   modals/ImportModal.ts          # Import dialog
   lang/                          # i18n
     helpter.ts                   # t(), getCurrentLang(); TranslationKey = keyof typeof en
@@ -139,7 +146,7 @@ Views are constructed in `main.ts` with **getter callbacks** for reading setting
 
 ### Settings lifecycle
 
-- Every setting has a `normalize*` function applied on load (`loadSettings`) and on update (see `src/settings.ts` and `src/tasks-center/*`).
+- Every setting has a `normalize*` function applied on load (`loadSettings`) and on update (see `src/settings-normalizers.ts` and `src/tasks-center/*`).
 
 - Update methods follow the pattern: normalize → skip if unchanged → `saveSettings()` → `applySettingsToOpenViews()`.
 
