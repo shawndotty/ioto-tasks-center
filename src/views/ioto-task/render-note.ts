@@ -935,7 +935,8 @@ export function renderCardActions(
 }
 
 /**
- * 渲染左栏图标按钮：出链、条目控制（顺序固定，[[Plan-20261005-111411]] Q6）。
+ * 渲染左栏图标按钮：出链、条目控制、放大（顺序固定，[[Plan-20261005-111411]] Q6），
+ * 末尾追加删除（放大右侧，[[Plan-20261009-072524]] §三 步骤 1）。
  * 只在编辑控制器提供了对应回调时才渲染——即 `supportsInlineEdit()` 为真且
  * 目标命令已注册（Q5：只读 / ioto-settings 未启用时隐藏按钮）。
  */
@@ -977,6 +978,17 @@ function renderCardActionButtons(
 			),
 			action: 'toggle-zoom',
 			onClick: () => editing.toggleZoom?.(line),
+		});
+	}
+
+	if (editing.enabled) {
+		// 卡片删除入口：复用既有二次确认链 editing.delete(line)（[[Discuss-20261009-072024]] §三.1）。
+		// 位置 = 放大按钮右侧；独立 data-action 与 toolbar 的 delete-task 隔离（坑 3）。
+		createCardActionButton(containerEl, {
+			icon: 'trash-2',
+			label: t('view.iotoTaskView.cardActions.deleteTask'),
+			action: 'card-delete-task',
+			onClick: () => editing.delete(line),
 		});
 	}
 }

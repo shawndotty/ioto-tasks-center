@@ -793,7 +793,7 @@ export class IOTOTaskView extends TextFileView {
 		if (line === null) {
 			return;
 		}
-		this.requestDelete(line);
+		void this.requestDelete(line);
 	}
 
 	/** ③ 按钮 tooltip：内插当前阈值（设置变更后由 `refreshToolbarState` 重取）。 */
@@ -1418,7 +1418,7 @@ export class IOTOTaskView extends TextFileView {
 			// 选择态删除入口改语义分派：首按进确认态，同一行再次触发才真删
 			//（[[Plan-20261005-141853]] 步骤 2）。确认按钮 / 二次 Delete 都走这里。
 			delete: (line) => {
-				this.requestDelete(line);
+				void this.requestDelete(line);
 			},
 			// 取消按钮 / Esc 调用；无 pending 时幂等 no-op。
 			cancelDelete: () => {
@@ -1885,6 +1885,15 @@ export class IOTOTaskView extends TextFileView {
 			return;
 		}
 
+		// 坑 1：被删行正是放大行时，先退放大并回收编辑器，再走删除。
+		// 否则 renderNote → restoreZoom() 用旧行号 queryCard 会命中「下一张卡」→ 放大错卡。
+		if (this.zoomLine === line) {
+			this.exitZoom();
+			this.destroyActiveEditor(); // 内含 autosave.cancel()（:2274），避免随后 autosave 写已删行
+			this.editingLine = null;
+			this.editingOriginalLine = '';
+		}
+
 		// 删除前先取 DOM 顺序：删除会让后续卡片的 data-line 整体前移
 		const order = collectCardLines(this.contentEl);
 		const removedCount = 1 + this.countContinuationLines(line); // 任务行 + 续行
@@ -1970,10 +1979,18 @@ export class IOTOTaskView extends TextFileView {
 	 * 「确认按钮」与「二次 `Delete`」都走 `delete(line)` 经此分派，渲染层无需维护
 	 * 两套语义。非同一行（理论上不会发生）视为一次新的确认请求。
 	 */
-	private requestDelete(line: number): void {
+	private async requestDelete(line: number): Promise<void> {
 		if (this.pendingDeleteLine === line) {
 			this.confirmPendingDelete();
 			return;
+		}
+		// 常规编辑卡：先提交标题（退出编辑）再进确认，串行化「blur 提交」与「删除写盘」，
+		// 避免提交把行删掉 / 未落盘即删的竞态（坑 2）。
+		// 放大卡（zoomLine === line）不在此提交：方案 A 下编辑器常驻编辑态、blur 走
+		// flushZoomEdit 只落盘不退编辑；强行 commitEdit 会破坏「放大 ≡ 编辑」不变量，
+		// 且取消确认后会留下「is-zoomed 但非 is-editing」的瞬时残留（见 §四）。
+		if (this.editingLine === line && this.zoomLine !== line) {
+			await this.commitEdit();
 		}
 		this.enterPendingDelete(line);
 	}

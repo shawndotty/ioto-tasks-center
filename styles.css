@@ -2686,11 +2686,11 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	display: flex;
 }
 
-/* 放大态唯一出口 = 缩小按钮（[[Discuss-20261008-171512]] Q1/Q5）。
+/* 放大态出口 = 缩小按钮 + 删除按钮（[[Discuss-20261008-171512]] Q1/Q5、[[Plan-20261009-072524]] §三 步骤 3）。
    方案 A（[[Discuss-20261008-173935]]）下放大 ≡ 常驻编辑态，卡片几乎恒带 .is-editing，
    动作区走上面的编辑态规则常显；下面几条 (0,4,0) 规则作为「重绘中途瞬时态」
    （.is-zoomed 已挂、.is-editing 尚未回填）的兜底：此时常显动作区，但只留「缩小」
-   按钮，隐藏其余按钮与徽章，避免唯一出口被一起藏掉。
+   与「删除」按钮，隐藏其余按钮与徽章，避免唯一出口被一起藏掉。
    特异性 (0,4,0) > 编辑态规则 (0,3,0)，稳定生效。 */
 .ioto-task-view__card.is-zoomed:not(.is-editing) .ioto-task-view__card-actions {
 	display: flex;
@@ -2698,7 +2698,7 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 
 .ioto-task-view__card.is-zoomed:not(.is-editing)
 	.ioto-task-view__card-actions-buttons
-	> .ioto-task-view__card-action-btn:not([data-action='toggle-zoom']) {
+	> .ioto-task-view__card-action-btn:not([data-action='toggle-zoom']):not([data-action='card-delete-task']) {
 	display: none;
 }
 

@@ -659,6 +659,8 @@ const en = {
 	'view.iotoTaskView.cardActions.editItemControls': 'Edit item controls',
 	'view.iotoTaskView.cardActions.zoomIn': 'Zoom in',
 	'view.iotoTaskView.cardActions.zoomOut': 'Exit zoom',
+	'view.iotoTaskView.cardActions.deleteTask': 'Delete task',
+	'view.iotoTaskView.cardActions.deleteTaskTooltip': 'Delete this task',
 	'view.iotoTaskView.deleteConfirm.confirm': 'Confirm delete',
 	'view.iotoTaskView.deleteConfirm.cancel': 'Cancel',
 	'view.iotoTaskView.deleteConfirm.aria': 'Delete confirmation',

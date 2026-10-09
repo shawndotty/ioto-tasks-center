@@ -607,6 +607,8 @@ const zhTW = {
 	'view.iotoTaskView.cardActions.editItemControls': '編輯條目控制',
 	'view.iotoTaskView.cardActions.zoomIn': '放大',
 	'view.iotoTaskView.cardActions.zoomOut': '退出放大',
+	'view.iotoTaskView.cardActions.deleteTask': '刪除任務',
+	'view.iotoTaskView.cardActions.deleteTaskTooltip': '刪除本條任務',
 	'view.iotoTaskView.deleteConfirm.confirm': '確認刪除',
 	'view.iotoTaskView.deleteConfirm.cancel': '取消',
 	'view.iotoTaskView.deleteConfirm.aria': '刪除確認',
