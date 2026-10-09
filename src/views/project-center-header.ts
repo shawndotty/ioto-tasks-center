@@ -40,6 +40,7 @@ export function buildProjectCenterHeader(
 		});
 		searchInputEl.placeholder = t('projectCenter.search.placeholder');
 		searchInputEl.value = ctx.projectSearchInputValue;
+		searchInputEl.setAttribute('enterkeyhint', 'search');
 		searchInputEl.setAttribute('autocapitalize', 'off');
 		searchInputEl.setAttribute('autocomplete', 'off');
 		searchInputEl.spellcheck = false;
