@@ -7,7 +7,7 @@
  * 避免循环依赖，也便于单测。
  *
  * 本文件只含「纯比较」型简单更新；需要归一化 / 合并 / 集合比较的复杂更新见
- * settings-updaters-extended.ts，并通过下方 `export *` 再导出，保持
+ * settings-updaters-extended.ts，并通过下方「显式具名再导出」暴露，保持
  * `from './settings-updaters'` 的外部引用路径不变。
  */
 import {
@@ -25,7 +25,25 @@ import {
 } from './settings';
 
 // 再导出扩展集（需要归一化 / 合并 / 集合比较的复杂更新），保持单一入口。
-export * from './settings-updaters-extended';
+// 刻意使用「显式具名」而非 `export *`：一旦 extended 新增与本地同名的导出，
+// 会在此处产生「重复导出」编译错误，而不是被静默遮蔽。
+export {
+	areStringArraysEqual,
+	updateRecentTaskCount,
+	updateExportImageFixedWidth,
+	updateExportImageScale,
+	updateTasksRootPath,
+	updateInputRootPath,
+	updateOutputRootPath,
+	updateOutcomeRootPath,
+	setProjectHidden,
+	updateTaskTemplateConfig,
+	updateDateTaskDateFormat,
+	updateEnabledTaskCreationTypes,
+	addProjectCategoryOption,
+	updateBatchTemplateConfig,
+	updateEntryTemplateConfig,
+} from './settings-updaters-extended';
 
 /**
  * 更新函数依赖的最小宿主接口。IOTOTasksCenter 插件实例结构化满足此接口，

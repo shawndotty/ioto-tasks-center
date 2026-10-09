@@ -1,7 +1,7 @@
 /**
  * 设置更新函数（扩展集）—— 需要归一化 / 合并 / 集合比较的复杂更新。
  * 从 settings-updaters.ts 拆出以控制单文件行数。core 模块通过
- * `export *` 再导出本模块，保持 `from './settings-updaters'` 的外部引用不变。
+ * 「显式具名再导出」暴露本模块，保持 `from './settings-updaters'` 的外部引用不变。
  */
 import type { SettingsUpdaterHost } from './settings-updaters';
 import {
