@@ -31,7 +31,7 @@ import {
 	type CardVisibilityInput,
 } from './task-query-filter';
 import { renderChecklistGroup, renderMarkdownChunk } from './render-checklist-card';
-import type { TaskNoteEditing, TaskNoteFilters, TaskNoteLinks } from './render-note';
+import type { TaskNoteEditing, TaskNoteFilters, TaskNoteLinks } from './render-note-types';
 
 interface RenderSectionOptions {
 	app: App;

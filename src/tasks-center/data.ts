@@ -3,12 +3,12 @@ import { App, TFile, TFolder } from 'obsidian';
 import {
 	buildTaskStatusSummary,
 	getTaskStatusLabel,
-	IncompleteChecklistItem,
-	ProjectFolderEntry,
-	ProjectListResult,
-	TaskFileEntry,
-	TaskFileListResult,
-	TaskFileStatus,
+	type IncompleteChecklistItem,
+	type ProjectFolderEntry,
+	type ProjectListResult,
+	type TaskFileEntry,
+	type TaskFileListResult,
+	type TaskFileStatus,
 } from './types';
 import { PROJECT_METADATA_FILE_NAME } from './project-metadata';
 import {

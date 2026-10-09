@@ -26,7 +26,7 @@ import {
 	type CardVisibilityContext,
 } from './task-query-filter';
 import { applySearchHighlight } from './search-highlight';
-import type { TaskNoteEditing } from './render-note';
+import type { TaskNoteEditing } from './render-note-types';
 
 function truncateLabel(text: string, maxLength = 40): string {
 	const trimmed = text.trim();

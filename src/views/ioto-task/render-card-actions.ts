@@ -13,7 +13,7 @@ import { setIcon } from 'obsidian';
 
 import { t } from '../../lang/helpter';
 import type { ControlToken } from '../../tasks-center/note-structure';
-import type { TaskNoteEditing } from './render-note';
+import type { TaskNoteEditing } from './render-note-types';
 import { renderControlBadges } from './render-control-badges';
 
 /**

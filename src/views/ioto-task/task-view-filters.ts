@@ -3,7 +3,7 @@ import {
 	readScalarProperty,
 	writeScalarProperties,
 } from '../../tasks-center/frontmatter-properties';
-import type { TaskNoteFilters } from './render-note';
+import type { TaskNoteFilters } from './render-note-types';
 import type { IOTOTaskView } from '../iotoTaskView';
 import {
 	FILTER_PROPERTY_NAMES,

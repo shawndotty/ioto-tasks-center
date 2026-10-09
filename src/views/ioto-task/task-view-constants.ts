@@ -2,7 +2,7 @@ import type { TFile } from 'obsidian';
 import { Platform } from 'obsidian';
 
 import type { CommitOutcome } from './commit-task-line';
-import type { TaskNoteFilters } from './render-note';
+import type { TaskNoteFilters } from './render-note-types';
 
 /** 自动落盘窗口：与核心 2000ms 对齐；移动端 I/O 与电量敏感，放宽一档。 */
 export const AUTOSAVE_INTERVAL_MS = Platform.isMobile ? 4000 : 2000;

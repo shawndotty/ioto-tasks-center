@@ -8,11 +8,8 @@ import {
 	IOTO_TASK_CARD_SELECTOR,
 	IOTO_TASK_SCROLL_SELECTOR,
 } from './ioto-task-scroll';
-import {
-	renderTaskNote,
-	type TaskNoteEditing,
-	type TaskNoteLinks,
-} from './render-note';
+import { renderTaskNote } from './render-note';
+import type { TaskNoteEditing, TaskNoteLinks } from './render-note-types';
 import { collectCardLines, pickEdgeLine } from './card-navigation';
 import {
 	EDIT_ITEM_CONTROLS_COMMAND_ID,

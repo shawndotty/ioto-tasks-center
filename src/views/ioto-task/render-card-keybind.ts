@@ -14,7 +14,7 @@ import {
 	pickAdjacentLine,
 	pickEdgeLine,
 } from './card-navigation';
-import type { TaskNoteEditing } from './render-note';
+import type { TaskNoteEditing } from './render-note-types';
 
 /**
  * 「主修饰键」：Mac 的 Command 与 Win/Linux 的 Ctrl。

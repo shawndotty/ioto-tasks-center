@@ -51,7 +51,7 @@ import type {
 	TaskNoteEditing,
 	TaskNoteFilters,
 	TaskNoteLinks,
-} from './ioto-task/render-note';
+} from './ioto-task/render-note-types';
 import type { ModEnterHost } from './ioto-task/select-mode-scope';
 import type { SearchHost } from './ioto-task/search-scope';
 import { IOTO_TASK_VIEW_TYPE } from './ioto-task/item-control-bridge';

@@ -2,7 +2,7 @@ import {
 	App,
 	Editor,
 	type EditorPosition,
-	MarkdownFileInfo,
+	type MarkdownFileInfo,
 	MarkdownView,
 	TFile,
 	type WorkspaceLeaf,

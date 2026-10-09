@@ -52,6 +52,7 @@ npm run dev        # esbuild watch mode (dev sourcemaps)
 npm run build      # typecheck (tsc -noEmit -skipLibCheck) + esbuild production
 npm test           # node --test tests/**/*.test.mjs
 npm run lint       # eslint .
+npm run dep:check  # dependency-cruiser: fail on value-level circular deps (type-only cycles allowed)
 npm run version    # version-bump.mjs; updates manifest.json + versions.json
 npm run build:deploy  # build + zip + tag + release to GitHub & Gitee (see "Versioning & releases")
 ```
@@ -180,6 +181,14 @@ Other folders/files:
 
 Views are constructed in `main.ts` with **getter callbacks** for reading settings and **update callbacks** for persisting changes (see `registerView` calls in `src/main.ts`). This keeps views decoupled from the plugin instance. New view settings should follow the same pattern: add getter + updater, never import the plugin singleton into views.
 
+### 跨模块引用类型一律 `import type`
+
+Layering 约束：子模块**反向**引用宿主（视图/设置）的类型时，必须写 `import type`（或内联 `type` 前缀）。
+
+**Why**：本仓依赖图里存在大量类型级环，全靠 `import type` 在编译期擦除才没变成运行期值级环。
+
+**How enforced**：已由 `verbatimModuleSyntax`（类型误用值语法 → 编译报错 `TS1484`）+ `dependency-cruiser`（值图有环 → `npm run dep:check` / CI 报红）**双重门禁**保障；本段仅作「为什么」说明，**不是唯一防线**。（方案出处：`Plan-20261009-142035`；叶子类型模块先例：`src/views/ioto-task/render-note-types.ts`。）
+
 ### Settings lifecycle
 
 - Every setting has a `normalize*` function applied on load (`loadSettings`) and on update (see `src/settings-normalizers.ts` and `src/tasks-center/*`).
@@ -247,6 +256,8 @@ Some batch commands are currently commented out in `main.ts`; keep them there un
 - ESLint 9 flat config (`eslint.config.mts`) with `eslint-plugin-obsidianmd` recommended rules.
 
 - Run `npm run lint` before committing; CI lints every commit on all branches.
+
+- **Dependency gate**: `npm run dep:check` (dependency-cruiser, config `.dependency-cruiser.cjs`) fails the build on **value-level** circular dependencies. Type-only cycles (`import type`) are intentionally allowed — they are erased at compile time. CI runs it after `npm run lint`.
 
 ## Versioning & releases
 

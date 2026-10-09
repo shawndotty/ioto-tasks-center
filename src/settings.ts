@@ -1,6 +1,9 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import { t } from './lang/helpter';
-import IOTOTasksCenter from './main';
+// `IOTOTasksCenter` 在本文件**只作类型使用**（`IOTOTasksCenterSettingTab.plugin` 的注解）。
+// 必须保持 `import type`：否则 `settings → main` 会成为**值级**反向边，与 `main → settings`
+// 构成唯一的值级环（值图上实测 11 条环共此一根因，见 Plan-20261009-142035 §六.B.4/§十一）。
+import type IOTOTasksCenter from './main';
 import { TabbedSettings } from './ui/tabbed-settings';
 import { renderBasicDisplaySection } from './ui/settings-tab/basic-display-section';
 import { renderBasicGeneralSection } from './ui/settings-tab/basic-general-section';
