@@ -2997,9 +2997,10 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 }
 
 /* 窄宽度图标态（容器查询，判据是「视图自身宽度」而非窗口宽度，见 [[Plan-20261005-104938]] §2）。
-   阈值 420px 为按现有尺寸估算的值（英文体验优先可调到 440px）；媒体/容器查询条件里
-   不能用 CSS 变量，故断点必须是字面量。文案隐藏后仍由 aria-label / title 提供语义与 tooltip。 */
-@container ioto-task-view (max-width: 420px) {
+   断点 620px = 实测「默认桌面（删除按钮隐藏）」保留标签所需的最大宽度 607.7px（is-morandi + en）
+   上浮一档；媒体/容器查询条件里不能用 CSS 变量，故断点必须是字面量。
+   文案隐藏后仍由 aria-label / title 提供语义与 tooltip。（[[Plan-20261010-002707]]，原值 420 已因新增按钮失效） */
+@container ioto-task-view (max-width: 620px) {
 	.ioto-task-view__toolbar-label {
 		display: none;
 	}
@@ -3007,6 +3008,20 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	/* 图标态改方形，避免「宽扁」按钮显得松散 */
 	.ioto-task-view__toggle,
 	.ioto-task-view__action {
+		padding: 6px;
+	}
+}
+
+/* 删除按钮可见时（桌面开启「显示工具栏删除按钮」设置）工具栏多一个 action，
+   所需宽度升到 694.4px（is-morandi + en），故再放宽一档到 700px。
+   用 :has() 只在「删除按钮未隐藏」时命中；默认桌面（删除隐藏）不触发，620 已足够。 */
+@container ioto-task-view (max-width: 700px) {
+	.ioto-task-view__toolbar:has(.ioto-task-view__action[data-action="delete-task"]:not(.is-hidden)) .ioto-task-view__toolbar-label {
+		display: none;
+	}
+
+	.ioto-task-view__toolbar:has(.ioto-task-view__action[data-action="delete-task"]:not(.is-hidden)) .ioto-task-view__toggle,
+	.ioto-task-view__toolbar:has(.ioto-task-view__action[data-action="delete-task"]:not(.is-hidden)) .ioto-task-view__action {
 		padding: 6px;
 	}
 }
