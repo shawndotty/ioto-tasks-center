@@ -47,6 +47,11 @@ import {
 	type AutosaveScheduler,
 } from './ioto-task/edit-autosave';
 import type { EmbeddedEditorHandle } from './ioto-task/embedded-editor';
+import {
+	resetEditingLines,
+	resolveEditingKind,
+	type EditingKind,
+} from './ioto-task/task-view-editing-state';
 import type {
 	TaskNoteEditing,
 	TaskNoteFilters,
@@ -215,6 +220,18 @@ export class IOTOTaskView extends TextFileView {
 	commandReadinessTimer: number | null = null;
 	editingLine: number | null = null;
 	/**
+	 * Section 编辑态的 `startLine`；批次 0 恒 `null`（尚无 Section 编辑器），
+	 * 只登记字段与清理面（[[Plan-20261010-070400]] 批次 0 §七）。
+	 */
+	sectionEditLine: number | null = null;
+	/**
+	 * 派生真源：**由三个行号推导**（`resolveEditingKind`），绝不手工同步第二份状态。
+	 * 13 处「有没有编辑器 / 是不是卡片级编辑」的判据全部只问它。
+	 */
+	get editingKind(): EditingKind {
+		return resolveEditingKind(this);
+	}
+	/**
 	 * 聚焦放大态的文件行号（0 基）；非放大 `null`。**瞬态**：不进 `getState`，
 	 * 且在退出编辑 / 换文件 / 清空时解除（[[Discuss-20261008-111641]] §2.5）。
 	 */
@@ -381,9 +398,9 @@ export class IOTOTaskView extends TextFileView {
 	clear(): void {
 		this.destroyActiveEditor();
 		this.destroyContinuationEditor();
-		this.editingLine = null;
+		// 行号字段整体归零（含批次 1 的 sectionEditLine）：destroy 在前、清字段在后。
+		resetEditingLines(this);
 		this.zoomLine = null;
-		this.continuationLine = null;
 		this.continuationOriginalLines = [];
 		this.selectedLine = null;
 		this.editingOriginalLine = '';
@@ -405,6 +422,7 @@ export class IOTOTaskView extends TextFileView {
 	onunload(): void {
 		this.destroyActiveEditor();
 		this.destroyContinuationEditor();
+		resetEditingLines(this);
 		this.resetSearchState();
 		this.clearCommandReadinessTimer();
 		this.autosave.dispose();

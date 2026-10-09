@@ -1,5 +1,6 @@
 import { collectCardLines, pickAdjacentLine } from './card-navigation';
 import type { TaskViewHost } from './task-view-host';
+import { hasLiveEditor } from './task-view-editing-state';
 import { SEARCH_DEBOUNCE_MS } from './task-view-constants';
 import { queryCard } from './task-view-helpers';
 import type { SearchHost } from './search-scope';
@@ -190,7 +191,7 @@ export function resetSearchState(view: TaskViewHost): void {
  * 非 active 视图由 `resolveSearchHost` 先挡掉（返回 `null` → 放行）。
  */
 export function canRevealSearchFromScope(view: TaskViewHost): boolean {
-	return view.editingLine === null && view.continuationLine === null;
+	return !hasLiveEditor(view.editingKind);
 }
 
 /** 暴露给 search scope 的宿主（照 `modEnterHost` 范式）。 */

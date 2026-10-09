@@ -1,6 +1,7 @@
 import { t } from '../../lang/helpter';
 import { setIcon } from 'obsidian';
 import type { TaskViewHost } from './task-view-host';
+import { hasLiveEditor, isCardEditing } from './task-view-editing-state';
 import { queryCard } from './task-view-helpers';
 
 export function toggleZoomCard(view: TaskViewHost, line: number): void {
@@ -17,6 +18,13 @@ export function toggleZoomCard(view: TaskViewHost, line: number): void {
  * 编辑器挂不上（不支持内联编辑 / 目标卡缺失 / 挂载降级）则放弃放大，不留半程状态。
  */
 export async function enterZoom(view: TaskViewHost, line: number): Promise<void> {
+	// 🔴 放大 ≡ 单卡编辑面：只在「尚无编辑器」或「卡片级编辑」下成立
+	//（`isCardEditing`）。续行 / Section 编辑态下放大语义未定，直接放弃，
+	// 不留「放大但编辑面不是该卡」的半程状态（[[Plan-20261010-070400]] B5）。
+	if (hasLiveEditor(view.editingKind) && !isCardEditing(view.editingKind)) {
+		view.zoomLine = null;
+		return;
+	}
 	if (!view.supportsInlineEdit() || !queryCard(view, line)) {
 		return;
 	}

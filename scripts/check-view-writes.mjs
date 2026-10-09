@@ -41,9 +41,13 @@ const WHITELIST = new Set([
 	'task-view-continuation-edit.ts :: externalWritebackBlurred',
 	'task-view-continuation-edit.ts :: externalWritebackDirty',
 	'task-view-continuation-edit.ts :: selectedLine',
-	'task-view-editor-handlers.ts :: continuationLine',
+	// 三个行号字段的**唯一清零点**（[[Plan-20261010-070400]] C2/C3/C4）：
+	// 原散落在 clear / onunload / runLineAction 三处的手写赋值收口到这里，
+	// 加第四种编辑器只改这一处，不再新增写点。
+	'task-view-editing-state.ts :: continuationLine',
+	'task-view-editing-state.ts :: editingLine',
+	'task-view-editing-state.ts :: sectionEditLine',
 	'task-view-editor-handlers.ts :: data',
-	'task-view-editor-handlers.ts :: editingLine',
 	'task-view-editor-handlers.ts :: editingOriginalLine',
 	'task-view-editor-handlers.ts :: lastLoadedText',
 	'task-view-editor-handlers.ts :: listTransitionCleanup',

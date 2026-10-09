@@ -12,6 +12,7 @@ import { commitTaskText } from './commit-task-line';
 import { mountEmbeddedEditor } from './embedded-editor';
 import { getSectionStateKey, renderCardActions } from './render-note';
 import type { TaskViewHost } from './task-view-host';
+import { isCardEditing } from './task-view-editing-state';
 import { lineAt, queryCard } from './task-view-helpers';
 
 /** 销毁标题编辑器：先撤 autosave、置空 handle、再 destroy（防递归）。 */
@@ -205,7 +206,10 @@ export async function commitEdit(view: TaskViewHost): Promise<void> {
 		return;
 	}
 
+	// 短路判据走真源：非**卡片级**编辑态（含续行 / Section 编辑）一律不提交 ——
+	// `editingHandle` 只属于卡片编辑器，这里显式化原先靠它隐式表达的同一条件。
 	if (
+		!isCardEditing(view.editingKind) ||
 		view.editingHandle === null ||
 		view.editingLine === null ||
 		!view.file

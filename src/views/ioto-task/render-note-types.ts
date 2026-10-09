@@ -38,13 +38,15 @@ export interface TaskNoteEditing {
 	 */
 	readonly deletePending?: boolean;
 	/**
-	 * 当前处于**编辑态**的文件行号（getter，读实时值）；非编辑态 `null`。
+	 * 关键词过滤里**需无条件保留的卡片行号**（getter，读实时值）；无则 `null`。
 	 *
-	 * 🔴 必须是 getter：图层在渲染时读实时值。用于关键词过滤里「编辑中的卡无条件保留」
-	 * 的兜底判定——与 `selectedLine`（仅选中）区分，避免把「仅选中、未编辑」的卡也保留
-	 * （[[Plan-20261006-161121]] §2.2e）。
+	 * = 标题正在编辑的行，或续行正在编辑时拥有该续行的任务行（真源
+	 * `keepVisibleCardLine`）。渲染层只拿结果、不判编辑器种类——`editingLine`
+	 * 这个名字装 `continuationLine` 的值会制造又一处隐式语义
+	 * （[[Plan-20261010-070400]] B4）。与 `selectedLine`（仅选中）区分，避免把
+	 * 「仅选中、未编辑」的卡也保留（[[Plan-20261006-161121]] §2.2e）。
 	 */
-	readonly editingLine?: number | null;
+	readonly keepVisibleLine?: number | null;
 	/** 进入卡片正文内联编辑（同时会提交上一张正在编辑的卡片） */
 	beginEdit(line: number): void;
 	/**
@@ -76,7 +78,7 @@ export interface TaskNoteEditing {
 	editItemControls?(line: number): void;
 	/**
 	 * 当前处于「聚焦放大」态的文件行号（getter，读实时值）；非放大态 `null`。
-	 * 与 `editingLine` 同源——放大只在编辑态存在，故通常等于 `editingLine`。
+	 * 与 `keepVisibleLine` 同源——放大只在卡片编辑态存在，故通常等于它。
 	 */
 	readonly zoomLine?: number | null;
 	/**

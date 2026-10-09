@@ -22,6 +22,7 @@ import type { EntryTemplateConfig } from '../../tasks-center/task-entry-template
 import type { CommitOutcome, TaskLineTransform } from './commit-task-line';
 import type { AutosaveScheduler } from './edit-autosave';
 import type { EmbeddedEditorHandle } from './embedded-editor';
+import type { EditingKind } from './task-view-editing-state';
 import type {
 	TaskNoteEditing,
 	TaskNoteFilters,
@@ -67,6 +68,13 @@ export interface TaskViewHost extends Component {
 	editingHandle: EmbeddedEditorHandle | null;
 	pendingCommit: Promise<void> | null;
 	autosaveRunning: boolean;
+	/**
+	 * Section 编辑态的 `startLine`；批次 0 恒 `null`（尚无 Section 编辑器），
+	 * 先登记进契约，批次 1 接线时不用再回来补。
+	 */
+	sectionEditLine: number | null;
+	/** 派生真源（只读）：由三个行号推导，禁止直接写（`task-view-editing-state.ts`）。 */
+	readonly editingKind: EditingKind;
 
 	// ---- 可变状态：聚焦放大 ----
 	zoomLine: number | null;

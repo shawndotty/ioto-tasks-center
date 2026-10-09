@@ -3,6 +3,7 @@ import { Platform, setIcon } from 'obsidian';
 import { t } from '../../lang/helpter';
 import { isTemplateAvailableForProject } from '../../tasks-center/batch-task-template';
 import type { TaskViewHost } from './task-view-host';
+import { hasLiveEditor } from './task-view-editing-state';
 import type { ToolbarButtonClickContext } from './task-view-constants';
 import { queryCard } from './task-view-helpers';
 
@@ -272,9 +273,9 @@ export function refreshToolbarState(view: TaskViewHost): void {
  * 判据全真才显示：
  *  - 未在**放大**态（`zoomLine`）：方案 A 下放大 ≡ 单卡编辑面，删除入口整体停用，
  *    删除须先「缩小」退出放大（[[Discuss-20261008-173935]] Q3）；
- *  - 未在**标题**编辑（`editingLine`）：`beginEdit` 结尾会 `applySelection`，编辑态
- *    `selectedLine` 仍指向该行，只判 `selectedLine` 会在编辑时冒出删除按钮；
- *  - 未在**续行**编辑（`continuationLine`）：续行编辑不置 `editingLine`，同理会误显示；
+ *  - 未处于任一编辑态（标题 / 续行 / Section，真源 `hasLiveEditor`）：`beginEdit`
+ *    结尾会 `applySelection`，编辑态 `selectedLine` 仍指向该行，只判 `selectedLine`
+ *    会在编辑时冒出删除按钮；续行编辑不置 `editingLine`，同理会误显示；
  *  - 有可命中的选中卡（复用 `canToggleSelectedFromScope()` 口径）：否则选中行已被
  *    过滤 / 折叠时按钮还在、点了静默失败；
  *  - 且 `Platform.isMobile` **或** 桌面端设置已开启（含平板，勿用 CSS `.is-phone`）。
@@ -286,8 +287,7 @@ export function refreshDeleteButtonVisibility(view: TaskViewHost): void {
 		view.selectedLine !== null && queryCard(view, view.selectedLine) !== null;
 	const show =
 		view.zoomLine === null &&
-		view.editingLine === null &&
-		view.continuationLine === null &&
+		!hasLiveEditor(view.editingKind) &&
 		hasSelectedCard &&
 		(Platform.isMobile || view.deleteButtonOnDesktopProvider());
 	view.deleteTaskEl?.toggleClass('is-hidden', !show);

@@ -90,14 +90,21 @@ test('resolveBridgedCommand：templater 前缀 → external-writeback；不破�
  * shouldBridgeInTaskView（视图 + 编辑判据）
  * ------------------------------------------------------------------ */
 
-test('shouldBridgeInTaskView：IOTOTask + 编辑中 → true', () => {
-	assert.equal(shouldBridgeInTaskView(IOTO_TASK_VIEW_TYPE, 5), true);
+// 第二参由「editingLine 行号」改为「编辑态种类」真源（[[Plan-20261010-070400]] B1）：
+// 只有卡片级编辑才桥接，续行 / Section 编辑态一律透传。
+test('shouldBridgeInTaskView：IOTOTask + 卡片编辑态 → true', () => {
+	assert.equal(shouldBridgeInTaskView(IOTO_TASK_VIEW_TYPE, 'card'), true);
 });
 
-test('shouldBridgeInTaskView：视图不命中 / 非编辑态 → false', () => {
-	assert.equal(shouldBridgeInTaskView('markdown', 5), false);
+test('shouldBridgeInTaskView：视图不命中 / 非卡片编辑态 → false', () => {
+	assert.equal(shouldBridgeInTaskView('markdown', 'card'), false);
 	assert.equal(shouldBridgeInTaskView(IOTO_TASK_VIEW_TYPE, null), false);
 	assert.equal(shouldBridgeInTaskView(IOTO_TASK_VIEW_TYPE, undefined), false);
+	assert.equal(
+		shouldBridgeInTaskView(IOTO_TASK_VIEW_TYPE, 'continuation'),
+		false,
+	);
+	assert.equal(shouldBridgeInTaskView(IOTO_TASK_VIEW_TYPE, 'section'), false);
 });
 
 test('命令 id / 视图类型标识与 ioto-settings 及本插件口径一致', () => {
@@ -242,6 +249,8 @@ function makeBridgeApp() {
 			view: {
 				getViewType: () => IOTO_TASK_VIEW_TYPE,
 				getItemControlHost: () => host,
+				// 编辑态种类真源（派生）：桥接只认 'card'
+				editingKind: 'card',
 			},
 		},
 		getActiveViewOfType: realGetActive,

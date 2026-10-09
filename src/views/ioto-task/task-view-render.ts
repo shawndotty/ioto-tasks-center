@@ -21,6 +21,10 @@ import {
 	type TaskHoverPreviewPayload,
 } from '../task-hover-preview';
 import type { TaskViewHost } from './task-view-host';
+import {
+	hasLiveEditor,
+	keepVisibleCardLine,
+} from './task-view-editing-state';
 
 /** 视图级渲染主入口：重建列表容器，保留常驻外壳，处理动画 / 选中回填 / 命令就绪补偿。 */
 export function renderNote(
@@ -234,7 +238,7 @@ export function syncSelectionClass(view: TaskViewHost): void {
 	}
 }
 
-/** 外部 vault.modify 触发重读重绘；编辑期间由 editingLine / continuationLine 抑制。 */
+/** 外部 vault.modify 触发重读重绘；编辑期间由 `hasLiveEditor` 抑制。 */
 export async function reloadFromVault(view: TaskViewHost): Promise<void> {
 	const file = view.file;
 	if (!file) {
@@ -242,7 +246,9 @@ export async function reloadFromVault(view: TaskViewHost): Promise<void> {
 	}
 
 	// 编辑期间忽略外部写入，避免编辑器被重绘冲掉（只挡重绘，不挡写盘）。
-	if (view.editingLine !== null || view.continuationLine !== null) {
+	// 🔴 判据走 `editingKind` 真源：`beginEdit` 里「行号已置、handle 未置」的窗口
+	// 也算编辑态，必须继续挡（任务视图侧 A1）。
+	if (hasLiveEditor(view.editingKind)) {
 		return;
 	}
 
@@ -265,7 +271,8 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 	const readSelected = (): number | null => view.selectedLine;
 	const readDeletePending = (): boolean => view.pendingDeleteLine !== null;
 	// 🔴 对象字面量里的 `this` 指向对象本身，故必须走箭头读取器。
-	const readEditingLine = (): number | null => view.editingLine;
+	// 渲染层只拿「要无条件保留的卡片行号」，不自己判编辑器种类（真源在 editing-state）。
+	const readKeepVisibleLine = (): number | null => keepVisibleCardLine(view);
 	const readZoomLine = (): number | null => view.zoomLine;
 	// 卡片动作区按钮：仅在「支持内联编辑」且「目标命令已注册」时才注入，
 	// 缺省即渲染层隐藏按钮（Q5：只读 / ioto-settings 未启用 → 隐藏）。
@@ -296,8 +303,8 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 			return readDeletePending();
 		},
 		// 🔴 必须是 getter：关键词过滤读实时值，供「编辑中的卡无条件保留」兜底。
-		get editingLine() {
-			return readEditingLine();
+		get keepVisibleLine() {
+			return readKeepVisibleLine();
 		},
 		get zoomLine() {
 			return readZoomLine();

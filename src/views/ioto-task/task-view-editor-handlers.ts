@@ -25,6 +25,7 @@ import {
 	type TaskLineTransform,
 } from './commit-task-line';
 import type { TaskViewHost } from './task-view-host';
+import { isCardEditing, resetEditingLines } from './task-view-editing-state';
 import { lineAt } from './task-view-helpers';
 
 /**
@@ -35,6 +36,10 @@ import { lineAt } from './task-view-helpers';
  * 保留 `.is-selected`），因此既不跳顶也不丢数据。
  */
 export function onEditorEscape(view: TaskViewHost): void {
+	// `Esc` 只服务卡片级编辑器（真源 `isCardEditing`）
+	if (!isCardEditing(view.editingKind)) {
+		return;
+	}
 	const line = view.editingLine;
 	if (line === null || view.editingHandle === null) {
 		return;
@@ -76,7 +81,7 @@ export function onEditorEscape(view: TaskViewHost): void {
  * 下自动落盘，Live Preview 立即渲染为折行。续写区不注册 `onSoftBreak`，语义不受影响。
  */
 export function onEditorSoftBreak(view: TaskViewHost, cm: EditorView): boolean {
-	if (!view.editingHandle || view.editingLine === null) {
+	if (!isCardEditing(view.editingKind) || !view.editingHandle) {
 		return false;
 	}
 	const sel = cm.state.selection.main;
@@ -222,8 +227,8 @@ export async function runLineAction(
 		swallowContinuations: options?.swallowContinuations,
 		insertAfterContinuations: options?.insertAfterContinuations,
 	});
-	view.editingLine = null;
-	view.continuationLine = null;
+	// 三个行号字段整体清零（含批次 1 的 sectionEditLine）：destroy 在前、清字段在后
+	resetEditingLines(view);
 	view.applyOutcome(outcome);
 	await view.reloadFromVault();
 	view.renderNote(view.data, {

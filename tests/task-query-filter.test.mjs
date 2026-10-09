@@ -37,7 +37,7 @@ test('isCardVisible：recentLines 未命中 → false', () => {
 		recentLines: new Set([1, 2]),
 		onlyPending: false,
 		normalizedQuery: '',
-		editingLine: null,
+		keepVisibleLine: null,
 	};
 	assert.equal(
 		isCardVisible({ line: 3, done: false, title: 'x' }, ctx),
@@ -54,7 +54,7 @@ test('isCardVisible：onlyPending + done → false', () => {
 		recentLines: null,
 		onlyPending: true,
 		normalizedQuery: '',
-		editingLine: null,
+		keepVisibleLine: null,
 	};
 	assert.equal(
 		isCardVisible({ line: 1, done: true, title: 'x' }, ctx),
@@ -66,13 +66,13 @@ test('isCardVisible：onlyPending + done → false', () => {
 	);
 });
 
-test('isCardVisible：editingLine 命中 → 无条件 true（即使不命中关键词）', () => {
+test('isCardVisible：keepVisibleLine 命中 → 无条件 true（即使不命中关键词）', () => {
 	// 隔离关键词维度（resume/onlyPending 均关）：编辑中的卡不因关键词不命中被搜掉。
 	const ctx = {
 		recentLines: null,
 		onlyPending: false,
 		normalizedQuery: 'no-hit',
-		editingLine: 5,
+		keepVisibleLine: 5,
 	};
 	assert.equal(
 		isCardVisible({ line: 5, done: true, title: '其它' }, ctx),
@@ -85,7 +85,7 @@ test('isCardVisible：关键词非空且不命中 → false；命中 → true', 
 		recentLines: null,
 		onlyPending: false,
 		normalizedQuery: 'login',
-		editingLine: null,
+		keepVisibleLine: null,
 	};
 	assert.equal(
 		isCardVisible({ line: 1, done: false, title: 'Fix Login' }, ctx),
@@ -109,7 +109,7 @@ test('isCardVisible：四层取交集（任一层否 → false）', () => {
 		recentLines: new Set([10]),
 		onlyPending: true,
 		normalizedQuery: 'hit',
-		editingLine: null,
+		keepVisibleLine: null,
 	};
 	// 命中关键词但已完成 → false
 	assert.equal(

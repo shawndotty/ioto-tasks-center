@@ -10,15 +10,18 @@ import {
 } from './commit-task-line';
 import type { TaskViewHost } from './task-view-host';
 import type { ItemControlBridgeHost } from './task-view-constants';
+import { isCardEditing, isSectionEditing } from './task-view-editing-state';
 import { lineAt, queryCard } from './task-view-helpers';
 
 /**
- * 「条目控制」桥接宿主：仅在内联编辑态返回；其余情况返回 `null`（命令原样透传）。
- * 见 item-control-bridge.ts 与 [[Plan-20261003-105625]] §5.5。
+ * 「条目控制」桥接宿主：仅在**卡片级**内联编辑态返回；其余情况（含续行 / Section
+ * 编辑态）返回 `null`（命令原样透传）。见 item-control-bridge.ts 与
+ * [[Plan-20261003-105625]] §5.5。
  */
 export function getItemControlHost(
 	view: TaskViewHost,
 ): ItemControlBridgeHost | null {
+	if (!isCardEditing(view.editingKind)) return null;
 	const line = view.editingLine;
 	const file = view.file;
 	const handle = view.editingHandle;
@@ -73,11 +76,15 @@ export function getQuickPanelHost(view: TaskViewHost): HTMLElement | null {
  * 「任务条目模式」（桌面走 CLI，不进此路径）。`selectedLine` 是 0-based
  * 文件行号，与对端 `resolveCursorItem` 同口径；`view.data` 是 TextFileView
  * 内存整篇正文（派发前已 flush，与磁盘一致）。
+ *
+ * Section 编辑态**拒绝出条目**：此时光标在标题 / 非任务行上，`selectedLine`
+ * 与已编辑的块不是同一行，喂给 AI 会运行到错的行上。
  * 见 [[Plan-20261007-161702]] §五。
  */
 export function getAITaskItemSource(
 	view: TaskViewHost,
 ): { file: TFile; line: number; text: string } | null {
+	if (isSectionEditing(view.editingKind)) return null;
 	if (!view.file || view.selectedLine === null) return null;
 	return { file: view.file, line: view.selectedLine, text: view.data };
 }

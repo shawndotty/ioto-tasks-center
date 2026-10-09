@@ -1,7 +1,9 @@
 import type { TaskViewHost } from './task-view-host';
+import { COMMIT_BY_KIND, hasLiveEditor } from './task-view-editing-state';
 
 /**
- * 视图级「编辑落盘」原语：把**标题**与**续写**两个编辑器都提交到磁盘。
+ * 视图级「编辑落盘」原语：按 `COMMIT_BY_KIND` 把在册编辑器都提交到磁盘
+ * （现役 = 标题 + 续写；Section 编辑器接入后自动并入，不用改这里）。
  *
  * 供「执行任务」命令族在派发**前**调用（`item-control-bridge` 拦截层），
  * 因为 `ioto-settings` 的 `saveActiveNote` 只认 `MarkdownView`、会跳过
@@ -12,16 +14,17 @@ import type { TaskViewHost } from './task-view-host';
  * 无待写内容 → 不写盘、不加延迟（§四 Q3 默认「直通」）。
  */
 export async function flushInlineEdits(view: TaskViewHost): Promise<void> {
-	await view.commitEdit();
-	await view.commitContinuationEdit();
+	for (const commit of Object.values(COMMIT_BY_KIND)) {
+		await commit(view);
+	}
 }
 
 /**
  * 桥接层调用：开启「外部写回窗口」（[[Research-20261008-105532]] 方案 A）。
- * 未处于任一编辑态（标题 / 续行）→ 返回 false，桥接层原样透传。
+ * 未处于任一编辑态（标题 / 续行 / Section）→ 返回 false，桥接层原样透传。
  */
 export function beginExternalEditorWriteback(view: TaskViewHost): boolean {
-	if (view.editingLine === null && view.continuationLine === null) {
+	if (!hasLiveEditor(view.editingKind)) {
 		return false;
 	}
 	view.externalWritebackActive = true;

@@ -285,7 +285,7 @@ function renderSectionBody(options: {
 		recentLines,
 		onlyPending: filters.onlyPending,
 		normalizedQuery,
-		editingLine: editing.editingLine ?? null,
+		keepVisibleLine: editing.keepVisibleLine ?? null,
 	};
 
 	// ②/③/关键词叠加后本 Section 可见卡片数为 0：渲染空态，不再画空 `<ul>`（Q8）。

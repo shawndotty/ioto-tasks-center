@@ -9,6 +9,7 @@ import {
 	pickLineAfterDelete,
 } from './card-navigation';
 import type { TaskViewHost } from './task-view-host';
+import { isCardEditing } from './task-view-editing-state';
 import type { ModEnterHost } from './select-mode-scope';
 
 /**
@@ -20,11 +21,13 @@ import type { ModEnterHost } from './select-mode-scope';
 export function select(view: TaskViewHost, line: number): void {
 	// 换选中即离开 pending 语境：先撤遮罩（幂等，焦点交给随后的 applySelection）
 	view.cancelPendingDelete(false);
-	if (view.editingLine !== null && view.editingLine !== line) {
+	// 🔴 只在**卡片级**编辑态走「先提交再改选」：续行 / Section 编辑态的换选语义
+	// 未在批次 0 定义，保持现状（直接 applySelection）。
+	if (isCardEditing(view.editingKind) && view.editingLine !== line) {
 		void view.commitEdit().then(() => applySelection(view, line));
 		return;
 	}
-	if (view.editingLine === line) {
+	if (isCardEditing(view.editingKind) && view.editingLine === line) {
 		return;
 	}
 	applySelection(view, line);
@@ -225,7 +228,11 @@ export async function requestDelete(
 	// 放大卡（zoomLine === line）不在此提交：方案 A 下编辑器常驻编辑态、blur 走
 	// flushZoomEdit 只落盘不退编辑；强行 commitEdit 会破坏「放大 ≡ 编辑」不变量，
 	// 且取消确认后会留下「is-zoomed 但非 is-editing」的瞬时残留（见 §四）。
-	if (view.editingLine === line && view.zoomLine !== line) {
+	if (
+		isCardEditing(view.editingKind) &&
+		view.editingLine === line &&
+		view.zoomLine !== line
+	) {
 		await view.commitEdit();
 	}
 	enterPendingDelete(view, line);
@@ -412,7 +419,7 @@ export function scrollCardIntoView(view: TaskViewHost, cardEl: HTMLElement): voi
  * `render-note.ts` Enter 分支的那条红线一致。
  */
 export function canToggleSelectedFromScope(view: TaskViewHost): boolean {
-	if (view.editingLine !== null) {
+	if (isCardEditing(view.editingKind)) {
 		return false;
 	}
 	// pending 期间屏蔽 Cmd/Ctrl+Enter 完成态切换：否则会经 Scope 改勾选态、刷单卡，

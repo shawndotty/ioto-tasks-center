@@ -47,6 +47,10 @@ import {
 	fitItemControlPanelWhenMounted,
 	fitTaskOutlinkPopoverWhenMounted,
 } from './fit-anchored-popup';
+import {
+	isCardEditing,
+	type EditingKind,
+} from './task-view-editing-state';
 
 /**
  * IOTOTask 的视图类型标识。
@@ -109,19 +113,17 @@ export function resolveBridgedCommand(id: unknown): BridgedCommandKind | null {
 }
 
 /**
- * 纯判据：只在 IOTOTask 视图**内联编辑态**启用桥接。
+ * 纯判据：只在 IOTOTask 视图**卡片级内联编辑态**启用桥接。
  *
  * 两类命令都依赖编辑态存活：条目控制走 `getItemControlHost`（要求 editingLine /
  * editingHandle），出链读 `activeEditor?.editor`（编辑器已由 `embedded-editor` 登记）。
- * 只读态 / 其它视图 → 命令原样透传，核心默认行为不变。
+ * 续行 / Section 编辑态与只读态一样：命令原样透传，核心默认行为不变。
  */
 export function shouldBridgeInTaskView(
 	viewType: unknown,
-	editingLine: number | null,
+	kind: EditingKind,
 ): boolean {
-	return (
-		viewType === IOTO_TASK_VIEW_TYPE && typeof editingLine === 'number'
-	);
+	return viewType === IOTO_TASK_VIEW_TYPE && isCardEditing(kind);
 }
 
 /** 命令写回时传给桥接编辑器的 changes 形状（只取首个 change 的 text）。 */
@@ -211,10 +213,12 @@ export function shimActiveMarkdownView(
 	};
 }
 
-/** 活动视图里可由桥接识别的两个成员（鸭子类型，不 import 视图类）。 */
+/** 活动视图里可由桥接识别的成员（鸭子类型，不 import 视图类）。 */
 interface ItemControlHostView {
 	getViewType?: () => string;
 	getItemControlHost?: () => ItemControlBridgeHost | null;
+	/** 编辑态种类真源（派生，只读）；缺省按「非卡片编辑」处理。 */
+	editingKind?: EditingKind;
 }
 
 function resolveBridgeHost(app: App): ItemControlBridgeHost | null {
@@ -229,9 +233,9 @@ function resolveBridgeHost(app: App): ItemControlBridgeHost | null {
 		if (!host) {
 			return null;
 		}
-		return shouldBridgeInTaskView(view?.getViewType?.(), host.line)
-			? host
-			: null;
+	return shouldBridgeInTaskView(view?.getViewType?.(), view?.editingKind ?? null)
+		? host
+		: null;
 	} catch {
 		return null;
 	}

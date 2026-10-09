@@ -49,8 +49,8 @@ export interface CardVisibilityContext {
 	onlyPending: boolean;
 	/** 关键词（已归一化） */
 	normalizedQuery: string;
-	/** 编辑中的行：无条件保留 */
-	editingLine: number | null;
+	/** 需无条件保留的卡片行号（编辑中的卡 / 其续行）；`null` = 不保留 */
+	keepVisibleLine: number | null;
 }
 
 /**
@@ -64,8 +64,9 @@ export function isCardVisible(
 ): boolean {
 	if (ctx.recentLines && !ctx.recentLines.has(item.line)) return false;
 	if (ctx.onlyPending && item.done) return false;
-	// 🔴 编辑中的卡：无条件保留（重绘兜底；真正的保护是改查询前先 commitEdit）
-	if (ctx.editingLine === item.line) return true;
+	// 🔴 编辑中的卡 / 其续行被编辑的卡：无条件保留
+	//（重绘兜底；真正的保护是改查询前先 commitEdit）
+	if (ctx.keepVisibleLine === item.line) return true;
 	if (ctx.normalizedQuery.length > 0) {
 		return matchesTaskQuery(
 			item.title,
