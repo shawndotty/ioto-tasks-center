@@ -1,24 +1,28 @@
-import { ItemView, Notice, setIcon, TFile, WorkspaceLeaf } from 'obsidian';
+/**
+ * 项目中心视图：项目列表与元数据管理的 ItemView。
+ *
+ * Phase 5 拆分后，渲染/动作/单元格/卡片/头部逻辑分别移至：
+ * - `project-center-types`：类型 + `ProjectCenterViewContext` 契约 + 纯函数
+ * - `project-center-header`：头部 DOM（搜索输入、搜索/刷新/创建按钮）
+ * - `project-center-renderer`：列表/表格/卡片/状态占位渲染
+ * - `project-center-cells`：表格单元格渲染器
+ * - `project-center-card`：紧凑卡片渲染
+ * - `project-center-actions`：创建项目/归档/分类/元数据/规格文件动作
+ *
+ * 本文件仅保留生命周期、状态加载、渲染编排与上下文方法实现。
+ * `IOTOProjectCenterView` 结构性实现 `ProjectCenterViewContext`，对外暴露 `this` 即可。
+ */
+
+import { ItemView, WorkspaceLeaf } from 'obsidian';
 
 import { t } from '../lang/helpter';
 import { listProjectFolders } from '../tasks-center/data';
 import {
 	countProjectTaskNotes,
-	ensureProjectMetadataFile,
 	getProjectMetadataFile,
-	PROJECT_METADATA_FILE_NAME,
 	readProjectMetadata,
-	updateProjectMetadata,
 	type ProjectMetadata,
 } from '../tasks-center/project-metadata';
-import { createProjectFolder } from '../tasks-center/project-creation';
-import { TaskNameModal } from '../ui/taskNameModal';
-import {
-	sortProjectCenterRows,
-	type ProjectCenterSortDirection,
-	type ProjectCenterSortKey,
-} from './project-center-sort';
-import { filterProjectCenterRowsByQuery } from './project-center-search';
 import {
 	COMPACT_LAYOUT_BREAKPOINT,
 	NARROW_LAYOUT_BREAKPOINT,
@@ -28,47 +32,52 @@ import {
 	restoreProjectCenterScrollPosition,
 	type ScrollPosition,
 } from './project-center-scroll';
+import type {
+	ProjectCenterSortDirection,
+	ProjectCenterSortKey,
+} from './project-center-sort';
+import { buildProjectCenterHeader } from './project-center-header';
+import { renderProjectCenterList } from './project-center-renderer';
+import {
+	parseViewState,
+	type ProjectCenterRow,
+	type ProjectCenterViewContext,
+} from './project-center-types';
 
 export const IOTO_PROJECT_CENTER_VIEW_TYPE = 'IOTOProjectCenter';
 
-interface ProjectCenterRow {
-	name: string;
-	path: string;
-	taskCount: number;
-	archived: boolean;
-	metadata: ProjectMetadata;
-}
+export class IOTOProjectCenterView
+	extends ItemView
+	implements ProjectCenterViewContext
+{
+	// 上下文可读状态（public 以满足 ProjectCenterViewContext 契约）
+	public rows: ProjectCenterRow[] = [];
+	public status: 'idle' | 'loading' | 'root-missing' = 'idle';
+	public isCreatingProject = false;
+	public sortKey: ProjectCenterSortKey = 'projectName';
+	public sortDirection: ProjectCenterSortDirection = 'asc';
+	public isProjectSearchVisible = false;
+	public projectSearchInputValue = '';
+	public projectSearchQuery = '';
+	public isCompactLayout = false;
+	public previewLeaf: WorkspaceLeaf | null = null;
 
-interface IOTOProjectCenterViewState {
-	sortKey?: ProjectCenterSortKey;
-	sortDirection?: ProjectCenterSortDirection;
-}
-
-export class IOTOProjectCenterView extends ItemView {
-	private rows: ProjectCenterRow[] = [];
-	private status: 'idle' | 'loading' | 'root-missing' = 'idle';
-	private isCreatingProject = false;
-	private sortKey: ProjectCenterSortKey = 'projectName';
-	private sortDirection: ProjectCenterSortDirection = 'asc';
+	// 视图内部状态
 	private contentScroll: ScrollPosition = { scrollTop: 0, scrollLeft: 0 };
-	private previewLeaf: WorkspaceLeaf | null = null;
-	private isProjectSearchVisible = false;
-	private projectSearchInputValue = '';
-	private projectSearchQuery = '';
 	private shouldFocusProjectSearch = false;
-	private readonly getTasksRootPath: () => string;
+	public readonly getTasksRootPath: () => string;
 	private readonly getHiddenProjectNames: () => string[];
-	private readonly setProjectHidden: (
+	public readonly setProjectHidden: (
 		projectName: string,
 		hidden: boolean,
 	) => Promise<void>;
-	private readonly getProjectCategoryOptions: () => string[];
-	private readonly addProjectCategoryOption: (
+	public readonly getProjectCategoryOptions: () => string[];
+	public readonly addProjectCategoryOption: (
 		category: string,
 	) => Promise<void>;
-	private readonly refreshTokenParent: { token: number } = { token: 0 };
-
-	private isCompactLayout = false;
+	private readonly refreshTokenParent: { token: number } = {
+		token: 0,
+	};
 	private isNarrowLayout = false;
 	private resizeObserver: ResizeObserver | null = null;
 	private headerEl: HTMLElement | null = null;
@@ -220,7 +229,7 @@ export class IOTOProjectCenterView extends ItemView {
 					tasksRootPath,
 					project.name,
 				);
-				const metadata = metadataFile
+				const metadata: ProjectMetadata = metadataFile
 					? await readProjectMetadata(this.app, metadataFile)
 					: {};
 				return {
@@ -241,7 +250,7 @@ export class IOTOProjectCenterView extends ItemView {
 		this.render();
 	}
 
-	private render(): void {
+	render(): void {
 		const root = this.contentEl;
 		this.contentScroll = captureProjectCenterScrollPosition(
 			root,
@@ -263,7 +272,10 @@ export class IOTOProjectCenterView extends ItemView {
 			this.headerEl = root.createDiv({
 				cls: 'ioto-project-center__header',
 			});
-			this.buildHeader(this.headerEl);
+			this.createProjectButtonEl = buildProjectCenterHeader(
+				this.headerEl,
+				this,
+			);
 			this.contentContainerEl = root.createDiv({
 				cls: 'ioto-project-center__content',
 			});
@@ -278,193 +290,14 @@ export class IOTOProjectCenterView extends ItemView {
 			this.createProjectButtonEl.disabled = !this.canCreateProject();
 		}
 
-		this.renderProjectList(this.contentContainerEl!);
+		renderProjectCenterList(this.contentContainerEl!, this);
 		restoreProjectCenterScrollPosition(
 			this.contentContainerEl,
 			this.contentScroll,
 		);
 	}
 
-	private buildHeader(headerEl: HTMLElement): void {
-		const headerLeftEl = headerEl.createDiv({
-			cls: 'ioto-project-center__header-left',
-		});
-		const titleEl = headerLeftEl.createDiv({
-			cls: 'ioto-project-center__title',
-			text: t('projectCenter.title'),
-		});
-		titleEl.setAttribute('role', 'heading');
-
-		const actionsEl = headerEl.createDiv({
-			cls: 'ioto-project-center__actions',
-		});
-		if (this.isProjectSearchVisible) {
-			const searchControlsEl = actionsEl.createDiv({
-				cls: 'ioto-project-center__search-controls',
-			});
-			const searchInputWrapperEl = searchControlsEl.createDiv({
-				cls: 'ioto-project-center__search-input-wrapper',
-			});
-			const searchInputEl = searchInputWrapperEl.createEl('input', {
-				cls: 'ioto-project-center__search-input',
-				type: 'search',
-			});
-			searchInputEl.placeholder = t('projectCenter.search.placeholder');
-			searchInputEl.value = this.projectSearchInputValue;
-			searchInputEl.setAttribute('enterkeyhint', 'search');
-			searchInputEl.setAttribute('autocapitalize', 'off');
-			searchInputEl.setAttribute('autocomplete', 'off');
-			searchInputEl.spellcheck = false;
-			searchInputEl.addEventListener('input', () => {
-				this.projectSearchInputValue = searchInputEl.value;
-			});
-			searchInputEl.addEventListener('keydown', (event) => {
-				if (event.key !== 'Enter') {
-					return;
-				}
-
-				event.preventDefault();
-				this.applyProjectSearchQuery();
-			});
-
-			if (this.projectSearchInputValue || this.projectSearchQuery) {
-				const clearButtonEl = searchInputWrapperEl.createEl('button', {
-					cls: 'ioto-project-center__search-clear-button',
-				});
-				clearButtonEl.type = 'button';
-				clearButtonEl.ariaLabel = t('projectCenter.search.clear');
-				clearButtonEl.title = t('projectCenter.search.clearShort');
-				setIcon(clearButtonEl, 'x');
-				clearButtonEl.addEventListener('click', () => {
-					this.clearProjectSearch();
-				});
-			}
-
-			const searchButtonEl = searchControlsEl.createEl('button', {
-				cls: 'ioto-project-center__search-button',
-				text: t('projectCenter.search.button'),
-			});
-			searchButtonEl.type = 'button';
-			searchButtonEl.ariaLabel = t('projectCenter.search.button');
-			searchButtonEl.addEventListener('click', () => {
-				this.applyProjectSearchQuery();
-			});
-
-			if (this.shouldFocusProjectSearch) {
-				this.shouldFocusProjectSearch = false;
-				if (
-					typeof window !== 'undefined' &&
-					window.requestAnimationFrame
-				) {
-					window.requestAnimationFrame(() => {
-						searchInputEl.focus();
-					});
-				} else {
-					searchInputEl.focus();
-				}
-			}
-		}
-
-		const searchToggleButtonEl = actionsEl.createEl('button', {
-			cls: 'ioto-project-center__icon-button',
-		});
-		searchToggleButtonEl.type = 'button';
-		searchToggleButtonEl.ariaLabel = t('projectCenter.action.search');
-		searchToggleButtonEl.title = t('projectCenter.action.search');
-		setIcon(searchToggleButtonEl, 'search');
-		searchToggleButtonEl.addEventListener('click', () => {
-			this.isProjectSearchVisible = !this.isProjectSearchVisible;
-			if (this.isProjectSearchVisible) {
-				this.shouldFocusProjectSearch = true;
-			}
-			this.render();
-		});
-
-		const refreshButtonEl = actionsEl.createEl('button', {
-			cls: 'ioto-project-center__icon-button',
-		});
-		refreshButtonEl.type = 'button';
-		refreshButtonEl.ariaLabel = t('projectCenter.action.refresh');
-		refreshButtonEl.title = t('projectCenter.action.refresh');
-		setIcon(refreshButtonEl, 'refresh-cw');
-		refreshButtonEl.addEventListener('click', () => {
-			void this.refreshFromVaultChange();
-		});
-
-		const createProjectButtonEl = actionsEl.createEl('button', {
-			cls: 'ioto-project-center__icon-button',
-		});
-		createProjectButtonEl.type = 'button';
-		createProjectButtonEl.disabled = !this.canCreateProject();
-		createProjectButtonEl.ariaLabel = t(
-			'projectCenter.action.createProject',
-		);
-		createProjectButtonEl.title = t('projectCenter.action.createProject');
-		setIcon(createProjectButtonEl, 'plus');
-		createProjectButtonEl.addEventListener('click', () => {
-			void this.handleCreateProject();
-		});
-		this.createProjectButtonEl = createProjectButtonEl;
-	}
-
-	private renderProjectList(container: HTMLElement): void {
-		container.empty();
-
-		if (this.status === 'loading') {
-			this.renderState(
-				container,
-				t('projectCenter.state.loadingTitle'),
-				t('projectCenter.state.loadingDesc', [this.getTasksRootPath()]),
-				'is-loading',
-			);
-			return;
-		}
-
-		if (this.status === 'root-missing') {
-			this.renderState(
-				container,
-				t('projectCenter.state.rootMissingTitle'),
-				t('projectCenter.state.rootMissingDesc', [
-					this.getTasksRootPath(),
-				]),
-				'is-empty',
-			);
-			return;
-		}
-
-		const filteredRows = filterProjectCenterRowsByQuery(
-			this.rows,
-			this.projectSearchQuery,
-		);
-		if (filteredRows.length === 0) {
-			const keyword = this.projectSearchQuery.trim();
-			if (keyword) {
-				this.renderState(
-					container,
-					t('projectCenter.search.emptyTitle'),
-					t('projectCenter.search.emptyDesc', [keyword]),
-					'is-empty',
-				);
-				return;
-			}
-
-			this.renderState(
-				container,
-				t('projectCenter.state.emptyTitle'),
-				t('projectCenter.state.emptyDesc', [this.getTasksRootPath()]),
-				'is-empty',
-			);
-			return;
-		}
-
-		if (this.isCompactLayout) {
-			this.renderCards(container, filteredRows);
-		} else {
-			this.renderTable(container, filteredRows);
-		}
-	}
-
-	private canCreateProject(): boolean {
+	canCreateProject(): boolean {
 		return (
 			this.status === 'idle' &&
 			!this.isCreatingProject &&
@@ -472,372 +305,7 @@ export class IOTOProjectCenterView extends ItemView {
 		);
 	}
 
-	private async handleCreateProject(): Promise<void> {
-		if (!this.canCreateProject()) {
-			return;
-		}
-
-		const projectNameResult = await new TaskNameModal(
-			this.app,
-			t('modal.newProject.title'),
-			t('modal.newProject.placeholder'),
-			{
-				descriptionText: t('modal.newProject.desc'),
-				confirmButtonText: t('modal.create'),
-			},
-		).openAndGetValue();
-		if (!projectNameResult) {
-			return;
-		}
-
-		this.isCreatingProject = true;
-		this.render();
-
-		try {
-			const result = await createProjectFolder(
-				this.app,
-				this.getTasksRootPath(),
-				projectNameResult,
-			);
-			if (!result.created) {
-				new Notice(t('view.notice.projectAlreadyExists'));
-			}
-			await this.refreshFromVaultChange();
-		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: t('projectCenter.notice.createProjectFailed');
-			new Notice(message);
-		} finally {
-			this.isCreatingProject = false;
-			this.render();
-		}
-	}
-
-	private renderTable(
-		container: HTMLElement,
-		rows: ProjectCenterRow[],
-	): void {
-		const tableEl = container.createDiv({
-			cls: 'ioto-project-center__table',
-		});
-		const headerRowEl = tableEl.createDiv({
-			cls: 'ioto-project-center__row ioto-project-center__row--header',
-		});
-
-		headerRowEl.createDiv({
-			cls: 'ioto-project-center__cell ioto-project-center__cell--editSpec',
-			text: t('projectCenter.columns.editSpec'),
-		});
-
-		this.createHeaderCell(
-			headerRowEl,
-			'projectName',
-			t('projectCenter.columns.projectName'),
-		);
-		this.createHeaderCell(
-			headerRowEl,
-			'category',
-			t('projectCenter.columns.category'),
-		);
-
-		this.createHeaderCell(
-			headerRowEl,
-			'taskCount',
-			t('projectCenter.columns.taskCount'),
-		);
-		this.createHeaderCell(
-			headerRowEl,
-			'archived',
-			t('projectCenter.columns.archived'),
-		);
-		this.createHeaderCell(
-			headerRowEl,
-			'startDate',
-			t('projectCenter.columns.startDate'),
-		);
-		this.createHeaderCell(
-			headerRowEl,
-			'dueDate',
-			t('projectCenter.columns.dueDate'),
-		);
-
-		for (const row of sortProjectCenterRows(
-			rows,
-			this.sortKey,
-			this.sortDirection,
-		)) {
-			const rowEl = tableEl.createDiv({
-				cls: 'ioto-project-center__row ioto-project-center__row--data',
-			});
-			this.renderEditSpecCell(rowEl, row);
-			this.renderProjectNameCell(rowEl, row);
-			this.renderCategoryCell(rowEl, row);
-
-			this.renderTaskCountCell(rowEl, row);
-			this.renderArchivedCell(rowEl, row);
-		this.renderDateCell(rowEl, row, 'startDate');
-		this.renderDateCell(rowEl, row, 'dueDate');
-		}
-	}
-
-	private renderCards(
-		container: HTMLElement,
-		rows: ProjectCenterRow[],
-	): void {
-		const listEl = container.createDiv({
-			cls: 'ioto-project-center__cards',
-		});
-		this.renderCardSortControl(listEl);
-		for (const row of sortProjectCenterRows(
-			rows,
-			this.sortKey,
-			this.sortDirection,
-		)) {
-			this.renderCard(listEl, row);
-		}
-	}
-
-	private renderCardSortControl(container: HTMLElement): void {
-		const barEl = container.createDiv({
-			cls: 'ioto-project-center__card-sort',
-		});
-		const sortKeys: ProjectCenterSortKey[] = [
-			'projectName',
-			'category',
-			'taskCount',
-			'archived',
-			'startDate',
-			'dueDate',
-		];
-		const labels: Record<ProjectCenterSortKey, string> = {
-			projectName: t('projectCenter.columns.projectName'),
-			category: t('projectCenter.columns.category'),
-			taskCount: t('projectCenter.columns.taskCount'),
-			archived: t('projectCenter.columns.archived'),
-			startDate: t('projectCenter.columns.startDate'),
-			dueDate: t('projectCenter.columns.dueDate'),
-		};
-		for (const key of sortKeys) {
-			const chipEl = barEl.createEl('button', {
-				cls: 'ioto-project-center__sort-chip',
-			});
-			chipEl.type = 'button';
-			chipEl.createSpan({ text: labels[key] });
-			if (this.sortKey === key) {
-				chipEl.addClass('is-active');
-				chipEl.createSpan({
-					cls: 'ioto-project-center__sort-indicator',
-					text: this.sortDirection === 'asc' ? '▲' : '▼',
-				});
-			}
-			chipEl.addEventListener('click', () => {
-				this.handleSortClick(key);
-			});
-		}
-	}
-
-	private renderCard(
-		container: HTMLElement,
-		row: ProjectCenterRow,
-	): void {
-		const cardEl = container.createDiv({
-			cls: 'ioto-project-center__card',
-		});
-
-		const topEl = cardEl.createDiv({
-			cls: 'ioto-project-center__card-top',
-		});
-		topEl.createDiv({
-			cls: 'ioto-project-center__card-title',
-			text: row.name,
-		});
-		const editButtonEl = topEl.createEl('button', {
-			cls: 'ioto-project-center__icon-button',
-		});
-		editButtonEl.type = 'button';
-		editButtonEl.ariaLabel = t('projectCenter.columns.editSpec');
-		editButtonEl.title = t('projectCenter.columns.editSpec');
-		setIcon(editButtonEl, 'file-edit');
-		editButtonEl.addEventListener('click', () => {
-			void this.openProjectSpec(row);
-		});
-
-		const metaEl = cardEl.createDiv({
-			cls: 'ioto-project-center__card-meta',
-		});
-		const category =
-			typeof row.metadata.category === 'string' &&
-			row.metadata.category.length > 0
-				? row.metadata.category
-				: t('projectCenter.category.empty');
-		metaEl.createSpan({
-			cls: 'ioto-project-center__card-badge',
-			text: category,
-		});
-		metaEl.createSpan({
-			text: `${t('projectCenter.columns.taskCount')}: ${row.taskCount}`,
-		});
-		const startDate =
-			typeof row.metadata.startDate === 'string'
-				? row.metadata.startDate
-				: '';
-		const dueDate =
-			typeof row.metadata.dueDate === 'string'
-				? row.metadata.dueDate
-				: '';
-		if (startDate || dueDate) {
-			metaEl.createSpan({
-				text: `${startDate}${startDate && dueDate ? ' – ' : ''}${dueDate}`,
-			});
-		}
-
-		const archiveButtonEl = cardEl.createEl('button', {
-			cls: 'ioto-project-center__card-archive',
-		});
-		archiveButtonEl.type = 'button';
-		setIcon(
-			archiveButtonEl,
-			row.archived ? 'archive-restore' : 'archive',
-		);
-		archiveButtonEl.createSpan({
-			text: row.archived
-				? t('projectCenter.action.unarchive')
-				: t('projectCenter.action.archive'),
-		});
-		archiveButtonEl.addEventListener('click', () => {
-			void this.handleArchivedToggle(row, !row.archived);
-		});
-
-		const currentCategory =
-			typeof row.metadata.category === 'string'
-				? row.metadata.category
-				: '';
-		const categoryFieldEl = cardEl.createDiv({
-			cls: 'ioto-project-center__card-field',
-		});
-		categoryFieldEl.createDiv({
-			cls: 'ioto-project-center__card-field-label',
-			text: t('projectCenter.columns.category'),
-		});
-		const selectEl = categoryFieldEl.createEl('select', {
-			cls: 'ioto-project-center__select',
-		});
-		const categoryOptions = [
-			'',
-			...collectCategoryOptions(
-				this.getProjectCategoryOptions(),
-				this.rows.map((item) => item.metadata.category),
-			),
-		];
-		for (const option of categoryOptions) {
-			const optionEl = selectEl.createEl('option', {
-				value: option,
-				text:
-					option.length > 0
-						? option
-						: t('projectCenter.category.empty'),
-			});
-			if (option === currentCategory) {
-				optionEl.selected = true;
-			}
-		}
-		selectEl.createEl('option', {
-			value: '__ioto_add__',
-			text: t('projectCenter.category.addNew'),
-		});
-		selectEl.addEventListener('change', () => {
-			void this.handleCategoryChange(row, selectEl, currentCategory);
-		});
-
-		const datesEl = cardEl.createDiv({
-			cls: 'ioto-project-center__card-dates',
-		});
-		const startDateFieldEl = datesEl.createDiv({
-			cls: 'ioto-project-center__card-field',
-		});
-		startDateFieldEl.createDiv({
-			cls: 'ioto-project-center__card-field-label',
-			text: t('projectCenter.columns.startDate'),
-		});
-		const startDateInputEl = startDateFieldEl.createEl('input', {
-			cls: 'ioto-project-center__date',
-			type: 'date',
-		});
-		startDateInputEl.value = startDate;
-		startDateInputEl.addEventListener('change', () => {
-			void this.persistMetadataPatch(row, {
-				startDate: startDateInputEl.value || null,
-			});
-		});
-
-		const dueDateFieldEl = datesEl.createDiv({
-			cls: 'ioto-project-center__card-field',
-		});
-		dueDateFieldEl.createDiv({
-			cls: 'ioto-project-center__card-field-label',
-			text: t('projectCenter.columns.dueDate'),
-		});
-		const dueDateInputEl = dueDateFieldEl.createEl('input', {
-			cls: 'ioto-project-center__date',
-			type: 'date',
-		});
-		dueDateInputEl.value = dueDate;
-		dueDateInputEl.addEventListener('change', () => {
-			void this.persistMetadataPatch(row, {
-				dueDate: dueDateInputEl.value || null,
-			});
-		});
-	}
-
-	private applyProjectSearchQuery(): void {
-		const nextQuery = this.projectSearchInputValue;
-		if (nextQuery === this.projectSearchQuery) {
-			return;
-		}
-
-		this.projectSearchQuery = nextQuery;
-		this.render();
-	}
-
-	private clearProjectSearch(): void {
-		if (!this.projectSearchInputValue && !this.projectSearchQuery) {
-			return;
-		}
-
-		this.projectSearchInputValue = '';
-		this.projectSearchQuery = '';
-		this.render();
-	}
-
-	private createHeaderCell(
-		rowEl: HTMLElement,
-		key: ProjectCenterSortKey,
-		label: string,
-	): void {
-		const cellEl = rowEl.createEl('button', {
-			cls: `ioto-project-center__cell ioto-project-center__cell--${key} ioto-project-center__header-cell`,
-		});
-		cellEl.type = 'button';
-		cellEl.createSpan({
-			cls: 'ioto-project-center__header-label',
-			text: label,
-		});
-
-		if (this.sortKey === key) {
-			cellEl.createSpan({
-				cls: 'ioto-project-center__sort-indicator',
-				text: this.sortDirection === 'asc' ? '▲' : '▼',
-			});
-		}
-
-		cellEl.addEventListener('click', () => {
-			this.handleSortClick(key);
-		});
-	}
-
-	private handleSortClick(key: ProjectCenterSortKey): void {
+	handleSortClick(key: ProjectCenterSortKey): void {
 		if (this.sortKey !== key) {
 			this.sortKey = key;
 			this.sortDirection = 'asc';
@@ -849,306 +317,49 @@ export class IOTOProjectCenterView extends ItemView {
 		this.render();
 	}
 
-	private renderProjectNameCell(rowEl: HTMLElement, row: ProjectCenterRow) {
-		rowEl.createDiv({
-			cls: 'ioto-project-center__cell ioto-project-center__cell--projectName',
-			text: row.name,
-		});
-	}
-
-	private renderTaskCountCell(rowEl: HTMLElement, row: ProjectCenterRow) {
-		rowEl.createDiv({
-			cls: 'ioto-project-center__cell ioto-project-center__cell--taskCount',
-			text: `${row.taskCount}`,
-		});
-	}
-
-	private renderArchivedCell(rowEl: HTMLElement, row: ProjectCenterRow) {
-		const cellEl = rowEl.createDiv({
-			cls: 'ioto-project-center__cell ioto-project-center__cell--archived',
-		});
-		const toggleEl = cellEl.createEl('input', {
-			cls: 'ioto-project-center__toggle',
-			type: 'checkbox',
-		});
-		toggleEl.checked = row.archived;
-		toggleEl.addEventListener('change', () => {
-			void this.handleArchivedToggle(row, toggleEl.checked);
-		});
-	}
-
-	private async handleArchivedToggle(
-		row: ProjectCenterRow,
-		archived: boolean,
-	): Promise<void> {
-		try {
-			await this.setProjectHidden(row.name, archived);
-		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: t('projectCenter.notice.updateArchivedFailed');
-			new Notice(message);
-			await this.refreshFromVaultChange();
-		}
-	}
-
-	private renderEditSpecCell(
-		rowEl: HTMLElement,
-		row: ProjectCenterRow,
-	): void {
-		const cellEl = rowEl.createDiv({
-			cls: 'ioto-project-center__cell ioto-project-center__cell--editSpec',
-		});
-		const buttonEl = cellEl.createEl('button', {
-			cls: 'ioto-project-center__icon-button',
-			attr: {
-				'aria-label': t('projectCenter.columns.editSpec'),
-				title: t('projectCenter.columns.editSpec'),
-			},
-		});
-		setIcon(buttonEl, 'file-edit');
-		buttonEl.addEventListener('click', () => {
-			void this.openProjectSpec(row);
-		});
-	}
-
-	private async openProjectSpec(row: ProjectCenterRow): Promise<void> {
-		const filePath = `${row.path}/${PROJECT_METADATA_FILE_NAME}`;
-		const abstractFile = this.app.vault.getAbstractFileByPath(filePath);
-		const file =
-			abstractFile instanceof TFile
-				? abstractFile
-				: await this.app.vault.create(
-						filePath,
-						'---\nIOTOProject:\n---\n',
-					);
-		const leaf = this.ensurePreviewLeaf();
-		await leaf.openFile(file, { active: true });
-	}
-
-	private ensurePreviewLeaf(): WorkspaceLeaf {
-		if (this.previewLeaf && this.isLeafAvailable(this.previewLeaf)) {
-			return this.previewLeaf;
-		}
-		const leaf = this.app.workspace.getLeaf('split', 'vertical');
-		this.previewLeaf = leaf;
-		return leaf;
-	}
-
-	private isLeafAvailable(leaf: WorkspaceLeaf): boolean {
-		let exists = false;
-		this.app.workspace.iterateAllLeaves((l) => {
-			if (l === leaf) {
-				exists = true;
-			}
-		});
-		return exists;
-	}
-
-	private renderCategoryCell(rowEl: HTMLElement, row: ProjectCenterRow) {
-		const cellEl = rowEl.createDiv({
-			cls: 'ioto-project-center__cell ioto-project-center__cell--category',
-		});
-
-		const selectEl = cellEl.createEl('select', {
-			cls: 'ioto-project-center__select',
-		});
-
-		const currentCategory =
-			typeof row.metadata.category === 'string'
-				? row.metadata.category
-				: '';
-
-		const options = [
-			'',
-			...collectCategoryOptions(
-				this.getProjectCategoryOptions(),
-				this.rows.map((item) => item.metadata.category),
-			),
-		];
-
-		for (const option of options) {
-			const optionEl = selectEl.createEl('option', {
-				value: option,
-				text:
-					option.length > 0
-						? option
-						: t('projectCenter.category.empty'),
-			});
-			if (option === currentCategory) {
-				optionEl.selected = true;
-			}
-		}
-
-		selectEl.createEl('option', {
-			value: '__ioto_add__',
-			text: t('projectCenter.category.addNew'),
-		});
-
-		selectEl.addEventListener('change', () => {
-			void this.handleCategoryChange(row, selectEl, currentCategory);
-		});
-	}
-
-	private async handleCategoryChange(
-		row: ProjectCenterRow,
-		selectEl: HTMLSelectElement,
-		previousCategory: string,
-	): Promise<void> {
-		const value = selectEl.value;
-		if (value === '__ioto_add__') {
-			selectEl.value = previousCategory;
-			const nameResult = await new TaskNameModal(
-				this.app,
-				t('projectCenter.category.addTitle'),
-				t('projectCenter.category.addPlaceholder'),
-				{
-					descriptionText: t('projectCenter.category.addDesc'),
-					confirmButtonText: t('modal.create'),
-				},
-			).openAndGetValue();
-			if (!nameResult) {
-				return;
-			}
-
-			const normalized = nameResult.trim();
-			if (!normalized) {
-				return;
-			}
-
-			await this.addProjectCategoryOption(normalized);
-			await this.persistMetadataPatch(row, { category: normalized });
+	applyProjectSearchQuery(): void {
+		const nextQuery = this.projectSearchInputValue;
+		if (nextQuery === this.projectSearchQuery) {
 			return;
 		}
 
-		await this.persistMetadataPatch(row, { category: value || null });
+		this.projectSearchQuery = nextQuery;
+		this.render();
 	}
 
-	private renderDateCell(
-		rowEl: HTMLElement,
-		row: ProjectCenterRow,
-		key: 'startDate' | 'dueDate',
-	): void {
-		const cellEl = rowEl.createDiv({
-			cls: `ioto-project-center__cell ioto-project-center__cell--${key}`,
-		});
-		const inputEl = cellEl.createEl('input', {
-			cls: 'ioto-project-center__date',
-			type: 'date',
-		});
-		const currentValue =
-			typeof row.metadata[key] === 'string' ? row.metadata[key] : '';
-		inputEl.value = currentValue;
-		inputEl.addEventListener('change', () => {
-			void this.persistMetadataPatch(row, {
-				[key]: inputEl.value || null,
-			});
-		});
-	}
-
-	private async persistMetadataPatch(
-		row: ProjectCenterRow,
-		patch: Record<string, string | null | undefined>,
-	): Promise<void> {
-		const tasksRootPath = this.getTasksRootPath();
-		try {
-			const file = await ensureProjectMetadataFile(
-				this.app,
-				tasksRootPath,
-				row.name,
-			);
-			await updateProjectMetadata(this.app, file, patch);
-			const nextMetadata = await readProjectMetadata(this.app, file);
-			row.metadata = nextMetadata;
-			this.render();
-		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: t('projectCenter.notice.updateMetadataFailed');
-			new Notice(message);
-			await this.refreshFromVaultChange();
+	clearProjectSearch(): void {
+		if (!this.projectSearchInputValue && !this.projectSearchQuery) {
+			return;
 		}
+
+		this.projectSearchInputValue = '';
+		this.projectSearchQuery = '';
+		this.render();
 	}
 
-	private renderState(
-		container: HTMLElement,
-		title: string,
-		description: string,
-		stateClass: 'is-empty' | 'is-loading',
-	): void {
-		const stateEl = container.createDiv({
-			cls: `ioto-project-center__state ${stateClass}`,
-		});
-		stateEl.createDiv({
-			cls: 'ioto-project-center__state-title',
-			text: title,
-		});
-		stateEl.createDiv({
-			cls: 'ioto-project-center__state-desc',
-			text: description,
-		});
-	}
-}
-
-function parseViewState(state: unknown): IOTOProjectCenterViewState {
-	if (!state || typeof state !== 'object') {
-		return {};
-	}
-
-	const candidate = state as Record<string, unknown>;
-	const sortKey = isProjectCenterSortKey(candidate.sortKey)
-		? candidate.sortKey
-		: undefined;
-	const sortDirection = isProjectCenterSortDirection(candidate.sortDirection)
-		? candidate.sortDirection
-		: undefined;
-	return {
-		sortKey,
-		sortDirection,
-	};
-}
-
-function isProjectCenterSortKey(value: unknown): value is ProjectCenterSortKey {
-	return (
-		value === 'projectName' ||
-		value === 'category' ||
-		value === 'startDate' ||
-		value === 'dueDate' ||
-		value === 'taskCount' ||
-		value === 'archived'
-	);
-}
-
-function isProjectCenterSortDirection(
-	value: unknown,
-): value is ProjectCenterSortDirection {
-	return value === 'asc' || value === 'desc';
-}
-
-function collectCategoryOptions(
-	configured: string[],
-	seenCategories: Array<string | undefined>,
-): string[] {
-	const set = new Set<string>();
-	for (const value of configured) {
-		const normalized = value.trim();
-		if (normalized) {
-			set.add(normalized);
+	toggleProjectSearch(): void {
+		this.isProjectSearchVisible = !this.isProjectSearchVisible;
+		if (this.isProjectSearchVisible) {
+			this.shouldFocusProjectSearch = true;
 		}
-	}
-	for (const value of seenCategories) {
-		if (typeof value !== 'string') {
-			continue;
-		}
-		const normalized = value.trim();
-		if (normalized) {
-			set.add(normalized);
-		}
+		this.render();
 	}
 
-	return [...set].sort((left, right) =>
-		left.localeCompare(right, undefined, { numeric: true }),
-	);
+	setProjectSearchInputValue(value: string): void {
+		this.projectSearchInputValue = value;
+	}
+
+	consumeShouldFocusProjectSearch(): boolean {
+		const value = this.shouldFocusProjectSearch;
+		this.shouldFocusProjectSearch = false;
+		return value;
+	}
+
+	setIsCreatingProject(value: boolean): void {
+		this.isCreatingProject = value;
+	}
+
+	setPreviewLeaf(leaf: WorkspaceLeaf | null): void {
+		this.previewLeaf = leaf;
+	}
 }

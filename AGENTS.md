@@ -91,11 +91,13 @@ src/
     data.ts                      # Vault data loading
   views/                         # View layer
     iotoTasksCenterView.ts       # Tasks center view (IOTO_TASKS_CENTER_VIEW_TYPE)
-    iotoProjectCenterView.ts     # Project center view (IOTO_PROJECT_CENTER_VIEW_TYPE)
+    iotoProjectCenterView.ts     # Project center view (IOTO_PROJECT_CENTER_VIEW_TYPE) — lifecycle + state + render orchestrator; rendering/actions split into project-center-* sub-modules
     task-hover-preview.ts        # Hover link source registration
     task-drag.ts, task-hierarchy.ts, task-search.ts, task-filter-tabs.ts,
     task-list-presentation.ts, task-list-scroll.ts, task-preview-state.ts,
     project-center-scroll.ts, project-center-search.ts, project-center-sort.ts,
+    project-center-types.ts, project-center-header.ts, project-center-renderer.ts,
+    project-center-cells.ts, project-center-card.ts, project-center-actions.ts,
     project-list-group.ts, project-list-scroll.ts
     tasks-center/                # Tasks center view submodules
       constants.ts, data-loader.ts, helpers.ts
