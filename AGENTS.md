@@ -92,6 +92,7 @@ src/
   views/                         # View layer
     iotoTasksCenterView.ts       # Tasks center view (IOTO_TASKS_CENTER_VIEW_TYPE)
     iotoProjectCenterView.ts     # Project center view (IOTO_PROJECT_CENTER_VIEW_TYPE) — lifecycle + state + render orchestrator; rendering/actions split into project-center-* sub-modules
+    iotoTaskView.ts              # Task view (IOTO_TASK_VIEW_TYPE) — lifecycle + state + thin delegate orchestrator; logic split into ioto-task/task-view-* sub-modules (Phase 7)
     task-hover-preview.ts        # Hover link source registration
     task-drag.ts, task-hierarchy.ts, task-search.ts, task-filter-tabs.ts,
     task-list-presentation.ts, task-list-scroll.ts, task-preview-state.ts,
@@ -115,6 +116,29 @@ src/
       compact-layout.ts         # Project switcher + resize observer + header toggle (split from iotoTasksCenterView)
       empty-states.ts           # Filter/search empty states (split from iotoTasksCenterView)
       task-file-opening.ts      # Task file opening + preview editor ops (split from iotoTasksCenterView)
+    ioto-task/                  # Task view submodules
+      render-note.ts, render-sections.ts, render-checklist-card.ts,
+      render-card-actions.ts, render-card-keybind.ts, render-control-badges.ts
+      card-navigation.ts, commit-task-line.ts, delete-confirm.ts,
+      edit-autosave.ts, embedded-editor.ts, fit-anchored-popup.ts,
+      ioto-task-scroll.ts, item-control-bridge.ts, list-transition.ts,
+      recent-task-filter.ts, search-highlight.ts, search-scope.ts,
+      select-mode-scope.ts, task-query-filter.ts
+      task-view-constants.ts, task-view-helpers.ts   # Shared constants/interfaces + line/query helpers (split from iotoTaskView)
+      task-view-toolbar.ts      # Toolbar build/state/refresh + appearance/recent-count/entry-template (split from iotoTaskView)
+      task-view-search.ts       # In-view keyword search: reveal/toggle/input/query/match/highlight (split from iotoTaskView)
+      task-view-filters.ts      # Frontmatter-backed filters: onlyTaskBlocks/onlyPending/recentOnly (split from iotoTaskView)
+      task-view-render.ts       # renderNote + list transition + selection class + reload + editor/link controllers (split from iotoTaskView)
+      task-view-zoom.ts         # Card focus-zoom: enter/exit/DOM/sync/edit-flush/focus (split from iotoTaskView)
+      task-view-command-readiness.ts  # Command readiness polling + dispatch (split from iotoTaskView)
+      task-view-selection.ts    # Select state machine: select/delete/indent/insert/pending-delete/continuation (split from iotoTaskView)
+      task-view-inline-edit.ts  # Inline title editor: begin/commit/destroy/refresh/autosave (split from iotoTaskView)
+      task-view-continuation-edit.ts  # Continuation editor: begin/new/enter/delete/escape/commit/destroy/autosave (split from iotoTaskView)
+      task-view-editor-handlers.ts    # CodeMirror event handlers: escape/soft-break/enter/delete/indent + runLineAction/toggleTask (split from iotoTaskView)
+      task-view-item-control-host.ts  # Item control bridge host + quick panel + AI item source (split from iotoTaskView)
+      task-view-task-commands.ts      # Add task / append block / entry template / run task (split from iotoTaskView)
+      task-view-external-writeback.ts # External editor writeback window (Templater etc.) (split from iotoTaskView)
+      task-view-export-image.ts       # Export as image / copy to clipboard / Electron canvas (split from iotoTaskView)
   ui/                            # Modals and popovers
     taskCreationModal.ts, taskNameModal.ts, batchTaskModals.ts,
     batchTemplateEditModal.ts, confirmModal.ts, tabbed-settings.ts,
