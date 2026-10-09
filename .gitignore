@@ -15,6 +15,9 @@ main.js
 # Exclude sourcemaps
 *.map
 
+# esbuild metafile (体积分析产物)
+meta.json
+
 # obsidian
 data.json
 

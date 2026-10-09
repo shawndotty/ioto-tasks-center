@@ -37,12 +37,27 @@ const context = await esbuild.context({
 	logLevel: 'info',
 	sourcemap: prod ? false : 'inline',
 	treeShaking: true,
+	metafile: true,
 	outfile: 'main.js',
 	minify: prod,
 });
 
 if (prod) {
-	await context.rebuild();
+	const result = await context.rebuild();
+	// 体积分析：写出 metafile 并打印进包字节数 Top 20（meta.json 已 gitignore）
+	const fs = await import('node:fs');
+	fs.writeFileSync('meta.json', JSON.stringify(result.metafile, null, 2));
+	const jsOutput = Object.values(result.metafile.outputs).find(
+		(o) => o.entryPoint,
+	);
+	const inputs = Object.entries(jsOutput.inputs)
+		.map(([file, info]) => ({ file, bytes: info.bytesInOutput }))
+		.sort((a, b) => b.bytes - a.bytes)
+		.slice(0, 20);
+	console.log('=== 进包字节数 Top 20 ===');
+	for (const { file, bytes } of inputs) {
+		console.log(`${String(bytes).padStart(8)}  ${file}`);
+	}
 	process.exit(0);
 } else {
 	await context.watch();
