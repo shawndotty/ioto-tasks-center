@@ -1,13 +1,9 @@
 import {
-	FileView,
 	MarkdownView,
-	Menu,
 	Notice,
 	Plugin,
 	Scope,
 	TAbstractFile,
-	TFile,
-	WorkspaceLeaf,
 } from 'obsidian';
 import { t } from './lang/helpter';
 import {
@@ -20,11 +16,9 @@ import {
 	convertSelectedTextToSubtask,
 } from './tasks-center/selected-text-subtask';
 import {
-	areTaskTemplateConfigsEqual,
-	mergeTaskTemplateConfig,
-	normalizeTaskTemplateConfigMap,
 	type TaskCreationType,
 	type TaskTemplateConfig,
+	normalizeTaskTemplateConfigMap,
 } from './tasks-center/task-template-config';
 import {
 	DEFAULT_SETTINGS,
@@ -48,22 +42,20 @@ import {
 	normalizeExportImageFixedWidth,
 	normalizeExportImageScale,
 	normalizeExportImageWidthMode,
-	normalizeTaskLinkBadgeBackgroundMode,
 	normalizeProjectCategoryOptions,
 	normalizeProjectListGroupMode,
 	normalizeProjectListSortMode,
 	normalizeRecentTaskCount,
+	normalizeTaskLinkBadgeBackgroundMode,
 	normalizeTaskSearchEntryMode,
 } from './settings';
 import {
-	areBatchTemplateConfigsEqual,
-	normalizeBatchTemplateConfig,
 	type BatchTemplateConfig,
+	normalizeBatchTemplateConfig,
 } from './tasks-center/batch-task-template';
 import {
-	areEntryTemplateConfigsEqual,
-	normalizeEntryTemplateConfig,
 	type EntryTemplateConfig,
+	normalizeEntryTemplateConfig,
 } from './tasks-center/task-entry-template';
 import { isTaskNoteFile, buildTaskNoteMenu } from './tasks-center/task-note-menu';
 import {
@@ -88,16 +80,57 @@ import {
 	IOTO_TASK_VIEW_HOVER_SOURCE_ID,
 	IOTO_TASKS_CENTER_TASK_HOVER_SOURCE_ID,
 } from './views/task-hover-preview';
-// import {
-// 	batchClearPriority,
-// 	batchRemoveUpTask,
-// 	batchSetStarred,
-// 	confirmAndBatchDeleteTasks,
-// } from './views/tasks-center/batch-edit-operations';
-// import {
-// 	showBatchAssignUpTaskModal,
-// 	showBatchPriorityMenu,
-// } from './views/tasks-center/menus';
+// 设置更新实现（update* 薄封装转发，保持插件 public 方法语义不变）
+import {
+	resolveExportOptions,
+	updateAppearanceStyle,
+	updateBatchTemplateConfig,
+	updateColorTaskTitleByPriority,
+	updateDateTaskDateFormat,
+	updateEnabledTaskCreationTypes,
+	updateEntryTemplateConfig,
+	updateExportImageFixedWidth,
+	updateExportImageScale,
+	updateExportImageWidthMode,
+	updateExportImageWithFooter,
+	updateExportImageWithHeader,
+	updateInputRootPath,
+	updateOutcomeRootPath,
+	updateOutputRootPath,
+	updateProjectListGroupMode,
+	updateProjectListSortMode,
+	updateRecentTaskCount,
+	updateShowTaskHierarchy,
+	updateShowTaskInputOutlinkCount,
+	updateShowTaskNoteCoreMenu,
+	updateShowTaskNotePriorityMenu,
+	updateShowTaskOutlinkCounts,
+	updateShowTaskOutcomeOutlinkCount,
+	updateShowTaskOutputOutlinkCount,
+	updateShowTaskPriority,
+	updateShowTaskSubtaskCount,
+	updateShowTaskViewDeleteButtonOnDesktop,
+	updateTaskLinkBadgeBackgroundMode,
+	updateTaskListSortMode,
+	updateTaskListGroupMode,
+	updateTaskListTimeFilter,
+	updateTaskSearchEntryMode,
+	updateTaskTemplateConfig,
+	updateTasksRootPath,
+	updateUseIOTOTaskViewAsDefault,
+	addProjectCategoryOption,
+	setProjectHidden,
+} from './settings-updaters';
+// 视图路由 / 激活实现
+import {
+	activateIOTOProjectCenterView,
+	activateIOTOTasksCenterView,
+	appendTaskViewMenuItems,
+	getTasksCenterView,
+	openFileAsIOTOTask,
+	resolveTaskViewToggleDirection,
+	setLeafToMarkdown,
+} from './task-view-routing';
 
 export default class IOTOTasksCenter extends Plugin {
 	settings!: IOTOTasksCenterSettings;
@@ -215,7 +248,11 @@ export default class IOTOTasksCenter extends Plugin {
 				}
 
 				if (!checking) {
-					void this.openFileAsIOTOTask(file);
+					void openFileAsIOTOTask(
+						this.app,
+						this.settings.tasksRootPath,
+						file,
+					);
 				}
 
 				return true;
@@ -233,7 +270,7 @@ export default class IOTOTasksCenter extends Plugin {
 				}
 
 				if (!checking) {
-					void this.setLeafToMarkdown(view.leaf);
+					void setLeafToMarkdown(view.leaf);
 				}
 
 				return true;
@@ -251,17 +288,25 @@ export default class IOTOTasksCenter extends Plugin {
 					return false;
 				}
 
-				const direction = this.resolveTaskViewToggleDirection(leaf);
+				const direction = resolveTaskViewToggleDirection(
+					leaf,
+					this.settings.tasksRootPath,
+				);
 				if (!direction) {
 					return false;
 				}
 
 				if (!checking) {
 					if (direction === 'to-markdown') {
-						void this.setLeafToMarkdown(leaf);
+						void setLeafToMarkdown(leaf);
 					} else if (leaf.view instanceof MarkdownView && leaf.view.file) {
 						// 显式传入活动叶子作 targetLeaf，贴合「切换作用于眼前这个叶子」的语义。
-						void this.openFileAsIOTOTask(leaf.view.file, leaf);
+						void openFileAsIOTOTask(
+							this.app,
+							this.settings.tasksRootPath,
+							leaf.view.file,
+							leaf,
+						);
 					}
 				}
 
@@ -477,98 +522,6 @@ export default class IOTOTasksCenter extends Plugin {
 			},
 		});
 
-		// this.addCommand({
-		// 	id: 'itc-batch-select-all',
-		// 	name: t('command.batchSelectAll'),
-		// 	callback: () => {
-		// 		this.getTasksCenterView()?.selectAllVisibleTasks();
-		// 	},
-		// });
-
-		// this.addCommand({
-		// 	id: 'itc-batch-delete-tasks',
-		// 	name: t('command.batchDeleteTasks'),
-		// 	callback: () => {
-		// 		const view = this.getTasksCenterView();
-		// 		if (!view) {
-		// 			return;
-		// 		}
-		// 		void confirmAndBatchDeleteTasks(view);
-		// 	},
-		// });
-
-		// this.addCommand({
-		// 	id: 'itc-batch-set-priority',
-		// 	name: t('command.batchSetPriority'),
-		// 	callback: () => {
-		// 		const view = this.getTasksCenterView();
-		// 		if (!view) {
-		// 			return;
-		// 		}
-		// 		showBatchPriorityMenu(view);
-		// 	},
-		// });
-
-		// this.addCommand({
-		// 	id: 'itc-batch-clear-priority',
-		// 	name: t('command.batchClearPriority'),
-		// 	callback: () => {
-		// 		const view = this.getTasksCenterView();
-		// 		if (!view) {
-		// 			return;
-		// 		}
-		// 		void batchClearPriority(view);
-		// 	},
-		// });
-
-		// this.addCommand({
-		// 	id: 'itc-batch-set-starred',
-		// 	name: t('command.batchSetStarred'),
-		// 	callback: () => {
-		// 		const view = this.getTasksCenterView();
-		// 		if (!view) {
-		// 			return;
-		// 		}
-		// 		void batchSetStarred(view, true);
-		// 	},
-		// });
-
-		// this.addCommand({
-		// 	id: 'itc-batch-clear-starred',
-		// 	name: t('command.batchClearStarred'),
-		// 	callback: () => {
-		// 		const view = this.getTasksCenterView();
-		// 		if (!view) {
-		// 			return;
-		// 		}
-		// 		void batchSetStarred(view, false);
-		// 	},
-		// });
-
-		// this.addCommand({
-		// 	id: 'itc-batch-assign-up-task',
-		// 	name: t('command.batchAssignUpTask'),
-		// 	callback: () => {
-		// 		const view = this.getTasksCenterView();
-		// 		if (!view) {
-		// 			return;
-		// 		}
-		// 		void showBatchAssignUpTaskModal(view);
-		// 	},
-		// });
-
-		// this.addCommand({
-		// 	id: 'itc-batch-remove-up-task',
-		// 	name: t('command.batchRemoveUpTask'),
-		// 	callback: () => {
-		// 		const view = this.getTasksCenterView();
-		// 		if (!view) {
-		// 			return;
-		// 		}
-		// 		void batchRemoveUpTask(view);
-		// 	},
-		// });
-
 		this.addSettingTab(new IOTOTasksCenterSettingTab(this.app, this));
 		this.registerVaultRefreshEvents();
 		this.registerTaskNoteMenuEvent();
@@ -663,174 +616,76 @@ export default class IOTOTasksCenter extends Plugin {
 		await this.saveData(this.settings);
 	}
 
+	// --- 设置更新方法（薄封装转发到 settings-updaters，保持 public API 不变） ---
+
 	async updateProjectListSortMode(
 		sortMode: ProjectListSortMode,
 	): Promise<void> {
-		if (this.settings.projectListSortMode === sortMode) {
-			return;
-		}
-
-		this.settings.projectListSortMode = sortMode;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateProjectListSortMode(this, sortMode);
 	}
 
 	async updateProjectListGroupMode(
 		groupMode: ProjectListGroupMode,
 	): Promise<void> {
-		if (this.settings.projectListGroupMode === groupMode) {
-			return;
-		}
-
-		this.settings.projectListGroupMode = groupMode;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateProjectListGroupMode(this, groupMode);
 	}
 
 	async updateTaskListSortMode(sortMode: TaskListSortMode): Promise<void> {
-		if (this.settings.taskListSortMode === sortMode) {
-			return;
-		}
-
-		this.settings.taskListSortMode = sortMode;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateTaskListSortMode(this, sortMode);
 	}
 
 	async updateTaskListGroupMode(groupMode: TaskListGroupMode): Promise<void> {
-		if (this.settings.taskListGroupMode === groupMode) {
-			return;
-		}
-
-		this.settings.taskListGroupMode = groupMode;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateTaskListGroupMode(this, groupMode);
 	}
 
 	async updateShowTaskHierarchy(show: boolean): Promise<void> {
-		if (this.settings.showTaskHierarchy === show) {
-			return;
-		}
-
-		this.settings.showTaskHierarchy = show;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateShowTaskHierarchy(this, show);
 	}
 
 	async updateShowTaskPriority(show: boolean): Promise<void> {
-		if (this.settings.showTaskPriority === show) {
-			return;
-		}
-
-		this.settings.showTaskPriority = show;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateShowTaskPriority(this, show);
 	}
 
-	// 这两个开关只在下次打开菜单时生效，不影响已渲染的视图，无需刷新。
 	async updateShowTaskNoteCoreMenu(show: boolean): Promise<void> {
-		if (this.settings.showTaskNoteCoreMenu === show) {
-			return;
-		}
-
-		this.settings.showTaskNoteCoreMenu = show;
-		await this.saveSettings();
+		await updateShowTaskNoteCoreMenu(this, show);
 	}
 
 	async updateShowTaskNotePriorityMenu(show: boolean): Promise<void> {
-		if (this.settings.showTaskNotePriorityMenu === show) {
-			return;
-		}
-
-		this.settings.showTaskNotePriorityMenu = show;
-		await this.saveSettings();
+		await updateShowTaskNotePriorityMenu(this, show);
 	}
 
 	async updateColorTaskTitleByPriority(color: boolean): Promise<void> {
-		if (this.settings.colorTaskTitleByPriority === color) {
-			return;
-		}
-
-		this.settings.colorTaskTitleByPriority = color;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateColorTaskTitleByPriority(this, color);
 	}
 
 	async updateTaskListTimeFilter(filter: TaskListTimeFilter): Promise<void> {
-		if (this.settings.taskListTimeFilter === filter) {
-			return;
-		}
-
-		this.settings.taskListTimeFilter = filter;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateTaskListTimeFilter(this, filter);
 	}
 
 	async updateShowTaskOutlinkCounts(show: boolean): Promise<void> {
-		if (this.settings.showTaskOutlinkCounts === show) {
-			return;
-		}
-
-		this.settings.showTaskOutlinkCounts = show;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateShowTaskOutlinkCounts(this, show);
 	}
 
-	async updateTaskSearchEntryMode(
-		mode: TaskSearchEntryMode,
-	): Promise<void> {
-		if (this.settings.taskSearchEntryMode === mode) {
-			return;
-		}
-
-		this.settings.taskSearchEntryMode = mode;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+	async updateTaskSearchEntryMode(mode: TaskSearchEntryMode): Promise<void> {
+		await updateTaskSearchEntryMode(this, mode);
 	}
 
-	async updateAppearanceStyle(
-		style: TaskViewAppearanceStyle,
-	): Promise<void> {
-		if (this.settings.appearanceStyle === style) {
-			return;
-		}
-
-		this.settings.appearanceStyle = style;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+	async updateAppearanceStyle(style: TaskViewAppearanceStyle): Promise<void> {
+		await updateAppearanceStyle(this, style);
 	}
 
 	async updateUseIOTOTaskViewAsDefault(value: boolean): Promise<void> {
-		if (this.settings.useIOTOTaskViewAsDefault === value) {
-			return;
-		}
-
-		this.settings.useIOTOTaskViewAsDefault = value;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateUseIOTOTaskViewAsDefault(this, value);
 	}
 
 	async updateRecentTaskCount(value: unknown): Promise<void> {
-		const count = normalizeRecentTaskCount(value);
-		if (this.settings.recentTaskCount === count) {
-			return;
-		}
-
-		this.settings.recentTaskCount = count;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateRecentTaskCount(this, value);
 	}
 
 	async updateShowTaskViewDeleteButtonOnDesktop(
 		value: boolean,
 	): Promise<void> {
-		if (this.settings.showTaskViewDeleteButtonOnDesktop === value) {
-			return;
-		}
-
-		this.settings.showTaskViewDeleteButtonOnDesktop = value;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateShowTaskViewDeleteButtonOnDesktop(this, value);
 	}
 
 	/**
@@ -838,298 +693,124 @@ export default class IOTOTasksCenter extends Plugin {
 	 * 惰性求值：每次导出都重取，改设置后**无需**即时刷视图（[[Plan-20261006-102142]] §2.5）。
 	 */
 	resolveExportOptions(): TaskViewExportOptions {
-		return {
-			widthMode: this.settings.exportImageWidthMode,
-			fixedWidth: this.settings.exportImageFixedWidth,
-			scale: this.settings.exportImageScale,
-			withHeader: this.settings.exportImageWithHeader,
-			withFooter: this.settings.exportImageWithFooter,
-		};
+		return resolveExportOptions(this.settings);
 	}
 
-	// 导出设置改动**不**即时刷视图（下一次导出才读 provider），故不带 applySettingsToOpenViews。
 	async updateExportImageWidthMode(
 		mode: TaskViewExportWidthMode,
 	): Promise<void> {
-		if (this.settings.exportImageWidthMode === mode) {
-			return;
-		}
-
-		this.settings.exportImageWidthMode = mode;
-		await this.saveSettings();
+		await updateExportImageWidthMode(this, mode);
 	}
 
 	async updateExportImageFixedWidth(value: unknown): Promise<void> {
-		const width = normalizeExportImageFixedWidth(value);
-		if (this.settings.exportImageFixedWidth === width) {
-			return;
-		}
-
-		this.settings.exportImageFixedWidth = width;
-		await this.saveSettings();
+		await updateExportImageFixedWidth(this, value);
 	}
 
 	async updateExportImageScale(value: unknown): Promise<void> {
-		const scale = normalizeExportImageScale(value);
-		if (this.settings.exportImageScale === scale) {
-			return;
-		}
-
-		this.settings.exportImageScale = scale;
-		await this.saveSettings();
+		await updateExportImageScale(this, value);
 	}
 
 	async updateExportImageWithHeader(value: boolean): Promise<void> {
-		if (this.settings.exportImageWithHeader === value) {
-			return;
-		}
-
-		this.settings.exportImageWithHeader = value;
-		await this.saveSettings();
+		await updateExportImageWithHeader(this, value);
 	}
 
 	async updateExportImageWithFooter(value: boolean): Promise<void> {
-		if (this.settings.exportImageWithFooter === value) {
-			return;
-		}
-
-		this.settings.exportImageWithFooter = value;
-		await this.saveSettings();
+		await updateExportImageWithFooter(this, value);
 	}
 
 	async updateShowTaskSubtaskCount(show: boolean): Promise<void> {
-		if (this.settings.showTaskSubtaskCount === show) {
-			return;
-		}
-
-		this.settings.showTaskSubtaskCount = show;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateShowTaskSubtaskCount(this, show);
 	}
 
 	async updateTaskLinkBadgeBackgroundMode(
 		mode: TaskLinkBadgeBackgroundMode,
 	): Promise<void> {
-		if (this.settings.taskLinkBadgeBackgroundMode === mode) {
-			return;
-		}
-
-		this.settings.taskLinkBadgeBackgroundMode = mode;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateTaskLinkBadgeBackgroundMode(this, mode);
 	}
 
 	async updateShowTaskInputOutlinkCount(show: boolean): Promise<void> {
-		if (this.settings.showTaskInputOutlinkCount === show) {
-			return;
-		}
-
-		this.settings.showTaskInputOutlinkCount = show;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateShowTaskInputOutlinkCount(this, show);
 	}
 
 	async updateShowTaskOutputOutlinkCount(show: boolean): Promise<void> {
-		if (this.settings.showTaskOutputOutlinkCount === show) {
-			return;
-		}
-
-		this.settings.showTaskOutputOutlinkCount = show;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateShowTaskOutputOutlinkCount(this, show);
 	}
 
 	async updateShowTaskOutcomeOutlinkCount(show: boolean): Promise<void> {
-		if (this.settings.showTaskOutcomeOutlinkCount === show) {
-			return;
-		}
-
-		this.settings.showTaskOutcomeOutlinkCount = show;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateShowTaskOutcomeOutlinkCount(this, show);
 	}
 
 	async updateTasksRootPath(path: string): Promise<void> {
-		const nextPath = normalizeConfiguredTasksRootPath(path);
-		if (this.settings.tasksRootPath === nextPath) {
-			return;
-		}
-
-		this.settings.tasksRootPath = nextPath;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateTasksRootPath(this, path);
 	}
 
 	async updateInputRootPath(path: string): Promise<void> {
-		const nextPath = normalizeConfiguredInputRootPath(path);
-		if (this.settings.inputRootPath === nextPath) {
-			return;
-		}
-
-		this.settings.inputRootPath = nextPath;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateInputRootPath(this, path);
 	}
 
 	async updateOutputRootPath(path: string): Promise<void> {
-		const nextPath = normalizeConfiguredOutputRootPath(path);
-		if (this.settings.outputRootPath === nextPath) {
-			return;
-		}
-
-		this.settings.outputRootPath = nextPath;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateOutputRootPath(this, path);
 	}
 
 	async updateOutcomeRootPath(path: string): Promise<void> {
-		const nextPath = normalizeConfiguredOutcomeRootPath(path);
-		if (this.settings.outcomeRootPath === nextPath) {
-			return;
-		}
-
-		this.settings.outcomeRootPath = nextPath;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateOutcomeRootPath(this, path);
 	}
 
 	async setProjectHidden(
 		projectName: string,
 		hidden: boolean,
 	): Promise<void> {
-		const hiddenProjectNameSet = new Set(this.settings.hiddenProjectNames);
-		if (hidden) {
-			hiddenProjectNameSet.add(projectName);
-		} else {
-			hiddenProjectNameSet.delete(projectName);
-		}
-
-		const nextHiddenProjectNames = [...hiddenProjectNameSet].sort(
-			(left, right) =>
-				left.localeCompare(right, undefined, { numeric: true }),
-		);
-		if (
-			areStringArraysEqual(
-				this.settings.hiddenProjectNames,
-				nextHiddenProjectNames,
-			)
-		) {
-			return;
-		}
-
-		this.settings.hiddenProjectNames = nextHiddenProjectNames;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await setProjectHidden(this, projectName, hidden);
 	}
 
 	async updateTaskTemplateConfig(
 		type: TaskCreationType,
 		config: Partial<TaskTemplateConfig>,
 	): Promise<void> {
-		const currentConfig = this.settings.taskTemplateConfigs[type];
-		const nextConfig = mergeTaskTemplateConfig(currentConfig, config);
-		if (areTaskTemplateConfigsEqual(currentConfig, nextConfig)) {
-			return;
-		}
-
-		this.settings.taskTemplateConfigs = {
-			...this.settings.taskTemplateConfigs,
-			[type]: nextConfig,
-		};
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateTaskTemplateConfig(this, type, config);
 	}
 
 	async updateDateTaskDateFormat(format: string): Promise<void> {
-		const nextFormat = normalizeDateTaskDateFormat(format);
-
-		if (this.settings.dateTaskDateFormat === nextFormat) {
-			return;
-		}
-
-		this.settings.dateTaskDateFormat = nextFormat;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateDateTaskDateFormat(this, format);
 	}
 
 	async updateEnabledTaskCreationTypes(
 		types: TaskCreationType[],
 	): Promise<void> {
-		const nextTypes = normalizeEnabledTaskCreationTypes(types);
-		if (
-			areStringArraysEqual(
-				this.settings.enabledTaskCreationTypes,
-				nextTypes,
-			)
-		) {
-			return;
-		}
-
-		this.settings.enabledTaskCreationTypes = nextTypes;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateEnabledTaskCreationTypes(this, types);
 	}
 
 	async addProjectCategoryOption(category: string): Promise<void> {
-		const normalized = category.trim();
-		if (!normalized) {
-			return;
-		}
-
-		const categorySet = new Set(this.settings.projectCategoryOptions);
-		categorySet.add(normalized);
-		const nextCategories = [...categorySet].sort((left, right) =>
-			left.localeCompare(right, undefined, { numeric: true }),
-		);
-		if (
-			areStringArraysEqual(
-				this.settings.projectCategoryOptions,
-				nextCategories,
-			)
-		) {
-			return;
-		}
-
-		this.settings.projectCategoryOptions = nextCategories;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await addProjectCategoryOption(this, category);
 	}
 
 	async updateBatchTemplateConfig(
 		config: BatchTemplateConfig,
 	): Promise<void> {
-		const nextConfig = normalizeBatchTemplateConfig(config);
-		if (
-			areBatchTemplateConfigsEqual(
-				this.settings.batchTemplateConfig,
-				nextConfig,
-			)
-		) {
-			return;
-		}
-
-		this.settings.batchTemplateConfig = nextConfig;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateBatchTemplateConfig(this, config);
 	}
 
 	async updateEntryTemplateConfig(
 		config: EntryTemplateConfig,
 	): Promise<void> {
-		const nextConfig = normalizeEntryTemplateConfig(config);
-		if (
-			areEntryTemplateConfigsEqual(
-				this.settings.entryTemplateConfig,
-				nextConfig,
-			)
-		) {
-			return;
-		}
-
-		this.settings.entryTemplateConfig = nextConfig;
-		await this.saveSettings();
-		this.applySettingsToOpenViews();
+		await updateEntryTemplateConfig(this, config);
 	}
+
+	// --- 视图激活（薄封装转发到 task-view-routing，保持 public API 不变） ---
+
+	async activateIOTOTasksCenterView(): Promise<void> {
+		await activateIOTOTasksCenterView(this.app);
+	}
+
+	async activateIOTOProjectCenterView(): Promise<void> {
+		await activateIOTOProjectCenterView(this.app);
+	}
+
+	private getTasksCenterView(): IOTOTasksCenterView | null {
+		return getTasksCenterView(this.app);
+	}
+
+	// --- 生命周期：vault 事件注册与刷新 ---
 
 	private registerVaultRefreshEvents(): void {
 		this.registerEvent(
@@ -1165,7 +846,13 @@ export default class IOTOTasksCenter extends Plugin {
 
 				// 「以 IOTO 任务视图打开 / 切回 Markdown」是移动端唯一的互切入口
 				// （本插件 isDesktopOnly: false，移动端没有 contextmenu）。
-				this.appendTaskViewMenuItems(menu, file, leaf);
+				appendTaskViewMenuItems(
+					this.app,
+					this.settings.tasksRootPath,
+					menu,
+					file,
+					leaf,
+				);
 
 				if (
 					!this.settings.showTaskNoteCoreMenu &&
@@ -1195,160 +882,6 @@ export default class IOTOTasksCenter extends Plugin {
 		);
 	}
 
-	private appendTaskViewMenuItems(
-		menu: Menu,
-		file: TFile,
-		leaf?: WorkspaceLeaf,
-	): void {
-		menu.addItem((item) =>
-			item
-				.setTitle(t('menu.openAsIOTOTask'))
-				.setIcon('list-todo')
-				.onClick(() => {
-					void this.openFileAsIOTOTask(file, leaf);
-				}),
-		);
-
-		const taskLeaf = this.findIOTOTaskLeafForFile(file.path);
-		if (!taskLeaf) {
-			return;
-		}
-
-		menu.addItem((item) =>
-			item
-				.setTitle(t('menu.openAsMarkdown'))
-				.setIcon('file-text')
-				.onClick(() => {
-					void this.setLeafToMarkdown(taskLeaf);
-				}),
-		);
-	}
-
-	/**
-	 * 「切换 Markdown / 任务视图」命令的方向判据（[[Discuss-20261008-214919]] 方案 A）。
-	 * 只看「活动叶子的视图类型」而非「文件是否任务笔记」——同一任务笔记可能同时在
-	 * Markdown 与任务视图两个 Tab 中，切换必须作用于用户眼前的那个叶子。
-	 * checkCallback 与执行分支共用此判据，避免两处口径日后漂移。
-	 */
-	private resolveTaskViewToggleDirection(
-		leaf: WorkspaceLeaf,
-	): 'to-markdown' | 'to-task-view' | null {
-		const view = leaf.view;
-		if (view instanceof IOTOTaskView) {
-			return 'to-markdown';
-		}
-		if (
-			view instanceof MarkdownView &&
-			view.file &&
-			isTaskNoteFile(view.file, this.settings.tasksRootPath)
-		) {
-			return 'to-task-view';
-		}
-		return null;
-	}
-
-	private async openFileAsIOTOTask(
-		file: TFile,
-		targetLeaf?: WorkspaceLeaf,
-	): Promise<void> {
-		if (!isTaskNoteFile(file, this.settings.tasksRootPath)) {
-			new Notice(t('notice.openAsIOTOTaskNotTaskNote'));
-			return;
-		}
-
-		const leaf = targetLeaf ?? this.resolveInPlaceLeaf(file);
-		await leaf.setViewState({
-			type: IOTO_TASK_VIEW_TYPE,
-			active: true,
-			state: { file: file.path },
-		});
-	}
-
-	/**
-	 * 解析「就地替换」的目标叶子。
-	 * 不能直接用 getLeaf(false)：它内部走 getUnpinnedLeaf()，会跳过被锁定（pin）的
-	 * 标签页并另开新标签页（见 Discuss-20261008-082657 §一/§二）。
-	 * 这里优先复用当前正显示该文件的活动叶子（含被锁定的），没有才回退。
-	 */
-	private resolveInPlaceLeaf(file: TFile): WorkspaceLeaf {
-		const activeView = this.app.workspace.getActiveViewOfType(FileView);
-		if (activeView?.file?.path === file.path) {
-			return activeView.leaf;
-		}
-		return this.app.workspace.getLeaf(false);
-	}
-
-	private async setLeafToMarkdown(leaf: WorkspaceLeaf): Promise<void> {
-		const view = leaf.view;
-		const file = view instanceof IOTOTaskView ? view.file : null;
-		if (!file) {
-			new Notice(t('notice.openAsIOTOTaskNoFile'));
-			return;
-		}
-
-		await leaf.setViewState({
-			type: 'markdown',
-			active: true,
-			state: {
-				file: file.path,
-				mode: 'source',
-			},
-		});
-	}
-
-	private findIOTOTaskLeafForFile(path: string): WorkspaceLeaf | null {
-		let matchedLeaf: WorkspaceLeaf | null = null;
-		this.app.workspace.iterateAllLeaves((leaf) => {
-			if (matchedLeaf) {
-				return;
-			}
-			const view = leaf.view;
-			if (view instanceof IOTOTaskView && view.file?.path === path) {
-				matchedLeaf = leaf;
-			}
-		});
-
-		return matchedLeaf;
-	}
-
-	async activateIOTOTasksCenterView(): Promise<void> {
-		const leaf = this.getOrCreateIOTOTasksCenterLeaf();
-		await leaf.setViewState({
-			type: IOTO_TASKS_CENTER_VIEW_TYPE,
-			active: true,
-		});
-	}
-
-	async activateIOTOProjectCenterView(): Promise<void> {
-		const leaf = this.getOrCreateIOTOProjectCenterLeaf();
-		await leaf.setViewState({
-			type: IOTO_PROJECT_CENTER_VIEW_TYPE,
-			active: true,
-		});
-	}
-
-	private getOrCreateIOTOTasksCenterLeaf(): WorkspaceLeaf {
-		const existingLeaf = this.app.workspace.getLeavesOfType(
-			IOTO_TASKS_CENTER_VIEW_TYPE,
-		)[0];
-		return existingLeaf ?? this.app.workspace.getLeaf(true);
-	}
-
-	private getTasksCenterView(): IOTOTasksCenterView | null {
-		const leaf = this.app.workspace.getLeavesOfType(
-			IOTO_TASKS_CENTER_VIEW_TYPE,
-		)[0];
-		const view = leaf?.view;
-		return view instanceof IOTOTasksCenterView ? view : null;
-	}
-
-	private getOrCreateIOTOProjectCenterLeaf(): WorkspaceLeaf {
-		const existingLeaf = this.app.workspace.getLeavesOfType(
-			IOTO_PROJECT_CENTER_VIEW_TYPE,
-		)[0];
-		return existingLeaf ?? this.app.workspace.getLeaf(true);
-	}
-
 	private async handleVaultChange(
 		file: TAbstractFile,
 		oldPath?: string,
@@ -1360,7 +893,11 @@ export default class IOTOTasksCenter extends Plugin {
 		await this.refreshOpenViews();
 	}
 
-	private applySettingsToOpenViews(): void {
+	/**
+	 * 将当前设置应用到所有已打开的视图。public 以便 settings-updaters 的
+	 * SettingsUpdaterHost 接口结构化满足（更新函数在 saveSettings 后调用此方法刷视图）。
+	 */
+	applySettingsToOpenViews(): void {
 		for (const leaf of this.app.workspace.getLeavesOfType(
 			IOTO_TASKS_CENTER_VIEW_TYPE,
 		)) {
@@ -1422,11 +959,4 @@ export default class IOTOTasksCenter extends Plugin {
 					candidate.startsWith(`${tasksRootPath}/`),
 			);
 	}
-}
-
-function areStringArraysEqual(left: string[], right: string[]): boolean {
-	return (
-		left.length === right.length &&
-		left.every((value, index) => value === right[index])
-	);
 }

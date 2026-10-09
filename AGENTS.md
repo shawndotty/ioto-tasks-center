@@ -60,7 +60,10 @@ npm run build:deploy  # build + zip + tag + release to GitHub & Gitee (see "Vers
 
 ```
 src/
-  main.ts                        # Plugin entry: IOTOTasksCenter lifecycle only
+  main.ts                        # Plugin entry: IOTOTasksCenter lifecycle only (onload/loadSettings/refresh); update* methods are thin delegates
+  settings-updaters.ts           # Settings update functions (core + barrel): SettingsUpdaterHost, resolveExportOptions, simple compare-style updaters; re-exports extended set
+  settings-updaters-extended.ts  # Settings update functions (complex): root-path / template / array / export-image updaters needing normalize/merge/set helpers + areStringArraysEqual
+  task-view-routing.ts           # Task view routing/activation helpers (openFileAsIOTOTask, setLeafToMarkdown, activate*, getTasksCenterView, appendTaskViewMenuItems, ...)
   settings.ts                    # Settings barrel: re-exports public API + slim SettingTab class
   settings-types.ts              # Settings types, constants, DEFAULT_SETTINGS
   settings-options.ts            # get*Options + is*Mode type guards
@@ -148,7 +151,7 @@ Views are constructed in `main.ts` with **getter callbacks** for reading setting
 
 - Every setting has a `normalize*` function applied on load (`loadSettings`) and on update (see `src/settings-normalizers.ts` and `src/tasks-center/*`).
 
-- Update methods follow the pattern: normalize → skip if unchanged → `saveSettings()` → `applySettingsToOpenViews()`.
+- Update methods follow the pattern: normalize → skip if unchanged → `saveSettings()` → `applySettingsToOpenViews()`. The implementation lives in `src/settings-updaters.ts` (simple compare-style updaters) and `src/settings-updaters-extended.ts` (updaters needing normalize/merge/set helpers); `main.ts` keeps the public `update*` methods as thin delegates over `SettingsUpdaterHost` so view callbacks and the settings tab keep calling `plugin.updateXxx` unchanged.
 
 - Persist via `this.loadData()` / `this.saveData()` only.
 
