@@ -1,7 +1,6 @@
 // Solution inspired by obsidian-kanban and optimized for robustness and clarity.
 
-/* eslint-disable no-restricted-imports, import/no-extraneous-dependencies */
-import moment from 'moment';
+import { moment } from 'obsidian';
 import en from './locale/en';
 import zhCN from './locale/zh-cn';
 import zhTW from './locale/zh-tw';

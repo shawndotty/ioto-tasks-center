@@ -1,5 +1,4 @@
-/* eslint-disable no-restricted-imports, import/no-extraneous-dependencies */
-import moment from 'moment';
+import { moment } from 'obsidian';
 import { getCurrentLang } from '../lang/helpter';
 
 export const DEFAULT_DATE_TASK_DATE_FORMAT = 'YYYY-MM-DD';

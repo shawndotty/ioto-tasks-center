@@ -32,6 +32,10 @@ export class Menu {}
 // 真实 Obsidian 里 MarkdownView 与各插件共用同一模块实例，这里用单例类模拟。
 export class MarkdownView {}
 
+// 真实 Obsidian 运行时通过 API 导出 moment（`import { moment } from 'obsidian'`）。
+// 单测里转发到 npm 版 moment，使语言包等行为与真机一致。
+export { default as moment } from 'moment';
+
 export class Notice {
 	constructor(message) {
 		this.message = message;

@@ -4,7 +4,12 @@ import { createJiti } from 'jiti';
 import moment from 'moment';
 
 moment.locale('zh-cn');
-const jiti = createJiti(import.meta.url, { moduleCache: false });
+const jiti = createJiti(import.meta.url, {
+	moduleCache: false,
+	alias: {
+		obsidian: new URL('./stubs/obsidian.mjs', import.meta.url).pathname,
+	},
+});
 const { buildTaskFileName } = await jiti.import(
 	'../src/tasks-center/task-creation.ts',
 );

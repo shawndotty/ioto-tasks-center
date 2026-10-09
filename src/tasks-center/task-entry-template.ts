@@ -1,15 +1,15 @@
 /**
  * Task View「条目模板」的纯数据层（[[Plan-20261006-225329]] §二/§三）。
  *
- * 与 `batch-task-template.ts` 同风格：类型 + 纯函数，**零 obsidian 依赖**
- * （仅 `moment`），可被 `node --test` + jiti 直接导入单测。
+ * 与 `batch-task-template.ts` 同风格：类型 + 纯函数；时间依赖取自 Obsidian
+ * 导出的 `moment`（`import { moment } from 'obsidian'`），可被 `node --test`
+ * + jiti（配 obsidian 桩）直接导入单测。
  *
  * 模板正文是一段可多行的条目文本：可以含 `{{变量}}` / `#ioto/*` 控制项 /
  * `%%Cursor%%` 落点标记；创建时弹窗收集变量，插到选中卡下方。
  */
 
-/* eslint-disable no-restricted-imports, import/no-extraneous-dependencies */
-import moment from 'moment';
+import { moment } from 'obsidian';
 
 import {
 	continuationIndentForTaskLine,

@@ -3,7 +3,12 @@ import test from 'node:test';
 import { createJiti } from 'jiti';
 import moment from 'moment';
 
-const jiti = createJiti(import.meta.url, { moduleCache: false });
+const jiti = createJiti(import.meta.url, {
+	moduleCache: false,
+	alias: {
+		obsidian: new URL('./stubs/obsidian.mjs', import.meta.url).pathname,
+	},
+});
 const {
 	DEFAULT_DATE_TASK_DATE_FORMAT,
 	formatDateByPattern,
