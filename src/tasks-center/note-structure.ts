@@ -49,6 +49,7 @@ export {
 	SOFT_BREAK,
 	insertSoftBreak,
 	toggleTaskMarker,
+	markTaskLineDone,
 	setTaskIndent,
 	buildSiblingTaskLine,
 	buildTasksSectionHeading,
@@ -62,6 +63,7 @@ export type {
 export {
 	parseChecklistItems,
 	parseChecklistItemsInRange,
+	markAllChecklistItemsDone,
 	isChecklistItemDone,
 	sectionHasChecklist,
 } from './note-checklist';

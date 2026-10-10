@@ -236,6 +236,8 @@ export interface TaskViewHost extends Component {
 	insertEntryTemplate(): Promise<void>;
 	resolveCurrentProjectNames(): string[];
 	runTask(): Promise<void>;
+	canMarkAllTasksDone(): boolean;
+	markAllTasksDone(): Promise<void>;
 
 	// ---- 薄代理方法：外部写回窗口 ----
 	flushInlineEdits(): Promise<void>;

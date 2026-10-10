@@ -190,8 +190,10 @@ import {
 	appendTaskBlock,
 	canAddTask,
 	canInsertEntryTemplate,
+	canMarkAllTasksDone,
 	findTasksSection,
 	insertEntryTemplate,
+	markAllTasksDone,
 	resolveCurrentProjectNames,
 	resolveCurrentSubject,
 	runTask,
@@ -693,6 +695,8 @@ export class IOTOTaskView extends TextFileView {
 	resolveCurrentProjectNames(): string[] { return resolveCurrentProjectNames(this); }
 	resolveCurrentSubject(): string { return resolveCurrentSubject(this); }
 	async runTask(): Promise<void> { await runTask(this); }
+	canMarkAllTasksDone(): boolean { return canMarkAllTasksDone(this); }
+	async markAllTasksDone(): Promise<void> { await markAllTasksDone(this); }
 
 	// ---- 外部写回窗口 ----
 	async flushInlineEdits(): Promise<void> { await flushInlineEdits(this); }

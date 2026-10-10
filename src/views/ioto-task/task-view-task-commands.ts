@@ -7,6 +7,7 @@ import {
 	buildTopLevelTaskLine,
 	findSectionByTitle,
 	indentLevelOf,
+	markAllChecklistItemsDone,
 	parseChecklistItems,
 	splitTaskLine,
 } from '../../tasks-center/note-structure';
@@ -321,4 +322,53 @@ export async function runTask(view: TaskViewHost): Promise<void> {
 	}
 
 	await Promise.resolve(registry.executeCommandById(RUN_TASK_COMMAND_ID));
+}
+
+/** 供 main.ts 门控「全部标记完成」：与 canAddTask 同口径（只读态隐藏）。 */
+export function canMarkAllTasksDone(view: TaskViewHost): boolean {
+	return view.file !== null && view.supportsInlineEdit();
+}
+
+/**
+ * Task View 侧「把当前文件所有任务标记为完成」：
+ * 文件级全量（不随 `onlyPending` 等视图过滤缩小范围）；无改动即不写盘、不弹「完成」。
+ * 写盘只经已登记的 `view.applyOutcome()`（CallExpression），不直写 `view.data`。
+ */
+export async function markAllTasksDone(view: TaskViewHost): Promise<void> {
+	const file = view.file;
+	if (!file || !view.supportsInlineEdit()) {
+		return; // 只读降级：静默
+	}
+
+	// ① 先落盘在册编辑器（卡片 / 续写 / Section），避免与未提交正文双写错位
+	await view.flushInlineEdits();
+
+	// ② 先判是否有改动（幂等：无改动不写盘）
+	const preview = markAllChecklistItemsDone(view.data);
+	if (preview.changedLines.length === 0) {
+		new Notice(t('notice.markAllTasksDone.none'));
+		return;
+	}
+
+	// ③ 原子读改写；回调内按「最新 content」重算（并发外部写入自洽，同 commitTaskLineAction 红线）
+	let changed = 0;
+	let nextContent = '';
+	await view.app.vault.process(file, (content) => {
+		const result = markAllChecklistItemsDone(content);
+		changed = result.changedLines.length;
+		nextContent = result.content;
+		return result.content === content ? content : result.content;
+	});
+
+	if (changed === 0) {
+		new Notice(t('notice.markAllTasksDone.none'));
+		return;
+	}
+
+	// ④ 同步 data/lastLoadedText（走已登记写点）+ 重绘（对齐 runLineAction 收尾）
+	view.applyOutcome({ status: 'ok', content: nextContent });
+	view.renderNote(view.data);
+
+	// ⑤ 反馈
+	new Notice(t('notice.markAllTasksDone.done', [String(changed)]));
 }

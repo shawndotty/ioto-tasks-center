@@ -58,6 +58,7 @@ import {
 	normalizeEntryTemplateConfig,
 } from './tasks-center/task-entry-template';
 import { isTaskNoteFile, buildTaskNoteMenu } from './tasks-center/task-note-menu';
+import { markAllTasksDoneInMarkdown } from './tasks-center/mark-all-tasks-done';
 import {
 	IOTO_TASKS_CENTER_VIEW_TYPE,
 	IOTOTasksCenterView,
@@ -350,6 +351,30 @@ export default class IOTOTasksCenter extends Plugin {
 				}
 
 				return true;
+			},
+		});
+		// 把当前文件所有任务标记为完成（[[Plan-20261010-142226]] §二.5）。Task View 无核心
+		// Editor → 不能用 editorCheckCallback，只能 checkCallback 双分派；两处都无 → 命令隐藏。
+		this.addCommand({
+			id: 'itc-mark-all-tasks-done',
+			name: t('command.markAllTasksDone'),
+			checkCallback: (checking) => {
+				const md = this.app.workspace.getActiveViewOfType(MarkdownView);
+				if (md?.file && md.editor) {
+					if (!checking) {
+						markAllTasksDoneInMarkdown(md.editor);
+					}
+					return true;
+				}
+				const taskView =
+					this.app.workspace.getActiveViewOfType(IOTOTaskView);
+				if (taskView?.canMarkAllTasksDone()) {
+					if (!checking) {
+						void taskView.markAllTasksDone();
+					}
+					return true;
+				}
+				return false; // 两处都无 → 命令自动隐藏
 			},
 		});
 		// Ctrl/Cmd+F 的移动端 / 命令面板入口（Q6：低频操作走命令面板，不占工具栏按钮位）。

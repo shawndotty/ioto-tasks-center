@@ -472,6 +472,9 @@ const zhCN = {
 	'notice.entryTemplate.noTemplateForProject':
 		'当前项目没有可用的条目模板。',
 	'command.insertEntryTemplate': '在任务视图中插入条目模板',
+	'command.markAllTasksDone': '把当前文件中的所有任务都标记为完成',
+	'notice.markAllTasksDone.done': '已将 {0} 个任务标记为完成。',
+	'notice.markAllTasksDone.none': '当前文件没有需要标记的任务。',
 	'modal.batchNameAffix.title': '设置任务名称前后缀',
 	'modal.batchNameAffix.desc': '为批量创建的任务名称添加前缀或后缀（可选）。',
 	'modal.batchNameAffix.prefix': '前缀',

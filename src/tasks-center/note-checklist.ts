@@ -13,7 +13,11 @@ import {
 	FENCE_PATTERN,
 	stripCommentContentFromLine,
 } from './note-sections';
-import { TASK_LINE_PATTERN, computeIndentLevel } from './note-task-line';
+import {
+	TASK_LINE_PATTERN,
+	computeIndentLevel,
+	markTaskLineDone,
+} from './note-task-line';
 
 export interface NoteChecklistItem {
 	/** 0 基行号 */
@@ -67,6 +71,34 @@ export function parseChecklistItemsInRange(
 		endLine,
 		options?.includeEmpty ?? false,
 	);
+}
+
+/**
+ * 「把全部任务标记为完成」：复用 `parseChecklistItems`（天然继承围栏 /
+ * `%%…%%` / `<!-- -->` 排除），只改未完成行，已勾选行字节不动。
+ *
+ * - 幂等：全已完成 → `changedLines = []` 且 `content` 原样返回。
+ * - 返回 `changedLines`（0 基行号 + 改写后整行），供 Markdown 侧做**单事务**回写。
+ */
+export function markAllChecklistItemsDone(content: string): {
+	content: string;
+	changedLines: { line: number; text: string }[];
+} {
+	// 按 `\n` 切分时 `\r` 留在行内，`markTaskLineDone` 原样保留，行号与
+	// `parseChecklistItems`（内部 `/\r?\n/`）严格对齐。
+	const lines = content.split('\n');
+	const items = parseChecklistItems(content); // 默认 includeEmpty:false
+	const changedLines: { line: number; text: string }[] = [];
+	for (const item of items) {
+		const original = lines[item.line] ?? '';
+		const next = markTaskLineDone(original);
+		if (next === null || next === original) {
+			continue; // 非任务行 / 已 x·X → 跳过
+		}
+		lines[item.line] = next;
+		changedLines.push({ line: item.line, text: next });
+	}
+	return { content: lines.join('\n'), changedLines };
 }
 
 /* ------------------------------------------------------------------ *

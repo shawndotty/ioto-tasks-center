@@ -473,6 +473,9 @@ const zhTW = {
 	'notice.entryTemplate.noTemplateForProject':
 		'目前專案沒有可用的條目範本。',
 	'command.insertEntryTemplate': '在任務檢視中插入條目範本',
+	'command.markAllTasksDone': '把當前檔案中的所有任務都標記為完成',
+	'notice.markAllTasksDone.done': '已將 {0} 個任務標記為完成。',
+	'notice.markAllTasksDone.none': '當前檔案沒有需要標記的任務。',
 	'modal.batchNameAffix.title': '設定任務名稱前後綴',
 	'modal.batchNameAffix.desc': '為批次建立的任務名稱加入前綴或後綴（可選）。',
 	'modal.batchNameAffix.prefix': '前綴',

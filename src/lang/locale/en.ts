@@ -514,6 +514,10 @@ const en = {
 	'notice.entryTemplate.noTemplateForProject':
 		'No entry template is available for the current project.',
 	'command.insertEntryTemplate': 'Insert entry template in task view',
+	'command.markAllTasksDone': 'Mark all tasks in current file as done',
+	'notice.markAllTasksDone.done': 'Marked {0} task(s) as done.',
+	'notice.markAllTasksDone.none':
+		'No tasks to mark as done in the current file.',
 	'modal.batchNameAffix.title': 'Set task name affixes',
 	'modal.batchNameAffix.desc':
 		'Add a prefix or suffix to batch-created task names (optional).',

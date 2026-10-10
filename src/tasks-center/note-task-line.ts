@@ -190,6 +190,22 @@ export function toggleTaskMarker(line: string): string | null {
 }
 
 /**
+ * 「全部标记完成」原语：只把未完成置为完成，已勾选（`x`/`X`）**逐字节原样**返回；
+ * 非任务行返回 `null`。走 `composeTaskLine` 的「正文未改动 → 逐字节还原」通道，
+ * 缩进 / 列表符 / `#ioto/*` 控制项 / 行尾 `\r`（CRLF）全保留。
+ */
+export function markTaskLineDone(line: string): string | null {
+	const parts = splitTaskLine(line);
+	if (!parts) {
+		return null;
+	}
+	if (parts.checked.toLowerCase() === 'x') {
+		return line; // 幂等：已勾选字节不动
+	}
+	return composeTaskLine({ ...parts, checked: 'x' });
+}
+
+/**
  * 3c-3 缩进：`delta = ±1` 级，clamp 到 `[0, maxLevel]`。
  * 输出统一为「每级 2 空格」（Tab 会被规整，属已知取舍）；缩进一律**重算**
  * 而不是在原字符串上加/减，避免混用导致层级错乱。
