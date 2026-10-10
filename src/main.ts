@@ -3,13 +3,15 @@ import {
 	Notice,
 	Plugin,
 	Scope,
-	TAbstractFile,
 } from 'obsidian';
 import { t } from './lang/helpter';
 import {
 	resolvePriorityFromSources,
 	resolveStarredFromSources,
 } from './tasks-center/data';
+import { invalidateTaskFileFields } from './tasks-center/task-file-cache';
+import { PROJECT_METADATA_FILE_NAME } from './tasks-center/project-metadata';
+import { VAULT_REFRESH_DEBOUNCE_MS } from './views/tasks-center/constants';
 import { normalizeDateTaskDateFormat } from './tasks-center/date-task-format';
 import {
 	canConvertSelectedTextToSubtask,
@@ -137,6 +139,9 @@ export default class IOTOTasksCenter extends Plugin {
 	settings!: IOTOTasksCenterSettings;
 	/** IOTOTask 视图是否支持内联编辑（onload 时做一次能力探测，失败则降级） */
 	private supportsInlineEdit = false;
+	private vaultRefreshTimer: number | null = null;
+	private pendingFullRefresh = false;
+	private readonly pendingProjectRefreshes = new Set<string>();
 
 	async onload() {
 		await this.loadSettings();
@@ -766,6 +771,8 @@ export default class IOTOTasksCenter extends Plugin {
 	}
 
 	async updateTasksRootPath(path: string): Promise<void> {
+		// 换根后旧 path 的解析缓存永不再命中，整体清掉。
+		invalidateTaskFileFields();
 		await updateTasksRootPath(this, path);
 	}
 
@@ -840,24 +847,129 @@ export default class IOTOTasksCenter extends Plugin {
 	private registerVaultRefreshEvents(): void {
 		this.registerEvent(
 			this.app.vault.on('create', (file) => {
-				void this.handleVaultChange(file);
+				this.queueVaultRefresh('create', file.path);
 			}),
 		);
 		this.registerEvent(
 			this.app.vault.on('delete', (file) => {
-				void this.handleVaultChange(file);
+				this.queueVaultRefresh('delete', file.path);
 			}),
 		);
 		this.registerEvent(
 			this.app.vault.on('modify', (file) => {
-				void this.handleVaultChange(file);
+				this.queueVaultRefresh('modify', file.path);
 			}),
 		);
 		this.registerEvent(
 			this.app.vault.on('rename', (file, oldPath) => {
-				void this.handleVaultChange(file, oldPath);
+				this.queueVaultRefresh('rename', file.path, oldPath);
 			}),
 		);
+		this.register(() => {
+			if (this.vaultRefreshTimer !== null) {
+				window.clearTimeout(this.vaultRefreshTimer);
+				this.vaultRefreshTimer = null;
+			}
+		});
+	}
+
+	/**
+	 * 合并同一窗口内的多次 vault 变更。
+	 *
+	 * 批量建任务会连着发 N 个 create/modify，原来会触发 N 次整库重扫；
+	 * 这里合并成一次，并且只针对改动涉及的项目更新角标。
+	 */
+	private queueVaultRefresh(
+		kind: 'create' | 'delete' | 'modify' | 'rename',
+		path: string,
+		oldPath?: string,
+	): void {
+		if (!this.shouldRefreshTasksCenter(path, oldPath)) {
+			return;
+		}
+
+		// 解析缓存按 (mtime, size) 自失效，这里只清理删除 / 重命名留下的死条目。
+		invalidateTaskFileFields(path);
+		if (oldPath) {
+			invalidateTaskFileFields(oldPath);
+		}
+
+		const projectName = this.resolveProjectNameFromPath(path);
+		const isProjectMetadata = path.endsWith(`/${PROJECT_METADATA_FILE_NAME}`);
+		if (kind !== 'modify' || !projectName || isProjectMetadata) {
+			// 结构变化、或分类元数据变化 → 项目表本身要重算，只能全量。
+			this.pendingFullRefresh = true;
+		} else {
+			this.pendingProjectRefreshes.add(projectName);
+		}
+
+		if (this.vaultRefreshTimer !== null) {
+			return;
+		}
+
+		this.vaultRefreshTimer = window.setTimeout(() => {
+			this.vaultRefreshTimer = null;
+			void this.flushVaultRefresh();
+		}, VAULT_REFRESH_DEBOUNCE_MS);
+	}
+
+	private async flushVaultRefresh(): Promise<void> {
+		const needsFullRefresh = this.pendingFullRefresh;
+		const projectNames = [...this.pendingProjectRefreshes];
+		this.pendingFullRefresh = false;
+		this.pendingProjectRefreshes.clear();
+
+		if (needsFullRefresh || projectNames.length === 0) {
+			await this.refreshOpenViews();
+			return;
+		}
+
+		await this.refreshProjectCountsOnly(projectNames);
+	}
+
+	/** 只更新项目角标：改动的不是当前项目时，任务列表无需跟着重载。 */
+	private async refreshProjectCountsOnly(
+		projectNames: string[],
+	): Promise<void> {
+		const targets = new Set(projectNames);
+		for (const leaf of this.app.workspace.getLeavesOfType(
+			IOTO_TASKS_CENTER_VIEW_TYPE,
+		)) {
+			const view = leaf.view;
+			if (!(view instanceof IOTOTasksCenterView)) {
+				continue;
+			}
+
+			if (
+				view.selectedProject !== null &&
+				targets.has(view.selectedProject)
+			) {
+				await view.refreshFromVaultChange();
+			} else {
+				await view.refreshProjectIncompleteCounts(projectNames);
+			}
+		}
+
+		for (const leaf of this.app.workspace.getLeavesOfType(
+			IOTO_PROJECT_CENTER_VIEW_TYPE,
+		)) {
+			const view = leaf.view;
+			if (view instanceof IOTOProjectCenterView) {
+				await view.refreshFromVaultChange();
+			}
+		}
+	}
+
+	/** `3-任务/<项目>/...` → `<项目>`；不在任务根下或就是根本身时返回 null。 */
+	private resolveProjectNameFromPath(path: string): string | null {
+		const root = this.settings.tasksRootPath;
+		if (!path.startsWith(`${root}/`)) {
+			return null;
+		}
+
+		const rest = path.slice(root.length + 1);
+		const separatorIndex = rest.indexOf('/');
+		return separatorIndex > 0 ? rest.slice(0, separatorIndex) : null;
 	}
 
 	// 让用户在文件列表右键、标签页右键、笔记标题栏 ⋯ 菜单以及内部链接右键中，
@@ -907,16 +1019,6 @@ export default class IOTOTasksCenter extends Plugin {
 		);
 	}
 
-	private async handleVaultChange(
-		file: TAbstractFile,
-		oldPath?: string,
-	): Promise<void> {
-		if (!this.shouldRefreshTasksCenter(file.path, oldPath)) {
-			return;
-		}
-
-		await this.refreshOpenViews();
-	}
 
 	/**
 	 * 将当前设置应用到所有已打开的视图。public 以便 settings-updaters 的

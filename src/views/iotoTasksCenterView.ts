@@ -63,7 +63,9 @@ import {
 	loadTasks,
 	getCachedTaskPath,
 	selectProject,
+	refreshProjectIncompleteCounts as refreshProjectIncompleteCountsFn,
 } from './tasks-center/data-loader';
+import { LOADING_RENDER_DELAY_MS } from './tasks-center/constants';
 import {
 	triggerBatchCreateFromTemplate,
 	executeBatchCreate,
@@ -219,6 +221,7 @@ export class IOTOTasksCenterView extends ItemView {
 	outlinkBadgeUpdateTimer: number | null = null;
 	pendingVaultRefresh = false;
 	deferredVaultRefreshTimer: number | null = null;
+	loadingRenderTimer: number | null = null;
 	deferVaultRefreshForSubtaskCreation = false;
 	projectResult: ProjectListResult = {
 		status: 'success',
@@ -436,6 +439,10 @@ export class IOTOTasksCenterView extends ItemView {
 			window.clearTimeout(this.deferredVaultRefreshTimer);
 			this.deferredVaultRefreshTimer = null;
 		}
+		if (this.loadingRenderTimer !== null) {
+			window.clearTimeout(this.loadingRenderTimer);
+			this.loadingRenderTimer = null;
+		}
 		this.contentEl.empty();
 	}
 
@@ -492,6 +499,38 @@ export class IOTOTasksCenterView extends ItemView {
 
 	async loadTasks(projectName: string): Promise<void> {
 		return loadTasks(this, projectName);
+	}
+
+	/**
+	 * 只重算指定项目的未完成角标（不触碰任务列表）。
+	 * 用于「改动的不是当前项目」这类定向刷新，避免整库重扫 + 任务列表重载。
+	 */
+	async refreshProjectIncompleteCounts(
+		projectNames: readonly string[],
+	): Promise<void> {
+		return refreshProjectIncompleteCountsFn(this, projectNames);
+	}
+
+	/**
+	 * 延迟渲染 loading 态：加载在 `LOADING_RENDER_DELAY_MS` 内完成时不会产生
+	 * 这一次额外的全量 DOM 重建，也避免项目列表闪一下。
+	 */
+	scheduleLoadingRender(): void {
+		if (this.loadingRenderTimer !== null) {
+			return;
+		}
+
+		this.loadingRenderTimer = window.setTimeout(() => {
+			this.loadingRenderTimer = null;
+			this.render();
+		}, LOADING_RENDER_DELAY_MS);
+	}
+
+	cancelLoadingRender(): void {
+		if (this.loadingRenderTimer !== null) {
+			window.clearTimeout(this.loadingRenderTimer);
+			this.loadingRenderTimer = null;
+		}
 	}
 
 	public render(): void {

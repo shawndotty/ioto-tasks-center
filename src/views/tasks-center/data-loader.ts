@@ -2,8 +2,12 @@ import type { IOTOTasksCenterView } from '../iotoTasksCenterView';
 import { listProjectFolders, listProjectTaskFiles } from '../../tasks-center/data';
 import { filterHiddenProjectEntries, sortProjectEntries } from '../../tasks-center/project-sort';
 import { getProjectMetadataFile, readProjectMetadataFromFrontmatter } from '../../tasks-center/project-metadata';
+import { mapWithConcurrency } from '../../tasks-center/async';
 import { isIncompleteTaskStatus } from './constants';
 import type { ProjectFolderEntry } from '../../tasks-center/types';
+
+/** 项目级并发上限；任务文件级并发由 `data.ts` 内部再限一层。 */
+const PROJECT_SCAN_CONCURRENCY = 8;
 
 export async function refreshFromVaultChange(view: IOTOTasksCenterView): Promise<void> {
 	view.outlinkPopover?.close();
@@ -30,7 +34,7 @@ export async function loadProjects(
 ): Promise<void> {
 	const token = ++view.refreshToken;
 	view.isProjectsLoading = true;
-	view.render();
+	view.scheduleLoadingRender();
 
 	const result = listProjectFolders(view.app, view.getTasksRootPath());
 	if (token !== view.refreshToken) {
@@ -52,6 +56,7 @@ export async function loadProjects(
 		view.projects,
 	);
 	view.isProjectsLoading = false;
+	view.cancelLoadingRender();
 
 	if (result.status !== 'success' || view.projects.length === 0) {
 		view.selectedProject = null;
@@ -109,7 +114,7 @@ export async function selectProject(
 	}
 	view.selectedTaskPaths.clear();
 	view.isTasksLoading = true;
-	view.render();
+	view.scheduleLoadingRender();
 	await loadTasks(view, projectName);
 }
 
@@ -131,6 +136,7 @@ export async function loadTasks(
 	view.taskResult = result;
 	view.tasks = result.tasks;
 	view.isTasksLoading = false;
+	view.cancelLoadingRender();
 	view.openedTaskPath = getCachedTaskPath(view, projectName);
 
 	if (result.status === 'project-missing') {
@@ -158,26 +164,60 @@ export function getCachedTaskPath(
 		: null;
 }
 
+/**
+ * 项目未完成任务数。
+ *
+ * 只需要每个任务文件的状态，因此走 `includeContent: false` 的轻量通道：
+ * 不读正文、不驻留内存；配合 mtime 级解析缓存，第二次起的刷新对未变动文件零 IO。
+ */
 export async function buildProjectIncompleteCounts(
 	view: IOTOTasksCenterView,
 	projects: ProjectFolderEntry[],
 ): Promise<Map<string, number>> {
 	const tasksRootPath = view.getTasksRootPath();
-	const entries = await Promise.all(
-		projects.map(async (project) => {
+	const entries = await mapWithConcurrency(
+		projects,
+		PROJECT_SCAN_CONCURRENCY,
+		async (project) => {
 			const result = await listProjectTaskFiles(
 				view.app,
 				tasksRootPath,
 				project.name,
+				{ includeContent: false },
 			);
-			const incompleteCount = result.tasks.filter((task) =>
-				isIncompleteTaskStatus(task.status.key),
-			).length;
+			let incompleteCount = 0;
+			for (const task of result.tasks) {
+				if (isIncompleteTaskStatus(task.status.key)) {
+					incompleteCount += 1;
+				}
+			}
 			return [project.name, incompleteCount] as const;
-		}),
+		},
 	);
 
 	return new Map(entries);
+}
+
+/** 只重算指定项目的未完成角标，不触碰任务列表（用于非当前项目的定向刷新）。 */
+export async function refreshProjectIncompleteCounts(
+	view: IOTOTasksCenterView,
+	projectNames: readonly string[],
+): Promise<void> {
+	const targets = new Set(projectNames);
+	const scopedProjects = view.projects.filter((project) =>
+		targets.has(project.name),
+	);
+	if (scopedProjects.length === 0) {
+		return;
+	}
+
+	const counts = await buildProjectIncompleteCounts(view, scopedProjects);
+	for (const [projectName, count] of counts) {
+		view.projectIncompleteCounts.set(projectName, count);
+	}
+
+	applyProjectSorting(view);
+	view.render();
 }
 
 export function buildProjectCategoryByName(

@@ -12,22 +12,34 @@ const CATEGORY_COLLATOR = new Intl.Collator(undefined, {
 	sensitivity: 'base',
 });
 
+export interface BuildProjectListSectionsOptions {
+	/**
+	 * 传入的 `projects` 是否已按 `sortMode` 排好序。
+	 * `loadProjects` 里已经排过一次，渲染时传 true 可以省掉一次重复排序。
+	 */
+	preSorted?: boolean;
+}
+
 export function buildProjectListSections(
 	projects: ProjectFolderEntry[],
 	incompleteCounts: ReadonlyMap<string, number>,
 	categoryByProjectName: ReadonlyMap<string, string>,
 	sortMode: ProjectListSortMode,
 	groupMode: ProjectListGroupMode,
+	options: BuildProjectListSectionsOptions = {},
 ): ProjectListSection[] {
 	if (groupMode === 'none') {
 		return [
 			{
 				groupKey: '',
-				projects: sortProjectEntries(
-					projects,
-					incompleteCounts,
-					sortMode,
-				),
+				projects:
+					options.preSorted === true
+						? projects
+						: sortProjectEntries(
+								projects,
+								incompleteCounts,
+								sortMode,
+							),
 			},
 		];
 	}

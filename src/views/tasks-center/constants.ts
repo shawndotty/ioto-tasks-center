@@ -14,6 +14,17 @@ export const COMPACT_LAYOUT_BREAKPOINT = 720;
 export const NARROW_LAYOUT_BREAKPOINT = 480;
 export const HOVER_PREVIEW_REFRESH_RETRY_MS = 150;
 
+/**
+ * loading 态渲染延迟。
+ *
+ * 稳态刷新（解析缓存命中）通常在几十毫秒内结束，为它先重建一次 DOM 纯属浪费，
+ * 还会让项目列表闪一下。超过这个时长还没加载完才真正画 loading。
+ */
+export const LOADING_RENDER_DELAY_MS = 120;
+
+/** vault 事件合并窗口：批量建任务 / 批量保存时把 N 次刷新合并成 1 次。 */
+export const VAULT_REFRESH_DEBOUNCE_MS = 150;
+
 // 移动端 / 紧凑布局下的统一手势引擎参数（见 touch-gesture.ts）。
 // 长按超过该时长且手指未移动 → 弹出任务属性菜单（替代桌面右键）。
 export const TASK_ROW_LONG_PRESS_MS = 400;

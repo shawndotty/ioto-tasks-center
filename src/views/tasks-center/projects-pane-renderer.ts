@@ -99,12 +99,14 @@ export function renderProjectsPane(
 
 	const groupMode = view.getProjectListGroupMode();
 	const sortMode = view.getProjectListSortMode();
+	// view.projects 在 loadProjects / 定向刷新时已按 sortMode 排好，这里不再重排。
 	const sections = buildProjectListSections(
 		view.projects,
 		view.projectIncompleteCounts,
 		view.projectCategoryByName,
 		sortMode,
 		groupMode,
+		{ preSorted: true },
 	);
 	view.syncCollapsedProjectGroups(sections);
 

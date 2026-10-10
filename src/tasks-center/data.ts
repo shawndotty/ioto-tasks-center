@@ -15,6 +15,23 @@ import {
 	TASK_LINE_PATTERN,
 	stripCommentContentFromLine,
 } from './note-structure';
+import {
+	peekTaskFileFields,
+	rememberTaskFileFields,
+	type TaskFileFields,
+} from './task-file-cache';
+import { mapWithConcurrency, TASK_SCAN_CONCURRENCY } from './async';
+
+/** 与 `project-sort.ts` 同口径；复用 Collator 实例避免每次比较重建排序上下文。 */
+const TASK_NAME_COLLATOR = new Intl.Collator(undefined, {
+	numeric: true,
+	sensitivity: 'base',
+});
+
+const PROJECT_NAME_COLLATOR = new Intl.Collator(undefined, {
+	numeric: true,
+	sensitivity: 'base',
+});
 
 export function isProjectTaskMarkdownFileName(fileName: string): boolean {
 	return (
@@ -50,7 +67,7 @@ export function listProjectFolders(
 			path: folder.path,
 		}))
 		.sort((left, right) =>
-			left.name.localeCompare(right.name, 'zh-Hans-CN'),
+			PROJECT_NAME_COLLATOR.compare(left.name, right.name),
 		);
 
 	return {
@@ -59,11 +76,87 @@ export function listProjectFolders(
 	};
 }
 
+export interface ListProjectTaskFilesOptions {
+	/**
+	 * 是否把正文读进 `TaskFileEntry.content`。默认 true 保持既有行为。
+	 * 只统计项目未完成任务数时传 false：正文不必驻留内存，且解析结果命中缓存时
+	 * 连文件都不用读。
+	 */
+	includeContent?: boolean;
+}
+
+/**
+ * 一次解析出整个任务文件的全部派生字段。
+ *
+ * 旧实现为 Starred / Priority / UpTask 各跑一遍 `extractFrontmatterBody`
+ * （每次都是一次全文正则 + 一次 split），这里只跑一遍再逐字段扫描。
+ */
+export function parseTaskFileFields(content: string): TaskFileFields {
+	const frontmatterBody = extractFrontmatterBody(content);
+	return {
+		status: getTaskFileStatusFromContent(content),
+		...parseFrontmatterFields(frontmatterBody),
+	};
+}
+
+function parseFrontmatterFields(
+	frontmatterBody: string | null,
+): Omit<TaskFileFields, 'status'> {
+	if (!frontmatterBody) {
+		return {
+			starred: false,
+			priority: undefined,
+			upTaskTitles: [],
+		};
+	}
+
+	const lines = frontmatterBody.split(/\r?\n/);
+	return {
+		starred: parseStarredFrontmatterValue(
+			extractStarredFrontmatterValueFromLines(lines),
+		),
+		priority: parsePriorityFrontmatterValue(
+			extractPriorityFrontmatterValueFromLines(lines),
+		),
+		upTaskTitles: parseUpTaskFrontmatterValue(
+			extractUpTaskFrontmatterValueFromLines(lines),
+		),
+	};
+}
+
+/**
+ * 取一个任务文件的解析结果，必要时附带正文。
+ *
+ * 缓存命中且不需要正文时完全不读文件；需要正文时才 `cachedRead`，
+ * 且解析结果顺手回填缓存，让后续只需要字段的扫描零 IO。
+ */
+async function loadTaskFileFields(
+	app: App,
+	file: TFile,
+	includeContent: boolean,
+): Promise<{ fields: TaskFileFields; content: string }> {
+	const cached = peekTaskFileFields(file);
+	if (cached !== null && !includeContent) {
+		return { fields: cached, content: '' };
+	}
+
+	const content = await app.vault.cachedRead(file);
+	if (cached !== null) {
+		return { fields: cached, content };
+	}
+
+	const fields = parseTaskFileFields(content);
+	rememberTaskFileFields(file, fields);
+	return { fields, content: includeContent ? content : '' };
+}
+
 export async function listProjectTaskFiles(
 	app: App,
 	tasksRootPath: string,
 	projectName: string,
+	options: ListProjectTaskFilesOptions = {},
 ): Promise<TaskFileListResult> {
+	const includeContent = options.includeContent !== false;
 	const rootFolder = getTasksRootFolder(app, tasksRootPath);
 	const projectPath = `${tasksRootPath}/${projectName}`;
 
@@ -91,11 +184,16 @@ export async function listProjectTaskFiles(
 			child instanceof TFile && isProjectTaskMarkdownFileName(child.name),
 	);
 	const tasks: TaskFileEntry[] = (
-		await Promise.all(
-			markdownFiles.map(async (file) => {
-				const content = await app.vault.cachedRead(file);
-				const metadataValue = (key: string): unknown =>
-					app.metadataCache.getFileCache(file)?.frontmatter?.[key];
+		await mapWithConcurrency(
+			markdownFiles,
+			TASK_SCAN_CONCURRENCY,
+			async (file) => {
+				const { fields, content } = await loadTaskFileFields(
+					app,
+					file,
+					includeContent,
+				);
+
 				return {
 					name: file.name,
 					basename: file.basename,
@@ -104,22 +202,13 @@ export async function listProjectTaskFiles(
 					mtime: file.stat.mtime,
 					ctime: file.stat.ctime,
 					size: file.stat.size,
-					starred: resolveStarredFromSources({
-						content,
-						metadataValue: metadataValue('Starred'),
-					}),
-					priority: resolvePriorityFromSources({
-						content,
-						metadataValue: metadataValue('Priority'),
-					}),
-					status: getTaskFileStatusFromContent(content),
-					upTaskTitles: resolveUpTaskTitlesFromSources({
-						content,
-						metadataValue: metadataValue('UpTask'),
-					}),
+					starred: fields.starred,
+					priority: fields.priority,
+					status: fields.status,
+					upTaskTitles: fields.upTaskTitles,
 					content,
 				};
-			}),
+			},
 		)
 	).sort((left, right) => {
 		const byModifiedTime = right.mtime - left.mtime;
@@ -127,7 +216,7 @@ export async function listProjectTaskFiles(
 			return byModifiedTime;
 		}
 
-		return left.basename.localeCompare(right.basename, 'zh-Hans-CN');
+		return TASK_NAME_COLLATOR.compare(left.basename, right.basename);
 	});
 
 	if (tasks.length === 0) {
@@ -175,8 +264,14 @@ export function resolveUpTaskTitlesFromSources(options: {
 }
 
 export function getUpTaskTitlesFromContent(content: string): string[] {
-	const upTaskValue = extractUpTaskFrontmatterValue(content);
-	return parseUpTaskFrontmatterValue(upTaskValue);
+	const frontmatterBody = extractFrontmatterBody(content);
+	if (!frontmatterBody) {
+		return [];
+	}
+
+	return parseUpTaskFrontmatterValue(
+		extractUpTaskFrontmatterValueFromLines(frontmatterBody.split(/\r?\n/)),
+	);
 }
 
 export function parsePriorityFrontmatterValue(
@@ -211,8 +306,14 @@ export function resolvePriorityFromSources(options: {
 }
 
 export function getPriorityFromContent(content: string): number | undefined {
-	const priorityValue = extractPriorityFrontmatterValue(content);
-	return parsePriorityFrontmatterValue(priorityValue);
+	const frontmatterBody = extractFrontmatterBody(content);
+	if (!frontmatterBody) {
+		return undefined;
+	}
+
+	return parsePriorityFrontmatterValue(
+		extractPriorityFrontmatterValueFromLines(frontmatterBody.split(/\r?\n/)),
+	);
 }
 
 export function parseStarredFrontmatterValue(value: unknown): boolean {
@@ -239,8 +340,14 @@ export function resolveStarredFromSources(options: {
 }
 
 export function getStarredFromContent(content: string): boolean {
-	const starredValue = extractStarredFrontmatterValue(content);
-	return parseStarredFrontmatterValue(starredValue);
+	const frontmatterBody = extractFrontmatterBody(content);
+	if (!frontmatterBody) {
+		return false;
+	}
+
+	return parseStarredFrontmatterValue(
+		extractStarredFrontmatterValueFromLines(frontmatterBody.split(/\r?\n/)),
+	);
 }
 
 function normalizeUpTaskTitle(value: string): string {
@@ -253,15 +360,9 @@ function normalizeUpTaskTitle(value: string): string {
 	return normalizedValue;
 }
 
-function extractUpTaskFrontmatterValue(
-	content: string,
+function extractUpTaskFrontmatterValueFromLines(
+	lines: string[],
 ): string | string[] | undefined {
-	const frontmatterBody = extractFrontmatterBody(content);
-	if (!frontmatterBody) {
-		return undefined;
-	}
-
-	const lines = frontmatterBody.split(/\r?\n/);
 	for (let index = 0; index < lines.length; index += 1) {
 		const line = lines[index] ?? '';
 		const match = line.match(/^\s*UpTask:\s*(.*)$/);
@@ -305,13 +406,10 @@ function extractUpTaskFrontmatterValue(
 	return undefined;
 }
 
-function extractPriorityFrontmatterValue(content: string): string | undefined {
-	const frontmatterBody = extractFrontmatterBody(content);
-	if (!frontmatterBody) {
-		return undefined;
-	}
-
-	for (const line of frontmatterBody.split(/\r?\n/)) {
+function extractPriorityFrontmatterValueFromLines(
+	lines: string[],
+): string | undefined {
+	for (const line of lines) {
 		const match = line.match(/^\s*Priority:\s*(.*)$/);
 		if (!match) {
 			continue;
@@ -324,13 +422,10 @@ function extractPriorityFrontmatterValue(content: string): string | undefined {
 	return undefined;
 }
 
-function extractStarredFrontmatterValue(content: string): string | undefined {
-	const frontmatterBody = extractFrontmatterBody(content);
-	if (!frontmatterBody) {
-		return undefined;
-	}
-
-	for (const line of frontmatterBody.split(/\r?\n/)) {
+function extractStarredFrontmatterValueFromLines(
+	lines: string[],
+): string | undefined {
+	for (const line of lines) {
 		const match = line.match(/^\s*Starred:\s*(.*)$/);
 		if (!match) {
 			continue;
