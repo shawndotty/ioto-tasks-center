@@ -44,7 +44,6 @@ export function getTaskListSortModeOptions(): Record<TaskListSortMode, string> {
 		'name-desc': t('task.sort.nameDesc'),
 		'priority-desc': t('task.sort.priorityDesc'),
 		'priority-asc': t('task.sort.priorityAsc'),
-		relevance: t('task.sort.relevance'),
 	};
 }
 

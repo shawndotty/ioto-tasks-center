@@ -34,9 +34,7 @@ export type TaskListSortMode =
 	| 'name-asc'
 	| 'name-desc'
 	| 'priority-desc'
-	| 'priority-asc'
-	/** 仅在搜索时生效：按命中相关度排列，不作为可持久化的排序设置。 */
-	| 'relevance';
+	| 'priority-asc';
 export type TaskListGroupMode = 'none' | 'status' | 'priority';
 
 /** 任务搜索的入口形态：常驻内联输入框（默认）或旧的弹窗。 */

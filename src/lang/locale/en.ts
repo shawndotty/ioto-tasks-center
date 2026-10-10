@@ -225,7 +225,6 @@ const en = {
 	'task.sort.nameDesc': 'File name (Z to A)',
 	'task.sort.priorityDesc': 'Priority (high to low)',
 	'task.sort.priorityAsc': 'Priority (low to high)',
-	'task.sort.relevance': 'Search relevance',
 	'task.group.none': 'No grouping',
 	'task.group.status': 'Group by status',
 	'task.group.priority': 'Group by priority',

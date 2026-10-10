@@ -207,7 +207,6 @@ const zhTW = {
 	'task.sort.nameDesc': '檔名（Z到A）',
 	'task.sort.priorityDesc': '優先級（高到低）',
 	'task.sort.priorityAsc': '優先級（低到高）',
-	'task.sort.relevance': '按搜尋相關度',
 	'task.group.none': '不分組',
 	'task.group.status': '按任務狀態分組',
 	'task.group.priority': '按優先級分組',

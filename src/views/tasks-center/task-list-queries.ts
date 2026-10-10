@@ -35,9 +35,7 @@ export function getTaskPresentationSections(
 	tasks: TaskFileEntry[],
 ) {
 	return buildTaskPresentationSections(tasks, {
-		sortMode: view.taskSearchQuery.trim()
-			? 'relevance'
-			: view.getTaskListSortMode(),
+		sortMode: view.getTaskListSortMode(),
 		groupMode: view.getTaskListGroupMode(),
 	});
 }

@@ -207,7 +207,6 @@ const zhCN = {
 	'task.sort.nameDesc': '文件名（Z到A）',
 	'task.sort.priorityDesc': '优先级（高到低）',
 	'task.sort.priorityAsc': '优先级（低到高）',
-	'task.sort.relevance': '按搜索相关度',
 	'task.group.none': '不分组',
 	'task.group.status': '按任务状态分组',
 	'task.group.priority': '按优先级分组',
