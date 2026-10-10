@@ -162,6 +162,12 @@ import {
 	onContinuationEscape,
 } from './ioto-task/task-view-continuation-edit';
 import {
+	autosaveSection,
+	beginSectionEdit,
+	commitSectionEdit,
+	destroySectionEditor,
+} from './ioto-task/task-view-section-edit';
+import {
 	applyOutcome,
 	onEditorDeleteEmpty,
 	onEditorEnter,
@@ -220,10 +226,20 @@ export class IOTOTaskView extends TextFileView {
 	commandReadinessTimer: number | null = null;
 	editingLine: number | null = null;
 	/**
-	 * Section 编辑态的 `startLine`；批次 0 恒 `null`（尚无 Section 编辑器），
-	 * 只登记字段与清理面（[[Plan-20261010-070400]] 批次 0 §七）。
+	 * Section 编辑态的 `startLine`（= 被编辑 Section 的 `startLine`）；非编辑态 `null`。
+	 * `resolveEditingKind` 见到即返回 `'section'`。
 	 */
 	sectionEditLine: number | null = null;
+	/** Section 编辑块首行（快照，0 基，含）。 */
+	sectionEditStartLine = 0;
+	/** Section 编辑块末行（快照，0 基，含）。 */
+	sectionEditEndLine = 0;
+	/** Section 编辑块各行原文（快照，行漂移后二次定位用）。 */
+	sectionEditOriginalLines: string[] = [];
+	/** Section 编辑器句柄（`null` = 未挂载）。 */
+	sectionEditHandle: EmbeddedEditorHandle | null = null;
+	/** Section 编辑器宿主 div（`destroy()` 只 empty 不 remove，需显式回收）。 */
+	sectionEditHostEl: HTMLElement | null = null;
 	/**
 	 * 派生真源：**由三个行号推导**（`resolveEditingKind`），绝不手工同步第二份状态。
 	 * 13 处「有没有编辑器 / 是不是卡片级编辑」的判据全部只问它。
@@ -398,7 +414,8 @@ export class IOTOTaskView extends TextFileView {
 	clear(): void {
 		this.destroyActiveEditor();
 		this.destroyContinuationEditor();
-		// 行号字段整体归零（含批次 1 的 sectionEditLine）：destroy 在前、清字段在后。
+		this.destroySectionEditor();
+		// 行号字段整体归零（含 sectionEditLine）：destroy 在前、清字段在后。
 		resetEditingLines(this);
 		this.zoomLine = null;
 		this.continuationOriginalLines = [];
@@ -422,6 +439,7 @@ export class IOTOTaskView extends TextFileView {
 	onunload(): void {
 		this.destroyActiveEditor();
 		this.destroyContinuationEditor();
+		this.destroySectionEditor();
 		resetEditingLines(this);
 		this.resetSearchState();
 		this.clearCommandReadinessTimer();
@@ -601,6 +619,14 @@ export class IOTOTaskView extends TextFileView {
 	}
 	destroyContinuationEditor(): void { destroyContinuationEditor(this); }
 	async autosaveContinuation(): Promise<void> { await autosaveContinuation(this); }
+
+	// ---- Section 编辑 ----
+	async beginSectionEdit(startLine: number): Promise<void> {
+		await beginSectionEdit(this, startLine);
+	}
+	async commitSectionEdit(): Promise<void> { await commitSectionEdit(this); }
+	destroySectionEditor(): void { destroySectionEditor(this); }
+	async autosaveSection(): Promise<void> { await autosaveSection(this); }
 
 	// ---- 编辑器事件处理 ----
 	onEditorEscape(): void { onEditorEscape(this); }

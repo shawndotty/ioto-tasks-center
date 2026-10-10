@@ -154,6 +154,7 @@ export function renderSection(options: RenderSectionOptions): void {
 			section,
 			collapsed,
 			onToggle: () => onToggleSection(key),
+			editing: options.editing,
 		});
 	}
 
@@ -181,8 +182,9 @@ function renderSectionHeader(options: {
 	section: NoteSection;
 	collapsed: boolean;
 	onToggle: () => void;
+	editing: TaskNoteEditing;
 }): void {
-	const { sectionEl, section, collapsed, onToggle } = options;
+	const { sectionEl, section, collapsed, onToggle, editing } = options;
 	const headerEl = sectionEl.createDiv({ cls: 'ioto-task-view__section-header' });
 	const toggleEl = headerEl.createEl('button', {
 		cls: 'ioto-task-view__section-toggle',
@@ -204,7 +206,42 @@ function renderSectionHeader(options: {
 			text: section.title,
 		},
 	);
-	headerEl.createDiv({ cls: 'ioto-task-view__section-actions' });
+	const actionsEl = headerEl.createDiv({
+		cls: 'ioto-task-view__section-actions',
+	});
+	// 编辑入口 + 关闭入口（[[Plan-20261010-090233]]）：只在支持内联编辑时建按钮，
+	// 只读态保持空容器。渲染层**常驻两个按钮、不判态**——两态互换由 CSS 认
+	// `.ioto-task-view__section.is-editing` 驱动（唯一真源，与是否重绘无关）。
+	if (editing.enabled) {
+		const editBtn = actionsEl.createEl('button', {
+			cls: 'ioto-task-view__section-edit-btn',
+			attr: {
+				type: 'button',
+				'aria-label': t('view.iotoTaskView.sectionEdit'),
+			},
+		});
+		setIcon(editBtn, 'pencil');
+		editBtn.addEventListener('click', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			editing.editSection?.(section.startLine);
+		});
+
+		// 关闭 = 保存并退出（复用幂等的 `commitSectionEdit`，不新造退出路径）。
+		const closeBtn = actionsEl.createEl('button', {
+			cls: 'ioto-task-view__section-close-btn',
+			attr: {
+				type: 'button',
+				'aria-label': t('view.iotoTaskView.sectionClose'),
+			},
+		});
+		setIcon(closeBtn, 'x');
+		closeBtn.addEventListener('click', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			editing.closeSection?.(section.startLine);
+		});
+	}
 }
 
 function renderSectionBody(options: {

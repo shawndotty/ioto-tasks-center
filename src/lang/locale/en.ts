@@ -590,6 +590,8 @@ const en = {
 	'menu.openAsMarkdown': 'Open as Markdown',
 	'view.iotoTaskView.fallbackTitle': 'Task view',
 	'view.iotoTaskView.sectionToggle': 'Toggle section: {0}',
+	'view.iotoTaskView.sectionEdit': 'Edit section',
+	'view.iotoTaskView.sectionClose': 'Close section editor',
 	'view.iotoTaskView.checkboxToggle': 'Toggle task: {0}',
 	'view.iotoTaskView.selectCardHint': 'Click to select, click again to edit',
 	'view.iotoTaskView.continuationEditHint': 'Click to edit the continuation',

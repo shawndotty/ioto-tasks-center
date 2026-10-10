@@ -92,6 +92,18 @@ export interface TaskNoteEditing {
 	 * **缺省 = 放大不可用**（只读 / 不支持内联编辑时不显示放大按钮）。
 	 */
 	focusZoomEditor?(line: number): void;
+	/**
+	 * 点 Section 头部「编辑本节」：进入该节整块源码编辑（[[Plan-20261010-080827]] 批次 2）。
+	 * 参数是该 Section 的 `startLine`（不含 `NoteSection`，保持叶子模块零业务出边）。
+	 * **缺省 = 按钮不渲染**（只读 / 不支持内联编辑时不显示编辑按钮）。
+	 */
+	editSection?(startLine: number): void;
+	/**
+	 * 点 Section 头部「关闭」：退出该节编辑（**保存并退出**，复用幂等的
+	 * `commitSectionEdit`）。参数是该 Section 的 `startLine`（渲染层只回传它，
+	 * 不做真源判断）。**缺省 = 关闭按钮不渲染**（只读 / 不支持内联编辑）。
+	 */
+	closeSection?(startLine: number): void;
 }
 
 /** 链接交互回调（由 `IOTOTaskView` 注入；只读态同样生效）。 */

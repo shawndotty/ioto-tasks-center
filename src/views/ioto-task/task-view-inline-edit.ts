@@ -54,6 +54,7 @@ export async function beginEdit(
 	// 切换卡片：先提交上一个（标题编辑器 + 续行编辑器互相排斥）
 	await view.commitEdit();
 	await view.commitContinuationEdit();
+	await view.commitSectionEdit();
 
 	const file = view.file;
 	if (!file) {
@@ -357,6 +358,12 @@ export function refreshCard(view: TaskViewHost, line: number): void {
  * `lines[index] === originalLine` 校验失配 → 判 conflict → 整树重建冲掉编辑态。
  */
 export async function autosaveEdit(view: TaskViewHost): Promise<void> {
+	// Section 编辑态：只写盘、不退出编辑（与标题 / 续行自动落盘同构）
+	if (view.sectionEditHandle && view.sectionEditLine !== null) {
+		await view.autosaveSection();
+		return;
+	}
+
 	// 续行编辑态：只写盘、不退出编辑（与标题自动落盘同构）
 	if (view.continuationHandle && view.continuationLine !== null) {
 		await view.autosaveContinuation();

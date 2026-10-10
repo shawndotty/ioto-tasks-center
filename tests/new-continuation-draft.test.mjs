@@ -190,6 +190,7 @@ test('beginNewContinuationEdit：降级（无核心编辑器）时临时容器�
 		continuationIsNew: false,
 		async commitEdit() {},
 		async commitContinuationEdit() {},
+		async commitSectionEdit() {},
 		queryCard: () => cardEl,
 		app: {}, // 无 embedRegistry → mountEmbeddedEditor 返回 null → 走降级分支
 		lineAt: IOTOTaskView.prototype.lineAt,

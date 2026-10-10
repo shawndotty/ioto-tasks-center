@@ -2365,6 +2365,76 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	gap: 4px;
 }
 
+/* Section「编辑本节」入口按钮（[[Plan-20261010-080827]] 批次 2 §4.3）：复用 toggle 图标按钮口径。
+   关闭按钮共用同一套基础样式（[[Plan-20261010-090233]] §四 步骤 5a）。 */
+button.ioto-task-view__section-edit-btn:not(.clickable-icon),
+button.ioto-task-view__section-close-btn:not(.clickable-icon) {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2px;
+	background: transparent;
+	border: none;
+	box-shadow: none;
+	color: var(--text-muted);
+	cursor: pointer;
+	height: auto;
+}
+
+.ioto-task-view__section-edit-btn:hover,
+.ioto-task-view__section-close-btn:hover {
+	color: var(--text-normal);
+}
+
+/* —— Section 编辑入口：hover 显隐 + 两态图标（[[Plan-20261010-090233]]） —— */
+
+/* 桌面（真 hover 设备）默认隐藏动作区：opacity 保留占位、pointer-events 防误点。
+   🔴 不用 display/visibility：会把按钮移出 tab 序（键盘 a11y 回归）。 */
+@media (hover: hover) {
+	.ioto-task-view__section-actions {
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 0.15s ease;
+	}
+	/* 热区 = 整行 header（非标题文字），避免指针移向图标途中 hover 断层 */
+	.ioto-task-view__section-header:hover .ioto-task-view__section-actions,
+	.ioto-task-view__section-header:focus-within .ioto-task-view__section-actions {
+		opacity: 1;
+		pointer-events: auto;
+	}
+}
+
+/* 编辑态常显：压过上面的隐藏规则；置于媒体查询外 → 触屏也常显（Johnny 确认） */
+.ioto-task-view__section.is-editing .ioto-task-view__section-actions {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+/* 两态互换：唯一真源 = .ioto-task-view__section.is-editing
+   （beginSectionEdit 挂 / destroySectionEditor 摘，与是否重绘无关）。 */
+.ioto-task-view__section.is-editing .ioto-task-view__section-edit-btn {
+	display: none;
+}
+.ioto-task-view__section button.ioto-task-view__section-close-btn:not(.clickable-icon) {
+	display: none;
+}
+.ioto-task-view__section.is-editing
+	button.ioto-task-view__section-close-btn:not(.clickable-icon) {
+	display: inline-flex;
+}
+
+/* Section 整块编辑器：替换正文区（与 .section-body 对齐） */
+.ioto-task-view__section-editor {
+	padding: var(--ioto-tv-pad-y) var(--ioto-tv-pad-x);
+	min-height: 4em;
+}
+
+/* 编辑态隐藏被替换的正文（编辑器即整节源码） */
+.ioto-task-view__section.is-editing
+	> .ioto-task-view__section-body {
+	display: none;
+}
+
 .ioto-task-view__section-body {
 	padding: var(--ioto-tv-pad-y) var(--ioto-tv-pad-x);
 	display: flex;
@@ -2965,6 +3035,20 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	padding: 6px;
 }
 
+/* 移动端 Section 编辑 / 关闭入口：加大触控热区（顺带修正既有死规则——原
+   `.is-phone .…edit-btn` 特异性低于基础规则，padding 实际未生效） */
+.is-phone button.ioto-task-view__section-edit-btn:not(.clickable-icon),
+.is-phone button.ioto-task-view__section-close-btn:not(.clickable-icon) {
+	padding: 6px;
+}
+
+/* 移动端 Section 编辑器：自身滚动，不撑爆 .view-content（键盘弹出会顶高底部安全区） */
+.is-phone .ioto-task-view__section-editor {
+	max-height: 60vh;
+	overflow: auto;
+	padding-bottom: calc(var(--ioto-tv-pad-y) + var(--safe-area-inset-bottom, 0px));
+}
+
 /* 待删除确认按钮：移动端留足点击尺寸 */
 .is-phone .ioto-task-view__delete-confirm-btn {
 	min-height: 36px;
@@ -3410,6 +3494,9 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 
 	.ioto-task-view__toggle,
 	.ioto-task-view__action { transition: none; }
+
+	/* Section 编辑入口 hover 淡入过渡兜底（[[Plan-20261010-090233]] §四 步骤 5d）。 */
+	.ioto-task-view__section-actions { transition: none; }
 
 	/* 进出场动画兜底：JS 侧已预判跳过；这里双保险（含 glass 基过渡）。 */
 	.ioto-task-view__card { transition: none !important; }

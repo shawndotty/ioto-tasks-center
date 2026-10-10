@@ -543,6 +543,8 @@ const zhCN = {
 	'menu.openAsMarkdown': '切回 Markdown',
 	'view.iotoTaskView.fallbackTitle': '任务视图',
 	'view.iotoTaskView.sectionToggle': '折叠/展开章节：{0}',
+	'view.iotoTaskView.sectionEdit': '编辑本节',
+	'view.iotoTaskView.sectionClose': '关闭本节编辑',
 	'view.iotoTaskView.checkboxToggle': '切换任务完成状态：{0}',
 	'view.iotoTaskView.selectCardHint': '点击选中，再点编辑',
 	'view.iotoTaskView.continuationEditHint': '点击编辑补充说明',

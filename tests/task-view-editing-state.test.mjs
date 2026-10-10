@@ -162,7 +162,7 @@ test('COMMIT_BY_KIND：三种 kind 各有一个提交器，插入顺序 = card �
 	}
 });
 
-test('COMMIT_BY_KIND：按表提交 = 先标题后续写（与重构前 flushInlineEdits 同序）', async () => {
+test('COMMIT_BY_KIND：按表提交 = 先标题后续写再 Section（与插入顺序一致）', async () => {
 	const calls = [];
 	const view = {
 		commitEdit: () => {
@@ -173,9 +173,13 @@ test('COMMIT_BY_KIND：按表提交 = 先标题后续写（与重构前 flushInl
 			calls.push('continuation');
 			return Promise.resolve();
 		},
+		commitSectionEdit: () => {
+			calls.push('section');
+			return Promise.resolve();
+		},
 	};
 	for (const commit of Object.values(COMMIT_BY_KIND)) {
 		await commit(view);
 	}
-	assert.deepEqual(calls, ['card', 'continuation']);
+	assert.deepEqual(calls, ['card', 'continuation', 'section']);
 });

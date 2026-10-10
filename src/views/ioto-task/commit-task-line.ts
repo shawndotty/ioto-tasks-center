@@ -245,3 +245,78 @@ export async function commitTaskContinuation(
 
 	return outcome;
 }
+
+export interface CommitBlockRangeOptions {
+	/** 打开编辑器时快照的块首行（0 基，含） */
+	startLine: number;
+	/** 快照的块末行（0 基，含） */
+	endLine: number;
+	/** 快照的整块各行原文（`lines[startLine..endLine]`），用于行漂移后二次定位 */
+	originalLines: string[];
+	/** 编辑器正文（**原样**，不受缩进语义加工）；全空白 → 删除整块 */
+	nextText: string;
+}
+
+/**
+ * 整块替换「一个 Section body 源码块」（[[Plan-20261010-080827]] 批次 1 §3.1，B 路线）。
+ *
+ * 与 `commitTaskContinuation` 同构，但**去掉续行缩进语义**：Section 原样进出，
+ * 不做 `dedentContinuationLines` / `commonIndentPrefix` 加工。定位依旧是
+ * 「startLine + 原序列校验，失败则全文按序列搜一次」，`nextText` 全空白即删除整块。
+ *
+ * 只认「快照的整段序列完全一致」：块内可含标题行 / 任务行 / 空行，一律原文呈现。
+ * 绝不整篇序列化回写。
+ */
+export async function commitBlockRange(
+	app: App,
+	file: TFile,
+	options: CommitBlockRangeOptions,
+): Promise<CommitOutcome> {
+	let outcome: CommitOutcome = { status: 'unchanged' };
+
+	await app.vault.process(file, (content) => {
+		const lines = content.split('\n');
+		const count = options.originalLines.length;
+		const matchesAt = (at: number): boolean =>
+			options.originalLines.every((line, i) => lines[at + i] === line);
+
+		// ① 定位：优先 startLine；该处不匹配 → 全文按原序列再搜一次
+		let index = options.startLine;
+		if (index < 0 || !matchesAt(index)) {
+			index = -1;
+			for (let i = 0; i + count <= lines.length; i += 1) {
+				if (matchesAt(i)) {
+					index = i;
+					break;
+				}
+			}
+			if (index < 0) {
+				outcome = { status: 'conflict', line: options.startLine };
+				return content;
+			}
+		}
+
+		// ② 变换：原样整块替换（无缩进语义）；全空白即删除整块，不留空行
+		const nextLines =
+			options.nextText.trim().length === 0
+				? []
+				: options.nextText.split('\n');
+
+		// ③ 无改动短路
+		if (
+			nextLines.length === count &&
+			nextLines.every((line, i) => line === lines[index + i])
+		) {
+			outcome = { status: 'unchanged' };
+			return content;
+		}
+
+		// ④ 整段替换（nextLines 为空即删除）
+		lines.splice(index, count, ...nextLines);
+		const result = lines.join('\n');
+		outcome = { status: 'ok', content: result };
+		return result;
+	});
+
+	return outcome;
+}

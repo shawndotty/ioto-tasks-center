@@ -69,10 +69,20 @@ export interface TaskViewHost extends Component {
 	pendingCommit: Promise<void> | null;
 	autosaveRunning: boolean;
 	/**
-	 * Section 编辑态的 `startLine`；批次 0 恒 `null`（尚无 Section 编辑器），
-	 * 先登记进契约，批次 1 接线时不用再回来补。
+	 * Section 编辑态的 `startLine`（= 被编辑 Section 的 `startLine`）；非编辑态 `null`。
+	 * `resolveEditingKind` 见到即返回 `'section'`。
 	 */
 	sectionEditLine: number | null;
+	/** Section 编辑块首行（快照，0 基，含）。 */
+	sectionEditStartLine: number;
+	/** Section 编辑块末行（快照，0 基，含）。 */
+	sectionEditEndLine: number;
+	/** Section 编辑块各行原文（快照，行漂移后二次定位用）。 */
+	sectionEditOriginalLines: string[];
+	/** Section 编辑器句柄（`null` = 未挂载）。 */
+	sectionEditHandle: EmbeddedEditorHandle | null;
+	/** Section 编辑器宿主 div（`destroy()` 只 empty 不 remove，需显式回收）。 */
+	sectionEditHostEl: HTMLElement | null;
 	/** 派生真源（只读）：由三个行号推导，禁止直接写（`task-view-editing-state.ts`）。 */
 	readonly editingKind: EditingKind;
 
@@ -191,6 +201,12 @@ export interface TaskViewHost extends Component {
 	commitContinuationEdit(forceEmpty?: boolean): Promise<void>;
 	destroyContinuationEditor(): void;
 	autosaveContinuation(): Promise<void>;
+
+	// ---- 薄代理方法：Section 编辑 ----
+	beginSectionEdit(startLine: number): Promise<void>;
+	commitSectionEdit(): Promise<void>;
+	destroySectionEditor(): void;
+	autosaveSection(): Promise<void>;
 
 	// ---- 薄代理方法：编辑器事件处理 ----
 	onEditorEscape(): void;

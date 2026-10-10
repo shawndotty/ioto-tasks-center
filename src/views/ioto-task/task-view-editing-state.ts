@@ -81,8 +81,7 @@ export const COMMIT_BY_KIND: Record<
 > = {
 	card: (view) => view.commitEdit(),
 	continuation: (view) => view.commitContinuationEdit(),
-	// 批次 0 尚无 Section 编辑器，恒 no-op；批次 1 接线时只改这一行。
-	section: () => Promise.resolve(),
+	section: (view) => view.commitSectionEdit(),
 };
 
 /** C 组收口 2：清三个行号字段（不 destroy 编辑器，由调用方先 destroy）。 */

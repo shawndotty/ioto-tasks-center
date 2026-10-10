@@ -78,6 +78,18 @@ const WHITELIST = new Set([
 	'task-view-search.ts :: searchDebounce',
 	'task-view-search.ts :: searchQuery',
 	'task-view-search.ts :: selectedLine',
+	// Section 编辑器（[[Plan-20261010-080827]] 批次 1）：与续行模块同口径的状态迁移点，
+	// 会话快照字段（start/end/originalLines/handle/hostEl）与编辑行号都在本模块维护。
+	'task-view-section-edit.ts :: autosaveRunning',
+	'task-view-section-edit.ts :: externalWritebackBlurred',
+	'task-view-section-edit.ts :: externalWritebackDirty',
+	'task-view-section-edit.ts :: sectionEditEndLine',
+	'task-view-section-edit.ts :: sectionEditHandle',
+	'task-view-section-edit.ts :: sectionEditHostEl',
+	'task-view-section-edit.ts :: sectionEditLine',
+	'task-view-section-edit.ts :: sectionEditOriginalLines',
+	'task-view-section-edit.ts :: sectionEditStartLine',
+	'task-view-section-edit.ts :: selectedLine',
 	'task-view-selection.ts :: editingLine',
 	'task-view-selection.ts :: editingOriginalLine',
 	'task-view-selection.ts :: pendingDeleteEl',
