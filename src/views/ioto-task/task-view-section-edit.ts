@@ -8,6 +8,7 @@ import {
 	type CommitOutcome,
 } from './commit-task-line';
 import { mountEmbeddedEditor } from './embedded-editor';
+import { IOTO_TASK_SCROLL_SELECTOR } from './ioto-task-scroll';
 import type { TaskViewHost } from './task-view-host';
 
 /**
@@ -29,6 +30,13 @@ function querySectionEl(
 		view.bodyEl?.querySelector<HTMLElement>(
 			`.ioto-task-view__section[data-start-line="${startLine}"]`,
 		) ?? null
+	);
+}
+
+/** 取视图的滚动容器（`.ioto-task-view__scroll`）。 */
+function queryScrollEl(view: TaskViewHost): HTMLElement | null {
+	return (
+		view.bodyEl?.querySelector<HTMLElement>(IOTO_TASK_SCROLL_SELECTOR) ?? null
 	);
 }
 
@@ -143,6 +151,13 @@ export async function beginSectionEdit(
 	view.selectedLine = null;
 	view.syncSelectionClass();
 	handle.focus();
+	// 隔离（styles.css 的 :has 规则）生效后本节是唯一可见内容；隐藏上方内容不会改变
+	// scrollTop 数值，需显式归零，否则编辑节头部（含「关闭」按钮）会被顶出视口。
+	// focus 可能驱动滚动，故置于 focus 之后取最终态。[[Discuss-20261010-133548]] §2.2
+	const scrollEl = queryScrollEl(view);
+	if (scrollEl) {
+		scrollEl.scrollTop = 0;
+	}
 }
 
 /** `Esc`：先提交、再落回（与续行同构；Section 无卡片选中态可回填）。 */
@@ -162,7 +177,8 @@ export function onSectionEscape(view: TaskViewHost): void {
  *
  * - 全空白 → 删除整块；
  * - `conflict` 拉权威内容重绘；`unchanged` 不写盘、不重绘；
- * - `ok` → 整树重建（行数会变，后续 `data-line` 全漂）。
+ * - `ok` → 整树重建（行数会变，后续 `data-line` 全漂）；
+ * - `ok` / `unchanged` 退出后均把当前节滚回视口顶部（补偿 `beginSectionEdit` 的滚动归零）。
  */
 export async function commitSectionEdit(view: TaskViewHost): Promise<void> {
 	const handle = view.sectionEditHandle;
@@ -192,11 +208,18 @@ export async function commitSectionEdit(view: TaskViewHost): Promise<void> {
 		view.renderNote(view.data);
 		return;
 	}
-	if (outcome.status !== 'ok') {
-		return; // unchanged：无写入，无需重绘
+	if (outcome.status === 'ok') {
+		// 行数可能变化 → 整树重建。隔离态下 renderNote 采到的滚动快照无意义
+		//（此刻只有本节、scrollTop≈0、锚点 data-line 已漂）→ resetScroll 跳过快照，
+		// 重建后由下方统一滚回本节顶部（本节 startLine 稳定：编辑约束在块内，上方行数不变，
+		// 标题改名也不影响 startLine）。[[Discuss-20261010-133548]] §2.3(a)
+		view.renderNote(view.data, { resetScroll: true });
 	}
-	// 行数可能变化 → 整树重建（带滚动快照）
-	view.renderNote(view.data);
+	// unchanged 不重绘（DOM 未重建、`.is-editing` 已由 destroySectionEditor 摘除、隔离已解除），
+	// 但进入编辑时曾把滚动容器归零（beginSectionEdit）→ 需同样把当前节滚回视口顶部，
+	// 否则其他节复原后会退回文首。ok / unchanged 统一在此兜底。
+	// [[Discuss-20261010-133548]] §2.3(a)
+	querySectionEl(view, startLine)?.scrollIntoView({ block: 'start' });
 }
 
 /** 销毁 Section 编辑器：去 DOM 编辑态 + 卸载 handle + 置空（比对 destroyContinuationEditor）。 */

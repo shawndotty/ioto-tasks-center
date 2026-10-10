@@ -2435,6 +2435,14 @@ button.ioto-task-view__section-close-btn:not(.clickable-icon) {
 	display: none;
 }
 
+/* 编辑聚焦隔离：编辑某节时，隐藏同级其他 Section（含引导区 level 0），只留当前节。
+   唯一真源 = .ioto-task-view__section.is-editing（beginSectionEdit 挂 / destroySectionEditor 摘，
+   与是否重绘无关）。[[Discuss-20261010-133548]] §2.1 / [[Plan-20261010-135806]] */
+.ioto-task-view__scroll:has(> .ioto-task-view__section.is-editing)
+	> .ioto-task-view__section:not(.is-editing) {
+	display: none;
+}
+
 .ioto-task-view__section-body {
 	padding: var(--ioto-tv-pad-y) var(--ioto-tv-pad-x);
 	display: flex;
