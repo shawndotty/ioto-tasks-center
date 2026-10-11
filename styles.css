@@ -3106,14 +3106,20 @@ button.ioto-task-view__section-close-btn:not(.clickable-icon) {
 
 /* 删除按钮可见时（桌面开启「显示工具栏删除按钮」设置）工具栏多一个 action，
    所需宽度升到 694.4px（is-morandi + en），故再放宽一档到 700px。
-   用 :has() 只在「删除按钮未隐藏」时命中；默认桌面（删除隐藏）不触发，620 已足够。 */
+   用 :has() 只在「删除按钮未隐藏」时命中；默认桌面（删除隐藏）不触发，620 已足够。
+
+   「手机门控」body:not(.is-phone)：手机文案本就恒隐藏（见上方 .is-phone .toolbar-label），
+   本组对手机唯一可见的效果是把全部按钮 padding 压成 6px，并与删除按钮显隐联动——
+   选中/取消卡片即让 6 个按钮一起缩/涨 8px（[[Research-20261011-151309]]）。
+   加 body:not(.is-phone) 后本组不作用于手机：手机恒由下方 .is-phone 规则（6px 10px）决定。
+   桌面/平板不吃 .is-phone，行为不变。 */
 @container ioto-task-view (max-width: 700px) {
-	.ioto-task-view__toolbar:has(.ioto-task-view__action[data-action="delete-task"]:not(.is-hidden)) .ioto-task-view__toolbar-label {
+	body:not(.is-phone) .ioto-task-view__toolbar:has(.ioto-task-view__action[data-action="delete-task"]:not(.is-hidden)) .ioto-task-view__toolbar-label {
 		display: none;
 	}
 
-	.ioto-task-view__toolbar:has(.ioto-task-view__action[data-action="delete-task"]:not(.is-hidden)) .ioto-task-view__toggle,
-	.ioto-task-view__toolbar:has(.ioto-task-view__action[data-action="delete-task"]:not(.is-hidden)) .ioto-task-view__action {
+	body:not(.is-phone) .ioto-task-view__toolbar:has(.ioto-task-view__action[data-action="delete-task"]:not(.is-hidden)) .ioto-task-view__toggle,
+	body:not(.is-phone) .ioto-task-view__toolbar:has(.ioto-task-view__action[data-action="delete-task"]:not(.is-hidden)) .ioto-task-view__action {
 		padding: 6px;
 	}
 }
