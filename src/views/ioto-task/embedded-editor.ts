@@ -107,6 +107,30 @@ export function isOverlayFocusGuardTarget(
 	return elementMatches(el, OVERLAY_FOCUS_GUARD_SELECTOR);
 }
 
+/**
+ * 内嵌编辑器内「链接 span」的焦点守卫选择器（[[Research-20261012-143254]] §4.1）。
+ *
+ * Live Preview 把链接渲染成 CM6 装饰 span（**不是 `<a>`**）：
+ *   <span class="cm-link"><span class="cm-underline" tabindex="-1" draggable="true">PDF</span></span>
+ * 该 span 带 draggable/tabindex → 左键 mousedown 不会把光标放进 `.cm-content`，
+ * 焦点被甩出编辑器（落到该 span 或 `<body>`）→ CM blur → onBlur → commitXxxEdit
+ * （销毁编辑器、退出编辑态）。捕获阶段 preventDefault 掉「移焦 / 起拖」这一默认行为
+ * 即可保住编辑态；click 不受影响，仍由核心 `onEditorClick` 正常打开链接。
+ * 只管**链接**：标签 span（`.cm-hashtag*`）无 draggable，实测本就没有该问题。
+ */
+export const EDITOR_LINK_FOCUS_GUARD_SELECTOR =
+	'.cm-link, .cm-underline, .cm-hmd-internal-link, .cm-url, .external-link, a.internal-link, a.external-link';
+
+/**
+ * 纯判断：mousedown 目标是否落在「编辑器内链接」上；命中则调用方应 `preventDefault`。
+ * 与 `isOverlayFocusGuardTarget` 同构，便于用假对象单测选择器契约（不触 DOM）。
+ */
+export function isEditorLinkFocusGuardTarget(
+	el: { closest?: (selector: string) => unknown } | null | undefined,
+): boolean {
+	return elementMatches(el, EDITOR_LINK_FOCUS_GUARD_SELECTOR);
+}
+
 let cachedEditorClass: any = null;
 let probeFailed = false;
 
@@ -510,6 +534,16 @@ export async function mountEmbeddedEditor(
 		};
 		ownerDoc?.addEventListener('mousedown', onOverlayMouseDown, true);
 
+		// 链接 span 保焦点：点编辑器里的链接不退出编辑态（[[Research-20261012-143254]] §4.1）。
+		// 挂在 hostEl（本编辑器专属 DOM）而非共享的 ownerDoc：作用域天然只覆盖本编辑器，
+		// 不污染同窗口真 Markdown 编辑器（见同文件 §3.4 说明）。
+		const onEditorLinkMouseDown = (event: MouseEvent) => {
+			if (isEditorLinkFocusGuardTarget(event.target as Element | null)) {
+				event.preventDefault();
+			}
+		};
+		hostEl.addEventListener('mousedown', onEditorLinkMouseDown, true);
+
 		const getEditorValue = (): string => {
 			try {
 				if (editor?.cm?.state?.doc) {
@@ -535,6 +569,15 @@ export async function mountEmbeddedEditor(
 				ownerDoc?.removeEventListener(
 					'mousedown',
 					onOverlayMouseDown,
+					true,
+				);
+			} catch {
+				/* ignore */
+			}
+			try {
+				hostEl.removeEventListener(
+					'mousedown',
+					onEditorLinkMouseDown,
 					true,
 				);
 			} catch {

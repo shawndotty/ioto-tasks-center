@@ -8,6 +8,8 @@ const {
 	OVERLAY_FOCUS_SELECTOR,
 	isOverlayFocusGuardTarget,
 	OVERLAY_FOCUS_GUARD_SELECTOR,
+	EDITOR_LINK_FOCUS_GUARD_SELECTOR,
+	isEditorLinkFocusGuardTarget,
 } = await jiti.import('../src/views/ioto-task/embedded-editor.ts');
 
 // 只锁「选择器契约 + null/异常兜底」；defer 时序与真实提交语义靠真机验证
@@ -134,6 +136,75 @@ test('isOverlayFocusGuardTarget：null / 无 closest / 抛异常 → false（防
 	assert.equal(isOverlayFocusGuardTarget({ closest: 'not-a-function' }), false);
 	assert.equal(
 		isOverlayFocusGuardTarget({
+			closest: () => {
+				throw new Error('boom');
+			},
+		}),
+		false,
+	);
+});
+
+// 链接焦点守卫（[[Research-20261012-143254]] §4.1、[[Plan-20261012-151027]] §3）：
+// 只锁选择器契约 + null/异常兜底；真实 mousedown 时序与是否 blur 走真机验收
+// （与文件头部既有约定一致）。
+test('EDITOR_LINK_FOCUS_GUARD_SELECTOR：契约覆盖 LP 链接 span（cm-link / cm-underline / cm-hmd-internal-link）与只读态 a.external-link', () => {
+	assert.equal(typeof EDITOR_LINK_FOCUS_GUARD_SELECTOR, 'string');
+	for (const cls of [
+		'.cm-link',
+		'.cm-hmd-internal-link',
+		'.cm-underline',
+		'.external-link',
+	]) {
+		assert.ok(
+			EDITOR_LINK_FOCUS_GUARD_SELECTOR.includes(cls),
+			`选择器应包含 ${cls}`,
+		);
+	}
+});
+
+test('isEditorLinkFocusGuardTarget：命中链接 span / 链接 a → true', () => {
+	assert.equal(
+		isEditorLinkFocusGuardTarget({
+			closest: (s) => (s.includes('.cm-underline') ? {} : null),
+		}),
+		true,
+	);
+	assert.equal(
+		isEditorLinkFocusGuardTarget({
+			closest: (s) => (s.includes('.cm-hmd-internal-link') ? {} : null),
+		}),
+		true,
+	);
+	assert.equal(
+		isEditorLinkFocusGuardTarget({
+			closest: (s) => (s.includes('a.external-link') ? {} : null),
+		}),
+		true,
+	);
+});
+
+test('isEditorLinkFocusGuardTarget：普通正文 / 标签 span 不命中 → false', () => {
+	assert.equal(isEditorLinkFocusGuardTarget({ closest: () => null }), false);
+	// 标签 span（.cm-hashtag*）无 draggable，本就不该被拦
+	assert.equal(
+		isEditorLinkFocusGuardTarget({
+			closest: (s) => (s.includes('cm-hashtag') ? {} : null),
+		}),
+		false,
+	);
+});
+
+test('isEditorLinkFocusGuardTarget：null / 无 closest / 抛异常 → false（防御性）', () => {
+	assert.equal(isEditorLinkFocusGuardTarget(null), false);
+	assert.equal(isEditorLinkFocusGuardTarget(undefined), false);
+	assert.equal(isEditorLinkFocusGuardTarget({}), false);
+	assert.equal(isEditorLinkFocusGuardTarget({ nodeType: 3 }), false);
+	assert.equal(
+		isEditorLinkFocusGuardTarget({ closest: 'not-a-function' }),
+		false,
+	);
+	assert.equal(
+		isEditorLinkFocusGuardTarget({
 			closest: () => {
 				throw new Error('boom');
 			},
