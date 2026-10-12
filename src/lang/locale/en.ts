@@ -427,6 +427,7 @@ const en = {
 	'modal.newProject.title': 'New project',
 	'modal.newProject.placeholder': 'Enter project name',
 	'modal.newProject.desc': 'Please enter a name for the new project.',
+	'modal.newProject.categoryLabel': 'Category',
 	'modal.create': 'Create',
 	'modal.manageCategories.title': 'Manage categories',
 	'modal.manageCategories.searchPlaceholder': 'Search categories',

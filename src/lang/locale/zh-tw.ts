@@ -394,6 +394,7 @@ const zhTW = {
 	'modal.newProject.title': '新建專案',
 	'modal.newProject.placeholder': '輸入專案名稱',
 	'modal.newProject.desc': '請輸入新專案的名稱。',
+	'modal.newProject.categoryLabel': '分類',
 	'modal.create': '建立',
 	'modal.manageCategories.title': '分類管理',
 	'modal.manageCategories.searchPlaceholder': '搜尋分類',

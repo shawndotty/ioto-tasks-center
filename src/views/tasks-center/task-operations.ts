@@ -5,7 +5,7 @@ import {
     createTaskFile,
     upsertListProperty,
 } from '../../tasks-center/task-creation';
-import { createProjectFolder } from '../../tasks-center/project-creation';
+import { createProjectWithCategory } from '../../tasks-center/project-creation';
 import { trashTaskFile } from '../../tasks-center/task-deletion';
 import {
     setTaskFilePriority,
@@ -43,7 +43,8 @@ import {
     BatchNameAffixModal,
     BatchTemplateSelectModal,
 } from '../../ui/batchTaskModals';
-import { TaskNameModal } from '../../ui/taskNameModal';
+import { CreateProjectModal } from '../../ui/createProjectModal';
+import { collectCategoryOptions } from '../project-center-types';
 import { t, type TranslationKey } from '../../lang/helpter';
 
 // Function 1
@@ -304,16 +305,19 @@ export async function handleCreateProject(view: IOTOTasksCenterView): Promise<vo
         return;
     }
 
-    const projectNameResult = await new TaskNameModal(
+    const result = await new CreateProjectModal(
         view.app,
         t('modal.newProject.title'),
-        t('modal.newProject.placeholder'),
         {
             descriptionText: t('modal.newProject.desc'),
             confirmButtonText: t('modal.create'),
+            categoryOptions: collectCategoryOptions(
+                view.getProjectCategoryOptions(),
+                [...view.projectCategoryByName.values()],
+            ),
         },
     ).openAndGetValue();
-    if (!projectNameResult) {
+    if (!result) {
         return;
     }
 
@@ -321,15 +325,17 @@ export async function handleCreateProject(view: IOTOTasksCenterView): Promise<vo
     view.render();
 
     try {
-        const result = await createProjectFolder(
+        const created = await createProjectWithCategory(
             view.app,
             view.getTasksRootPath(),
-            projectNameResult,
+            result.name,
+            result.category,
+            (category) => view.addProjectCategoryOption(category),
         );
-        if (!result.created) {
+        if (!created.created) {
             new Notice(t('view.notice.projectAlreadyExists'));
         }
-        await view.loadProjects(result.name);
+        await view.loadProjects(created.name);
     } catch (error) {
         const message =
             error instanceof Error

@@ -197,6 +197,8 @@ export default class IOTOTasksCenter extends Plugin {
 					() => this.settings.batchTemplateConfig,
 					() => this.settings.taskSearchEntryMode,
 					() => this.settings.useIOTOTaskViewAsDefault,
+					() => this.settings.projectCategoryOptions,
+					(category) => this.addProjectCategoryOption(category),
 				),
 		);
 		this.registerView(

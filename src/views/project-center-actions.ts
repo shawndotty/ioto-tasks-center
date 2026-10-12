@@ -9,7 +9,7 @@
 import { Notice, TFile, type App, type WorkspaceLeaf } from 'obsidian';
 
 import { t } from '../lang/helpter';
-import { createProjectFolder } from '../tasks-center/project-creation';
+import { createProjectWithCategory } from '../tasks-center/project-creation';
 import {
 	selectProjectsInCategory,
 	type ProjectCategoryAssignment,
@@ -22,6 +22,7 @@ import {
 	updateProjectMetadata,
 } from '../tasks-center/project-metadata';
 import { ManageCategoriesModal } from '../ui/manageCategoriesModal';
+import { CreateProjectModal } from '../ui/createProjectModal';
 import { TaskNameModal } from '../ui/taskNameModal';
 import {
 	collectCategoryOptions,
@@ -36,16 +37,19 @@ export async function handleCreateProjectAction(
 		return;
 	}
 
-	const projectNameResult = await new TaskNameModal(
+	const result = await new CreateProjectModal(
 		ctx.app,
 		t('modal.newProject.title'),
-		t('modal.newProject.placeholder'),
 		{
 			descriptionText: t('modal.newProject.desc'),
 			confirmButtonText: t('modal.create'),
+			categoryOptions: collectCategoryOptions(
+				ctx.getProjectCategoryOptions(),
+				ctx.rows.map((row) => row.metadata.category),
+			),
 		},
 	).openAndGetValue();
-	if (!projectNameResult) {
+	if (!result) {
 		return;
 	}
 
@@ -53,12 +57,14 @@ export async function handleCreateProjectAction(
 	ctx.render();
 
 	try {
-		const result = await createProjectFolder(
+		const created = await createProjectWithCategory(
 			ctx.app,
 			ctx.getTasksRootPath(),
-			projectNameResult,
+			result.name,
+			result.category,
+			(category) => ctx.addProjectCategoryOption(category),
 		);
-		if (!result.created) {
+		if (!created.created) {
 			new Notice(t('view.notice.projectAlreadyExists'));
 		}
 		await ctx.refreshFromVaultChange();

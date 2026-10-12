@@ -1535,6 +1535,21 @@ button:not(.clickable-icon).ioto-tasks-center__status-checklist-popover-item {
 	width: 100%;
 }
 
+.ioto-tasks-center__modal-field {
+	margin-top: 12px;
+}
+
+.ioto-tasks-center__modal-label {
+	display: block;
+	margin-bottom: 6px;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.ioto-tasks-center__modal-select {
+	width: 100%;
+}
+
 .ioto-tasks-center__suggest-list {
 	max-height: 200px;
 	overflow-y: auto;

@@ -393,6 +393,7 @@ const zhCN = {
 	'modal.newProject.title': '新建项目',
 	'modal.newProject.placeholder': '输入项目名称',
 	'modal.newProject.desc': '请输入新项目的名称。',
+	'modal.newProject.categoryLabel': '分类',
 	'modal.create': '创建',
 	'modal.manageCategories.title': '分类管理',
 	'modal.manageCategories.searchPlaceholder': '搜索分类',

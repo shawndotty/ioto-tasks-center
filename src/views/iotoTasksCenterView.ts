@@ -299,6 +299,8 @@ export class IOTOTasksCenterView extends ItemView {
 	readonly getBatchTemplateConfig: () => BatchTemplateConfig;
 	readonly getTaskSearchEntryMode: () => TaskSearchEntryMode;
 	readonly getUseIOTOTaskViewAsDefault: () => boolean;
+	readonly getProjectCategoryOptions: () => string[];
+	readonly addProjectCategoryOption: (category: string) => Promise<void>;
 	public readonly taskSearchSession = createTaskSearchSession();
 	public taskFilterCountsCache: {
 		key: string;
@@ -349,6 +351,8 @@ export class IOTOTasksCenterView extends ItemView {
 		getBatchTemplateConfig: () => BatchTemplateConfig,
 		getTaskSearchEntryMode: () => TaskSearchEntryMode,
 		getUseIOTOTaskViewAsDefault: () => boolean,
+		getProjectCategoryOptions: () => string[],
+		addProjectCategoryOption: (category: string) => Promise<void>,
 	) {
 		super(leaf);
 		this.navigation = true;
@@ -385,6 +389,8 @@ export class IOTOTasksCenterView extends ItemView {
 		this.getBatchTemplateConfig = getBatchTemplateConfig;
 		this.getTaskSearchEntryMode = getTaskSearchEntryMode;
 		this.getUseIOTOTaskViewAsDefault = getUseIOTOTaskViewAsDefault;
+		this.getProjectCategoryOptions = getProjectCategoryOptions;
+		this.addProjectCategoryOption = addProjectCategoryOption;
 	}
 
 	getViewType(): string {
