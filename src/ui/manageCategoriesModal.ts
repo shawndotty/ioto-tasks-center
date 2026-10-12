@@ -108,9 +108,11 @@ export class ManageCategoriesModal extends Modal {
 			}
 		}
 
-		// 「未分类」是状态而非分类：固定钉在列表底部，常显计数、无按钮，
-		// 且不参与搜索过滤（Q7）。
-		this.renderReadonlyRow(listEl);
+		// 「未分类」是状态而非分类：只在未搜索时钉在列表底部（常显计数、无按钮）；
+		// 一旦进入搜索（query 非空）即整体隐藏 —— 它不是分类，不参与分类名检索（Q7 修订）。
+		if (!query) {
+			this.renderReadonlyRow(listEl);
+		}
 	}
 
 	private renderRow(listEl: HTMLElement, category: string): void {
