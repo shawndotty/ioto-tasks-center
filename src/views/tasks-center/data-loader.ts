@@ -67,7 +67,20 @@ export async function loadProjects(
 		return;
 	}
 
-	const nextProject = resolveSelectedProject(view, preferredProject);
+	let nextProject = resolveSelectedProject(view, preferredProject);
+	// 分类筛选生效时，若选中项被筛掉，收敛到可见首项（覆盖「改分类把它移出筛选」）。
+	// 空集合不在此处切项目：交给 setProjectCategoryFilter 与渲染空态分支处理，
+	// 避免落进 resolveSelectedProject 的 throw。
+	if (view.projectCategoryFilter !== null) {
+		const visible = view.getVisibleProjects();
+		const firstVisible = visible[0];
+		if (
+			firstVisible &&
+			!visible.some((project) => project.name === nextProject)
+		) {
+			nextProject = firstVisible.name;
+		}
+	}
 	const shouldPreserveTaskListState =
 		nextProject === view.selectedProject;
 	await selectProject(view, nextProject, {

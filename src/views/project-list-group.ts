@@ -12,6 +12,83 @@ const CATEGORY_COLLATOR = new Intl.Collator(undefined, {
 	sensitivity: 'base',
 });
 
+/**
+ * `<select>` 的 DOM 无法表达 `null`（全部分类）且 `''` 会和「未分类」冲突，
+ * 故给「全部分类」「未分类」各留一个哨兵 value；真实分类名直接作 value。
+ */
+export const PROJECT_CATEGORY_FILTER_ALL_VALUE = '__ioto_all__';
+export const PROJECT_CATEGORY_FILTER_UNCATEGORIZED_VALUE =
+	'__ioto_uncategorized__';
+
+/** `<select>` value（token）→ 过滤值：`null` = 全部分类，`''` = 未分类。 */
+export function toCategoryFilterValue(token: string): string | null {
+	if (token === PROJECT_CATEGORY_FILTER_ALL_VALUE) {
+		return null;
+	}
+
+	if (token === PROJECT_CATEGORY_FILTER_UNCATEGORIZED_VALUE) {
+		return '';
+	}
+
+	return token;
+}
+
+/** 过滤值 → `<select>` value（token）；与 `toCategoryFilterValue` 互逆。 */
+export function toCategoryFilterToken(filter: string | null): string {
+	if (filter === null) {
+		return PROJECT_CATEGORY_FILTER_ALL_VALUE;
+	}
+
+	if (filter === '') {
+		return PROJECT_CATEGORY_FILTER_UNCATEGORIZED_VALUE;
+	}
+
+	return filter;
+}
+
+/**
+ * 按分类过滤项目。
+ *
+ * `selected === null` → 全部分类（原样返回同一批）；`''` → 未分类。
+ * 判定口径与 `buildProjectListSections` 完全一致（同一 `.trim()`），
+ * 保证「分组 = 按分类」与「筛选」对同一项目的分类归属不会打架。
+ */
+export function filterProjectsByCategory(
+	projects: ProjectFolderEntry[],
+	categoryByProjectName: ReadonlyMap<string, string>,
+	selected: string | null,
+): ProjectFolderEntry[] {
+	if (selected === null) {
+		return projects;
+	}
+
+	return projects.filter(
+		(p) => (categoryByProjectName.get(p.name) ?? '').trim() === selected,
+	);
+}
+
+/**
+ * 从可见项目派生候选分类：去空、去重、按 `CATEGORY_COLLATOR` 排序。
+ *
+ * 只列「实际有项目的分类」，避免出现「选了却空白」的死选项。
+ */
+export function collectVisibleCategoryOptions(
+	projects: ProjectFolderEntry[],
+	categoryByProjectName: ReadonlyMap<string, string>,
+): string[] {
+	const seen = new Set<string>();
+	for (const project of projects) {
+		const category = (categoryByProjectName.get(project.name) ?? '').trim();
+		if (category.length > 0) {
+			seen.add(category);
+		}
+	}
+
+	return [...seen].sort((left, right) =>
+		CATEGORY_COLLATOR.compare(left, right),
+	);
+}
+
 export interface BuildProjectListSectionsOptions {
 	/**
 	 * 传入的 `projects` 是否已按 `sortMode` 排好序。

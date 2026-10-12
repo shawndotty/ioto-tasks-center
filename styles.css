@@ -293,6 +293,9 @@
 }
 
 .ioto-tasks-center__compact-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 8px;
 	flex: 0 0 auto;
 	padding: 0px 8px 0;
 }
@@ -327,6 +330,16 @@
 .ioto-tasks-center__task-filter-switcher:disabled {
 	opacity: 0.6;
 	cursor: not-allowed;
+}
+
+/* 与左侧分类筛选图标按钮同处一行：填满剩余宽度、超长省略。 */
+.ioto-tasks-center__project-switcher {
+	flex: 1 1 auto;
+	width: auto;
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .ioto-tasks-center__task-filter-switcher {
@@ -426,6 +439,30 @@ button:not(.clickable-icon).ioto-tasks-center__tab-settings-button {
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 	margin-bottom: 6px;
+}
+
+/* 宽屏分类筛选下拉：与项目列表同列、占满一行，视觉语汇对齐 __project-center__select。 */
+.ioto-tasks-center__project-category-filter {
+	width: 100%;
+	max-width: 100%;
+	margin-bottom: 8px;
+	padding: 6px 10px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+}
+
+.ioto-tasks-center__project-category-filter:hover {
+	border-color: var(--interactive-accent);
+}
+
+.ioto-tasks-center__project-category-filter:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px
+		color-mix(in srgb, var(--interactive-accent) 18%, transparent);
 }
 
 .ioto-tasks-center__task-search-modal-container,

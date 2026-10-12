@@ -122,6 +122,11 @@ const en = {
 	'view.projectSwitcher.default': 'Switch project',
 	'view.projectSwitcher.current': 'Current project: {0}',
 	'view.projectSwitcher.currentSuffix': '{0} (current)',
+	'view.projectCategoryFilter.all': 'All categories',
+	'view.projectCategoryFilter.label': 'Filter by category',
+	'view.projectCategoryFilter.emptyTitle': 'No projects in this category',
+	'view.projectCategoryFilter.emptyDesc':
+		'Pick another category or switch back to “All categories”.',
 	'view.taskFilterSwitcher.current': 'Filter: {0} ({1})',
 	'view.taskFilterSwitcher.menuItem': '{0} ({1})',
 	'view.taskListSettings': 'Task list presentation settings',

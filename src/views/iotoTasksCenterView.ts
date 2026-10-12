@@ -85,6 +85,7 @@ import {
 	confirmAndDeleteTask,
 } from './tasks-center/task-operations';
 import { captureProjectListScrollTop } from './project-list-scroll';
+import { filterProjectsByCategory } from './project-list-group';
 import { captureTaskListScrollTop } from './task-list-scroll';
 import { renderProjectsPane } from './tasks-center/projects-pane-renderer';
 import {
@@ -194,6 +195,11 @@ export class IOTOTasksCenterView extends ItemView {
 	projects: ProjectFolderEntry[] = [];
 	projectIncompleteCounts = new Map<string, number>();
 	projectCategoryByName = new Map<string, string>();
+	/**
+	 * 会话级分类筛选：`null` = 全部分类，`''` = 未分类，其余为分类名。
+	 * 只做渲染层派生过滤，不写回 `projects`（那是全局项目集，被角标/排序/回退复用）。
+	 */
+	public projectCategoryFilter: string | null = null;
 	public selectedProject: string | null = null;
 	public tasks: TaskFileEntry[] = [];
 	activeTaskFilterTab: TaskFilterTab = 'core';
@@ -455,6 +461,7 @@ export class IOTOTasksCenterView extends ItemView {
 			openedTaskPath: this.openedTaskPath ?? undefined,
 			previewLeafId: getWorkspaceLeafId(this.previewLeaf) ?? undefined,
 			taskListHeaderExpanded: this.isTaskListHeaderExpanded,
+			projectCategoryFilter: this.projectCategoryFilter ?? undefined,
 		};
 	}
 
@@ -472,6 +479,7 @@ export class IOTOTasksCenterView extends ItemView {
 				: null) ?? null;
 		this.isTaskListHeaderExpanded =
 			viewState.taskListHeaderExpanded ?? false;
+		this.projectCategoryFilter = viewState.projectCategoryFilter ?? null;
 		await this.refreshFromVaultChange();
 	}
 
@@ -485,6 +493,42 @@ export class IOTOTasksCenterView extends ItemView {
 
 	async loadProjects(preferredProject?: string | null): Promise<void> {
 		return loadProjects(this, preferredProject);
+	}
+
+	/**
+	 * 给用户展示 / 供用户点选的项目集合（按 `projectCategoryFilter` 派生）。
+	 * 与「按项目名查数据」用的全量 `this.projects` 严格区分。
+	 */
+	public getVisibleProjects(): ProjectFolderEntry[] {
+		return filterProjectsByCategory(
+			this.projects,
+			this.projectCategoryByName,
+			this.projectCategoryFilter,
+		);
+	}
+
+	/**
+	 * 切换分类筛选：纯展示层过滤，只有「选中项目被筛掉」这一种情况才真的切项目。
+	 */
+	public async setProjectCategoryFilter(next: string | null): Promise<void> {
+		if (next === this.projectCategoryFilter) {
+			return;
+		}
+
+		this.projectCategoryFilter = next;
+		const visible = this.getVisibleProjects();
+		const firstVisible = visible[0];
+		if (!firstVisible) {
+			this.render();
+			return;
+		}
+
+		if (!visible.some((project) => project.name === this.selectedProject)) {
+			await this.selectProject(firstVisible.name);
+			return;
+		}
+
+		this.render();
 	}
 
 	async selectProject(

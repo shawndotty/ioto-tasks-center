@@ -39,6 +39,8 @@ export interface IOTOTasksCenterViewState {
 	openedTaskPath?: string;
 	previewLeafId?: string;
 	taskListHeaderExpanded?: boolean;
+	/** `null`（不落库）= 全部分类；`''` = 未分类。缺省表示全部分类。 */
+	projectCategoryFilter?: string;
 }
 
 export const PROJECT_LIST_SORT_MODE_ORDER: ProjectListSortMode[] = [
@@ -112,6 +114,10 @@ export function parseViewState(state: unknown): IOTOTasksCenterViewState {
 		taskListHeaderExpanded:
 			typeof candidate.taskListHeaderExpanded === 'boolean'
 				? candidate.taskListHeaderExpanded
+				: undefined,
+		projectCategoryFilter:
+			typeof candidate.projectCategoryFilter === 'string'
+				? candidate.projectCategoryFilter
 				: undefined,
 	};
 }

@@ -1,6 +1,7 @@
 import { Menu, Platform, setIcon } from 'obsidian';
 
 import type { IOTOTasksCenterView } from '../iotoTasksCenterView';
+import { collectVisibleCategoryOptions } from '../project-list-group';
 import { t } from '../../lang/helpter';
 import {
 	COMPACT_LAYOUT_BREAKPOINT,
@@ -60,7 +61,7 @@ export function canSwitchProjects(view: IOTOTasksCenterView): boolean {
 	return (
 		!view.isProjectsLoading &&
 		!view.isTasksLoading &&
-		view.projects.length > 0
+		view.getVisibleProjects().length > 0
 	);
 }
 
@@ -71,6 +72,9 @@ export function renderCompactProjectSwitcher(
 	const toolbarEl = container.createDiv({
 		cls: 'ioto-tasks-center__compact-toolbar',
 	});
+
+	renderCompactCategoryFilterButton(view, toolbarEl);
+
 	const buttonLabel = getProjectSwitcherLabel(view);
 	const projectSwitcherEl = toolbarEl.createEl('button', {
 		cls: 'ioto-tasks-center__project-switcher',
@@ -82,6 +86,31 @@ export function renderCompactProjectSwitcher(
 	projectSwitcherEl.title = buttonLabel;
 	projectSwitcherEl.addEventListener('click', (event: MouseEvent) => {
 		void showProjectSwitcherMenu(view, event);
+	});
+}
+
+/**
+ * 窄屏分类筛选入口：图标按钮 + `Menu`（当前项打勾），在「项目切换」按钮左侧。
+ *
+ * 与项目切换不同，它的可用性只看「项目集是否非空 / 是否在加载」——若复用
+ * `canSwitchProjects()`（依赖可见集合），一旦筛到空分类就再也点不开、无法切回。
+ */
+function renderCompactCategoryFilterButton(
+	view: IOTOTasksCenterView,
+	toolbarEl: HTMLElement,
+): void {
+	const label = t('view.projectCategoryFilter.label');
+	const filterButtonEl = toolbarEl.createEl('button', {
+		cls: 'ioto-tasks-center__icon-button',
+	});
+	filterButtonEl.type = 'button';
+	filterButtonEl.disabled =
+		view.isProjectsLoading || view.projects.length === 0;
+	filterButtonEl.ariaLabel = label;
+	filterButtonEl.title = label;
+	setIcon(filterButtonEl, 'filter');
+	filterButtonEl.addEventListener('click', (event: MouseEvent) => {
+		void showProjectCategoryFilterMenu(view, event);
 	});
 }
 
@@ -132,7 +161,7 @@ async function showProjectSwitcherMenu(
 	}
 
 	const menu = new Menu();
-	for (const project of view.projects) {
+	for (const project of view.getVisibleProjects()) {
 		const isCurrentProject = project.name === view.selectedProject;
 		menu.addItem((item) =>
 			item
@@ -152,6 +181,34 @@ async function showProjectSwitcherMenu(
 				}),
 		);
 	}
+
+	menu.showAtMouseEvent(event);
+}
+
+async function showProjectCategoryFilterMenu(
+	view: IOTOTasksCenterView,
+	event: MouseEvent,
+): Promise<void> {
+	const menu = new Menu();
+	const addItem = (title: string, value: string | null): void => {
+		menu.addItem((item) =>
+			item
+				.setTitle(title)
+				.setChecked(view.projectCategoryFilter === value)
+				.onClick(() => {
+					void view.setProjectCategoryFilter(value);
+				}),
+		);
+	};
+
+	addItem(t('view.projectCategoryFilter.all'), null);
+	for (const category of collectVisibleCategoryOptions(
+		view.projects,
+		view.projectCategoryByName,
+	)) {
+		addItem(category, category);
+	}
+	addItem(t('project.group.uncategorized'), '');
 
 	menu.showAtMouseEvent(event);
 }

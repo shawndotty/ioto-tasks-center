@@ -1,5 +1,12 @@
 import type { IOTOTasksCenterView } from '../iotoTasksCenterView';
-import { buildProjectListSections } from '../project-list-group';
+import {
+	buildProjectListSections,
+	collectVisibleCategoryOptions,
+	PROJECT_CATEGORY_FILTER_ALL_VALUE,
+	PROJECT_CATEGORY_FILTER_UNCATEGORIZED_VALUE,
+	toCategoryFilterToken,
+	toCategoryFilterValue,
+} from '../project-list-group';
 import { restoreProjectListScrollTop } from '../project-list-scroll';
 import { buildProjectGroupBodyId } from './helpers';
 import { t } from '../../lang/helpter';
@@ -51,6 +58,10 @@ export function renderProjectsPane(
 		text: helperText,
 	});
 
+	if (view.projects.length > 0) {
+		renderProjectCategoryFilter(view, container);
+	}
+
 	const listEl = container.createDiv({
 		cls: 'ioto-tasks-center__project-list',
 	});
@@ -80,6 +91,17 @@ export function renderProjectsPane(
 		return;
 	}
 
+	if (view.projects.length > 0 && view.getVisibleProjects().length === 0) {
+		view.renderState(
+			listEl,
+			t('view.projectCategoryFilter.emptyTitle'),
+			t('view.projectCategoryFilter.emptyDesc'),
+			'is-empty',
+		);
+		restoreProjectListScrollTop(listEl, view.projectListScrollTop);
+		return;
+	}
+
 	if (view.projects.length === 0) {
 		const isFilteredByHiddenProjects =
 			view.projectResult.projects.length > 0;
@@ -99,9 +121,9 @@ export function renderProjectsPane(
 
 	const groupMode = view.getProjectListGroupMode();
 	const sortMode = view.getProjectListSortMode();
-	// view.projects 在 loadProjects / 定向刷新时已按 sortMode 排好，这里不再重排。
+	// view.projects 在 loadProjects / 定向刷新时已按 sortMode 排好，过滤保持相对顺序。
 	const sections = buildProjectListSections(
-		view.projects,
+		view.getVisibleProjects(),
 		view.projectIncompleteCounts,
 		view.projectCategoryByName,
 		sortMode,
@@ -239,4 +261,47 @@ export function renderProjectsPane(
 	}
 
 	restoreProjectListScrollTop(listEl, view.projectListScrollTop);
+}
+
+/**
+ * 宽屏分类下拉：首项「全部分类」→ 各可见分类 → 末尾「未分类」。
+ * 候选项从全量 `view.projects`（已排除隐藏项目）派生，避免「选了却空白」的死选项。
+ */
+function renderProjectCategoryFilter(
+	view: IOTOTasksCenterView,
+	container: HTMLElement,
+): void {
+	const label = t('view.projectCategoryFilter.label');
+	const selectEl = container.createEl('select', {
+		cls: 'ioto-tasks-center__project-category-filter',
+	});
+	selectEl.ariaLabel = label;
+	selectEl.title = label;
+
+	const addOption = (value: string, optionLabel: string): void => {
+		const optionEl = selectEl.createEl('option', { text: optionLabel });
+		optionEl.value = value;
+	};
+
+	addOption(
+		PROJECT_CATEGORY_FILTER_ALL_VALUE,
+		t('view.projectCategoryFilter.all'),
+	);
+	for (const category of collectVisibleCategoryOptions(
+		view.projects,
+		view.projectCategoryByName,
+	)) {
+		addOption(category, category);
+	}
+	addOption(
+		PROJECT_CATEGORY_FILTER_UNCATEGORIZED_VALUE,
+		t('project.group.uncategorized'),
+	);
+
+	selectEl.value = toCategoryFilterToken(view.projectCategoryFilter);
+	selectEl.addEventListener('change', () => {
+		void view.setProjectCategoryFilter(
+			toCategoryFilterValue(selectEl.value),
+		);
+	});
 }
