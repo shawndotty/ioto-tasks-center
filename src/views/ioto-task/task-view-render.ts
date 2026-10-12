@@ -10,6 +10,7 @@ import {
 } from './ioto-task-scroll';
 import { renderTaskNote } from './render-note';
 import type { TaskNoteEditing, TaskNoteLinks } from './render-note-types';
+import { toExternalOpenUrl } from './external-link-url';
 import { collectCardLines, pickEdgeLine } from './card-navigation';
 import {
 	EDIT_ITEM_CONTROLS_COMMAND_ID,
@@ -385,10 +386,10 @@ export function buildLinkController(view: TaskViewHost): TaskNoteLinks {
 			})();
 		},
 		openExternal: (href) => {
-			// 核心同款：交给 Electron 主进程的 window-open 处理器路由
-			// （http(s) → shell.openExternal；file: → 安全确认后打开本地文件）。
-			// 自己没有 shell 权限，window.open 是唯一与核心一致的可用通路。
-			window.open(href);
+			// 先做跨平台路径归一化：把 Windows 裸盘符路径 C:\… 补成合法 file:// URL，
+			// 使主进程命中 file: 分支（shell.openPath），与 macOS 等势。
+			// 正常 URL（http/https/file/obsidian…）原样透传（[[Research-20261012-190837]] §五）。
+			window.open(toExternalOpenUrl(href));
 		},
 		hover: (event, linktext, targetEl) => {
 			view.app.workspace.trigger('hover-link', {

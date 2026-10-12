@@ -117,6 +117,9 @@ export interface TaskNoteLinks {
 	 * 拿不到；不接管就会落到 `<a target="_blank">` 的默认导航，被 Electron 拦成
 	 * `Not allowed to load local resource`（`file:` 必现）。实现走 `window.open`
 	 * 交由 Electron 主进程路由（与核心 `onExternalLinkClick` 同款）。
+	 *
+	 * 实现会先经 `toExternalOpenUrl()` 做**跨平台归一化**：把 Windows 裸盘符路径
+	 * `C:\…` 补成 `file:///C:/…`（[[Plan-20261012-192019]]），正常 URL 原样透传。
 	 */
 	openExternal(href: string): void;
 	/** 触发核心 hover 预览（修饰键判断交给核心） */
