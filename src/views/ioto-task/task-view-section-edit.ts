@@ -126,6 +126,12 @@ export async function beginSectionEdit(
 				}
 				void view.commitSectionEdit();
 			},
+			// 编辑器内点链接带走的焦点（换叶 / 交系统打开）：只落盘、保持编辑态，
+			// 与只读态卡片链接、普通笔记「编辑态不因点链接退出」对齐
+			// （[[Research-20261012-152546]] §四；口径同 endExternalEditorWriteback）。
+			onLinkNavigationBlur: () => {
+				void view.autosaveSection();
+			},
 			onChange: () => {
 				// Section 编辑只在退出时提交（Q5）：不排 `view.autosave`
 				if (view.externalWritebackActive) {

@@ -131,6 +131,17 @@ export function isEditorLinkFocusGuardTarget(
 	return elementMatches(el, EDITOR_LINK_FOCUS_GUARD_SELECTOR);
 }
 
+/**
+ * 「链接导航窗口」时长：激活编辑器内链接后，浏览器 / Electron 会把焦点移出内嵌编辑器
+ * —— 内链 `openLinkText()` 会激活目标笔记所在叶子、外链 `window.open()` 会经 Electron
+ * 打开本体文件（元素与窗口一起失焦）。该失焦**不是**「用户点到别处」，不该按失焦提交，
+ * 否则 [[Plan-20261012-151027]] 的 mousedown 守卫只挡住了「起拖/移焦」那半程，
+ * 链接照常打开、编辑态照样被销毁（[[Research-20261012-152546]] §二）。
+ * 在这段窗口内的 blur 视为「导航失焦」放行（宿主只落盘、不销毁），窗口过期后恢复原语义。
+ * 取 1000ms：内链核心 `setTimeout(…, 100)` 后才真正换叶，留足余量。
+ */
+export const EDITOR_LINK_NAVIGATION_GRACE_MS = 1000;
+
 let cachedEditorClass: any = null;
 let probeFailed = false;
 
@@ -201,6 +212,13 @@ export interface EmbeddedEditorHandlers {
 	shouldDeferBlur?: () => boolean;
 	/** 挂起期间记录「发生过 blur」；窗口结束时由宿主决定是否补提交。 */
 	onBlurDeferred?: () => void;
+	/**
+	 * 链接导航失焦：blur 由「激活编辑器内链接」引起（内链换叶 / 外链交系统打开），
+	 * 而非用户点到别处。与 `onBlur` 互斥：宿主应**只落盘、保持编辑态**
+	 * （同 `endExternalEditorWriteback` 口径），不 destroy、不提交退出
+	 * （[[Research-20261012-152546]] §四）。未实现时按普通 blur 处理。
+	 */
+	onLinkNavigationBlur?: () => void;
 }
 
 export interface MountEmbeddedEditorOptions {
@@ -280,6 +298,8 @@ export async function mountEmbeddedEditor(
 		let destroyed = false;
 		let blurred = false;
 		let previousActiveEditor: unknown = null;
+		/** 链接导航窗口的截止时刻（`Date.now()` 口径）；0 = 不在窗口内。 */
+		let linkNavigationUntil = 0;
 
 		const controller: any = {
 			app: appProxy,
@@ -365,13 +385,36 @@ export async function mountEmbeddedEditor(
 									if (destroyed) {
 										return;
 									}
-									// 外部写回窗口：挂起 blur（不销毁 / 不还原 / 不提交），
-									// 让模板跑完后的 replaceSelection 落在活文档上（方案 A）。
-									if (handlers.shouldDeferBlur?.()) {
-										handlers.onBlurDeferred?.();
-										return;
+								// 外部写回窗口：挂起 blur（不销毁 / 不还原 / 不提交），
+								// 让模板跑完后的 replaceSelection 落在活文档上（方案 A）。
+								if (handlers.shouldDeferBlur?.()) {
+									handlers.onBlurDeferred?.();
+									return;
+								}
+								// 链接导航失焦：焦点是被「打开链接」这件事带走的（换叶 /
+								// 交系统打开），不是用户点到别处 → 只落盘、保持编辑态。
+								// 一次性消费：后续真正的「点到别处」照常提交。
+								// 宿主未实现该回调（标题 / 续行编辑器）→ 维持原提交语义。
+								if (
+									Date.now() < linkNavigationUntil &&
+									handlers.onLinkNavigationBlur
+								) {
+									linkNavigationUntil = 0;
+									try {
+										if (
+											(app.workspace as any)
+												.activeEditor === controller
+										) {
+											(app.workspace as any).activeEditor =
+												previousActiveEditor;
+										}
+									} catch {
+										/* ignore */
 									}
-									const activeEl =
+									handlers.onLinkNavigationBlur?.();
+									return;
+								}
+								const activeEl =
 										hostEl.ownerDocument
 											?.activeElement ?? null;
 									if (isOverlayFocusTarget(activeEl)) {
@@ -540,6 +583,11 @@ export async function mountEmbeddedEditor(
 		const onEditorLinkMouseDown = (event: MouseEvent) => {
 			if (isEditorLinkFocusGuardTarget(event.target as Element | null)) {
 				event.preventDefault();
+				// 开一个短的「链接导航窗口」：紧跟着的 click 会让核心打开链接，
+				// 焦点随之被带走（换叶 / 交系统打开）。该 blur 不是「点到别处」，
+				// 由 blur 处理器识别并只落盘、保持编辑态（见上）。
+				linkNavigationUntil =
+					Date.now() + EDITOR_LINK_NAVIGATION_GRACE_MS;
 			}
 		};
 		hostEl.addEventListener('mousedown', onEditorLinkMouseDown, true);
