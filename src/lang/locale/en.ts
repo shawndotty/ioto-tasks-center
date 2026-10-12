@@ -124,6 +124,7 @@ const en = {
 	'view.projectSwitcher.currentSuffix': '{0} (current)',
 	'view.projectCategoryFilter.all': 'All categories',
 	'view.projectCategoryFilter.label': 'Filter by category',
+	'view.projectCategoryFilter.labelShort': 'Category',
 	'view.projectCategoryFilter.emptyTitle': 'No projects in this category',
 	'view.projectCategoryFilter.emptyDesc':
 		'Pick another category or switch back to “All categories”.',

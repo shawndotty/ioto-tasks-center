@@ -272,7 +272,20 @@ function renderProjectCategoryFilter(
 	container: HTMLElement,
 ): void {
 	const label = t('view.projectCategoryFilter.label');
-	const selectEl = container.createEl('select', {
+
+	const rowEl = container.createDiv({
+		cls: 'ioto-tasks-center__project-category-filter-row',
+	});
+	const iconEl = rowEl.createSpan({
+		cls: 'ioto-tasks-center__project-category-filter-icon',
+	});
+	setIcon(iconEl, 'filter');
+	rowEl.createSpan({
+		cls: 'ioto-tasks-center__project-category-filter-label',
+		text: t('view.projectCategoryFilter.labelShort'),
+	});
+
+	const selectEl = rowEl.createEl('select', {
 		cls: 'ioto-tasks-center__project-category-filter',
 	});
 	selectEl.ariaLabel = label;

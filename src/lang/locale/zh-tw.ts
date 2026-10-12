@@ -114,6 +114,7 @@ const zhTW = {
 	'view.projectSwitcher.currentSuffix': '{0}（目前）',
 	'view.projectCategoryFilter.all': '全部分類',
 	'view.projectCategoryFilter.label': '依分類篩選',
+	'view.projectCategoryFilter.labelShort': '分類',
 	'view.projectCategoryFilter.emptyTitle': '該分類下暫無專案',
 	'view.projectCategoryFilter.emptyDesc': '請選擇其他分類，或切回「全部分類」。',
 	'view.taskFilterSwitcher.current': '目前篩選：{0}（{1}）',

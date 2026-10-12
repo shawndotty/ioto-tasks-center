@@ -441,17 +441,50 @@ button:not(.clickable-icon).ioto-tasks-center__tab-settings-button {
 	margin-bottom: 6px;
 }
 
-/* 宽屏分类筛选下拉：与项目列表同列、占满一行，视觉语汇对齐 __project-center__select。 */
-.ioto-tasks-center__project-category-filter {
+/* 分类筛选工具条行：图标 + 「分类」标签 + 轻量下拉，与下方项目卡片分层。 */
+.ioto-tasks-center__project-category-filter-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
 	width: 100%;
-	max-width: 100%;
-	margin-bottom: 8px;
-	padding: 6px 10px;
+	margin-bottom: 10px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.ioto-tasks-center__project-category-filter-icon {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	color: var(--text-muted);
+}
+
+.ioto-tasks-center__project-category-filter-icon svg {
+	width: 14px;
+	height: 14px;
+}
+
+.ioto-tasks-center__project-category-filter-label {
+	flex: 0 0 auto;
+	white-space: nowrap;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+/* 工具条控件（非卡片）：更矮、更弱、更小圆角。 */
+.ioto-tasks-center__project-category-filter {
+	flex: 1 1 auto;
+	min-width: 0;
+	width: auto;
+	max-width: none;
+	height: 28px;
+	margin-bottom: 0;
+	padding: 2px 8px;
 	border: 1px solid var(--background-modifier-border);
-	border-radius: 10px;
-	background: var(--background-primary);
-	color: var(--text-normal);
-	font-size: var(--font-ui-small);
+	border-radius: 6px;
+	background: var(--background-secondary);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
 }
 
 .ioto-tasks-center__project-category-filter:hover {

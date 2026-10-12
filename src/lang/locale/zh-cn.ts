@@ -114,6 +114,7 @@ const zhCN = {
 	'view.projectSwitcher.currentSuffix': '{0}（当前）',
 	'view.projectCategoryFilter.all': '全部分类',
 	'view.projectCategoryFilter.label': '按分类筛选',
+	'view.projectCategoryFilter.labelShort': '分类',
 	'view.projectCategoryFilter.emptyTitle': '该分类下暂无项目',
 	'view.projectCategoryFilter.emptyDesc': '请选择其他分类，或切回「全部分类」。',
 	'view.taskFilterSwitcher.current': '当前筛选：{0}（{1}）',
