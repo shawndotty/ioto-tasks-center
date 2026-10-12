@@ -384,6 +384,12 @@ export function buildLinkController(view: TaskViewHost): TaskNoteLinks {
 				);
 			})();
 		},
+		openExternal: (href) => {
+			// 核心同款：交给 Electron 主进程的 window-open 处理器路由
+			// （http(s) → shell.openExternal；file: → 安全确认后打开本地文件）。
+			// 自己没有 shell 权限，window.open 是唯一与核心一致的可用通路。
+			window.open(href);
+		},
 		hover: (event, linktext, targetEl) => {
 			view.app.workspace.trigger('hover-link', {
 				event,

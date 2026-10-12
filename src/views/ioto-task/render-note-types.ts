@@ -110,6 +110,15 @@ export interface TaskNoteEditing {
 export interface TaskNoteLinks {
 	/** 打开双链：`newLeaf` = 核心同款叶子类型（`Keymap.isModEvent` 的结果） */
 	open(linktext: string, newLeaf: PaneType | boolean): void;
+	/**
+	 * 打开外部链接（`http(s):` / `file:` / 自定义 scheme）。
+	 *
+	 * 核心只在 Markdown View 的预览容器上装了 `a.external-link` 委托，自定义视图
+	 * 拿不到；不接管就会落到 `<a target="_blank">` 的默认导航，被 Electron 拦成
+	 * `Not allowed to load local resource`（`file:` 必现）。实现走 `window.open`
+	 * 交由 Electron 主进程路由（与核心 `onExternalLinkClick` 同款）。
+	 */
+	openExternal(href: string): void;
 	/** 触发核心 hover 预览（修饰键判断交给核心） */
 	hover(event: MouseEvent, linktext: string, targetEl: HTMLElement): void;
 }

@@ -55,36 +55,54 @@ export function getSectionStateKey(section: NoteSection): string {
 }
 
 /**
- * 只读态 / 选中态的双链：点击打开 + hover 预览。
+ * 只读态 / 选中态的双链：点击打开 + hover 预览；外加**外部链接**的点击接管。
  *
  * 一次委托挂在滚动容器上，同时覆盖 `.ioto-task-view__card-text`（卡片正文）与
  * `.ioto-task-view__md`（Section markdown）两处 `MarkdownRenderer` 产物
  * —— 核心不为自定义视图装这套处理（[[Research-20261004-001616]]）。
  * `renderTaskNote` 每次整树重建都会新建 `scrollEl` 并重新挂监听，旧的随 DOM 丢弃：
  * 无泄漏、无累积、不受重绘影响（[[Plan-20261004-004408]] §3.2 ③）。
+ *
+ * 外部链接（`a.external-link`，如 `[PDF](file:///…)`）**必须一并接管**：核心只在
+ * Markdown View 的预览容器上装了这条委托，自定义视图没有 → 不接管就落到
+ * `<a target="_blank">` 的默认导航，被 Electron 拒载 `file://`，console 报
+ * `Not allowed to load local resource`（[[Research-20261012-142746]]）。
  */
 export function attachTaskNoteLinkDelegates(
 	scrollEl: HTMLElement,
 	links: TaskNoteLinks,
 ): void {
-	const findLink = (target: EventTarget | null): HTMLAnchorElement | null =>
-		target instanceof HTMLElement ? target.closest('a.internal-link') : null;
+	const findLink = (
+		target: EventTarget | null,
+		selector: string,
+	): HTMLAnchorElement | null =>
+		target instanceof HTMLElement ? target.closest(selector) : null;
 
 	scrollEl.addEventListener('click', (event) => {
-		const link = findLink(event.target);
+		const link = findLink(event.target, 'a.internal-link');
 		const linktext = link?.getAttribute('data-href');
-		if (!linktext) {
+		if (linktext) {
+			// 挡掉 <a target="_blank"> 的 window.open 默认行为
+			event.preventDefault();
+			// 不再冒泡到卡片的选择 / 编辑逻辑（卡片本体 click 对 a 早退是双保险）
+			event.stopPropagation();
+			links.open(linktext, Keymap.isModEvent(event));
 			return;
 		}
-		// 挡掉 <a target="_blank"> 的 window.open 默认行为
-		event.preventDefault();
-		// 不再冒泡到卡片的选择 / 编辑逻辑（卡片本体 click 对 a 早退是双保险）
-		event.stopPropagation();
-		links.open(linktext, Keymap.isModEvent(event));
+
+		// 外部链接：核心同款——preventDefault 掐掉默认导航，再 `window.open` 交
+		// Electron 主进程路由（http(s) → 系统浏览器，file: → 打开本体文件）。
+		const external = findLink(event.target, 'a.external-link');
+		const href = external?.getAttribute('href');
+		if (href) {
+			event.preventDefault();
+			event.stopPropagation();
+			links.openExternal(href);
+		}
 	});
 
 	scrollEl.addEventListener('mouseover', (event) => {
-		const link = findLink(event.target);
+		const link = findLink(event.target, 'a.internal-link');
 		const linktext = link?.getAttribute('data-href');
 		if (!link || !linktext) {
 			return;
