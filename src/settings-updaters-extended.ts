@@ -16,6 +16,10 @@ import {
 } from './settings';
 import { normalizeDateTaskDateFormat } from './tasks-center/date-task-format';
 import {
+	planCategoryRemoval,
+	planCategoryRename,
+} from './tasks-center/project-category';
+import {
 	areBatchTemplateConfigsEqual,
 	normalizeBatchTemplateConfig,
 	type BatchTemplateConfig,
@@ -242,6 +246,39 @@ export async function addProjectCategoryOption(
 	}
 
 	host.settings.projectCategoryOptions = nextCategories;
+	await host.saveSettings();
+	host.applySettingsToOpenViews();
+}
+
+export async function renameProjectCategoryOption(
+	host: SettingsUpdaterHost,
+	oldName: string,
+	newName: string,
+): Promise<void> {
+	const next = planCategoryRename(
+		host.settings.projectCategoryOptions,
+		oldName,
+		newName,
+	);
+	if (!next || areStringArraysEqual(host.settings.projectCategoryOptions, next)) {
+		return;
+	}
+
+	host.settings.projectCategoryOptions = next;
+	await host.saveSettings();
+	host.applySettingsToOpenViews();
+}
+
+export async function removeProjectCategoryOption(
+	host: SettingsUpdaterHost,
+	name: string,
+): Promise<void> {
+	const next = planCategoryRemoval(host.settings.projectCategoryOptions, name);
+	if (areStringArraysEqual(host.settings.projectCategoryOptions, next)) {
+		return;
+	}
+
+	host.settings.projectCategoryOptions = next;
 	await host.saveSettings();
 	host.applySettingsToOpenViews();
 }

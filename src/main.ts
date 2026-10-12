@@ -122,6 +122,8 @@ import {
 	updateTasksRootPath,
 	updateUseIOTOTaskViewAsDefault,
 	addProjectCategoryOption,
+	renameProjectCategoryOption,
+	removeProjectCategoryOption,
 	setProjectHidden,
 } from './settings-updaters';
 // 视图路由 / 激活实现
@@ -208,6 +210,9 @@ export default class IOTOTasksCenter extends Plugin {
 						this.setProjectHidden(projectName, hidden),
 					() => this.settings.projectCategoryOptions,
 					(category) => this.addProjectCategoryOption(category),
+					(oldName, newName) =>
+						this.renameProjectCategoryOption(oldName, newName),
+					(name) => this.removeProjectCategoryOption(name),
 				),
 		);
 		this.registerView(
@@ -814,6 +819,17 @@ export default class IOTOTasksCenter extends Plugin {
 
 	async addProjectCategoryOption(category: string): Promise<void> {
 		await addProjectCategoryOption(this, category);
+	}
+
+	async renameProjectCategoryOption(
+		oldName: string,
+		newName: string,
+	): Promise<void> {
+		await renameProjectCategoryOption(this, oldName, newName);
+	}
+
+	async removeProjectCategoryOption(name: string): Promise<void> {
+		await removeProjectCategoryOption(this, name);
 	}
 
 	async updateBatchTemplateConfig(

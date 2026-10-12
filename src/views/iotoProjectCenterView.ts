@@ -75,6 +75,13 @@ export class IOTOProjectCenterView
 	public readonly addProjectCategoryOption: (
 		category: string,
 	) => Promise<void>;
+	public readonly renameProjectCategoryOption: (
+		oldName: string,
+		newName: string,
+	) => Promise<void>;
+	public readonly removeProjectCategoryOption: (
+		name: string,
+	) => Promise<void>;
 	private readonly refreshTokenParent: { token: number } = {
 		token: 0,
 	};
@@ -96,6 +103,11 @@ export class IOTOProjectCenterView
 		) => Promise<void>,
 		getProjectCategoryOptions: () => string[],
 		addProjectCategoryOption: (category: string) => Promise<void>,
+		renameProjectCategoryOption: (
+			oldName: string,
+			newName: string,
+		) => Promise<void>,
+		removeProjectCategoryOption: (name: string) => Promise<void>,
 	) {
 		super(leaf);
 		this.navigation = true;
@@ -104,6 +116,8 @@ export class IOTOProjectCenterView
 		this.setProjectHidden = setProjectHidden;
 		this.getProjectCategoryOptions = getProjectCategoryOptions;
 		this.addProjectCategoryOption = addProjectCategoryOption;
+		this.renameProjectCategoryOption = renameProjectCategoryOption;
+		this.removeProjectCategoryOption = removeProjectCategoryOption;
 	}
 
 	getViewType(): string {

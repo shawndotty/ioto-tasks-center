@@ -53,6 +53,11 @@ export interface ProjectCenterViewContext {
 	getProjectCategoryOptions(): string[];
 	setProjectHidden(name: string, hidden: boolean): Promise<void>;
 	addProjectCategoryOption(category: string): Promise<void>;
+	renameProjectCategoryOption(
+		oldName: string,
+		newName: string,
+	): Promise<void>;
+	removeProjectCategoryOption(name: string): Promise<void>;
 
 	render(): void;
 	refreshFromVaultChange(): Promise<void>;

@@ -5,6 +5,8 @@ interface TaskNameModalOptions {
 	descriptionText?: string;
 	confirmButtonText?: string;
 	suggestions?: string[];
+	/** 预填初值（如改名时填旧名）；非空则打开即填入并全选。 */
+	defaultValue?: string;
 }
 
 const SUGGESTION_LIMIT = 8;
@@ -15,6 +17,7 @@ export class TaskNameModal extends Modal {
 	private readonly descriptionText: string;
 	private readonly confirmButtonText: string;
 	private readonly suggestions: string[];
+	private readonly defaultValue: string;
 	private nameInput: TextComponent | null = null;
 	private suggestionListEl: HTMLDivElement | null = null;
 	private resolvePromise: ((value: string | null) => void) | null = null;
@@ -33,6 +36,7 @@ export class TaskNameModal extends Modal {
 			options.descriptionText ?? t('modal.defaultDescription');
 		this.confirmButtonText = options.confirmButtonText ?? t('modal.confirm');
 		this.suggestions = options.suggestions ?? [];
+		this.defaultValue = options.defaultValue ?? '';
 	}
 
 	openAndGetValue(): Promise<string | null> {
@@ -53,7 +57,13 @@ export class TaskNameModal extends Modal {
 		this.nameInput = new TextComponent(this.contentEl);
 		this.nameInput.setPlaceholder(this.placeholder);
 		this.nameInput.inputEl.addClass('ioto-tasks-center__modal-input');
+		if (this.defaultValue) {
+			this.nameInput.setValue(this.defaultValue);
+		}
 		this.nameInput.inputEl.focus();
+		if (this.defaultValue) {
+			this.nameInput.inputEl.select();
+		}
 		this.nameInput.inputEl.addEventListener('keydown', (event) => {
 			if (event.key === 'Enter') {
 				event.preventDefault();

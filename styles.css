@@ -1567,6 +1567,71 @@ button:not(.clickable-icon).ioto-tasks-center__status-checklist-popover-item {
 	margin-top: 16px;
 }
 
+.ioto-tasks-center__manage-categories-modal {
+	max-width: 560px;
+}
+
+.ioto-tasks-center__manage-categories-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 10px;
+}
+
+.ioto-tasks-center__manage-categories-search {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.ioto-tasks-center__manage-categories-list {
+	max-height: 320px;
+	overflow-y: auto;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+}
+
+.ioto-tasks-center__manage-categories-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 10px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.ioto-tasks-center__manage-categories-row:last-child {
+	border-bottom: none;
+}
+
+.ioto-tasks-center__manage-categories-row.is-readonly {
+	color: var(--text-muted);
+}
+
+.ioto-tasks-center__manage-categories-name {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ioto-tasks-center__manage-categories-count {
+	flex: 0 0 auto;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.ioto-tasks-center__manage-categories-row-actions {
+	flex: 0 0 auto;
+	display: inline-flex;
+	gap: 4px;
+}
+
+.ioto-tasks-center__manage-categories-empty {
+	padding: 12px 10px;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
 .ioto-tasks-center__state.is-loading {
 	border-style: solid;
 }

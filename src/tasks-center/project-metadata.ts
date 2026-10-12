@@ -120,6 +120,40 @@ export async function updateProjectMetadata(
 	}
 }
 
+export interface CategoryRewriteResult {
+	updated: number;
+	/** 写回失败的项目名，供汇总 Notice。 */
+	failed: string[];
+}
+
+/**
+ * 批量把若干项目的 `category` 写为 `category`（传 `null` 即删键 → 未分类）。
+ * 逐项目 try/catch：单个坏项目不阻断整批（[[Plan-20261012-092334]] 步骤 2）。
+ */
+export async function rewriteProjectCategory(
+	app: App,
+	tasksRootPath: string,
+	projectNames: readonly string[],
+	category: string | null,
+): Promise<CategoryRewriteResult> {
+	let updated = 0;
+	const failed: string[] = [];
+	for (const name of projectNames) {
+		try {
+			const file = getProjectMetadataFile(app, tasksRootPath, name);
+			if (!file) {
+				failed.push(name);
+				continue;
+			}
+			await updateProjectMetadata(app, file, { category });
+			updated += 1;
+		} catch {
+			failed.push(name);
+		}
+	}
+	return { updated, failed };
+}
+
 export function upsertProjectMetadataInContent(
 	content: string,
 	patch: ProjectMetadataPatch,

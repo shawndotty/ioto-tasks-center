@@ -8,7 +8,7 @@
 import { setIcon } from 'obsidian';
 
 import { t } from '../lang/helpter';
-import { handleCreateProjectAction } from './project-center-actions';
+import { handleCreateProjectAction, openManageCategoriesAction } from './project-center-actions';
 import type { ProjectCenterViewContext } from './project-center-types';
 
 export function buildProjectCenterHeader(
@@ -113,6 +113,21 @@ export function buildProjectCenterHeader(
 	setIcon(refreshButtonEl, 'refresh-cw');
 	refreshButtonEl.addEventListener('click', () => {
 		void ctx.refreshFromVaultChange();
+	});
+
+	const manageCategoriesButtonEl = actionsEl.createEl('button', {
+		cls: 'ioto-project-center__icon-button',
+	});
+	manageCategoriesButtonEl.type = 'button';
+	manageCategoriesButtonEl.ariaLabel = t(
+		'projectCenter.action.manageCategories',
+	);
+	manageCategoriesButtonEl.title = t(
+		'projectCenter.action.manageCategories',
+	);
+	setIcon(manageCategoriesButtonEl, 'tags');
+	manageCategoriesButtonEl.addEventListener('click', () => {
+		void openManageCategoriesAction(ctx);
 	});
 
 	const createProjectButtonEl = actionsEl.createEl('button', {

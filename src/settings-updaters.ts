@@ -41,6 +41,8 @@ export {
 	updateDateTaskDateFormat,
 	updateEnabledTaskCreationTypes,
 	addProjectCategoryOption,
+	renameProjectCategoryOption,
+	removeProjectCategoryOption,
 	updateBatchTemplateConfig,
 	updateEntryTemplateConfig,
 } from './settings-updaters-extended';
