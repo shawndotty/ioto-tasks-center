@@ -776,6 +776,22 @@ export async function confirmAndDeleteTask(
 }
 
 // Function 17
+export async function renameTask(
+    view: IOTOTasksCenterView,
+    task: TaskFileEntry,
+): Promise<void> {
+    const file = view.app.vault.getAbstractFileByPath(task.path);
+    if (!(file instanceof TFile)) {
+        new Notice(t('view.notice.taskFileUnavailable'));
+        return;
+    }
+
+    // 直接唤起核心重命名弹窗（与文件浏览器同款）：
+    // 后续链接更新与列表刷新由核心 / vault rename 事件接管，此处不额外接线。
+    view.app.fileManager.promptForFileRename(file);
+}
+
+// Function 18
 export async function refreshCurrentProjectTasks(view: IOTOTasksCenterView): Promise<void> {
     if (!view.selectedProject) {
         return;

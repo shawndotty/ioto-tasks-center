@@ -115,6 +115,7 @@ const en = {
 	'view.taskNoteMenu.title.core': 'Core task',
 	'view.taskNoteMenu.title.priority': 'Priority',
 	'view.taskMenu.addSubtask': 'Add subtask',
+	'view.taskMenu.rename': 'Rename task',
 	'view.taskMenu.delete': 'Delete task',
 	'view.taskMenu.removeParent': 'Remove parent task',
 	'view.taskMoreButton.ariaLabel': 'More actions',

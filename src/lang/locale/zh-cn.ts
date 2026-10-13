@@ -105,6 +105,7 @@ const zhCN = {
 	'view.taskNoteMenu.title.core': '核心任务',
 	'view.taskNoteMenu.title.priority': '优先级',
 	'view.taskMenu.addSubtask': '添加子任务',
+	'view.taskMenu.rename': '重命名任务',
 	'view.taskMenu.delete': '删除任务',
 	'view.taskMenu.removeParent': '移除上级任务',
 	'view.taskMoreButton.ariaLabel': '更多操作',

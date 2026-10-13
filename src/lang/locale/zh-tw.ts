@@ -105,6 +105,7 @@ const zhTW = {
 	'view.taskNoteMenu.title.core': '核心任務',
 	'view.taskNoteMenu.title.priority': '優先級',
 	'view.taskMenu.addSubtask': '添加子任務',
+	'view.taskMenu.rename': '重新命名任務',
 	'view.taskMenu.delete': '刪除任務',
 	'view.taskMenu.removeParent': '移除上級任務',
 	'view.taskMoreButton.ariaLabel': '更多操作',

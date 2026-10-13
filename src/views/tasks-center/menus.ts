@@ -472,6 +472,14 @@ export function showTaskPriorityMenu(
 
 	menu.addSeparator();
 	menu.addItem((item) =>
+		item
+			.setTitle(t('view.taskMenu.rename'))
+			.setIcon('lucide-edit-3')
+			.onClick(() => {
+				runMenuAction(() => void view.renameTask(task));
+			}),
+	);
+	menu.addItem((item) =>
 		item.setTitle(t('view.taskMenu.delete')).onClick(() => {
 			void view.confirmAndDeleteTask(task);
 		}),

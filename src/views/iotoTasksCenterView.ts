@@ -83,6 +83,7 @@ import {
 	updateTaskStarred,
 	clearTaskStarred,
 	confirmAndDeleteTask,
+	renameTask,
 } from './tasks-center/task-operations';
 import { captureProjectListScrollTop } from './project-list-scroll';
 import { filterProjectsByCategory } from './project-list-group';
@@ -1133,6 +1134,10 @@ export class IOTOTasksCenterView extends ItemView {
 
 	async confirmAndDeleteTask(task: TaskFileEntry): Promise<void> {
 		return confirmAndDeleteTask(this, task);
+	}
+
+	async renameTask(task: TaskFileEntry): Promise<void> {
+		return renameTask(this, task);
 	}
 
 	async openFileInPreview(
