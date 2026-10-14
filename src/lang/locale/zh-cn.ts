@@ -562,6 +562,8 @@ const zhCN = {
 	'command.openAsMarkdown': '以 Markdown 打开',
 	'command.toggleTaskView': '切换 Markdown 与 IOTO 任务视图',
 	'command.addTask': '在 IOTO 任务视图中添加任务',
+	'command.swapWithPrevTask': '与上一个同级任务互换',
+	'command.swapWithNextTask': '与下一个同级任务互换',
 	'command.searchTaskView': '在任务视图中搜索',
 	'command.exportTaskViewImage': '导出任务视图为图片',
 	'command.copyTaskViewImage': '复制任务视图图片到剪贴板',
@@ -640,6 +642,8 @@ const zhCN = {
 	'view.iotoTaskView.deleteConfirm.cancel': '取消',
 	'view.iotoTaskView.deleteConfirm.aria': '删除确认',
 	'notice.iotoTaskView.commitConflict': '文件在编辑期间被外部修改，本次改动已放弃。',
+	'notice.iotoTaskView.swapNoPrev': '已经是同级任务中的第一条',
+	'notice.iotoTaskView.swapNoNext': '已经是同级任务中的最后一条',
 	'notice.iotoTaskView.inlineEditUnavailable':
 		'当前 Obsidian 版本不支持内联编辑，请在 Markdown 中编辑。',
 	'notice.iotoTaskView.bodyMultilineRejected':

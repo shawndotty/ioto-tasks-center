@@ -9,8 +9,17 @@ import {
 	indentLevelOf,
 	markAllChecklistItemsDone,
 	parseChecklistItems,
+	parseChecklistItemsInRange,
+	parseSections,
 	splitTaskLine,
+	type NoteChecklistItem,
+	type NoteSection,
 } from '../../tasks-center/note-structure';
+import {
+	computeSwapRange,
+	findSiblingTarget,
+	type SwapDirection,
+} from '../../tasks-center/note-task-swap';
 import { isTemplateAvailableForProject } from '../../tasks-center/batch-task-template';
 import { extractListPropertyValuesFromContent } from '../../tasks-center/task-creation';
 import {
@@ -30,6 +39,7 @@ import {
 } from './task-view-constants';
 import { lineAt, countContinuationLines } from './task-view-helpers';
 import { runLineAction } from './task-view-editor-handlers';
+import { commitBlockRange } from './commit-task-line';
 
 /**
  * 命令面板 / 快捷键入口：仅转发到 `addTask`，不复制逻辑。
@@ -371,4 +381,141 @@ export async function markAllTasksDone(view: TaskViewHost): Promise<void> {
 
 	// ⑤ 反馈
 	new Notice(t('notice.markAllTasksDone.done', [String(changed)]));
+}
+
+/* ------------------------------------------------------------------ *
+ * 同级任务互换（[[Plan-20261014-194115]] §4.3）
+ *
+ * 写盘直接复用 `commitBlockRange`（一次原子区间替换，不新增写盘原语）。
+ * ------------------------------------------------------------------ */
+
+/** Section 正文起点：引导区（level 0）从 `startLine` 起，标题块从下一行起。 */
+function sectionBodyStart(section: NoteSection): number {
+	return section.level === 0 ? section.startLine : section.startLine + 1;
+}
+
+/**
+ * 选中行所在 **Section** 的条目（绝对行号），供同级定位；不在任何 Section → `null`。
+ *
+ * `parseSections` 返回含嵌套子块的升序列表，`.find` 命中**最外层**（= 渲染层的顶层
+ * Section，`renderTaskNote` 只对 roots 调 `renderSection`）；`items` 一旦限定在该
+ * 区间内，「不越块」即自动成立，父级搜索天然止于块首。
+ */
+function sectionItemsForSwap(
+	view: TaskViewHost,
+	line: number,
+): NoteChecklistItem[] | null {
+	const content = view.data ?? '';
+	const section = parseSections(content).find(
+		(s) => line >= sectionBodyStart(s) && line <= s.endLine,
+	);
+	if (!section) {
+		return null;
+	}
+	return parseChecklistItemsInRange(
+		content,
+		sectionBodyStart(section),
+		section.endLine,
+		{ includeEmpty: true },
+	);
+}
+
+/** 供 main.ts 的 checkCallback 门控：与 canAddTask 同口径，另加「有可命中的同级目标」。 */
+export function canSwapSelectedTask(
+	view: TaskViewHost,
+	direction: SwapDirection,
+): boolean {
+	if (view.file === null || !view.supportsInlineEdit()) {
+		return false;
+	}
+	const line = view.selectedLine;
+	if (line === null) {
+		return false;
+	}
+	const items = sectionItemsForSwap(view, line);
+	return items !== null && findSiblingTarget(items, line, direction) !== null;
+}
+
+/**
+ * 把选中卡与其**同级**上 / 下兄弟整块对调（任务行 + 续写区 + 整棵子树）。
+ *
+ * 链路与 `deleteSelected` 同构：守卫（落盘 / 退放大 / 撤遮罩）→ 算块区间 →
+ * 一次原子区间重写 → 同步 `data` → 整树重建 → 按**重算后的新行号**回填选中。
+ */
+export async function swapSelectedTask(
+	view: TaskViewHost,
+	direction: SwapDirection,
+): Promise<void> {
+	const file = view.file;
+	if (!file || !view.supportsInlineEdit()) {
+		return; // 只读降级：静默
+	}
+
+	// ① 守卫：先落盘在册编辑器（卡片 / 续写 / Section），否则按行号取块会取到旧字节
+	await view.flushInlineEdits();
+	// ② 守卫：半放大态不搬行号 —— 先退放大（对齐 runLineAction 的 exitZoom）
+	if (view.zoomLine !== null) {
+		view.exitZoom();
+	}
+	// ③ 守卫：撤待删除确认遮罩（对齐 select / applySelection）
+	view.cancelPendingDelete(false);
+
+	const current = view.selectedLine;
+	if (current === null) {
+		return;
+	}
+	const items = sectionItemsForSwap(view, current);
+	if (!items) {
+		return;
+	}
+
+	const target = findSiblingTarget(items, current, direction);
+	if (target === null) {
+		// 已是同级首 / 末条：不写盘，幂等 Notice
+		new Notice(
+			t(
+				direction === 'next'
+					? 'notice.iotoTaskView.swapNoNext'
+					: 'notice.iotoTaskView.swapNoPrev',
+			),
+		);
+		return;
+	}
+
+	const range = computeSwapRange(
+		(view.data ?? '').split('\n'),
+		items,
+		current,
+		target,
+	);
+	if (!range) {
+		return;
+	}
+
+	const newSelectedLine =
+		direction === 'next' ? range.aNewLine : range.bNewLine;
+
+	// ④ 一次原子区间重写（range 级，绝不整篇序列化）
+	const outcome = await commitBlockRange(view.app, file, {
+		startLine: range.start,
+		endLine: range.end,
+		originalLines: range.originalLines,
+		nextText: range.nextLines.join('\n'),
+	});
+	// 🔴 红线：data / lastLoadedText 必须同步（conflict 会弹 Notice）
+	view.applyOutcome(outcome);
+
+	if (outcome.status === 'conflict') {
+		await view.reloadFromVault();
+		view.renderNote(view.data);
+		return;
+	}
+	if (outcome.status !== 'ok') {
+		return; // unchanged：无写入、选中不动
+	}
+
+	// ⑤ 结构性变更 → 整树重建（带进出场动画）→ 按重算后的新行号回填选中
+	view.selectedLine = newSelectedLine;
+	view.renderNote(view.data, { animateRecentSwap: true });
+	view.applySelection(newSelectedLine);
 }

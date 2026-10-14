@@ -615,6 +615,8 @@ const en = {
 	'command.openAsMarkdown': 'Open as Markdown',
 	'command.toggleTaskView': 'Toggle Markdown / task view',
 	'command.addTask': 'Add task in IOTO task view',
+	'command.swapWithPrevTask': 'Swap with previous sibling task',
+	'command.swapWithNextTask': 'Swap with next sibling task',
 	'command.searchTaskView': 'Search in task view',
 	'command.exportTaskViewImage': 'Export task view as image',
 	'command.copyTaskViewImage': 'Copy task view image to clipboard',
@@ -700,6 +702,8 @@ const en = {
 	'view.iotoTaskView.deleteConfirm.aria': 'Delete confirmation',
 	'notice.iotoTaskView.commitConflict':
 		'The file changed during editing; this change was discarded.',
+	'notice.iotoTaskView.swapNoPrev': 'Already the first sibling task.',
+	'notice.iotoTaskView.swapNoNext': 'Already the last sibling task.',
 	'notice.iotoTaskView.inlineEditUnavailable':
 		'Inline editing is unavailable in this Obsidian version. Edit in Markdown instead.',
 	'notice.iotoTaskView.bodyMultilineRejected':

@@ -346,6 +346,44 @@ export default class IOTOTasksCenter extends Plugin {
 				return true;
 			},
 		});
+		// 同级任务互换（[[Plan-20261014-194115]] §4.6）：低频操作走命令面板，不加视图内键位
+		// （用户可在「设置 → 快捷键」自绑）。门控与 canAddTask 同口径，另加「有同级目标」。
+		this.addCommand({
+			id: 'itc-swap-with-prev-task',
+			name: t('command.swapWithPrevTask'),
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(
+					IOTOTaskView,
+				);
+				if (!view || !view.canSwapSelectedTask('prev')) {
+					return false;
+				}
+
+				if (!checking) {
+					void view.swapSelectedTask('prev');
+				}
+
+				return true;
+			},
+		});
+		this.addCommand({
+			id: 'itc-swap-with-next-task',
+			name: t('command.swapWithNextTask'),
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(
+					IOTOTaskView,
+				);
+				if (!view || !view.canSwapSelectedTask('next')) {
+					return false;
+				}
+
+				if (!checking) {
+					void view.swapSelectedTask('next');
+				}
+
+				return true;
+			},
+		});
 		// 低频操作走命令面板（不占工具栏按钮位，[[Discuss-20261006-223908]] §5.3）。
 		this.addCommand({
 			id: 'itc-insert-entry-template',

@@ -191,12 +191,14 @@ import {
 	canAddTask,
 	canInsertEntryTemplate,
 	canMarkAllTasksDone,
+	canSwapSelectedTask,
 	findTasksSection,
 	insertEntryTemplate,
 	markAllTasksDone,
 	resolveCurrentProjectNames,
 	resolveCurrentSubject,
 	runTask,
+	swapSelectedTask,
 	triggerAddTask,
 } from './ioto-task/task-view-task-commands';
 import {
@@ -697,6 +699,12 @@ export class IOTOTaskView extends TextFileView {
 	async runTask(): Promise<void> { await runTask(this); }
 	canMarkAllTasksDone(): boolean { return canMarkAllTasksDone(this); }
 	async markAllTasksDone(): Promise<void> { await markAllTasksDone(this); }
+	canSwapSelectedTask(direction: 'prev' | 'next'): boolean {
+		return canSwapSelectedTask(this, direction);
+	}
+	async swapSelectedTask(direction: 'prev' | 'next'): Promise<void> {
+		await swapSelectedTask(this, direction);
+	}
 
 	// ---- 外部写回窗口 ----
 	async flushInlineEdits(): Promise<void> { await flushInlineEdits(this); }

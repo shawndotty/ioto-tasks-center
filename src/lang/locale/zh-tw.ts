@@ -563,6 +563,8 @@ const zhTW = {
 	'command.openAsMarkdown': '以 Markdown 開啟',
 	'command.toggleTaskView': '切換 Markdown 與 IOTO 任務檢視',
 	'command.addTask': '在 IOTO 任務檢視中新增任務',
+	'command.swapWithPrevTask': '與上一個同級任務互換',
+	'command.swapWithNextTask': '與下一個同級任務互換',
 	'command.searchTaskView': '在任務視圖中搜尋',
 	'command.exportTaskViewImage': '匯出任務檢視為圖片',
 	'command.copyTaskViewImage': '複製任務檢視圖片到剪貼簿',
@@ -641,6 +643,8 @@ const zhTW = {
 	'view.iotoTaskView.deleteConfirm.cancel': '取消',
 	'view.iotoTaskView.deleteConfirm.aria': '刪除確認',
 	'notice.iotoTaskView.commitConflict': '檔案在編輯期間被外部修改，本次變更已捨棄。',
+	'notice.iotoTaskView.swapNoPrev': '已經是同級任務中的第一條',
+	'notice.iotoTaskView.swapNoNext': '已經是同級任務中的最後一條',
 	'notice.iotoTaskView.inlineEditUnavailable':
 		'目前 Obsidian 版本不支援內嵌編輯，請在 Markdown 中編輯。',
 	'notice.iotoTaskView.bodyMultilineRejected':
