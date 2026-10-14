@@ -2635,13 +2635,16 @@ button.ioto-task-view__section-close-btn:not(.clickable-icon) {
 	pointer-events: none;
 }
 
-/* 三段动效走合成层，避免动画期间回主线程掉帧（[[Plan-20261005-152203]] §4.4）。
-   `will-change` 只是静态提示；transition/opacity/transform 仍由 JS inline 写入。
-   动画结束后清理由 `list-transition.ts` 的 cleanup 移除状态类，图层随之撤销。 */
+/* 收尾 `cancel()` 会摘掉状态类。若在此给整卡 `will-change`，卡片会被提升为独立合成层；
+   摘类时合成层被回收，文字在同一几何位置以另一套抗锯齿重画 → 一帧「重栅格」闪烁
+   （[[Research-20261014-200527]] 根因 A：只挂 `will-change: transform` 即复现 1429px，
+   删掉后整段互换收尾 8939px → 0px）。故不再显式提示合成层；
+   transform/opacity 过渡仍由 JS inline 写入、照常起播（实测删掉后动画仍在滑行）。
+   `backface-visibility` 单开只造成 8px 差异（低于可见阈值），保留。
+   动画结束后清理由 `list-transition.ts` 的 cleanup 移除状态类。 */
 .ioto-task-view__card.is-flipping,
 .ioto-task-view__card.is-entering,
 .ioto-task-view__card.is-leaving {
-	will-change: transform, opacity;
 	backface-visibility: hidden;
 }
 
