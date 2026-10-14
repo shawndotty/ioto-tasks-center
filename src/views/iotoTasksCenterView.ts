@@ -71,6 +71,7 @@ import {
 	executeBatchCreate,
 	canCreateTask,
 	getAddTaskButtonLabel,
+	getAddTaskButtonTooltip,
 	canCreateProject as canCreateProjectFn,
 	getAddProjectButtonLabel as getAddProjectButtonLabelFn,
 	handleCreateProject,
@@ -936,6 +937,10 @@ export class IOTOTasksCenterView extends ItemView {
 		return getAddTaskButtonLabel(this);
 	}
 
+	getAddTaskButtonTooltip(): string {
+		return getAddTaskButtonTooltip(this);
+	}
+
 	canCreateProject(): boolean {
 		return canCreateProjectFn(this);
 	}
@@ -948,8 +953,11 @@ export class IOTOTasksCenterView extends ItemView {
 		return handleCreateProject(this);
 	}
 
-	async showTaskCreationMenu(event: MouseEvent): Promise<void> {
-		return showTaskCreationMenuFn(this, event);
+	async showTaskCreationMenu(
+		event: MouseEvent,
+		options?: { shiftKey?: boolean },
+	): Promise<void> {
+		return showTaskCreationMenuFn(this, event, options);
 	}
 
 	private async handleCreateTask(type: TaskCreationType): Promise<void> {

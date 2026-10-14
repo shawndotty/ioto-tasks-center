@@ -270,6 +270,18 @@ export function getAddTaskButtonLabel(view: IOTOTasksCenterView): string {
     return t('view.tasksPane.addTaskReady', [view.selectedProject]);
 }
 
+// Function 4b
+export function getAddTaskButtonTooltip(view: IOTOTasksCenterView): string {
+    const label = getAddTaskButtonLabel(view);
+    const batchConfig = view.getBatchTemplateConfig();
+    const canBatchCreate =
+        batchConfig.enabled && batchConfig.templates.length > 0;
+    if (!canBatchCreate) {
+        return label;
+    }
+    return label + t('view.tasksPane.addTaskBatchHint');
+}
+
 // Function 5
 export function canCreateProject(view: IOTOTasksCenterView): boolean {
     return (
@@ -349,7 +361,19 @@ export async function handleCreateProject(view: IOTOTasksCenterView): Promise<vo
 }
 
 // Function 8
-export async function showTaskCreationMenu(view: IOTOTasksCenterView, event: MouseEvent): Promise<void> {
+export async function showTaskCreationMenu(
+    view: IOTOTasksCenterView,
+    event: MouseEvent,
+    options?: { shiftKey?: boolean },
+): Promise<void> {
+    // Shift 分支必须排在 canCreateTask 早退之前：批量创建的门禁（项目缺失 /
+    // 未启用 / 无模板）由 triggerBatchCreateFromTemplate 自己一套针对性
+    // Notice 兜底，与命令入口、项目右键菜单入口同口径。
+    if (options?.shiftKey) {
+        void triggerBatchCreateFromTemplate(view);
+        return;
+    }
+
     if (!canCreateTask(view)) {
         return;
     }
@@ -381,6 +405,23 @@ export async function showTaskCreationMenu(view: IOTOTasksCenterView, event: Mou
             }),
         );
     }
+
+    // 可发现性补充：判据与项目右键菜单（menus.ts）完全一致，复用已有文案 key。
+    // 此处上下文即已选中项目，无需再 selectProject。
+    const batchConfig = view.getBatchTemplateConfig();
+    const canBatchCreate =
+        batchConfig.enabled && batchConfig.templates.length > 0;
+    if (canBatchCreate) {
+        menu.addSeparator();
+        menu.addItem((item) =>
+            item
+                .setTitle(t('view.projectMenu.batchCreateTasks'))
+                .onClick(() => {
+                    void triggerBatchCreateFromTemplate(view);
+                }),
+        );
+    }
+
     menu.showAtMouseEvent(event);
 }
 

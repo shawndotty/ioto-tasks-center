@@ -93,10 +93,20 @@ export function renderTasksPane(
 		addTaskIconEl.type = 'button';
 		addTaskIconEl.disabled = !view.canCreateTask() || view.isCreatingTask;
 		addTaskIconEl.ariaLabel = view.getAddTaskButtonLabel();
-		addTaskIconEl.title = view.getAddTaskButtonLabel();
+		addTaskIconEl.title = view.getAddTaskButtonTooltip();
 		setIcon(addTaskIconEl, 'plus');
+		// 真实指针按下时采样一次 Shift：按钮聚焦后 Shift+Enter / Shift+Space
+		// 也会激活它，合成的 click 同样带 shiftKey === true，但不会先派发
+		// pointerdown，以此只认真实指针。
+		let iconPressedShift = false;
+		addTaskIconEl.addEventListener('pointerdown', (event: PointerEvent) => {
+			iconPressedShift = event.shiftKey;
+		});
 		addTaskIconEl.addEventListener('click', (event) => {
-			void view.showTaskCreationMenu(event);
+			// detail > 0 为兜底：键盘合成的 click 恒为 0。
+			const shiftKey = iconPressedShift && event.detail > 0;
+			iconPressedShift = false;
+			void view.showTaskCreationMenu(event, { shiftKey });
 		});
 	} else {
 		const addTaskButtonEl = actionsEl.createEl('button', {
@@ -108,9 +118,17 @@ export function renderTasksPane(
 		addTaskButtonEl.type = 'button';
 		addTaskButtonEl.disabled = !view.canCreateTask();
 		addTaskButtonEl.ariaLabel = view.getAddTaskButtonLabel();
-		addTaskButtonEl.title = view.getAddTaskButtonLabel();
+		addTaskButtonEl.title = view.getAddTaskButtonTooltip();
+		// 真实指针按下时采样一次 Shift（同移动端图标分支）。
+		let pressedShift = false;
+		addTaskButtonEl.addEventListener('pointerdown', (event: PointerEvent) => {
+			pressedShift = event.shiftKey;
+		});
 		addTaskButtonEl.addEventListener('click', (event) => {
-			void view.showTaskCreationMenu(event);
+			// detail > 0 为兜底：键盘合成的 click 恒为 0。
+			const shiftKey = pressedShift && event.detail > 0;
+			pressedShift = false;
+			void view.showTaskCreationMenu(event, { shiftKey });
 		});
 	}
 
