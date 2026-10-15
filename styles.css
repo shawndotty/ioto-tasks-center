@@ -1535,6 +1535,12 @@ button:not(.clickable-icon).ioto-tasks-center__status-checklist-popover-item {
 	width: 100%;
 }
 
+/* 模板变量弹窗：核心 .setting-item 是 align-items: flex-start，
+   变量名会顶在行首而与较高的输入框不共中线 → 行内改为垂直居中 */
+.ioto-tasks-center__entry-template-vars-modal .setting-item {
+	align-items: center;
+}
+
 .ioto-tasks-center__modal-field {
 	margin-top: 12px;
 }

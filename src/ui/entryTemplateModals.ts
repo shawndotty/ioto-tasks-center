@@ -98,6 +98,7 @@ export class EntryTemplateVariablesModal extends Modal {
 
 	constructor(app: Modal['app'], variables: EntryTemplateVariable[]) {
 		super(app);
+		this.modalEl.addClass('ioto-tasks-center__entry-template-vars-modal');
 		this.variables = variables;
 		for (const variable of variables) {
 			this.values.set(variable.name, variable.defaultValue ?? '');
