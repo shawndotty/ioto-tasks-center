@@ -357,6 +357,10 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 					closeSection: () => {
 						void view.commitSectionEdit();
 					},
+					// 底部「新增 Section」加号：写盘 + 重绘 + 进入新节编辑都在 addSection 内。
+					addSection: () => {
+						void view.addSection();
+					},
 				}
 			: {}),
 	};

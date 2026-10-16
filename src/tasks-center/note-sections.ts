@@ -226,6 +226,78 @@ export function parseSections(content: string): NoteSection[] {
 	return sections;
 }
 
+export interface AppendSectionHeadingResult {
+	/** 追加新标题块后的完整内容。 */
+	content: string;
+	/** 新标题块采用的层级（1..6）。 */
+	level: number;
+	/** 新标题行在结果内容中的 0 基行号。 */
+	headingLine: number;
+}
+
+/**
+ * 在文末追加一个与现有**顶层标题块同级**的新 Section（仅标题行）。
+ *
+ * - 层级取最后一个顶层标题块（roots 中 `level > 0`）的级别；无任何标题块
+ *  （空笔记 / 仅引导区）时回退 1 级（`#`），与「添加任务」新建 `# 任务` 同惯例。
+ * - 空内容 → 仅标题；末行已是空白 → 直接追加（复用分隔，避免双空行）；
+ *   末行非空 → 先补一个空行。口径与 `appendTaskBlock` 的文末三分支一致。
+ */
+export function appendSectionHeading(
+	content: string,
+	title: string,
+): AppendSectionHeadingResult {
+	const level = resolveTopLevelHeadingLevel(parseSections(content));
+	const heading = `${'#'.repeat(level)} ${title.trim()}`;
+
+	if (content.length === 0) {
+		return { content: heading, level, headingLine: 0 };
+	}
+
+	const lines = content.split('\n');
+	const lastLine = lines[lines.length - 1] ?? '';
+	const nextLines =
+		lastLine.trim() === ''
+			? [...lines, heading]
+			: [...lines, '', heading];
+
+	return {
+		content: nextLines.join('\n'),
+		level,
+		headingLine: nextLines.length - 1,
+	};
+}
+
+/**
+ * 顶层 root 栈算法（与渲染层 `getTopLevelSections` 同逻辑，domain 层不引视图模块）：
+ * 返回最后一个**标题型**顶层块的级别；没有标题块时回退 1。
+ */
+function resolveTopLevelHeadingLevel(sections: NoteSection[]): number {
+	const stack: NoteSection[] = [];
+	let level = 1;
+
+	for (const section of sections) {
+		while (stack.length > 0) {
+			const top = stack[stack.length - 1];
+			if (!top) {
+				break;
+			}
+			if (section.level <= top.level || section.startLine > top.endLine) {
+				stack.pop();
+				continue;
+			}
+			break;
+		}
+
+		if (stack.length === 0 && section.level > 0) {
+			level = section.level;
+		}
+		stack.push(section);
+	}
+
+	return level;
+}
+
 /**
  * 按标题精确匹配（去两侧空白）找到最靠前的 Section；找不到返回 `null`。
  * 仅匹配真标题块（level > 0）；引导区标题为 `''`，不会被命中。

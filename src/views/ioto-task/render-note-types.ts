@@ -104,6 +104,12 @@ export interface TaskNoteEditing {
 	 * 不做真源判断）。**缺省 = 关闭按钮不渲染**（只读 / 不支持内联编辑）。
 	 */
 	closeSection?(startLine: number): void;
+	/**
+	 * 点 Section 列表底部「新增 Section」加号：文末追加同级标题块并进入该节
+	 * 编辑态。**缺省 = 加号不渲染**（只读 / 不支持内联编辑）；渲染层另按
+	 * 「只显示任务」过滤开关决定显隐。
+	 */
+	addSection?(): void;
 }
 
 /** 链接交互回调（由 `IOTOTaskView` 注入；只读态同样生效）。 */

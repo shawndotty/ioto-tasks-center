@@ -201,6 +201,7 @@ import {
 	swapSelectedTask,
 	triggerAddTask,
 } from './ioto-task/task-view-task-commands';
+import { addSection } from './ioto-task/task-view-add-section';
 import {
 	beginExternalEditorWriteback,
 	endExternalEditorWriteback,
@@ -686,6 +687,7 @@ export class IOTOTaskView extends TextFileView {
 	// ---- 任务命令 ----
 	triggerAddTask(context?: ToolbarButtonClickContext): void { triggerAddTask(this, context); }
 	async addTask(): Promise<void> { await addTask(this); }
+	async addSection(): Promise<void> { await addSection(this); }
 	async appendTaskBlock(
 		buildNewLines: Parameters<typeof appendTaskBlock>[1],
 		options?: { caretOffset?: number | null },

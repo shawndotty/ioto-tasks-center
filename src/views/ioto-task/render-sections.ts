@@ -405,3 +405,35 @@ function renderSectionBody(options: {
 		});
 	}
 }
+
+/**
+ * Section 列表底部**唯一**的「新增 Section」入口：无文字图标加号，刻意低存在感
+ * （透明度 / hover 显隐由 CSS 负责）。
+ *
+ * 显隐门禁在调用方 `renderTaskNote`：仅在**非「只显示任务」**且支持内联编辑
+ * （`editing.addSection` 存在）时渲染一次；section 编辑隔离态 / 卡片放大态由
+ * CSS `:has()` 规则隐藏。
+ */
+export function renderAddSectionEntry(
+	scrollEl: HTMLElement,
+	onAddSection: () => void,
+): void {
+	const label = t('view.iotoTaskView.addSection');
+	const rowEl = scrollEl.createDiv({
+		cls: 'ioto-task-view__section-add',
+	});
+	const btn = rowEl.createEl('button', {
+		cls: 'ioto-task-view__section-add-btn',
+		attr: {
+			type: 'button',
+			'aria-label': label,
+			title: label,
+		},
+	});
+	setIcon(btn, 'plus');
+	btn.addEventListener('click', (event) => {
+		event.preventDefault();
+		event.stopPropagation();
+		onAddSection();
+	});
+}

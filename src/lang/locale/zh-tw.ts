@@ -580,6 +580,8 @@ const zhTW = {
 	'view.iotoTaskView.sectionToggle': '折疊/展開章節：{0}',
 	'view.iotoTaskView.sectionEdit': '編輯本節',
 	'view.iotoTaskView.sectionClose': '關閉本節編輯',
+	'view.iotoTaskView.addSection': '新增章節',
+	'view.iotoTaskView.newSectionTitle': '新建章節',
 	'view.iotoTaskView.checkboxToggle': '切換任務完成狀態：{0}',
 	'view.iotoTaskView.selectCardHint': '點擊選取，再點編輯',
 	'view.iotoTaskView.continuationEditHint': '點擊編輯補充說明',

@@ -236,6 +236,8 @@ export interface TaskViewHost extends Component {
 	// ---- 薄代理方法：任务命令 ----
 	triggerAddTask(context?: ToolbarButtonClickContext): void;
 	addTask(): Promise<void>;
+	/** 文末新增同级 Section（默认标题）并进入该节整块编辑态。 */
+	addSection(): Promise<void>;
 	insertEntryTemplate(): Promise<void>;
 	resolveCurrentProjectNames(): string[];
 	runTask(): Promise<void>;

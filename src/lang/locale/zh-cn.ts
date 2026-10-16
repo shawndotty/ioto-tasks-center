@@ -579,6 +579,8 @@ const zhCN = {
 	'view.iotoTaskView.sectionToggle': '折叠/展开章节：{0}',
 	'view.iotoTaskView.sectionEdit': '编辑本节',
 	'view.iotoTaskView.sectionClose': '关闭本节编辑',
+	'view.iotoTaskView.addSection': '新增章节',
+	'view.iotoTaskView.newSectionTitle': '新建章节',
 	'view.iotoTaskView.checkboxToggle': '切换任务完成状态：{0}',
 	'view.iotoTaskView.selectCardHint': '点击选中，再点编辑',
 	'view.iotoTaskView.continuationEditHint': '点击编辑补充说明',

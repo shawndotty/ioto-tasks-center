@@ -2633,6 +2633,47 @@ button.ioto-task-view__section-close-btn:not(.clickable-icon) {
 	border-bottom: none;
 }
 
+/* —— 底部「新增 Section」加号（全视图唯一入口，刻意低存在感；无文字图标） —— */
+.ioto-task-view__section-add {
+	display: flex;
+	/* 左右与 section header / body 对齐；上方留一个 section 内边距的呼吸 */
+	padding: var(--ioto-tv-pad-y) var(--ioto-tv-pad-x) 0;
+}
+
+button.ioto-task-view__section-add-btn:not(.clickable-icon) {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2px;
+	background: transparent;
+	border: none;
+	box-shadow: none;
+	color: var(--text-muted);
+	opacity: 0.55;
+	cursor: pointer;
+	height: auto;
+	transition:
+		opacity 0.15s ease,
+		color 0.15s ease;
+}
+
+.ioto-task-view__section-add-btn:hover {
+	color: var(--text-normal);
+	opacity: 1;
+}
+
+/* Section 整块编辑隔离态：加号与其他 section 一并隐藏（唯一真源 = .is-editing） */
+.ioto-task-view__scroll:has(> .ioto-task-view__section.is-editing)
+	> .ioto-task-view__section-add {
+	display: none;
+}
+
+/* 卡片聚焦放大态：放大面只服务单卡编辑，隐藏新增入口 */
+.ioto-task-view__scroll:has(.ioto-task-view__card.is-zoomed)
+	> .ioto-task-view__section-add {
+	display: none;
+}
+
 .ioto-task-view__checklist {
 	list-style: none;
 	margin: 0;
@@ -3229,6 +3270,12 @@ button.ioto-task-view__section-close-btn:not(.clickable-icon) {
    `.is-phone .…edit-btn` 特异性低于基础规则，padding 实际未生效） */
 .is-phone button.ioto-task-view__section-edit-btn:not(.clickable-icon),
 .is-phone button.ioto-task-view__section-close-btn:not(.clickable-icon) {
+	padding: 6px;
+}
+
+/* 移动端「新增 Section」加号：无 hover 设备默认全显，并加大触控热区 */
+.is-phone button.ioto-task-view__section-add-btn:not(.clickable-icon) {
+	opacity: 1;
 	padding: 6px;
 }
 

@@ -33,7 +33,9 @@ export {
 	stripCommentContentFromLine,
 	parseSections,
 	findSectionByTitle,
+	appendSectionHeading,
 } from './note-sections';
+export type { AppendSectionHeadingResult } from './note-sections';
 
 export type { TaskLineParts } from './note-task-line';
 export {

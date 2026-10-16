@@ -24,6 +24,7 @@ import {
 import {
 	attachTaskNoteLinkDelegates,
 	getTopLevelSections,
+	renderAddSectionEntry,
 	renderSection,
 } from './render-sections';
 // 叶子类型模块：被渲染子模块反向引用的 3 个纯类型已下沉到 `render-note-types.ts`
@@ -84,6 +85,18 @@ export function renderTaskNote(options: RenderTaskNoteOptions): void {
 			recentTaskCount,
 			searchQuery,
 		});
+	}
+
+	// 底部「新增 Section」唯一加号：①「只显示任务」开启时不渲染；
+	// ② 只读 / 不支持内联编辑时 editing.addSection 缺省，同样不渲染。
+	// onlyPending / recentOnly / 关键词搜索均不影响它。
+	if (
+		!filters.onlyTaskBlocks &&
+		options.editing.enabled &&
+		options.editing.addSection
+	) {
+		// 箭头包一层：直接传方法引用会触发 unbound-method（this 脱离对象）。
+		renderAddSectionEntry(scrollEl, () => options.editing.addSection?.());
 	}
 }
 
