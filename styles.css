@@ -2192,12 +2192,35 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 .ioto-tasks-center__batch-template-row-name {
 	flex: 1;
 	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .ioto-tasks-center__batch-template-row-actions {
 	display: flex;
 	gap: 8px;
 	flex-shrink: 0;
+}
+
+/* 模板行的图标按钮：核心 `button:not(.clickable-icon)` 特异性（0-1-1）高于
+   `__icon-button`（0-1-0），会把透明底刷成实心默认按钮。按本插件既有做法
+   （同 `__tab-settings-button`）提权压回去，hover 状态在高特异性下由本条一并接管。 */
+.ioto-tasks-center__batch-template-row-actions
+	button:not(.clickable-icon).ioto-tasks-center__icon-button {
+	background: transparent;
+	box-shadow: none;
+}
+
+.ioto-tasks-center__batch-template-row-actions
+	button:not(.clickable-icon).ioto-tasks-center__icon-button:hover:not(:disabled) {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.ioto-tasks-center__batch-template-row-actions
+	button:not(.clickable-icon).ioto-tasks-center__icon-button--danger:hover:not(:disabled) {
+	color: var(--text-error);
 }
 
 .ioto-tasks-center__batch-template-content-setting {

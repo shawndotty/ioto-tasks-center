@@ -1,7 +1,9 @@
-import { App, Setting } from 'obsidian';
+import { App, Setting, setIcon } from 'obsidian';
 import { t } from '../../lang/helpter';
 import type { BatchTaskTemplate } from '../../tasks-center/batch-task-template';
+import { createBatchTemplateId } from '../../tasks-center/batch-task-template';
 import { BatchTemplateEditModal } from '../batchTemplateEditModal';
+import type { TemplateEditMode } from '../entryTemplateEditModal';
 import { ConfirmModal } from '../confirmModal';
 import type IOTOTasksCenter from '../../main';
 import { resolveAvailableProjectNames } from './helpers';
@@ -70,17 +72,40 @@ function renderBatchTemplateSettings(
 		});
 
 		const editButtonEl = actionsEl.createEl('button', {
-			text: t('settings.batchTemplates.edit'),
+			cls: 'ioto-tasks-center__icon-button',
 		});
 		editButtonEl.type = 'button';
+		editButtonEl.ariaLabel = t('settings.batchTemplates.edit');
+		editButtonEl.title = t('settings.batchTemplates.edit');
+		setIcon(editButtonEl, 'pencil');
 		editButtonEl.addEventListener('click', () => {
 			void openBatchTemplateEditor(containerEl, app, plugin, template);
 		});
 
+		const duplicateButtonEl = actionsEl.createEl('button', {
+			cls: 'ioto-tasks-center__icon-button',
+		});
+		duplicateButtonEl.type = 'button';
+		duplicateButtonEl.ariaLabel = t('settings.batchTemplates.duplicate');
+		duplicateButtonEl.title = t('settings.batchTemplates.duplicate');
+		setIcon(duplicateButtonEl, 'copy');
+		duplicateButtonEl.addEventListener('click', () => {
+			void openBatchTemplateEditor(
+				containerEl,
+				app,
+				plugin,
+				template,
+				'duplicate',
+			);
+		});
+
 		const deleteButtonEl = actionsEl.createEl('button', {
-			text: t('settings.batchTemplates.delete'),
+			cls: 'ioto-tasks-center__icon-button ioto-tasks-center__icon-button--danger',
 		});
 		deleteButtonEl.type = 'button';
+		deleteButtonEl.ariaLabel = t('settings.batchTemplates.delete');
+		deleteButtonEl.title = t('settings.batchTemplates.delete');
+		setIcon(deleteButtonEl, 'trash-2');
 		deleteButtonEl.addEventListener('click', () => {
 			void confirmDeleteBatchTemplate(containerEl, app, plugin, template);
 		});
@@ -92,27 +117,43 @@ async function openBatchTemplateEditor(
 	app: App,
 	plugin: IOTOTasksCenter,
 	existing: BatchTaskTemplate | null,
+	mode: TemplateEditMode = existing === null ? 'create' : 'edit',
 ): Promise<void> {
 	const availableProjects = resolveAvailableProjectNames(
 		app,
 		plugin.settings.tasksRootPath,
 	);
+
+	// duplicate：预先换上新 id 并把名称补成「原名 + 副本」，弹窗只负责预填与改名
+	const seed =
+		mode === 'duplicate' && existing
+			? {
+					...existing,
+					id: createBatchTemplateId(),
+					name:
+						existing.name + t('settings.batchTemplates.duplicateSuffix'),
+				}
+			: existing;
+
 	const result = await new BatchTemplateEditModal(
 		app,
-		existing,
+		seed,
 		availableProjects,
+		mode,
 	).openAndGetValue();
 	if (!result) {
 		return;
 	}
 
+	// 按 id 查找，使「新建 / 编辑 / 复制」三条路径合一，不依赖 existing 的语义
 	const config = plugin.settings.batchTemplateConfig;
+	const index = config.templates.findIndex(
+		(template) => template.id === result.id,
+	);
 	const nextTemplates =
-		existing === null
-			? [...config.templates, result]
-			: config.templates.map((template) =>
-					template.id === existing.id ? result : template,
-				);
+		index >= 0
+			? config.templates.map((template, i) => (i === index ? result : template))
+			: [...config.templates, result];
 
 	await plugin.updateBatchTemplateConfig({
 		enabled: config.enabled,

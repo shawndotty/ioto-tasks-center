@@ -14,12 +14,19 @@ import {
 } from '../tasks-center/task-entry-template';
 
 /**
+ * 编辑弹窗的三种打开方式：新建 / 编辑 / 复制。
+ * 「复制」由外部先生成新 id 并预填名称，弹窗本身只负责改名与确认。
+ */
+export type TemplateEditMode = 'create' | 'edit' | 'duplicate';
+
+/**
  * 新增 / 编辑一条「条目模板」。
  * 字段：名称 / 说明（可选）/ 项目范围（多行文本，空 = 所有项目）/ 模板正文（多行）。
  */
 export class EntryTemplateEditModal extends Modal {
 	private readonly existing: TaskEntryTemplate | null;
 	private readonly availableProjects: string[];
+	private readonly mode: TemplateEditMode;
 	private name = '';
 	private description = '';
 	private projects: string[] = [];
@@ -32,10 +39,12 @@ export class EntryTemplateEditModal extends Modal {
 		app: Modal['app'],
 		existing: TaskEntryTemplate | null,
 		availableProjects: string[] = [],
+		mode: TemplateEditMode = existing === null ? 'create' : 'edit',
 	) {
 		super(app);
 		this.existing = existing;
 		this.availableProjects = availableProjects;
+		this.mode = mode;
 		this.name = existing?.name ?? '';
 		this.description = existing?.description ?? '';
 		this.projects = existing ? [...existing.projects] : [];
@@ -50,12 +59,13 @@ export class EntryTemplateEditModal extends Modal {
 	}
 
 	onOpen(): void {
-		const isNew = this.existing === null;
-		this.setTitle(
-			isNew
-				? t('settings.entryTemplates.editModal.title.new')
-				: t('settings.entryTemplates.editModal.title.edit'),
-		);
+		const titleKey =
+			this.mode === 'duplicate'
+				? 'settings.entryTemplates.editModal.title.duplicate'
+				: this.mode === 'create'
+					? 'settings.entryTemplates.editModal.title.new'
+					: 'settings.entryTemplates.editModal.title.edit';
+		this.setTitle(t(titleKey));
 
 		new Setting(this.contentEl)
 			.setName(t('settings.entryTemplates.editModal.name'))

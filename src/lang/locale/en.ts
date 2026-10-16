@@ -468,13 +468,16 @@ const en = {
 		'No batch templates yet. Click "Add template" to create one.',
 	'settings.batchTemplates.add': 'Add template',
 	'settings.batchTemplates.edit': 'Edit',
+	'settings.batchTemplates.duplicate': 'Duplicate',
 	'settings.batchTemplates.delete': 'Delete',
+	'settings.batchTemplates.duplicateSuffix': ' (Copy)',
 	'settings.batchTemplates.deleteConfirm.title': 'Delete batch template',
 	'settings.batchTemplates.deleteConfirm.desc':
 		'Delete the template "{0}"? This cannot be undone.',
 	'settings.batchTemplates.deleteConfirm.confirm': 'Delete',
 	'settings.batchTemplates.editModal.title.new': 'New batch template',
 	'settings.batchTemplates.editModal.title.edit': 'Edit batch template',
+	'settings.batchTemplates.editModal.title.duplicate': 'Duplicate batch template',
 	'settings.batchTemplates.editModal.name': 'Template name',
 	'settings.batchTemplates.editModal.taskType': 'Task type',
 	'settings.batchTemplates.editModal.content':
@@ -508,13 +511,16 @@ const en = {
 		'No entry templates yet. Click "Add template" to create one.',
 	'settings.entryTemplates.add': 'Add template',
 	'settings.entryTemplates.edit': 'Edit',
+	'settings.entryTemplates.duplicate': 'Duplicate',
 	'settings.entryTemplates.delete': 'Delete',
+	'settings.entryTemplates.duplicateSuffix': ' (Copy)',
 	'settings.entryTemplates.deleteConfirm.title': 'Delete entry template',
 	'settings.entryTemplates.deleteConfirm.desc':
 		'Delete the template "{0}"? This cannot be undone.',
 	'settings.entryTemplates.deleteConfirm.confirm': 'Delete',
 	'settings.entryTemplates.editModal.title.new': 'New entry template',
 	'settings.entryTemplates.editModal.title.edit': 'Edit entry template',
+	'settings.entryTemplates.editModal.title.duplicate': 'Duplicate entry template',
 	'settings.entryTemplates.editModal.name': 'Template name',
 	'settings.entryTemplates.editModal.description': 'Description (optional)',
 	'settings.entryTemplates.editModal.content':

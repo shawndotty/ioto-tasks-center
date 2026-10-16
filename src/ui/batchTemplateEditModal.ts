@@ -20,6 +20,7 @@ import {
 	type BatchTaskTemplate,
 	type BatchTaskType,
 } from '../tasks-center/batch-task-template';
+import type { TemplateEditMode } from './entryTemplateEditModal';
 
 function getBatchTaskTypeLabel(taskType: BatchTaskType): string {
 	switch (taskType) {
@@ -37,6 +38,7 @@ function getBatchTaskTypeLabel(taskType: BatchTaskType): string {
 export class BatchTemplateEditModal extends Modal {
 	private readonly existing: BatchTaskTemplate | null;
 	private readonly availableProjects: string[];
+	private readonly mode: TemplateEditMode;
 	private name = '';
 	private levelTaskTypes: BatchTaskType[] = [...DEFAULT_LEVEL_TASK_TYPES];
 	private listContent = '';
@@ -50,10 +52,12 @@ export class BatchTemplateEditModal extends Modal {
 		app: Modal['app'],
 		existing: BatchTaskTemplate | null,
 		availableProjects: string[] = [],
+		mode: TemplateEditMode = existing === null ? 'create' : 'edit',
 	) {
 		super(app);
 		this.existing = existing;
 		this.availableProjects = availableProjects;
+		this.mode = mode;
 		this.name = existing?.name ?? '';
 		this.levelTaskTypes = existing
 			? (normalizeBatchTemplate(existing)?.levelTaskTypes ?? [
@@ -72,12 +76,13 @@ export class BatchTemplateEditModal extends Modal {
 	}
 
 	onOpen(): void {
-		const isNew = this.existing === null;
-		this.setTitle(
-			isNew
-				? t('settings.batchTemplates.editModal.title.new')
-				: t('settings.batchTemplates.editModal.title.edit'),
-		);
+		const titleKey =
+			this.mode === 'duplicate'
+				? 'settings.batchTemplates.editModal.title.duplicate'
+				: this.mode === 'create'
+					? 'settings.batchTemplates.editModal.title.new'
+					: 'settings.batchTemplates.editModal.title.edit';
+		this.setTitle(t(titleKey));
 
 		new Setting(this.contentEl)
 			.setName(t('settings.batchTemplates.editModal.name'))
