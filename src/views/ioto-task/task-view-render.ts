@@ -9,6 +9,7 @@ import {
 	IOTO_TASK_SCROLL_SELECTOR,
 } from './ioto-task-scroll';
 import { renderTaskNote } from './render-note';
+import { buildSectionDragController } from './task-view-section-drag';
 import type { TaskNoteEditing, TaskNoteLinks } from './render-note-types';
 import { toExternalOpenUrl } from './external-link-url';
 import { collectCardLines, pickEdgeLine } from './card-navigation';
@@ -103,6 +104,12 @@ export function renderNote(
 				view.renderNote(view.data);
 			},
 			editing: buildEditingController(view),
+			// Section 拖拽手柄：只读不挂；「只显示任务」态 roots 是过滤子集，
+			// 跨隐藏块排序不可预测，同口径不挂（与底部「新增 Section」加号一致）。
+			sectionDrag:
+				view.supportsInlineEdit() && !view.filters.onlyTaskBlocks
+					? buildSectionDragController(view)
+					: undefined,
 			links: buildLinkController(view),
 			filters: view.filters,
 			recentTaskCount: view.recentTaskCountProvider(),

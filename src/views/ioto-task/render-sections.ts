@@ -31,7 +31,12 @@ import {
 	type CardVisibilityInput,
 } from './task-query-filter';
 import { renderChecklistGroup, renderMarkdownChunk } from './render-checklist-card';
-import type { TaskNoteEditing, TaskNoteFilters, TaskNoteLinks } from './render-note-types';
+import type {
+	TaskNoteEditing,
+	TaskNoteFilters,
+	TaskNoteLinks,
+	TaskSectionDrag,
+} from './render-note-types';
 
 interface RenderSectionOptions {
 	app: App;
@@ -47,6 +52,8 @@ interface RenderSectionOptions {
 	recentTaskCount: number;
 	/** 关键词过滤（已透传；空串 = 不过滤） */
 	searchQuery: string;
+	/** Section 拖拽排序（缺省 = 不渲染 grip：只读 / 「只显示任务」态） */
+	sectionDrag?: TaskSectionDrag;
 }
 
 /** Section 折叠状态的稳定 key（Level + 起始行 + 标题，重排后不会错位）。 */
@@ -169,10 +176,12 @@ export function renderSection(options: RenderSectionOptions): void {
 	if (section.level > 0) {
 		renderSectionHeader({
 			sectionEl,
+			scrollEl,
 			section,
 			collapsed,
 			onToggle: () => onToggleSection(key),
 			editing: options.editing,
+			sectionDrag: options.sectionDrag,
 		});
 	}
 
@@ -197,12 +206,15 @@ export function renderSection(options: RenderSectionOptions): void {
 
 function renderSectionHeader(options: {
 	sectionEl: HTMLElement;
+	scrollEl: HTMLElement;
 	section: NoteSection;
 	collapsed: boolean;
 	onToggle: () => void;
 	editing: TaskNoteEditing;
+	sectionDrag?: TaskSectionDrag;
 }): void {
-	const { sectionEl, section, collapsed, onToggle, editing } = options;
+	const { sectionEl, scrollEl, section, collapsed, onToggle, editing, sectionDrag } =
+		options;
 	const headerEl = sectionEl.createDiv({ cls: 'ioto-task-view__section-header' });
 	const toggleEl = headerEl.createEl('button', {
 		cls: 'ioto-task-view__section-toggle',
@@ -231,6 +243,23 @@ function renderSectionHeader(options: {
 	// 只读态保持空容器。渲染层**常驻两个按钮、不判态**——两态互换由 CSS 认
 	// `.ioto-task-view__section.is-editing` 驱动（唯一真源，与是否重绘无关）。
 	if (editing.enabled) {
+		// 拖拽手柄排在 actions 首位；无文字图标，事件由手势模块接管。
+		// 「只显示任务」态 controller 缺省，不渲染（与底部加号同口径）。
+		if (sectionDrag) {
+			const dragHandleEl = actionsEl.createEl('button', {
+				cls: 'ioto-task-view__section-drag-handle',
+				attr: {
+					type: 'button',
+					'aria-label': t('view.iotoTaskView.sectionDragHandle'),
+					title: t('view.iotoTaskView.sectionDragHandle'),
+					'aria-grabbed': 'false',
+					draggable: 'false',
+				},
+			});
+			setIcon(dragHandleEl, 'grip-vertical');
+			sectionDrag.attachHandle(dragHandleEl, sectionEl, scrollEl);
+		}
+
 		const editBtn = actionsEl.createEl('button', {
 			cls: 'ioto-task-view__section-edit-btn',
 			attr: {

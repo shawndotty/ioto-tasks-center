@@ -2633,6 +2633,115 @@ button.ioto-task-view__section-close-btn:not(.clickable-icon) {
 	border-bottom: none;
 }
 
+/* —— Section 拖拽排序：grip 手柄 / 拖拽态 / 落点指示线 / ghost —— */
+button.ioto-task-view__section-drag-handle:not(.clickable-icon) {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2px;
+	background: transparent;
+	border: none;
+	box-shadow: none;
+	color: var(--text-muted);
+	cursor: grab;
+	height: auto;
+	touch-action: auto; /* 未长按的触摸滑动仍交还原生滚动（JS 拖拽中才 preventDefault） */
+}
+
+.ioto-task-view__section-drag-handle:hover {
+	color: var(--text-normal);
+}
+
+.ioto-task-view__section.is-dragging .ioto-task-view__section-drag-handle {
+	cursor: grabbing;
+}
+
+/* 拖拽中源块所在 actions 必须保持可见（指针离开 header 后 :hover 会消失，
+   pointer capture 不受影响但视觉会闪），并禁止整列表文本选中。 */
+.ioto-task-view__section.is-dragging .ioto-task-view__section-actions {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+.ioto-task-view__scroll.is-section-dragging,
+.ioto-task-view__scroll.is-section-dragging * {
+	user-select: none;
+}
+
+/* 源块半透明 */
+.ioto-task-view__section.is-dragging {
+	opacity: 0.35;
+}
+
+/* 落点横线：画在目标 header 的顶 / 底边（sticky header 即定位上下文），
+   折叠 / 展开两种形态都可见。 */
+.ioto-task-view__section.is-drop-before
+	> .ioto-task-view__section-header::before,
+.ioto-task-view__section.is-drop-after
+	> .ioto-task-view__section-header::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	right: 0;
+	height: 2px;
+	border-radius: 2px;
+	background: var(--interactive-accent);
+	pointer-events: none;
+}
+
+.ioto-task-view__section.is-drop-before
+	> .ioto-task-view__section-header::before {
+	top: -1px;
+}
+
+.ioto-task-view__section.is-drop-after
+	> .ioto-task-view__section-header::after {
+	bottom: -1px;
+}
+
+/* 跟手 ghost（挂 body，fixed 定位避免被 sticky / overflow 容器裁切） */
+.ioto-task-view__section-drag-ghost {
+	position: fixed;
+	top: 0;
+	left: 0;
+	z-index: 9999;
+	max-width: 80vw;
+	padding: 8px 12px;
+	border-radius: var(--ioto-tv-radius, 10px);
+	background: var(--background-primary);
+	border: 1px solid var(--interactive-accent);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	font-weight: 600;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	pointer-events: none;
+	opacity: 0.95;
+	will-change: transform;
+}
+
+/* 互斥：Section 整块编辑态 / 卡片放大态下手柄隐藏（手势侧另有 bail 双保险） */
+.ioto-task-view__section.is-editing .ioto-task-view__section-drag-handle {
+	display: none;
+}
+
+.ioto-task-view__scroll:has(.ioto-task-view__card.is-zoomed)
+	.ioto-task-view__section-drag-handle {
+	display: none;
+}
+
+.is-phone button.ioto-task-view__section-drag-handle:not(.clickable-icon) {
+	padding: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ioto-task-view__section-drag-ghost {
+		transition: none;
+	}
+}
+
 /* —— 底部「新增 Section」加号（全视图唯一入口，刻意低存在感；无文字图标） —— */
 .ioto-task-view__section-add {
 	display: flex;

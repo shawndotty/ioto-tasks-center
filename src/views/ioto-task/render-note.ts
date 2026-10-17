@@ -33,6 +33,7 @@ import type {
 	TaskNoteEditing,
 	TaskNoteFilters,
 	TaskNoteLinks,
+	TaskSectionDrag,
 } from './render-note-types';
 
 export interface RenderTaskNoteOptions {
@@ -45,6 +46,11 @@ export interface RenderTaskNoteOptions {
 	collapsedSections: Set<string>;
 	onToggleSection: (key: string) => void;
 	editing: TaskNoteEditing;
+	/**
+	 * Section 拖拽排序控制器。缺省（只读 / 「只显示任务」）→ header 不渲染 grip。
+	 * 「只显示任务」态的过滤在调用方（task-view-render）完成，渲染层只认缺省。
+	 */
+	sectionDrag?: TaskSectionDrag;
 	/** 卡片正文与 Section markdown 里双链的点击 / hover 接管方 */
 	links: TaskNoteLinks;
 	/** 过滤开关（缺省视为全关，兼容旧调用） */

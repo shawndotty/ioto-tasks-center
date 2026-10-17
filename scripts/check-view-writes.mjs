@@ -78,6 +78,14 @@ const WHITELIST = new Set([
 	'task-view-search.ts :: searchDebounce',
 	'task-view-search.ts :: searchQuery',
 	'task-view-search.ts :: selectedLine',
+	// Alt+↑↓ 任务互换（swapSelectedTask）：selectedLine 跟随被移动任务块迁移，
+	// 与 section-drag 同性质的行号重映射状态迁移点。
+	'task-view-task-commands.ts :: selectedLine',
+	// Section 拖拽排序提交后的行号重映射迁移点（[[Plan task-view-section-drag-reorder]]）：
+	// 区间原子重写后，selectedLine 按 mapLine 迁移 / 清空，collapsedSections 的
+	// `level:startLine:title` 键集按新行号整体重建。与 task-view-filters 同款。
+	'task-view-section-drag.ts :: collapsedSections',
+	'task-view-section-drag.ts :: selectedLine',
 	// Section 编辑器（[[Plan-20261010-080827]] 批次 1）：与续行模块同口径的状态迁移点，
 	// 会话快照字段（start/end/originalLines/handle/hostEl）与编辑行号都在本模块维护。
 	'task-view-section-edit.ts :: autosaveRunning',

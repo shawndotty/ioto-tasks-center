@@ -34,8 +34,15 @@ export {
 	parseSections,
 	findSectionByTitle,
 	appendSectionHeading,
+	collectRootSections,
 } from './note-sections';
 export type { AppendSectionHeadingResult } from './note-sections';
+
+export { reorderTopLevelSections } from './note-section-reorder';
+export type {
+	SectionReorderResult,
+	SectionDropPosition,
+} from './note-section-reorder';
 
 export type { TaskLineParts } from './note-task-line';
 export {

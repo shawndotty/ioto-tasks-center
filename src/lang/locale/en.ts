@@ -634,6 +634,7 @@ const en = {
 	'view.iotoTaskView.sectionClose': 'Close section editor',
 	'view.iotoTaskView.addSection': 'Add section',
 	'view.iotoTaskView.newSectionTitle': 'New section',
+	'view.iotoTaskView.sectionDragHandle': 'Drag to reorder section',
 	'view.iotoTaskView.checkboxToggle': 'Toggle task: {0}',
 	'view.iotoTaskView.selectCardHint': 'Click to select, click again to edit',
 	'view.iotoTaskView.continuationEditHint': 'Click to edit the continuation',

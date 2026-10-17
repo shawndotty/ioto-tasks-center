@@ -269,12 +269,14 @@ export function appendSectionHeading(
 }
 
 /**
- * 顶层 root 栈算法（与渲染层 `getTopLevelSections` 同逻辑，domain 层不引视图模块）：
- * 返回最后一个**标题型**顶层块的级别；没有标题块时回退 1。
+ * 顶层 root 栈算法（与渲染层 `getTopLevelSections` 同逻辑）：嵌套标题
+ * （`##` 在 `#` 内）留在父块里，引导区（level 0）也作为一个 root。
+ *
+ * domain 层不引视图模块，故在此保留一份收敛实现，供追加标题 / 拖拽重排复用。
  */
-function resolveTopLevelHeadingLevel(sections: NoteSection[]): number {
+export function collectRootSections(sections: NoteSection[]): NoteSection[] {
+	const roots: NoteSection[] = [];
 	const stack: NoteSection[] = [];
-	let level = 1;
 
 	for (const section of sections) {
 		while (stack.length > 0) {
@@ -289,12 +291,25 @@ function resolveTopLevelHeadingLevel(sections: NoteSection[]): number {
 			break;
 		}
 
-		if (stack.length === 0 && section.level > 0) {
-			level = section.level;
+		if (stack.length === 0) {
+			roots.push(section);
 		}
 		stack.push(section);
 	}
 
+	return roots;
+}
+
+/**
+ * 返回最后一个**标题型**顶层块的级别；没有标题块时回退 1。
+ */
+function resolveTopLevelHeadingLevel(sections: NoteSection[]): number {
+	let level = 1;
+	for (const root of collectRootSections(sections)) {
+		if (root.level > 0) {
+			level = root.level;
+		}
+	}
 	return level;
 }
 

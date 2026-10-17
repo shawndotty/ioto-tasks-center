@@ -112,6 +112,21 @@ export interface TaskNoteEditing {
 	addSection?(): void;
 }
 
+/**
+ * Section 拖拽排序回调（由 `IOTOTaskView` 注入）。
+ *
+ * 渲染层只负责在每个顶层标题块 header 建一个 grip 按钮并调用 `attachHandle`；
+ * 手势判定（鼠标直拖 / 触摸长按再拖）、落点命中与写盘编排全部由手势模块接管。
+ * **缺省 = grip 不渲染**（只读 / 「只显示任务」态）。
+ */
+export interface TaskSectionDrag {
+	attachHandle(
+		handleEl: HTMLElement,
+		sectionEl: HTMLElement,
+		scrollEl: HTMLElement,
+	): void;
+}
+
 /** 链接交互回调（由 `IOTOTaskView` 注入；只读态同样生效）。 */
 export interface TaskNoteLinks {
 	/** 打开双链：`newLeaf` = 核心同款叶子类型（`Keymap.isModEvent` 的结果） */
