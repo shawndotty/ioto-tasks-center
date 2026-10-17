@@ -127,7 +127,11 @@ function attachSectionDragHandle(
 		sectionEl.classList.remove('is-dragging');
 		scrollEl.classList.remove('is-section-dragging');
 		handleEl.setAttribute('aria-grabbed', 'false');
-		window.removeEventListener('keydown', onKeydown);
+		// 🔴 必须带 capture:true，与 `beginDrag` 的注册参数逐项一致：
+		// `removeEventListener` 按 (type, listener, capture) 三元组匹配，省略第三参
+		// 等于 `capture:false` → 摘不掉，每次拖 Section 都会在 window 捕获阶段留下
+		// 一个永久吞掉 Esc 的监听器（[[Research-20261017-150117]]）。
+		window.removeEventListener('keydown', onKeydown, true);
 		if (
 			state.pointerId !== null &&
 			typeof handleEl.releasePointerCapture === 'function'
@@ -149,6 +153,11 @@ function attachSectionDragHandle(
 	};
 
 	function onKeydown(event: KeyboardEvent): void {
+		// 兜底：本监听器挂在 window 捕获阶段，一旦因任何原因没被摘掉，只要手势
+		// 已结束就必须保持沉默——否则它会在全局吃掉所有 Esc（回归事故的形态）。
+		if (!state.dragging) {
+			return;
+		}
 		if (event.key === 'Escape') {
 			event.preventDefault();
 			event.stopPropagation();
