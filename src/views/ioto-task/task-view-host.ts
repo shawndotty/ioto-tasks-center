@@ -53,6 +53,12 @@ export interface TaskViewHost extends Component {
 	lastLoadedText: string;
 	isRendering: boolean;
 	isExporting: boolean;
+	/**
+	 * 就地取消进行中的拖拽手势（ghost / 落点线 / 类名 / 指针捕获）。
+	 * 整树重建前必须调用，否则捕获随旧 DOM 消失、state 卡在 dragging=true
+	 * （[[Research-20261017-112730]] §四）。由两个手势模块在 beginDrag 时登记。
+	 */
+	cancelActiveDrag?: () => void;
 	listTransitionToken: number;
 	listTransitionCleanup: (() => void) | null;
 	commandReadinessTimer: number | null;

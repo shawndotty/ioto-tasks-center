@@ -223,6 +223,8 @@ export class IOTOTaskView extends TextFileView {
 	collapsedSections = new Set<string>();
 	lastLoadedText = '';
 	isRendering = false;
+	/** 见 `TaskViewHost.cancelActiveDrag`：结构化实现接口，需显式声明。 */
+	cancelActiveDrag?: () => void;
 	/**
 	 * 命令就绪补偿计时器句柄（[[Research-20261008-122828]] 方案 A）：`null` = 无在途
 	 * 轮询。渲染时若 ioto-settings 两条命令尚未注册，则挂一趟短轮询，命令一旦出现就
@@ -417,6 +419,8 @@ export class IOTOTaskView extends TextFileView {
 	}
 
 	clear(): void {
+		// 同步插件关笔记 / 换文件会走这里（bodyEl.empty() 同理会摘掉正在拖的手柄）。
+		this.cancelActiveDrag?.();
 		this.destroyActiveEditor();
 		this.destroyContinuationEditor();
 		this.destroySectionEditor();

@@ -2683,19 +2683,23 @@ button.ioto-task-view__section-drag-handle:not(.clickable-icon) {
 }
 
 /* 落点横线：画在目标 header 的顶 / 底边（sticky header 即定位上下文），
-   折叠 / 展开两种形态都可见。 */
+   折叠 / 展开两种形态都可见。视觉语言与卡片落点线统一（[[Plan-20261017-143229]] §2.4）。 */
 .ioto-task-view__section.is-drop-before
 	> .ioto-task-view__section-header::before,
 .ioto-task-view__section.is-drop-after
 	> .ioto-task-view__section-header::after {
 	content: '';
 	position: absolute;
-	left: 0;
-	right: 0;
-	height: 2px;
-	border-radius: 2px;
+	inset-inline: 0;
+	height: 3px;
+	border-radius: 99px;
 	background: var(--interactive-accent);
+	box-shadow:
+		0 0 0 1px color-mix(in srgb, var(--interactive-accent) 40%, transparent),
+		0 0 10px color-mix(in srgb, var(--interactive-accent) 55%, transparent);
 	pointer-events: none;
+	z-index: 2;
+	animation: ioto-tv-dropline-in 120ms ease-out;
 }
 
 .ioto-task-view__section.is-drop-before
@@ -2782,6 +2786,14 @@ button.ioto-task-view__card-drag-handle:not(.clickable-icon) {
 	color: var(--text-normal);
 }
 
+/* 起手手感（[[Plan-20261017-143229]] §2.5 方案 B，纯 CSS）：按下瞬间即 grabbing，
+   不必等 8px 阈值走完（否则「按住了但指针没变化」像没反应）。
+   选择器必须带 `button` + `:not(.clickable-icon)` 才压得住上面的 base 声明（0,2,1）。 */
+button.ioto-task-view__card-drag-handle:not(.clickable-icon):active,
+button.ioto-task-view__section-drag-handle:not(.clickable-icon):active {
+	cursor: grabbing;
+}
+
 /* hover 显隐：口径逐字对齐 Section 动作区（本文件上方的 `.section-actions`）。
    🔴 用 opacity 而非 display/visibility：后者会把按钮移出 tab 序（a11y 回归）。 */
 @media (hover: hover) {
@@ -2834,14 +2846,53 @@ button.ioto-task-view__card-drag-handle:not(.clickable-icon) {
 	opacity: 0.4;
 }
 
-/* 卡片落点线：用 inset box-shadow 画在卡顶 / 卡底内侧——不引发布局位移，且避开
-   glass / modern 主题已占用的 ::before（左侧发光条）。 */
-.ioto-task-view__card.is-drop-before {
-	box-shadow: inset 0 2px 0 0 var(--interactive-accent);
+/* 卡片落点线：用 ::after 绝对定位画在卡与卡之间的缝里。
+   🔴 不能再用 box-shadow：玻璃 / 现代 / 简洁 / 莫兰迪四套主题的
+   `.ioto-task-view.is-xxx .ioto-task-view__card`（0,3,0）会整条覆盖掉
+   `.card.is-drop-before`（0,2,0）的声明 → 线上根本不出现（[[Research-20261017-112730]] §五）。 */
+.ioto-task-view .ioto-task-view__card.is-drop-before::after,
+.ioto-task-view .ioto-task-view__card.is-drop-after::after {
+	content: '';
+	position: absolute;
+	inset-inline: 0;
+	height: 3px;
+	border-radius: 99px;
+	background: var(--interactive-accent);
+	/* 外发光让细线在浅 / 深底、半透明卡片上都立得住 */
+	box-shadow:
+		0 0 0 1px color-mix(in srgb, var(--interactive-accent) 40%, transparent),
+		0 0 10px color-mix(in srgb, var(--interactive-accent) 55%, transparent);
+	pointer-events: none;
+	z-index: 3;
+	animation: ioto-tv-dropline-in 120ms ease-out;
 }
 
-.ioto-task-view__card.is-drop-after {
-	box-shadow: inset 0 -2px 0 0 var(--interactive-accent);
+.ioto-task-view .ioto-task-view__card.is-drop-before::after {
+	top: -3px;
+}
+
+.ioto-task-view .ioto-task-view__card.is-drop-after::after {
+	bottom: -3px;
+}
+
+/* 目标卡整体给一圈淡描边：先让用户看清「插到哪张卡」，再看「插在它上面还是下面」。
+   outline 不被任何主题规则占用（卡片只在 :focus-visible 上用 outline，且本规则更特异），
+   也不影响布局。 */
+.ioto-task-view .ioto-task-view__card.is-drop-before,
+.ioto-task-view .ioto-task-view__card.is-drop-after {
+	outline: 1px solid color-mix(in srgb, var(--interactive-accent) 45%, transparent);
+	outline-offset: -1px;
+}
+
+@keyframes ioto-tv-dropline-in {
+	from {
+		transform: scaleX(0.6);
+		opacity: 0.4;
+	}
+	to {
+		transform: scaleX(1);
+		opacity: 1;
+	}
 }
 
 /* 章节落点（跨章节移动）：start 画在 sticky header 顶边；end 画在整块底边。
@@ -2855,12 +2906,16 @@ button.ioto-task-view__card-drag-handle:not(.clickable-icon) {
 .ioto-task-view__section.is-section-drop-end::after {
 	content: '';
 	position: absolute;
-	left: 0;
-	right: 0;
-	height: 2px;
-	border-radius: 2px;
+	inset-inline: 0;
+	height: 3px;
+	border-radius: 99px;
 	background: var(--interactive-accent);
+	box-shadow:
+		0 0 0 1px color-mix(in srgb, var(--interactive-accent) 40%, transparent),
+		0 0 10px color-mix(in srgb, var(--interactive-accent) 55%, transparent);
 	pointer-events: none;
+	z-index: 2;
+	animation: ioto-tv-dropline-in 120ms ease-out;
 }
 
 .ioto-task-view__section.is-section-drop-start
@@ -2915,6 +2970,17 @@ button.ioto-task-view__card-drag-handle:not(.clickable-icon) {
 	}
 	.ioto-task-view__card-drag-handle {
 		transition: none;
+	}
+	.ioto-task-view .ioto-task-view__card.is-drop-before::after,
+	.ioto-task-view .ioto-task-view__card.is-drop-after::after,
+	.ioto-task-view__section.is-drop-before
+		> .ioto-task-view__section-header::before,
+	.ioto-task-view__section.is-drop-after
+		> .ioto-task-view__section-header::after,
+	.ioto-task-view__section.is-section-drop-start
+		> .ioto-task-view__section-header::before,
+	.ioto-task-view__section.is-section-drop-end::after {
+		animation: none;
 	}
 }
 

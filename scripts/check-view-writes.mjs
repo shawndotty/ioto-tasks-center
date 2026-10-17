@@ -120,6 +120,10 @@ const WHITELIST = new Set([
 	'task-view-zoom.ts :: editingLine',
 	'task-view-zoom.ts :: editingOriginalLine',
 	'task-view-zoom.ts :: zoomLine',
+	// 拖拽收尸入口登记点（[[Plan-20261017-143229]] §2.2）：beginDrag 时把 resetGesture
+	// 挂到视图上、resetGesture 末尾自清；与本文件「行号迁移」同性质的迁移点。
+	'task-view-card-drag.ts :: cancelActiveDrag',
+	'task-view-section-drag.ts :: cancelActiveDrag',
 ]);
 
 /** 采集当前所有 `(file :: field)` 写点。 */

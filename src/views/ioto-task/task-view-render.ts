@@ -40,6 +40,9 @@ export function renderNote(
 		resetScroll?: boolean;
 	},
 ): void {
+	// 整树重建会摘掉正在拖拽的手柄：先就地收尸（ghost / 落点线 / 类名 / 捕获），
+	// 否则 state 卡在 dragging=true，只能 Esc 或刷新（[[Research-20261017-112730]] §四）。
+	view.cancelActiveDrag?.();
 	if (view.isRendering) {
 		return;
 	}

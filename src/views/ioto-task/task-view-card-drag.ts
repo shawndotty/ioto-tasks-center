@@ -166,6 +166,9 @@ function attachCardDragHandle(
 	};
 
 	const resetGesture = (): void => {
+		// 先置 false 再释放捕获：release 会触发 lostpointercapture，
+		// 若此时 dragging 仍为 true 会重入本函数。
+		state.dragging = false;
 		clearLongPressTimer();
 		stopAutoScroll();
 		destroyGhost();
@@ -192,8 +195,11 @@ function attachCardDragHandle(
 		state.pointerId = null;
 		state.longPressFired = false;
 		state.scrollAborted = false;
-		state.dragging = false;
 		state.drop = null;
+		// 注销「就地收尸」入口（仅在仍指向自己时清，避免踩掉别的卡片的登记）。
+		if (view.cancelActiveDrag === resetGesture) {
+			view.cancelActiveDrag = undefined;
+		}
 	};
 
 	function onKeydown(event: KeyboardEvent): void {
@@ -292,6 +298,8 @@ function attachCardDragHandle(
 		};
 		state.autoScrollRaf = window.requestAnimationFrame(autoScrollLoop);
 		evaluateDrop();
+		// 登记「就地收尸」入口：整树重建 / 关笔记前由 renderNote / clear 调用。
+		view.cancelActiveDrag = resetGesture;
 		return true;
 	};
 
@@ -466,6 +474,14 @@ function attachCardDragHandle(
 		state.longPressFired = false;
 		state.scrollAborted = false;
 		state.drop = null;
+		// 🔴 起手的 8px 必须在 18px 手柄盒内走完，否则指针先离开图标 →
+		// 本元素再也收不到 pointermove（[[Research-20261017-112730]] §三：0 次起拖）。
+		// 捕获提前到 pointerdown：阈值退回纯防抖，不再受手柄几何限制。
+		try {
+			handleEl.setPointerCapture(event.pointerId);
+		} catch {
+			// 指针已失效 / 环境不支持时抛错，忽略（pointerup 另有兜底）。
+		}
 		clearLongPressTimer();
 		// 触摸 / 触控笔需要「先长按」；鼠标直接按下移动即可拖。
 		if (event.pointerType !== 'mouse') {
@@ -533,6 +549,14 @@ function attachCardDragHandle(
 
 	handleEl.addEventListener('pointercancel', () => {
 		resetGesture();
+	});
+
+	// 手柄被移出文档 / display:none / 系统回收指针时捕获会静默丢失，
+	// 这一路必定收不到 pointerup → 不收尸就永久冻住 ghost（只能 Esc）。
+	handleEl.addEventListener('lostpointercapture', () => {
+		if (state.dragging) {
+			resetGesture();
+		}
 	});
 
 	// 拖拽进行中拦截原生滚动（必须 non-passive；同 section-drag 口径）。
