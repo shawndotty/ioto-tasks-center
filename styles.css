@@ -2296,13 +2296,15 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	--ioto-tv-gap: 8px;
 	--ioto-tv-indent: var(--list-indent, 2.25em);
 	--ioto-tv-done-opacity: 0.8;
-	/* 卡片拖拽手柄（[[Research-20261017-103822]] §5.1）：绝对定位落在左侧固定槽位。
-	   grip-size = 图标热区；grip-gutter = 槽位宽（也是「文字左移量」的唯一调参入口）。
-	   两个旋钮互相独立：想让图标更靠左只调手柄的 inset-inline-start，不影响文字。 */
+	/* 左侧共享基线（[[Report-20261017-110130]]）：任务卡正文与 Section 标题文字同左缘。
+	   --ioto-tv-card-text-start = 卡片 padding-box 左端 → 正文左缘的距离
+	     = 标题左缘 −（section-body 左内边距 + 卡片左描边）
+	   默认 27px：标题 12 + chevron 22 + gap 8 = 42；减去 body 12 + 描边 3 = 15。
+	   各外观主题在自身根块内按同一算式覆盖（玻璃 / 现代 / 简洁 / 莫兰迪）；
+	   手柄只用这条留白做居中定位，不再额外叠加「槽位宽」，所以这里就是唯一旋钮。 */
+	--ioto-tv-card-text-start: 27px;
+	/* 拖拽手柄图标热区（[[Research-20261017-103822]] §5.1） */
 	--ioto-tv-grip-size: 18px;
-	--ioto-tv-grip-gutter: 22px;
-	/* 卡片内容盒左起点：各外观主题按自身既有左预留覆盖（玻璃 / 现代 / 简洁） */
-	--ioto-tv-card-pad-start: var(--ioto-tv-pad-x);
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
@@ -2755,7 +2757,11 @@ button.ioto-task-view__card-drag-handle:not(.clickable-icon) {
 	   脱离 flex 流 → 不再挤占文字、不再参与「手柄宽 + gap」的水平预算；
 	   编辑 / 放大态的 `display: none` 也随之不再影响任何几何（文字三态恒定）。 */
 	position: absolute;
-	inset-inline-start: var(--ioto-tv-card-pad-start); /* 图标左缘 = 原手柄左缘，不移动 */
+	/* 居中落在「卡片内容盒左缘 → 正文左缘」这段留白内（[[Report-20261017-110130]]）：
+	   主题只声明正文左缘，图标位置自动跟随，无需逐个主题调 inset。 */
+	inset-inline-start: calc(
+		(var(--ioto-tv-card-text-start) - var(--ioto-tv-grip-size)) / 2
+	);
 	top: calc(var(--ioto-tv-pad-y) + 4px);             /* 与首行文字视觉居中 */
 	display: inline-flex;
 	align-items: center;
@@ -2893,7 +2899,9 @@ button.ioto-task-view__card-drag-handle:not(.clickable-icon) {
    会把盒子撑到 36+12 并顶进正文，已删除（[[Research-20261017-103822]] §5.7）。 */
 .is-phone .ioto-task-view {
 	--ioto-tv-grip-size: 30px;
-	--ioto-tv-grip-gutter: 34px;
+	/* 触屏手柄热区 30px：正文让出 44px 才容得下图标 + 呼吸，同时也正好等于
+	   各主题标题左缘（[[Report-20261017-110130]]）。 */
+	--ioto-tv-card-text-start: 44px;
 }
 
 .is-phone button.ioto-task-view__card-drag-handle:not(.clickable-icon) {
@@ -3017,11 +3025,9 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 	align-items: center; /* 勾选框相对正文块垂直居中（Plan-20261003-191547） */
 	gap: 8px;
 	padding: var(--ioto-tv-pad-y) var(--ioto-tv-pad-x);
-	/* 左侧预留手柄槽位（[[Research-20261017-103822]] §5.2）：手柄绝对定位落在这里，
-	   文字 / 续行 / 底栏都从槽位右侧起排 → 三者同左缘，且与编辑态逐像素一致。 */
-	padding-inline-start: calc(
-		var(--ioto-tv-card-pad-start) + var(--ioto-tv-grip-gutter)
-	);
+	/* 正文左缘 = Section 标题左缘（[[Report-20261017-110130]]）。
+	   手柄绝对定位居中在这段留白里，不再额外占位，故这里只留 text-start 一份。 */
+	padding-inline-start: var(--ioto-tv-card-text-start);
 	background: var(--ioto-tv-bg);
 	border: 1px solid var(--ioto-tv-border);
 	border-inline-start: 3px solid var(--ioto-tv-accent);
@@ -3590,11 +3596,9 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
    否则第一次点击容易落空（[[Plan-20261003-194909]] §5.4）。 */
 .is-phone .ioto-task-view__card {
 	padding: 12px var(--ioto-tv-pad-x);
-	/* 简写会覆盖基线的 padding-inline-start，必须在此重新叠加手柄槽位，
-	   否则手机端编辑态 / 普通态文字左缘不同（[[Research-20261017-103822]] §5.7） */
-	padding-inline-start: calc(
-		var(--ioto-tv-card-pad-start) + var(--ioto-tv-grip-gutter)
-	);
+	/* 简写会覆盖基线的 padding-inline-start，必须在此重新声明左侧留白，
+	   否则手机端编辑态 / 普通态文字左缘不同（[[Report-20261017-110130]]） */
+	padding-inline-start: var(--ioto-tv-card-text-start);
 }
 
 .is-phone .ioto-task-view__scroll {
@@ -3685,9 +3689,9 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 	--ioto-tv-title-size: 1.12em;
 	--ioto-tv-indent: 1.75em;        /* 玻璃风格更紧凑的缩进步长 */
 	--ioto-tv-done-opacity: 0.8;
-	/* 卡片内容盒左起点：沿用本主题原有的 28px 左预留（强调条 8px + pad-x），
-	   手柄槽位在其右侧另行叠加（[[Research-20261017-103822]] §5.2） */
-	--ioto-tv-card-pad-start: calc(var(--ioto-tv-pad-x) + 8px);
+	/* 正文左缘 = 标题左缘 44px（header 16 + chevron 18 + gap 10）
+	   −（section-body 12 + 卡片描边 1）= 31px（[[Report-20261017-110130]]） */
+	--ioto-tv-card-text-start: 31px;
 
 	position: relative;
 	isolation: isolate;              /* 背景层与卡片稳定分层，不被外层 mix-blend 影响 */
@@ -3860,10 +3864,9 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 	align-items: center;
 	gap: 10px;
 	padding: var(--ioto-tv-pad-y) calc(var(--ioto-tv-pad-x) + 4px);
-	/* 给左侧强调条留位 + 叠加手柄槽位（[[Research-20261017-103822]] §5.2） */
-	padding-inline-start: calc(
-		var(--ioto-tv-card-pad-start) + var(--ioto-tv-grip-gutter)
-	);
+	/* 正文与 Section 标题同左缘（[[Report-20261017-110130]]）；
+	   左侧发光条由 ::before 绝对定位绘制，不占内容空间 */
+	padding-inline-start: var(--ioto-tv-card-text-start);
 	background: color-mix(in srgb, var(--text-normal) 5%, transparent);
 	border: 1px solid color-mix(in srgb, var(--text-normal) 7%, transparent);
 	border-radius: var(--ioto-tv-radius-inner);
@@ -4071,8 +4074,9 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 	--ioto-tv-title-size: 1.12em;
 	--ioto-tv-indent: 1.9em;
 	--ioto-tv-done-opacity: 0.8;
-	/* 卡片内容盒左起点：沿用本主题原有的 16px 左预留（强调胶囊） */
-	--ioto-tv-card-pad-start: 16px;
+	/* 正文左缘 = 标题左缘 44px（header 14 + chevron 22 + gap 8）
+	   −（section-body 12 + 卡片无描边）= 32px（[[Report-20261017-110130]]） */
+	--ioto-tv-card-text-start: 32px;
 
 	/* 面 / 线 / 影（浅色分层是现代风格的核心，不靠描边） */
 	--ioto-tv-canvas: color-mix(in srgb, var(--background-secondary) 55%, var(--background-primary));
@@ -4168,10 +4172,9 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 	position: relative;
 	gap: 10px;
 	padding: var(--ioto-tv-pad-y) 12px;
-	/* 给左侧强调胶囊留位 + 叠加手柄槽位（[[Research-20261017-103822]] §5.2） */
-	padding-inline-start: calc(
-		var(--ioto-tv-card-pad-start) + var(--ioto-tv-grip-gutter)
-	);
+	/* 正文与 Section 标题同左缘（[[Report-20261017-110130]]）；
+	   左侧强调胶囊由 ::before 绝对定位绘制，不占内容空间 */
+	padding-inline-start: var(--ioto-tv-card-text-start);
 	background: color-mix(in srgb, var(--text-normal) 3.5%, transparent);
 	border: none;
 	border-inline-start-width: 0;
@@ -4316,8 +4319,9 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 	--ioto-tv-section-gap: 14px;
 	--ioto-tv-indent: 1.9em;
 	--ioto-tv-done-opacity: 0.8;
-	/* 卡片内容盒左起点：沿用本主题原有的 14px 左留白 */
-	--ioto-tv-card-pad-start: 14px;
+	/* 正文左缘 = 标题左缘 44px（header 14 + chevron 22 + gap 8）
+	   −（section-body 10 + 卡片无描边）= 34px（[[Report-20261017-110130]]） */
+	--ioto-tv-card-text-start: 34px;
 
 	/* 面 / 线（靠「灰底 vs 白卡」的明度差分层，不用投影） */
 	--ioto-tv-canvas: color-mix(in srgb, var(--background-secondary) 70%, var(--background-primary));
@@ -4417,11 +4421,9 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 	margin: 0;
 	gap: 10px;
 	padding: 10px 14px;
-	/* 叠加手柄槽位（[[Research-20261017-103822]] §5.2）：简明风格无左强调条，
-	   内容盒左起点即 14px 留白 */
-	padding-inline-start: calc(
-		var(--ioto-tv-card-pad-start) + var(--ioto-tv-grip-gutter)
-	);
+	/* 正文与 Section 标题同左缘（[[Report-20261017-110130]]）：简明风格无左强调条，
+	   左侧留白只服务手柄图标 */
+	padding-inline-start: var(--ioto-tv-card-text-start);
 	background: transparent;
 	border: none;
 	border-inline-start-width: 0;
@@ -4607,6 +4609,9 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 	--ioto-tv-title-size: 1.06em;
 	--ioto-tv-indent: 1.9em;
 	--ioto-tv-done-opacity: 0.72;         /* 完成态更淡，减少视觉噪声 */
+	/* 正文左缘 = 标题左缘 44px（header 14 + chevron 22 + gap 8）
+	   −（section-body 14 + 卡片描边 1）= 29px（[[Report-20261017-110130]]） */
+	--ioto-tv-card-text-start: 29px;
 
 	--ioto-tv-m-line: 1.75;               /* 行高（笔记指定） */
 	--ioto-tv-m-track: 0.02em;            /* 字距（笔记指定） */
@@ -4699,11 +4704,8 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 .ioto-task-view.is-morandi .ioto-task-view__card {
 	gap: 10px;
 	padding: var(--ioto-tv-pad-y) var(--ioto-tv-pad-x);
-	/* 叠加手柄槽位（[[Research-20261017-103822]] §5.2）：莫兰迪无额外左预留，
-	   内容盒左起点沿用 --ioto-tv-pad-x */
-	padding-inline-start: calc(
-		var(--ioto-tv-card-pad-start) + var(--ioto-tv-grip-gutter)
-	);
+	/* 正文与 Section 标题同左缘（[[Report-20261017-110130]]）：左侧 1px 描边已计入 text-start */
+	padding-inline-start: var(--ioto-tv-card-text-start);
 	background: var(--ioto-tv-m-row);
 	border: 1px solid var(--ioto-tv-m-border);
 	border-inline-start-width: 1px;                 /* 归零基线的 3px 强调线 */
