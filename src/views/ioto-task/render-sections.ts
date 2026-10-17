@@ -32,6 +32,7 @@ import {
 } from './task-query-filter';
 import { renderChecklistGroup, renderMarkdownChunk } from './render-checklist-card';
 import type {
+	TaskCardDrag,
 	TaskNoteEditing,
 	TaskNoteFilters,
 	TaskNoteLinks,
@@ -54,6 +55,8 @@ interface RenderSectionOptions {
 	searchQuery: string;
 	/** Section 拖拽排序（缺省 = 不渲染 grip：只读 / 「只显示任务」态） */
 	sectionDrag?: TaskSectionDrag;
+	/** 任务卡片拖拽排序（缺省 = 不渲染 grip：只读 / 过滤 / 搜索态） */
+	cardDrag?: TaskCardDrag;
 }
 
 /** Section 折叠状态的稳定 key（Level + 起始行 + 标题，重排后不会错位）。 */
@@ -192,6 +195,7 @@ export function renderSection(options: RenderSectionOptions): void {
 	const bodyEl = sectionEl.createDiv({ cls: 'ioto-task-view__section-body' });
 	renderSectionBody({
 		app,
+		scrollEl,
 		bodyEl,
 		content,
 		sourcePath,
@@ -201,6 +205,7 @@ export function renderSection(options: RenderSectionOptions): void {
 		filters: options.filters,
 		recentTaskCount: options.recentTaskCount,
 		searchQuery: options.searchQuery,
+		cardDrag: options.cardDrag,
 	});
 }
 
@@ -293,6 +298,7 @@ function renderSectionHeader(options: {
 
 function renderSectionBody(options: {
 	app: App;
+	scrollEl: HTMLElement;
 	bodyEl: HTMLElement;
 	content: string;
 	sourcePath: string;
@@ -303,9 +309,12 @@ function renderSectionBody(options: {
 	recentTaskCount: number;
 	/** 关键词过滤（已透传；空串 = 不过滤） */
 	searchQuery: string;
+	/** 任务卡片拖拽排序（缺省 = 不渲染 grip） */
+	cardDrag?: TaskCardDrag;
 }): void {
 	const {
 		app,
+		scrollEl,
 		bodyEl,
 		content,
 		sourcePath,
@@ -315,6 +324,7 @@ function renderSectionBody(options: {
 		filters,
 		recentTaskCount,
 		searchQuery,
+		cardDrag,
 	} = options;
 	const lines = content.split(/\r?\n/);
 	const bodyStartLine =
@@ -416,6 +426,8 @@ function renderSectionBody(options: {
 				visibilityCtx,
 				continuationMarkdown,
 				continuationLines: continuationByLine,
+				cardDrag,
+				scrollEl,
 			});
 			continue;
 		}

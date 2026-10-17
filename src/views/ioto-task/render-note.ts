@@ -30,6 +30,7 @@ import {
 // 叶子类型模块：被渲染子模块反向引用的 3 个纯类型已下沉到 `render-note-types.ts`
 // （Plan-20261009-142035 §七 C-1），本文件只从叶子引类型，不再对外「持有」它们。
 import type {
+	TaskCardDrag,
 	TaskNoteEditing,
 	TaskNoteFilters,
 	TaskNoteLinks,
@@ -51,6 +52,11 @@ export interface RenderTaskNoteOptions {
 	 * 「只显示任务」态的过滤在调用方（task-view-render）完成，渲染层只认缺省。
 	 */
 	sectionDrag?: TaskSectionDrag;
+	/**
+	 * 任务卡片拖拽排序控制器。缺省（只读 / 任一过滤 / 关键词搜索）→ 卡片不渲染
+	 * grip。门禁在调用方（task-view-render）完成，渲染层只认缺省。
+	 */
+	cardDrag?: TaskCardDrag;
 	/** 卡片正文与 Section markdown 里双链的点击 / hover 接管方 */
 	links: TaskNoteLinks;
 	/** 过滤开关（缺省视为全关，兼容旧调用） */

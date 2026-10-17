@@ -13,6 +13,7 @@
 
 import { reorderTopLevelSections } from '../../tasks-center/note-structure';
 import { commitBlockRange } from './commit-task-line';
+import { remapTrackedLines } from './task-view-tracked-lines';
 import type {
 	SectionDropPosition,
 	SectionReorderResult,
@@ -432,45 +433,8 @@ async function commitSectionReorder(
 	}
 
 	// 箭头包一层：直接传方法引用会触发 unbound-method（this 脱离对象）。
-	remapTrackedLines(view, (line) => result.mapLine(line));
+	remapTrackedLines(view, (line) =>
+		line === null ? null : result.mapLine(line),
+	);
 	view.renderNote(view.data);
-}
-
-/**
- * 区间重排后迁移以行号为基准的跟踪态：
- * - `selectedLine`：随块迁移；落在被规范化空行上则清空。
- * - `collapsedSections`：key = `level:startLine:title`，标题行恒在块内，
- *   按 mapLine 重算 startLine（标题含 `:` 时只 split 前两个冒号，同
- *   `shiftTrackedLines` 口径）。
- */
-function remapTrackedLines(
-	view: TaskViewHost,
-	mapLine: (line: number) => number | null,
-): void {
-	if (view.selectedLine !== null) {
-		view.selectedLine = mapLine(view.selectedLine);
-	}
-
-	const remapped = new Set<string>();
-	for (const key of view.collapsedSections) {
-		const firstColon = key.indexOf(':');
-		const secondColon = key.indexOf(':', firstColon + 1);
-		if (firstColon < 0 || secondColon < 0) {
-			continue;
-		}
-		const level = key.slice(0, firstColon);
-		const startLine = Number.parseInt(
-			key.slice(firstColon + 1, secondColon),
-			10,
-		);
-		const title = key.slice(secondColon + 1);
-		if (Number.isNaN(startLine)) {
-			continue;
-		}
-		const nextLine = mapLine(startLine);
-		if (nextLine !== null) {
-			remapped.add(`${level}:${nextLine}:${title}`);
-		}
-	}
-	view.collapsedSections = remapped;
 }

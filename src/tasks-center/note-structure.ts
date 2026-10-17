@@ -44,6 +44,13 @@ export type {
 	SectionDropPosition,
 } from './note-section-reorder';
 
+export { moveTaskBlock } from './note-task-move';
+export type {
+	TaskMoveResult,
+	TaskDropPosition,
+	TaskDropTarget,
+} from './note-task-move';
+
 export type { TaskLineParts } from './note-task-line';
 export {
 	TASK_LINE_PATTERN,

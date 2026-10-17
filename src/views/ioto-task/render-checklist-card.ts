@@ -26,7 +26,10 @@ import {
 	type CardVisibilityContext,
 } from './task-query-filter';
 import { applySearchHighlight } from './search-highlight';
-import type { TaskNoteEditing } from './render-note-types';
+import type {
+	TaskCardDrag,
+	TaskNoteEditing,
+} from './render-note-types';
 
 function truncateLabel(text: string, maxLength = 40): string {
 	const trimmed = text.trim();
@@ -50,6 +53,12 @@ export function renderChecklistGroup(options: {
 	continuationMarkdown: Map<number, string>;
 	/** 卡片行号 → 该卡的续行行号数组（无续行的卡不出现） */
 	continuationLines: Map<number, number[]>;
+	/**
+	 * 卡片拖拽排序控制器（缺省 = 不渲染 grip：只读 / 过滤 / 搜索态）。
+	 * 与 `scrollEl` 成对出现：grip 手势需要滚动容器做命中判定与边缘自动滚动。
+	 */
+	cardDrag?: TaskCardDrag;
+	scrollEl?: HTMLElement;
 }): void {
 	const {
 		app,
@@ -61,6 +70,8 @@ export function renderChecklistGroup(options: {
 		visibilityCtx,
 		continuationMarkdown,
 		continuationLines,
+		cardDrag,
+		scrollEl,
 	} = options;
 	const listEl = bodyEl.createEl('ul', { cls: 'ioto-task-view__checklist' });
 
@@ -115,6 +126,28 @@ export function renderChecklistGroup(options: {
 			editing.toggleTask(item.line, cardEl);
 		});
 
+		// 拖拽手柄：常驻卡片、无文字图标；编辑 / 放大态由 CSS 认类隐藏（同 section
+		// grip 口径）。必须挂在 cardEl 直接子级、且在 `.card-actions` 之外——
+		// refreshCardActions 只重建动作区，不会清掉手柄。
+		if (cardDrag && scrollEl) {
+			const dragHandleEl = cardEl.createEl('button', {
+				cls: 'ioto-task-view__card-drag-handle',
+				attr: {
+					type: 'button',
+					'aria-label': t('view.iotoTaskView.cardDragHandle'),
+					title: t('view.iotoTaskView.cardDragHandle'),
+					'aria-grabbed': 'false',
+					draggable: 'false',
+				},
+			});
+			setIcon(dragHandleEl, 'grip-vertical');
+			dragHandleEl.addEventListener('click', (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+			});
+			cardDrag.attachHandle(dragHandleEl, cardEl, scrollEl);
+		}
+
 		const selected = editing.selectedLine === item.line;
 		const textEl = cardEl.createDiv({
 			cls: 'ioto-task-view__card-text',
@@ -156,6 +189,10 @@ export function renderChecklistGroup(options: {
 			}
 			// checkbox 走 3a（自身也 stopPropagation，这里按 closest 双保险）
 			if (target.closest('.ioto-task-view__card-checkbox')) {
+				return;
+			}
+			// 拖拽手柄：不进选择 / 编辑（自身也 stopPropagation，双保险）
+			if (target.closest('.ioto-task-view__card-drag-handle')) {
 				return;
 			}
 			// 动作区改为整行底栏后，只排除「可交互的徽章本体」；底栏空白仍应可点进编辑，

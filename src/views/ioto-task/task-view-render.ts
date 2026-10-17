@@ -9,6 +9,7 @@ import {
 	IOTO_TASK_SCROLL_SELECTOR,
 } from './ioto-task-scroll';
 import { renderTaskNote } from './render-note';
+import { buildCardDragController } from './task-view-card-drag';
 import { buildSectionDragController } from './task-view-section-drag';
 import type { TaskNoteEditing, TaskNoteLinks } from './render-note-types';
 import { toExternalOpenUrl } from './external-link-url';
@@ -109,6 +110,17 @@ export function renderNote(
 			sectionDrag:
 				view.supportsInlineEdit() && !view.filters.onlyTaskBlocks
 					? buildSectionDragController(view)
+					: undefined,
+			// 卡片拖拽手柄：过滤 / 搜索态下 DOM 是源文件的不完整子集，行号虽真实，
+			// 但隐藏卡可能夹在落点之间导致排序结果不可预测，一律不挂；放大态由手势
+			// 开始时 gate。
+			cardDrag:
+				view.supportsInlineEdit() &&
+				!view.filters.onlyTaskBlocks &&
+				!view.filters.onlyPending &&
+				!view.filters.recentOnly &&
+				view.searchQuery.trim().length === 0
+					? buildCardDragController(view)
 					: undefined,
 			links: buildLinkController(view),
 			filters: view.filters,

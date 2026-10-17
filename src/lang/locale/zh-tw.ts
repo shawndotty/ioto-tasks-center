@@ -583,6 +583,7 @@ const zhTW = {
 	'view.iotoTaskView.addSection': '新增章節',
 	'view.iotoTaskView.newSectionTitle': '新建章節',
 	'view.iotoTaskView.sectionDragHandle': '拖動以重新排序章節',
+	'view.iotoTaskView.cardDragHandle': '拖曳以重新排序任務',
 	'view.iotoTaskView.checkboxToggle': '切換任務完成狀態：{0}',
 	'view.iotoTaskView.selectCardHint': '點擊選取，再點編輯',
 	'view.iotoTaskView.continuationEditHint': '點擊編輯補充說明',

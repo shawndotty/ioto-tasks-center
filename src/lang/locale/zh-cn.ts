@@ -582,6 +582,7 @@ const zhCN = {
 	'view.iotoTaskView.addSection': '新增章节',
 	'view.iotoTaskView.newSectionTitle': '新建章节',
 	'view.iotoTaskView.sectionDragHandle': '拖动以重新排序章节',
+	'view.iotoTaskView.cardDragHandle': '拖拽以重新排序任务',
 	'view.iotoTaskView.checkboxToggle': '切换任务完成状态：{0}',
 	'view.iotoTaskView.selectCardHint': '点击选中，再点编辑',
 	'view.iotoTaskView.continuationEditHint': '点击编辑补充说明',
