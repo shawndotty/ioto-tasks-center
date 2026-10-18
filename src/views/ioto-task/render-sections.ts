@@ -248,21 +248,23 @@ function renderSectionHeader(options: {
 	// 只读态保持空容器。渲染层**常驻两个按钮、不判态**——两态互换由 CSS 认
 	// `.ioto-task-view__section.is-editing` 驱动（唯一真源，与是否重绘无关）。
 	if (editing.enabled) {
-		// 拖拽手柄排在 actions 首位；无文字图标，事件由手势模块接管。
-		// 「只显示任务」态 controller 缺省，不渲染（与底部加号同口径）。
-		if (sectionDrag) {
-			const dragHandleEl = actionsEl.createEl('button', {
-				cls: 'ioto-task-view__section-drag-handle',
+		// 删除入口排在最左（Johnny 2026-10-18 要求放在编辑按钮**前面**）：
+		// 顺序 = 删除 → 编辑 → 拖拽 → 关闭。缺省回调 = 能力不可用（同编辑 / 新增）。
+		if (editing.deleteSection) {
+			const deleteBtn = actionsEl.createEl('button', {
+				cls: 'ioto-task-view__section-delete-btn',
 				attr: {
 					type: 'button',
-					'aria-label': t('view.iotoTaskView.sectionDragHandle'),
-					title: t('view.iotoTaskView.sectionDragHandle'),
-					'aria-grabbed': 'false',
-					draggable: 'false',
+					'aria-label': t('view.iotoTaskView.sectionDelete'),
+					title: t('view.iotoTaskView.sectionDelete'),
 				},
 			});
-			setIcon(dragHandleEl, 'grip-vertical');
-			sectionDrag.attachHandle(dragHandleEl, sectionEl, scrollEl);
+			setIcon(deleteBtn, 'trash-2');
+			deleteBtn.addEventListener('click', (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				editing.deleteSection?.(section.startLine, section.title);
+			});
 		}
 
 		const editBtn = actionsEl.createEl('button', {
@@ -278,6 +280,24 @@ function renderSectionHeader(options: {
 			event.stopPropagation();
 			editing.editSection?.(section.startLine);
 		});
+
+		// 拖拽手柄排在编辑入口之后、关闭入口之前（Johnny 2026-10-18 要求调换
+		// 编辑图标与 grip 图标的先后）；无文字图标，事件由手势模块接管。
+		// 「只显示任务」态 controller 缺省，不渲染（与底部加号同口径）。
+		if (sectionDrag) {
+			const dragHandleEl = actionsEl.createEl('button', {
+				cls: 'ioto-task-view__section-drag-handle',
+				attr: {
+					type: 'button',
+					'aria-label': t('view.iotoTaskView.sectionDragHandle'),
+					title: t('view.iotoTaskView.sectionDragHandle'),
+					'aria-grabbed': 'false',
+					draggable: 'false',
+				},
+			});
+			setIcon(dragHandleEl, 'grip-vertical');
+			sectionDrag.attachHandle(dragHandleEl, sectionEl, scrollEl);
+		}
 
 		// 关闭 = 保存并退出（复用幂等的 `commitSectionEdit`，不新造退出路径）。
 		const closeBtn = actionsEl.createEl('button', {

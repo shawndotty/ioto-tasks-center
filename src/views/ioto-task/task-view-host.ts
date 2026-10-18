@@ -216,6 +216,8 @@ export interface TaskViewHost extends Component {
 	commitSectionEdit(): Promise<void>;
 	destroySectionEditor(): void;
 	autosaveSection(): Promise<void>;
+	/** 整节删除（二次确认 + 写盘 + 行号迁移 + 重绘）。 */
+	deleteSection(startLine: number, title: string): Promise<void>;
 
 	// ---- 薄代理方法：编辑器事件处理 ----
 	onEditorEscape(): void;

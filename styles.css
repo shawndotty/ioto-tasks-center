@@ -2554,8 +2554,10 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 }
 
 /* Section「编辑本节」入口按钮（[[Plan-20261010-080827]] 批次 2 §4.3）：复用 toggle 图标按钮口径。
-   关闭按钮共用同一套基础样式（[[Plan-20261010-090233]] §四 步骤 5a）。 */
+   关闭按钮共用同一套基础样式（[[Plan-20261010-090233]] §四 步骤 5a）；
+   「删除本节」入口同源（[[Plan-20261018-183253]] §3.6）。 */
 button.ioto-task-view__section-edit-btn:not(.clickable-icon),
+button.ioto-task-view__section-delete-btn:not(.clickable-icon),
 button.ioto-task-view__section-close-btn:not(.clickable-icon) {
 	display: inline-flex;
 	align-items: center;
@@ -2572,6 +2574,13 @@ button.ioto-task-view__section-close-btn:not(.clickable-icon) {
 .ioto-task-view__section-edit-btn:hover,
 .ioto-task-view__section-close-btn:hover {
 	color: var(--text-normal);
+}
+
+/* 删除按钮 hover 才转危险色（常驻红色会让 header hover 过于抢眼）。
+   🔴 必须带 `button…:not(.clickable-icon)`：基础规则靠 :not() 拿到 (0,2,1)，
+   裸 `.…-delete-btn:hover` 只有 (0,2,0)，打不过 → hover 形同死规则。 */
+button.ioto-task-view__section-delete-btn:not(.clickable-icon):hover {
+	color: var(--text-error);
 }
 
 /* —— Section 编辑入口：hover 显隐 + 两态图标（[[Plan-20261010-090233]]） —— */
@@ -2600,7 +2609,8 @@ button.ioto-task-view__section-close-btn:not(.clickable-icon) {
 
 /* 两态互换：唯一真源 = .ioto-task-view__section.is-editing
    （beginSectionEdit 挂 / destroySectionEditor 摘，与是否重绘无关）。 */
-.ioto-task-view__section.is-editing .ioto-task-view__section-edit-btn {
+.ioto-task-view__section.is-editing .ioto-task-view__section-edit-btn,
+.ioto-task-view__section.is-editing .ioto-task-view__section-delete-btn {
 	display: none;
 }
 .ioto-task-view__section button.ioto-task-view__section-close-btn:not(.clickable-icon) {
@@ -3625,6 +3635,7 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 /* 移动端 Section 编辑 / 关闭入口：加大触控热区（顺带修正既有死规则——原
    `.is-phone .…edit-btn` 特异性低于基础规则，padding 实际未生效） */
 .is-phone button.ioto-task-view__section-edit-btn:not(.clickable-icon),
+.is-phone button.ioto-task-view__section-delete-btn:not(.clickable-icon),
 .is-phone button.ioto-task-view__section-close-btn:not(.clickable-icon) {
 	padding: 6px;
 }

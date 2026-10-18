@@ -155,3 +155,35 @@ test('CRLF：\\r 保留，写回仍是 CRLF', async () => {
 	);
 	assert.ok(app.content.includes('\r\n'));
 });
+
+/**
+ * `nextLines` 直写口（[[Plan-20261018-183253]] §3.2）：整节删除需要精确控制
+ * 块间空行，不能走 `nextText` 的「全空白 = 删块」折叠。
+ */
+test('nextLines: [""] → 写回一行空行（不是删块）', async () => {
+	const app = makeApp(['## 目标', '- [ ] 甲', '## 任务'].join('\n'));
+	const outcome = await commitBlockRange(app, makeFile(), {
+		startLine: 0,
+		endLine: 1,
+		originalLines: ['## 目标', '- [ ] 甲'],
+		nextText: '',
+		nextLines: [''],
+	});
+
+	assert.equal(outcome.status, 'ok');
+	assert.equal(app.content, ['', '## 任务'].join('\n'));
+});
+
+test('nextLines: [] → 删块；且忽略 nextText（不会吞掉空行）', async () => {
+	const app = makeApp(['## 目标', '- [ ] 甲', '## 任务'].join('\n'));
+	const outcome = await commitBlockRange(app, makeFile(), {
+		startLine: 0,
+		endLine: 1,
+		originalLines: ['## 目标', '- [ ] 甲'],
+		nextText: '  \n',
+		nextLines: [],
+	});
+
+	assert.equal(outcome.status, 'ok');
+	assert.equal(app.content, '## 任务');
+});

@@ -34,9 +34,13 @@ export {
 	parseSections,
 	findSectionByTitle,
 	appendSectionHeading,
+	removeTopLevelSection,
 	collectRootSections,
 } from './note-sections';
-export type { AppendSectionHeadingResult } from './note-sections';
+export type {
+	AppendSectionHeadingResult,
+	SectionRemovalResult,
+} from './note-sections';
 
 export { reorderTopLevelSections } from './note-section-reorder';
 export type {

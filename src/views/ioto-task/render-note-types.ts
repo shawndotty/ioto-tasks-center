@@ -99,6 +99,12 @@ export interface TaskNoteEditing {
 	 */
 	editSection?(startLine: number): void;
 	/**
+	 * 点 Section 头部「删除本节」：二次确认后整块删除（含嵌套子标题与任务）。
+	 * `title` 既用于确认文案，也用于「行号漂移后复核是否仍是同一节」。
+	 * **缺省 = 删除按钮不渲染**（只读 / 不支持内联编辑）。
+	 */
+	deleteSection?(startLine: number, title: string): void;
+	/**
 	 * 点 Section 头部「关闭」：退出该节编辑（**保存并退出**，复用幂等的
 	 * `commitSectionEdit`）。参数是该 Section 的 `startLine`（渲染层只回传它，
 	 * 不做真源判断）。**缺省 = 关闭按钮不渲染**（只读 / 不支持内联编辑）。

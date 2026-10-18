@@ -268,6 +268,65 @@ export function appendSectionHeading(
 	};
 }
 
+export interface SectionRemovalResult {
+	/** 写回区间首行（0 基，含）= 目标标题行 */
+	startLine: number;
+	/** 写回区间末行（0 基，含）= 下一个同级/更高级标题行 - 1 */
+	endLine: number;
+	/** 快照原区间各行（喂给 commitBlockRange 做序列校验） */
+	originalLines: string[];
+	/** 删除后该区间应替换成的行（[] = 全删；[''] = 留一行空行） */
+	nextLines: string[];
+}
+
+/**
+ * 计算整块删除一个**顶层标题 Section**（含其嵌套 `##` 子块 / 任务 / 正文）
+ * 所需的写回区间与替换行。零 DOM，可直接单测。
+ *
+ * 空行口径与 `reorderTopLevelSections` 一致（块间恰好一个空行）：
+ * - 前一行已是空行 → 保留它（它在删除区间之外，天然就是那一个分隔）；
+ * - 否则中段补一个；首节删除后下一节直接顶到第 0 行（无前导空行）；
+ * - 删末节时只在原文以换行收尾的情况下保留一个空串，保持 `\n` 收尾习惯。
+ *
+ * `startLine` 必须命中一个顶层标题块（非引导区、非嵌套标题、行号未漂移），
+ * 否则返回 `null`（调用方按冲突处理）。
+ */
+export function removeTopLevelSection(
+	content: string,
+	startLine: number,
+): SectionRemovalResult | null {
+	const lines = content.split('\n');
+	const roots = collectRootSections(parseSections(content)).filter(
+		(section) => section.level > 0,
+	);
+	const target = roots.find((section) => section.startLine === startLine);
+	if (!target) {
+		return null; // 非顶层标题块 / 行号已漂
+	}
+
+	const { endLine } = target;
+	const prevBlank =
+		startLine > 0 && (lines[startLine - 1] ?? '').trim() === '';
+	const hasNext = endLine < lines.length - 1;
+	const eofBlank = (lines[lines.length - 1] ?? '') === '';
+
+	let nextLines: string[] = [];
+	if (!prevBlank) {
+		if (hasNext) {
+			nextLines = startLine > 0 ? [''] : [];
+		} else if (eofBlank) {
+			nextLines = [''];
+		}
+	}
+
+	return {
+		startLine,
+		endLine,
+		originalLines: lines.slice(startLine, endLine + 1),
+		nextLines,
+	};
+}
+
 /**
  * 顶层 root 栈算法（与渲染层 `getTopLevelSections` 同逻辑）：嵌套标题
  * （`##` 在 `#` 内）留在父块里，引导区（level 0）也作为一个 root。

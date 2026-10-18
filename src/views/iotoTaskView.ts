@@ -167,6 +167,7 @@ import {
 	commitSectionEdit,
 	destroySectionEditor,
 } from './ioto-task/task-view-section-edit';
+import { deleteSection } from './ioto-task/task-view-section-delete';
 import {
 	applyOutcome,
 	onEditorDeleteEmpty,
@@ -636,6 +637,9 @@ export class IOTOTaskView extends TextFileView {
 	async commitSectionEdit(): Promise<void> { await commitSectionEdit(this); }
 	destroySectionEditor(): void { destroySectionEditor(this); }
 	async autosaveSection(): Promise<void> { await autosaveSection(this); }
+	async deleteSection(startLine: number, title: string): Promise<void> {
+		await deleteSection(this, startLine, title);
+	}
 
 	// ---- 编辑器事件处理 ----
 	onEditorEscape(): void { onEditorEscape(this); }

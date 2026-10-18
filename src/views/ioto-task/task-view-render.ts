@@ -374,6 +374,10 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 					editSection: (startLine: number) => {
 						void view.beginSectionEdit(startLine);
 					},
+					// 整节删除：确认 → 写盘 → 行号迁移 → 重绘都在 deleteSection 内。
+					deleteSection: (startLine: number, title: string) => {
+						void view.deleteSection(startLine, title);
+					},
 					// 关闭 = 保存退出：commitSectionEdit 天然幂等（handle 空则早退），
 					// 无论编辑器 blur 是否抢先提交都不会出错（[[Plan-20261010-090233]] §五）。
 					closeSection: () => {

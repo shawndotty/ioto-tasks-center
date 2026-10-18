@@ -271,6 +271,10 @@ const en = {
 	'modal.deleteTask.desc':
 		'Move "{0}" to the trash? This action can be restored from the trash.',
 	'modal.deleteTask.confirm': 'Delete',
+	'modal.deleteSection.title': 'Delete section',
+	'modal.deleteSection.desc':
+		'Delete "{0}" and everything under it, including subheadings and tasks? This cannot be undone.',
+	'modal.deleteSection.confirm': 'Delete',
 	'modal.confirm': 'Confirm',
 	'modal.cancel': 'Cancel',
 	'settings.heading.main': 'Tasks center',
@@ -631,6 +635,7 @@ const en = {
 	'view.iotoTaskView.fallbackTitle': 'Task view',
 	'view.iotoTaskView.sectionToggle': 'Toggle section: {0}',
 	'view.iotoTaskView.sectionEdit': 'Edit section',
+	'view.iotoTaskView.sectionDelete': 'Delete section',
 	'view.iotoTaskView.sectionClose': 'Close section editor',
 	'view.iotoTaskView.addSection': 'Add section',
 	'view.iotoTaskView.newSectionTitle': 'New section',

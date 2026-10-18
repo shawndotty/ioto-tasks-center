@@ -251,6 +251,10 @@ const zhTW = {
 	'modal.deleteTask.desc':
 		'確認將「{0}」移到回收站嗎？之後仍可從回收站還原。',
 	'modal.deleteTask.confirm': '刪除',
+	'modal.deleteSection.title': '刪除本節',
+	'modal.deleteSection.desc':
+		'將刪除「{0}」整節的全部內容（含子標題與任務），此操作無法復原。',
+	'modal.deleteSection.confirm': '刪除',
 	'modal.confirm': '確認',
 	'modal.cancel': '取消',
 	'settings.heading.main': '任務中心',
@@ -579,6 +583,7 @@ const zhTW = {
 	'view.iotoTaskView.fallbackTitle': '任務檢視',
 	'view.iotoTaskView.sectionToggle': '折疊/展開章節：{0}',
 	'view.iotoTaskView.sectionEdit': '編輯本節',
+	'view.iotoTaskView.sectionDelete': '刪除本節',
 	'view.iotoTaskView.sectionClose': '關閉本節編輯',
 	'view.iotoTaskView.addSection': '新增章節',
 	'view.iotoTaskView.newSectionTitle': '新建章節',

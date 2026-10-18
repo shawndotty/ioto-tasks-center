@@ -250,6 +250,10 @@ const zhCN = {
 	'modal.deleteTask.title': '删除任务',
 	'modal.deleteTask.desc': '确认将“{0}”移到回收站吗？之后仍可从回收站恢复。',
 	'modal.deleteTask.confirm': '删除',
+	'modal.deleteSection.title': '删除本节',
+	'modal.deleteSection.desc':
+		'将删除「{0}」整节的全部内容（含子标题与任务），此操作不可撤销。',
+	'modal.deleteSection.confirm': '删除',
 	'modal.confirm': '确认',
 	'modal.cancel': '取消',
 	'settings.heading.main': '任务中心',
@@ -578,6 +582,7 @@ const zhCN = {
 	'view.iotoTaskView.fallbackTitle': '任务视图',
 	'view.iotoTaskView.sectionToggle': '折叠/展开章节：{0}',
 	'view.iotoTaskView.sectionEdit': '编辑本节',
+	'view.iotoTaskView.sectionDelete': '删除本节',
 	'view.iotoTaskView.sectionClose': '关闭本节编辑',
 	'view.iotoTaskView.addSection': '新增章节',
 	'view.iotoTaskView.newSectionTitle': '新建章节',

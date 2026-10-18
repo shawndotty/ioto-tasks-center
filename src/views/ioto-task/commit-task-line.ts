@@ -255,6 +255,11 @@ export interface CommitBlockRangeOptions {
 	originalLines: string[];
 	/** 编辑器正文（**原样**，不受缩进语义加工）；全空白 → 删除整块 */
 	nextText: string;
+	/**
+	 * 直接指定替换行（优先于 `nextText`）。`[]` = 删除整块；`['']` = 保留一行空行。
+	 * 删除整节后需要精确控制块间空行，不能走 nextText 的「全空白 = 删块」折叠。
+	 */
+	nextLines?: string[];
 }
 
 /**
@@ -296,11 +301,13 @@ export async function commitBlockRange(
 			}
 		}
 
-		// ② 变换：原样整块替换（无缩进语义）；全空白即删除整块，不留空行
+		// ② 变换：原样整块替换（无缩进语义）；全空白即删除整块，不留空行。
+		// `nextLines` 存在时以它为准（`[]` = 删块、`['']` = 留一行空行）。
 		const nextLines =
-			options.nextText.trim().length === 0
+			options.nextLines ??
+			(options.nextText.trim().length === 0
 				? []
-				: options.nextText.split('\n');
+				: options.nextText.split('\n'));
 
 		// ③ 无改动短路
 		if (
