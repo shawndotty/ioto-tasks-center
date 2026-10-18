@@ -471,13 +471,13 @@ export function showTaskPriorityMenu(
 	}
 
 	menu.addSeparator();
+	// 不设图标：菜单图标是否渲染取决于平台/渲染模式（macOS 走原生菜单会丢弃图标），
+	// 同一菜单里只有这一项带图标，会在 Windows 上单独出现一个「孤零零的铅笔」而与 macOS 不一致。
+	// 菜单内其余项都没有图标，这里保持一致，不再调用 setIcon。
 	menu.addItem((item) =>
-		item
-			.setTitle(t('view.taskMenu.rename'))
-			.setIcon('lucide-edit-3')
-			.onClick(() => {
-				runMenuAction(() => void view.renameTask(task));
-			}),
+		item.setTitle(t('view.taskMenu.rename')).onClick(() => {
+			runMenuAction(() => void view.renameTask(task));
+		}),
 	);
 	menu.addItem((item) =>
 		item.setTitle(t('view.taskMenu.delete')).onClick(() => {
