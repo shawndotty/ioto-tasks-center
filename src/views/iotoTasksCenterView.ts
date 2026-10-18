@@ -26,6 +26,10 @@ import type {
 	TaskSearchEntryMode,
 } from '../settings';
 import { t } from '../lang/helpter';
+import {
+	getTaskProjectNameFromPath,
+	stripProjectNamePrefix,
+} from '../tasks-center/task-display-title';
 import type {
 	IncompleteChecklistItem,
 	ProjectFolderEntry,
@@ -303,6 +307,7 @@ export class IOTOTasksCenterView extends ItemView {
 	readonly getUseIOTOTaskViewAsDefault: () => boolean;
 	readonly getProjectCategoryOptions: () => string[];
 	readonly addProjectCategoryOption: (category: string) => Promise<void>;
+	readonly getShowProjectNameInTaskList: () => boolean;
 	public readonly taskSearchSession = createTaskSearchSession();
 	public taskFilterCountsCache: {
 		key: string;
@@ -355,6 +360,7 @@ export class IOTOTasksCenterView extends ItemView {
 		getUseIOTOTaskViewAsDefault: () => boolean,
 		getProjectCategoryOptions: () => string[],
 		addProjectCategoryOption: (category: string) => Promise<void>,
+		getShowProjectNameInTaskList: () => boolean,
 	) {
 		super(leaf);
 		this.navigation = true;
@@ -393,6 +399,7 @@ export class IOTOTasksCenterView extends ItemView {
 		this.getUseIOTOTaskViewAsDefault = getUseIOTOTaskViewAsDefault;
 		this.getProjectCategoryOptions = getProjectCategoryOptions;
 		this.addProjectCategoryOption = addProjectCategoryOption;
+		this.getShowProjectNameInTaskList = getShowProjectNameInTaskList;
 	}
 
 	getViewType(): string {
@@ -711,6 +718,22 @@ export class IOTOTasksCenterView extends ItemView {
 
 	getTaskSearchHit(taskPath: string): TaskSearchHit | null {
 		return getTaskSearchHitFn(this, taskPath);
+	}
+
+	/**
+	 * 任务列表实际展示的标题（[[Research-20261018-185512]] §2.2）。
+	 * 设置关闭时剥离文件名开头的「项目名-」前缀；其余场景一律走原始 `title`，
+	 * 保证 UpTask 候选、拖拽去重与搜索仍使用完整文件名。
+	 */
+	getTaskDisplayTitle(task: TaskFileEntry): string {
+		if (this.getShowProjectNameInTaskList()) {
+			return task.title;
+		}
+
+		return stripProjectNamePrefix(
+			task.title,
+			getTaskProjectNameFromPath(task.path),
+		);
 	}
 
 	public applyTaskSearch(tasks: TaskFileEntry[]): TaskFileEntry[] {

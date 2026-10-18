@@ -151,6 +151,19 @@ export async function updateShowTaskPriority(
 	host.applySettingsToOpenViews();
 }
 
+export async function updateShowProjectNameInTaskList(
+	host: SettingsUpdaterHost,
+	show: boolean,
+): Promise<void> {
+	if (host.settings.showProjectNameInTaskList === show) {
+		return;
+	}
+
+	host.settings.showProjectNameInTaskList = show;
+	await host.saveSettings();
+	host.applySettingsToOpenViews();
+}
+
 // 这两个开关只在下次打开菜单时生效，不影响已渲染的视图，无需刷新。
 export async function updateShowTaskNoteCoreMenu(
 	host: SettingsUpdaterHost,

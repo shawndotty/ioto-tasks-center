@@ -109,7 +109,7 @@ export function attachTouchGesture(
 		rowEl.dataset.iotoSuppressClick = '1';
 		const ghostEl = activeDocument.createElement('div');
 		ghostEl.className = 'ioto-tasks-center__drag-ghost';
-		ghostEl.textContent = task.title;
+		ghostEl.textContent = view.getTaskDisplayTitle(task);
 		activeDocument.body.appendChild(ghostEl);
 		state.ghostEl = ghostEl;
 		return true;

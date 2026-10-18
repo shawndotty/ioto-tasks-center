@@ -23,6 +23,7 @@ export function renderBasicDisplaySection(
 	renderExportImageSection(containerEl, plugin);
 	renderTaskOutlinksSection(containerEl, plugin);
 	renderTaskLinkBadgesSection(containerEl, plugin);
+	renderTaskTitleSection(containerEl, plugin);
 	renderPrioritySection(containerEl, plugin);
 	renderSubtasksSection(containerEl, plugin);
 	renderTaskNoteMenuSection(containerEl, plugin);
@@ -185,6 +186,26 @@ function renderTaskLinkBadgesSection(
 					await plugin.updateTaskLinkBadgeBackgroundMode(value);
 				});
 		});
+}
+
+function renderTaskTitleSection(
+	containerEl: HTMLElement,
+	plugin: IOTOTasksCenter,
+): void {
+	new Setting(containerEl)
+		.setName(t('settings.heading.taskTitle'))
+		.setHeading();
+
+	new Setting(containerEl)
+		.setName(t('settings.taskTitle.showProjectName.name'))
+		.setDesc(t('settings.taskTitle.showProjectName.desc'))
+		.addToggle((toggle) =>
+			toggle
+				.setValue(plugin.settings.showProjectNameInTaskList)
+				.onChange(async (value) => {
+					await plugin.updateShowProjectNameInTaskList(value);
+				}),
+		);
 }
 
 function renderPrioritySection(

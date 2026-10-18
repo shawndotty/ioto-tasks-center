@@ -337,6 +337,11 @@ const en = {
 		'Choose multicolor or monochrome backgrounds for subtask and task outlink badges.',
 	'settings.taskLinkBadges.backgroundMode.multicolor': 'Multicolor',
 	'settings.taskLinkBadges.backgroundMode.monochrome': 'Monochrome',
+	'settings.heading.taskTitle': 'Task names',
+	'settings.taskTitle.showProjectName.name':
+		'Show the project name in task names',
+	'settings.taskTitle.showProjectName.desc':
+		'When off, the task list hides the leading "project name-" prefix, so "IOTO Task Center-2026-10-18" is shown as "2026-10-18". Display only; file names are unchanged, and search/sorting still use the full name.',
 	'settings.heading.priority': 'Priority',
 	'settings.priority.colorTaskTitle.name': 'Color task title by priority',
 	'settings.priority.colorTaskTitle.desc':

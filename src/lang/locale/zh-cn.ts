@@ -315,6 +315,11 @@ const zhCN = {
 		'设置子任务和任务出链 Badge 使用多彩配色或单色背景。',
 	'settings.taskLinkBadges.backgroundMode.multicolor': '多彩配色',
 	'settings.taskLinkBadges.backgroundMode.monochrome': '单色背景',
+	'settings.heading.taskTitle': '任务名称',
+	'settings.taskTitle.showProjectName.name':
+		'在任务列表中显示任务笔记中的项目名',
+	'settings.taskTitle.showProjectName.desc':
+		'关闭时，任务列表会隐藏任务文件名开头的「项目名-」前缀，例如「IOTO Task Center-2026-10-18」显示为「2026-10-18」。只影响显示，不改动文件名；搜索与排序仍使用完整名称。',
 	'settings.heading.priority': '优先级',
 	'settings.priority.colorTaskTitle.name': '任务标题使用优先级颜色',
 	'settings.priority.colorTaskTitle.desc':

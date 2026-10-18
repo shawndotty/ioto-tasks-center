@@ -56,7 +56,7 @@ function getTaskSubtaskPopoverItems(
 
 		items.push({
 			path: task.path,
-			title: task.title,
+			title: view.getTaskDisplayTitle(task),
 			file,
 		});
 	}

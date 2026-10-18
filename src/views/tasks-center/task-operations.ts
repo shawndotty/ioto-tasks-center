@@ -795,7 +795,9 @@ export async function confirmAndDeleteTask(
         view.app,
         t('modal.deleteTask.title'),
         {
-            descriptionText: t('modal.deleteTask.desc', [task.title]),
+            descriptionText: t('modal.deleteTask.desc', [
+                view.getTaskDisplayTitle(task),
+            ]),
             confirmButtonText: t('modal.deleteTask.confirm'),
             cancelButtonText: t('modal.cancel'),
         },

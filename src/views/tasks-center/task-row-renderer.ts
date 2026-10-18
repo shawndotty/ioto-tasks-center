@@ -105,7 +105,7 @@ export function renderTaskRows(
 		}
 		const titleTextEl = titleEl.createSpan({
 			cls: 'ioto-tasks-center__task-title-text',
-			text: task.title,
+			text: view.getTaskDisplayTitle(task),
 		});
 		if (
 			view.getColorTaskTitleByPriority() &&

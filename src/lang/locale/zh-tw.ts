@@ -316,6 +316,11 @@ const zhTW = {
 		'設定子任務和任務出鏈 Badge 使用多彩配色或單色背景。',
 	'settings.taskLinkBadges.backgroundMode.multicolor': '多彩配色',
 	'settings.taskLinkBadges.backgroundMode.monochrome': '單色背景',
+	'settings.heading.taskTitle': '任務名稱',
+	'settings.taskTitle.showProjectName.name':
+		'在任務列表中顯示任務筆記中的專案名稱',
+	'settings.taskTitle.showProjectName.desc':
+		'關閉時，任務列表會隱藏任務檔名開頭的「專案名-」前綴，例如「IOTO Task Center-2026-10-18」顯示為「2026-10-18」。只影響顯示，不改動檔名；搜尋與排序仍使用完整名稱。',
 	'settings.heading.priority': '優先級',
 	'settings.priority.colorTaskTitle.name': '任務標題使用優先級顏色',
 	'settings.priority.colorTaskTitle.desc':

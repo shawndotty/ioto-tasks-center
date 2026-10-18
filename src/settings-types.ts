@@ -98,6 +98,8 @@ export interface IOTOTasksCenterSettings {
 	taskListTimeFilter: TaskListTimeFilter;
 	showTaskHierarchy: boolean;
 	showTaskPriority: boolean;
+	/** 任务列表标题是否显示文件名开头的「项目名-」前缀（默认 false，即隐藏）。 */
+	showProjectNameInTaskList: boolean;
 	colorTaskTitleByPriority: boolean;
 	showTaskSubtaskCount: boolean;
 	showTaskNoteCoreMenu: boolean;
@@ -151,6 +153,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	taskListTimeFilter: 'none',
 	showTaskHierarchy: true,
 	showTaskPriority: false,
+	showProjectNameInTaskList: false,
 	colorTaskTitleByPriority: true,
 	showTaskSubtaskCount: true,
 	showTaskNoteCoreMenu: true,

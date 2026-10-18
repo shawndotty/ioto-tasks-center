@@ -111,6 +111,7 @@ import {
 	updateShowTaskOutcomeOutlinkCount,
 	updateShowTaskOutputOutlinkCount,
 	updateShowTaskPriority,
+	updateShowProjectNameInTaskList,
 	updateShowTaskSubtaskCount,
 	updateShowTaskViewDeleteButtonOnDesktop,
 	updateTaskLinkBadgeBackgroundMode,
@@ -199,6 +200,7 @@ export default class IOTOTasksCenter extends Plugin {
 					() => this.settings.useIOTOTaskViewAsDefault,
 					() => this.settings.projectCategoryOptions,
 					(category) => this.addProjectCategoryOption(category),
+					() => this.settings.showProjectNameInTaskList,
 				),
 		);
 		this.registerView(
@@ -719,6 +721,10 @@ export default class IOTOTasksCenter extends Plugin {
 
 	async updateShowTaskPriority(show: boolean): Promise<void> {
 		await updateShowTaskPriority(this, show);
+	}
+
+	async updateShowProjectNameInTaskList(show: boolean): Promise<void> {
+		await updateShowProjectNameInTaskList(this, show);
 	}
 
 	async updateShowTaskNoteCoreMenu(show: boolean): Promise<void> {
