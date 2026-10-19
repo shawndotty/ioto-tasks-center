@@ -641,6 +641,8 @@ const en = {
 	'view.iotoTaskView.sectionToggle': 'Toggle section: {0}',
 	'view.iotoTaskView.sectionEdit': 'Edit section content',
 	'view.iotoTaskView.sectionEditTitle': 'Edit section title',
+	'view.iotoTaskView.sectionZoomIn': 'Focus this section',
+	'view.iotoTaskView.sectionZoomOut': 'Show all sections',
 	'view.iotoTaskView.sectionDelete': 'Delete section',
 	'view.iotoTaskView.sectionClose': 'Close section editor',
 	'view.iotoTaskView.addSection': 'Add section',

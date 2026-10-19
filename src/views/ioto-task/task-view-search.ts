@@ -3,6 +3,7 @@ import type { TaskViewHost } from './task-view-host';
 import { hasLiveEditor } from './task-view-editing-state';
 import { SEARCH_DEBOUNCE_MS } from './task-view-constants';
 import { queryCard } from './task-view-helpers';
+import { isCardInZoomedSection } from './task-view-section-zoom';
 import type { SearchHost } from './search-scope';
 
 /** Mod+F / 命令入口：显示搜索条并聚焦输入框（Q6 移动端复用它）。 */
@@ -144,6 +145,14 @@ export function highlightMatch(view: TaskViewHost, line: number): void {
 	// 方案 A：放大态 = 单卡编辑面，搜索定位不改选中态（避免破坏「放大 ≡ 编辑」）
 	if (view.zoomLine !== null) {
 		return;
+	}
+	// 「只看本节」：命中卡在聚焦节之外时，`display:none` 下 scrollIntoView 无效、
+	// 选中也不可见 → 先退出聚焦再定位（[[Research-20261019-131228]] §4.6）。
+	if (
+		view.sectionZoomLine !== null &&
+		!isCardInZoomedSection(view, queryCard(view, line))
+	) {
+		view.exitSectionZoom();
 	}
 	view.cancelPendingDelete(false);
 	const prev = view.selectedLine;

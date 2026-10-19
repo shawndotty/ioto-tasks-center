@@ -1,5 +1,6 @@
 import type { TaskViewHost } from './task-view-host';
 import { isTaskContinuationLine, parentIndentLevelOfTaskLine } from '../../tasks-center/note-structure';
+import { IOTO_TASK_SCROLL_SELECTOR } from './ioto-task-scroll';
 
 /** 读 `this.data` 的第 `index` 行（0 基）；越界返回空串。 */
 export function lineAt(view: TaskViewHost, index: number): string {
@@ -24,6 +25,18 @@ export function countContinuationLines(view: TaskViewHost, line: number): number
 export function queryCard(view: TaskViewHost, line: number): HTMLElement | null {
 	return view.contentEl.querySelector<HTMLElement>(
 		`.ioto-task-view__card[data-line="${line}"]`,
+	);
+}
+
+/**
+ * 取视图的滚动容器（`.ioto-task-view__scroll`）。
+ *
+ * 上提到 helpers（[[Research-20261019-131228]] §4.2）：`task-view-section-edit` 与
+ * `task-view-section-zoom` 都要用它，避免复制第三份私有实现。
+ */
+export function queryScrollEl(view: TaskViewHost): HTMLElement | null {
+	return (
+		view.bodyEl?.querySelector<HTMLElement>(IOTO_TASK_SCROLL_SELECTOR) ?? null
 	);
 }
 

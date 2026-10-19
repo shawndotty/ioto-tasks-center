@@ -109,6 +109,13 @@ const WHITELIST = new Set([
 	'task-view-section-title-edit.ts :: sectionTitleEditHandle',
 	'task-view-section-title-edit.ts :: sectionTitleEditSectionEl',
 	'task-view-section-title-edit.ts :: selectedLine',
+	// 「只看本节」（[[Research-20261019-131228]] §4.2）：节聚焦的唯一状态迁移点。
+	// 三个瞬态字段（聚焦锚点 / 进入前滚动位置 / 进入前选中行）只在本模块读写；
+	// `selectedLine` 仅在「选中卡在聚焦节外 → 清空可见选中」时写。
+	'task-view-section-zoom.ts :: sectionZoomLine',
+	'task-view-section-zoom.ts :: sectionZoomScrollTop',
+	'task-view-section-zoom.ts :: sectionZoomPrevSelectedLine',
+	'task-view-section-zoom.ts :: selectedLine',
 	'task-view-selection.ts :: editingLine',
 	'task-view-selection.ts :: editingOriginalLine',
 	'task-view-selection.ts :: pendingDeleteEl',

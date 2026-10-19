@@ -589,6 +589,8 @@ const zhTW = {
 	'view.iotoTaskView.sectionToggle': '折疊/展開章節：{0}',
 	'view.iotoTaskView.sectionEdit': '編輯本節內容',
 	'view.iotoTaskView.sectionEditTitle': '編輯本節標題',
+	'view.iotoTaskView.sectionZoomIn': '只看本節',
+	'view.iotoTaskView.sectionZoomOut': '顯示全部章節',
 	'view.iotoTaskView.sectionDelete': '刪除本節',
 	'view.iotoTaskView.sectionClose': '關閉本節編輯',
 	'view.iotoTaskView.addSection': '新增章節',

@@ -588,6 +588,8 @@ const zhCN = {
 	'view.iotoTaskView.sectionToggle': '折叠/展开章节：{0}',
 	'view.iotoTaskView.sectionEdit': '编辑本节内容',
 	'view.iotoTaskView.sectionEditTitle': '编辑本节标题',
+	'view.iotoTaskView.sectionZoomIn': '只看本节',
+	'view.iotoTaskView.sectionZoomOut': '显示全部章节',
 	'view.iotoTaskView.sectionDelete': '删除本节',
 	'view.iotoTaskView.sectionClose': '关闭本节编辑',
 	'view.iotoTaskView.addSection': '新增章节',

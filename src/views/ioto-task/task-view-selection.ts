@@ -10,6 +10,7 @@ import {
 } from './card-navigation';
 import type { TaskViewHost } from './task-view-host';
 import { isCardEditing } from './task-view-editing-state';
+import { isCardInZoomedSection } from './task-view-section-zoom';
 import type { ModEnterHost } from './select-mode-scope';
 
 /**
@@ -43,6 +44,14 @@ export function select(view: TaskViewHost, line: number): void {
 export function applySelection(view: TaskViewHost, line: number): void {
 	// 任何改选中的入口都先撤遮罩（坑 C / Q2）；焦点交给下面的 cardEl.focus
 	view.cancelPendingDelete(false);
+	// 防御：「只看本节」态下选中落到聚焦节之外 → 先退出聚焦，否则加类也看不见
+	// （[[Research-20261019-131228]] §4.6）。
+	if (
+		view.sectionZoomLine !== null &&
+		!isCardInZoomedSection(view, view.queryCard(line))
+	) {
+		view.exitSectionZoom();
+	}
 	const prev = view.selectedLine;
 	if (prev !== null && prev !== line) {
 		view.queryCard( prev)?.removeClass('is-selected');

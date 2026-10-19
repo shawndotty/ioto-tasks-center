@@ -212,6 +212,13 @@ export async function appendTaskBlock(
 		return;
 	}
 
+	// 落点可能是文件级（末条任务之后 / `任务` 段首 / 文末新建段），通常不在聚焦节内：
+	// 先退出「只看本节」，否则新任务插在隐藏区、用户看不到
+	// （[[Research-20261019-131228]] §4.6）。
+	if (view.sectionZoomLine !== null) {
+		view.exitSectionZoom();
+	}
+
 	// 先落盘未提交正文，否则 runLineAction 里的 destroyActiveEditor 会丢弃它。
 	await view.commitEdit();
 

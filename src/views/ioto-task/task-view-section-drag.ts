@@ -166,8 +166,8 @@ function attachSectionDragHandle(
 	}
 
 	const beginDrag = (): boolean => {
-		// 放大态不排序（提交侧也有守卫，这里拦在视觉发生之前）。
-		if (view.zoomLine !== null || !view.file) {
+		// 放大态 / 「只看本节」不排序（提交侧也有守卫，这里拦在视觉发生之前）。
+		if (view.zoomLine !== null || view.sectionZoomLine !== null || !view.file) {
 			return false;
 		}
 		if (
@@ -434,6 +434,10 @@ async function commitSectionReorder(
 	await view.flushInlineEdits();
 	if (view.zoomLine !== null) {
 		view.exitZoom();
+	}
+	// 重排后 `startLine` 身份全部失效 → 先退出「只看本节」（对齐 `beginDrag` 守卫）。
+	if (view.sectionZoomLine !== null) {
+		view.exitSectionZoom();
 	}
 	view.cancelPendingDelete(false);
 

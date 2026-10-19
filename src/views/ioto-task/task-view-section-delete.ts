@@ -77,6 +77,11 @@ export async function deleteSection(
 
 	// 瞬态收尾：待删除遮罩与放大态都不该跨过一次整节删除。
 	view.cancelPendingDelete(false);
+	// 「只看本节」是 `startLine` 身份的瞬态：删任何一节都会让其后所有节整体前移，
+	// 哪怕删的不是聚焦节，聚焦锚点也会失效 → 一律先退出（[[Research-20261019-131228]] §4.6）。
+	if (view.sectionZoomLine !== null) {
+		view.exitSectionZoom();
+	}
 	if (
 		view.zoomLine !== null &&
 		view.zoomLine >= removal.startLine &&

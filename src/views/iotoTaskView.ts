@@ -118,6 +118,13 @@ import {
 	toggleZoomCard,
 } from './ioto-task/task-view-zoom';
 import {
+	enterSectionZoom,
+	exitSectionZoom,
+	resetSectionZoomState,
+	restoreSectionZoom,
+	toggleSectionZoom,
+} from './ioto-task/task-view-section-zoom';
+import {
 	areCardActionCommandsReady,
 	awaitCommandReadiness,
 	canDispatch,
@@ -275,6 +282,16 @@ export class IOTOTaskView extends TextFileView {
 	 */
 	zoomLine: number | null = null;
 	/**
+	 * 「只看本节」聚焦的 Section `startLine`；未聚焦 `null`。**瞬态**：不落盘、不进
+	 * `getState`，换文件 / 清空时与 `zoomLine` 一同清零
+	 * （[[Research-20261019-131228]] §4.1）。
+	 */
+	sectionZoomLine: number | null = null;
+	/** 进入聚焦前的滚动位置（退出恢复）。 */
+	sectionZoomScrollTop: number | null = null;
+	/** 进入聚焦前选中的行（退出时尽力回填）。 */
+	sectionZoomPrevSelectedLine: number | null = null;
+	/**
 	 * 选择态行号（[[Plan-20261003-194909]] §四）。
 	 *
 	 * `idle → selected → editing` 显式状态机的载体：**同一时刻只有一张卡片被选中**，
@@ -430,6 +447,8 @@ export class IOTOTaskView extends TextFileView {
 		this.data = data;
 		this.lastLoadedText = data;
 		this.zoomLine = null;
+		// 换文件 / 重载不带旧的「只看本节」状态（与 `zoomLine` 同口径）。
+		resetSectionZoomState(this);
 		this.renderNote(data);
 	}
 
@@ -443,6 +462,7 @@ export class IOTOTaskView extends TextFileView {
 		// 行号字段整体归零（含 sectionEditLine / sectionTitleEditLine）：destroy 在前、清字段在后。
 		resetEditingLines(this);
 		this.zoomLine = null;
+		resetSectionZoomState(this);
 		this.continuationOriginalLines = [];
 		this.selectedLine = null;
 		this.editingOriginalLine = '';
@@ -585,6 +605,12 @@ export class IOTOTaskView extends TextFileView {
 	syncZoomButton(cardEl: HTMLElement | null): void { syncZoomButton(this, cardEl); }
 	async flushZoomEdit(): Promise<void> { await flushZoomEdit(this); }
 	focusZoomEditor(line: number): void { focusZoomEditor(this, line); }
+
+	// ---- 只看本节（Section 级布局聚焦）----
+	toggleSectionZoom(startLine: number): void { toggleSectionZoom(this, startLine); }
+	enterSectionZoom(startLine: number): void { enterSectionZoom(this, startLine); }
+	exitSectionZoom(): void { exitSectionZoom(this); }
+	restoreSectionZoom(): void { restoreSectionZoom(this); }
 
 	// ---- 命令就绪补偿 ----
 	canDispatch(commandId: string): boolean { return canDispatch(this, commandId); }

@@ -16,6 +16,11 @@ export const IOTO_TASK_CARD_SELECTOR = '.ioto-task-view__card';
 
 interface CardElementLike {
 	getAttribute?: (name: string) => string | null;
+	/**
+	 * 可见性判据（可选：纯逻辑单测的假对象不必提供）。
+	 * `display:none` 的卡（节聚焦 / 卡片放大的兄弟节点）`getClientRects()` 为空数组。
+	 */
+	getClientRects?: () => ArrayLike<unknown> | null;
 }
 
 interface QueryableContainerLike {
@@ -25,7 +30,15 @@ interface QueryableContainerLike {
 }
 
 /**
- * 按 DOM 顺序收集全部可见卡片的 `data-line`（0 基文件行号）。
+ * 按 DOM 顺序收集全部**可见**卡片的 `data-line`（0 基文件行号）。
+ *
+ * `display:none` 的卡虽仍在 DOM 里，但不该被 ↑↓ 选中（否则焦点落到不可见的卡）：
+ * - 节聚焦（「只看本节」）时其他节的卡；
+ * - 卡片放大时同分组 / 其他分组的兄弟卡。
+ * 判据用 `getClientRects().length`（零布局盒）；纯逻辑单测的假对象可不提供该方法
+ * —— 没有 DOM 几何信息时按可见处理，保持既有行为
+ * （[[Research-20261019-131228]] §1.4-1）。
+ *
  * 解析失败（属性缺失 / 非数字）的卡片跳过，不影响其余项的相对顺序。
  */
 export function collectCardLines(
@@ -38,6 +51,9 @@ export function collectCardLines(
 
 	const lines: number[] = [];
 	for (const node of Array.from(nodes)) {
+		if (!isVisiblyLaidOut(node as CardElementLike)) {
+			continue;
+		}
 		const line = readLine(node as CardElementLike);
 		if (line !== null) {
 			lines.push(line);
@@ -45,6 +61,15 @@ export function collectCardLines(
 	}
 
 	return lines;
+}
+
+function isVisiblyLaidOut(card: CardElementLike | undefined): boolean {
+	const measure = card?.getClientRects;
+	if (typeof measure !== 'function') {
+		return true;
+	}
+	const rects = measure.call(card);
+	return rects !== null && rects !== undefined && rects.length > 0;
 }
 
 /**

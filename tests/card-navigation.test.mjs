@@ -13,6 +13,7 @@ const {
 function makeCard(line) {
 	return {
 		getAttribute: (name) => (name === 'data-line' ? String(line) : null),
+		getClientRects: () => [{}],
 	};
 }
 
@@ -40,6 +41,24 @@ test('collectCardLines：无容器 / 无卡片 / 无 querySelectorAll 时返回�
 	assert.deepEqual(collectCardLines({}), []);
 	assert.deepEqual(collectCardLines({ querySelectorAll: () => null }), []);
 	assert.deepEqual(collectCardLines({ querySelectorAll: () => [] }), []);
+});
+
+test('collectCardLines：跳过零布局盒（display:none）的卡，键盘导航不落到隐藏卡', () => {
+	const visible = makeCard(3);
+	const hidden = {
+		getAttribute: (name) => (name === 'data-line' ? '7' : null),
+		getClientRects: () => [],
+	};
+	const visibleAgain = makeCard(11);
+	const root = { querySelectorAll: () => [visible, hidden, visibleAgain] };
+	assert.deepEqual(collectCardLines(root), [3, 11]);
+});
+
+test('collectCardLines：无 getClientRects 的纯逻辑假对象按可见处理（保持旧行为）', () => {
+	const root = {
+		querySelectorAll: () => [{ getAttribute: () => '5' }],
+	};
+	assert.deepEqual(collectCardLines(root), [5]);
 });
 
 test('pickAdjacentLine：向下 / 向上取相邻卡片', () => {

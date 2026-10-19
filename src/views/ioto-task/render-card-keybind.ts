@@ -100,6 +100,15 @@ export function attachCardKeydownHandler(
 			editing.cancelDelete?.();
 		}
 
+		// `Esc` 最低优先级退出层：编辑器 / 待删除 / 拖拽之后，才轮到「只看本节」
+		// （[[Research-20261019-131228]] §2.5）。只挂本地路径，不做全局捕获监听。
+		if (event.key === 'Escape' && (editing.sectionZoomLine ?? null) !== null) {
+			editing.exitSectionZoom?.();
+			event.preventDefault();
+			event.stopPropagation();
+			return;
+		}
+
 		const order = collectCardLines(
 			cardEl.closest('.ioto-task-view__scroll') ?? activeDocument.body,
 		);

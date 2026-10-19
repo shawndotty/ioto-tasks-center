@@ -18,6 +18,12 @@ export async function addSection(view: TaskViewHost): Promise<void> {
 		return; // 只读降级：静默（同 addTask 口径）
 	}
 
+	// 新节追加在文末，聚焦中不可见 → 先退出「只看本节」
+	// （[[Research-20261019-131228]] §4.6）。
+	if (view.sectionZoomLine !== null) {
+		view.exitSectionZoom();
+	}
+
 	// 先落盘在册编辑器（卡片 / 续写 / Section），避免与追加写入双写错位。
 	await view.flushInlineEdits();
 

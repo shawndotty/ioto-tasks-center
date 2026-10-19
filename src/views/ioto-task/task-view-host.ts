@@ -107,6 +107,14 @@ export interface TaskViewHost extends Component {
 	// ---- 可变状态：聚焦放大 ----
 	zoomLine: number | null;
 
+	// ---- 可变状态：只看本节（Section 级布局聚焦）----
+	/** 被聚焦 Section 的 `startLine`；`null` = 未聚焦。瞬态，不进 `getState`。 */
+	sectionZoomLine: number | null;
+	/** 进入聚焦前的滚动位置（退出恢复）。 */
+	sectionZoomScrollTop: number | null;
+	/** 进入聚焦前选中的行（退出时若仍存在且未被改选则回填）。 */
+	sectionZoomPrevSelectedLine: number | null;
+
 	// ---- 可变状态：续行编辑 ----
 	continuationLine: number | null;
 	continuationStartLine: number;
@@ -183,6 +191,12 @@ export interface TaskViewHost extends Component {
 	restoreZoom(): void;
 	flushZoomEdit(): Promise<void>;
 	focusZoomEditor(line: number): void;
+
+	// ---- 薄代理方法：只看本节 ----
+	toggleSectionZoom(startLine: number): void;
+	enterSectionZoom(startLine: number): void;
+	exitSectionZoom(): void;
+	restoreSectionZoom(): void;
 
 	// ---- 薄代理方法：命令就绪补偿 ----
 	canDispatch(commandId: string): boolean;

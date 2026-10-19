@@ -228,8 +228,14 @@ function attachCardDragHandle(
 	};
 
 	const beginDrag = (): boolean => {
-		// 放大态不排序（提交侧也有守卫，这里拦在视觉发生之前）。
-		if (view.zoomLine !== null || !view.file) {
+		// 放大态 / 「只看本节」不排序（提交侧也有守卫，这里拦在视觉发生之前）。
+		// v1 在节聚焦下整体禁用卡片拖拽：兜底落点取 DOM 末节、不看可见性
+		// （[[Research-20261019-131228]] §1.4-2 / §4.6）。
+		if (
+			view.zoomLine !== null ||
+			view.sectionZoomLine !== null ||
+			!view.file
+		) {
 			return false;
 		}
 		const fromLine = Number.parseInt(cardEl.dataset.line ?? '', 10);

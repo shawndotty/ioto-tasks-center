@@ -336,6 +336,45 @@ function renderSectionHeader(options: {
 			sectionDrag.attachHandle(dragHandleEl, sectionEl, scrollEl);
 		}
 
+		// 「只看本节」：布局态开关（[[Research-20261019-131228]] §4.3）。
+		// 位置在 grip 之后、关闭之前；同一按钮就地翻面 maximize-2 ↔ minimize-2。
+		// 节编辑态由 CSS 隐藏（已隔离，避免两个开关叠加）。
+		if (editing.toggleSectionZoom) {
+			const zoomed = (editing.sectionZoomLine ?? null) === section.startLine;
+			const zoomLabel = t(
+				zoomed
+					? 'view.iotoTaskView.sectionZoomOut'
+					: 'view.iotoTaskView.sectionZoomIn',
+			);
+			const zoomBtn = actionsEl.createEl('button', {
+				cls: 'ioto-task-view__section-zoom-btn',
+				attr: {
+					type: 'button',
+					'aria-label': zoomLabel,
+					title: zoomLabel,
+					'aria-pressed': zoomed ? 'true' : 'false',
+					'data-action': 'toggle-section-zoom',
+				},
+			});
+			setIcon(zoomBtn, zoomed ? 'minimize-2' : 'maximize-2');
+			zoomBtn.addEventListener('click', (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				editing.toggleSectionZoom?.(section.startLine);
+			});
+			// Esc 的局部路径之一：按钮仍有焦点时可直接退出（DOM 不重建 → 焦点不丢）。
+			// 🔴 必须读实时 getter：`zoomed` 是渲染期快照，切换后不会重建。
+			zoomBtn.addEventListener('keydown', (event) => {
+				if (
+					event.key === 'Escape' &&
+					(editing.sectionZoomLine ?? null) === section.startLine
+				) {
+					event.preventDefault();
+					editing.exitSectionZoom?.();
+				}
+			});
+		}
+
 		// 关闭 = 保存并退出（复用幂等的 `commitSectionEdit`，不新造退出路径）。
 		const closeBtn = actionsEl.createEl('button', {
 			cls: 'ioto-task-view__section-close-btn',

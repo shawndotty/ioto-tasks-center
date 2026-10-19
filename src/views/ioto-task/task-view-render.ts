@@ -29,6 +29,10 @@ import {
 	hasLiveEditor,
 	keepVisibleCardLine,
 } from './task-view-editing-state';
+import {
+	isCardInZoomedSection,
+	restoreSectionZoom,
+} from './task-view-section-zoom';
 
 /**
  * 视图级渲染主入口：重建列表容器，保留常驻外壳，处理动画 / 选中回填 / 命令就绪补偿。
@@ -144,6 +148,10 @@ export function renderNote(
 			recentTaskCount: view.recentTaskCountProvider(),
 			searchQuery: view.searchQuery,
 		});
+		// 「只看本节」回填必须早于滚动快照恢复：`captureIotoTaskScroll` 的锚点是
+		// 「第一张底边越过视口顶的卡」，先上 `.is-section-zoomed` 才能让快照与
+		// 「单节」布局一致（[[Research-20261019-131228]] §4.5）。
+		restoreSectionZoom(view);
 		if (snapshot) {
 			restoreIotoTaskScroll(view.contentEl, snapshot, {
 				skipAnchor: options?.skipAnchorRestore ?? false,
@@ -260,7 +268,9 @@ export function syncSelectionClass(view: TaskViewHost): void {
 	}
 
 	const cardEl = queryCard(view, line);
-	if (cardEl) {
+	// 「只看本节」态下，聚焦节之外的卡虽仍在 DOM 里，但被 `display: none` 隐藏：
+	// 加类也看不见，改走下面的「第一张可见卡」兜底（防御外部状态把选中落到隐藏卡）。
+	if (cardEl && isCardInZoomedSection(view, cardEl)) {
 		cardEl.addClass('is-selected');
 		return;
 	}
@@ -311,6 +321,7 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 	// 渲染层只拿「要无条件保留的卡片行号」，不自己判编辑器种类（真源在 editing-state）。
 	const readKeepVisibleLine = (): number | null => keepVisibleCardLine(view);
 	const readZoomLine = (): number | null => view.zoomLine;
+	const readSectionZoomLine = (): number | null => view.sectionZoomLine;
 	// 卡片动作区按钮：仅在「支持内联编辑」且「目标命令已注册」时才注入，
 	// 缺省即渲染层隐藏按钮（Q5：只读 / ioto-settings 未启用 → 隐藏）。
 	const inlineEdit = view.supportsInlineEdit();
@@ -345,6 +356,11 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 		},
 		get zoomLine() {
 			return readZoomLine();
+		},
+		// 🔴 同样是 getter：切换「只看本节」是纯 DOM 开关，不重建动作区，
+		// 按钮闭包必须读实时值（同 `zoomLine`）。
+		get sectionZoomLine() {
+			return readSectionZoomLine();
 		},
 		beginEdit: (line) => {
 			void view.beginEdit(line);
@@ -384,6 +400,14 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 					},
 					focusZoomEditor: (line: number) => {
 						view.focusZoomEditor(line);
+					},
+					// 「只看本节」：布局层聚焦，可编辑 / 可选中 / 可搜索。
+					toggleSectionZoom: (startLine: number) => {
+						view.toggleSectionZoom(startLine);
+					},
+					// 供放大按钮自身的 Esc 局部路径调用。
+					exitSectionZoom: () => {
+						view.exitSectionZoom();
 					},
 					editSection: (startLine: number) => {
 						void view.beginSectionEdit(startLine);

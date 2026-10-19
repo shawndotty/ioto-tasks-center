@@ -2544,6 +2544,12 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	font-size: var(--font-ui-medium);
 	font-weight: var(--font-semibold);
 	color: var(--text-normal);
+	/* 布局韧性：动作区图标从 4 个增到 5 个后，窄窗口下标题必须能让位并省略，
+	   否则 flex 会把一行文字挤成竖排（[[Research-20261019-131228]] §1.1）。 */
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 /* 标题 = 可编辑字段的嗅探面（[[Plan-20261019-122509]] §3.12）：双击进入单行编辑 */
@@ -2601,6 +2607,7 @@ input.ioto-task-view__section-title-input[type='text'] {
 
 .ioto-task-view__section-actions {
 	margin-inline-start: auto;
+	flex: 0 0 auto;
 	display: flex;
 	align-items: center;
 	gap: 4px;
@@ -2612,6 +2619,7 @@ input.ioto-task-view__section-title-input[type='text'] {
 button.ioto-task-view__section-edit-btn:not(.clickable-icon),
 button.ioto-task-view__section-delete-btn:not(.clickable-icon),
 button.ioto-task-view__section-close-btn:not(.clickable-icon),
+button.ioto-task-view__section-zoom-btn:not(.clickable-icon),
 button.ioto-task-view__section-title-edit-btn:not(.clickable-icon) {
 	display: inline-flex;
 	align-items: center;
@@ -2627,6 +2635,7 @@ button.ioto-task-view__section-title-edit-btn:not(.clickable-icon) {
 
 .ioto-task-view__section-edit-btn:hover,
 .ioto-task-view__section-close-btn:hover,
+.ioto-task-view__section-zoom-btn:hover,
 .ioto-task-view__section-title-edit-btn:hover {
 	color: var(--text-normal);
 }
@@ -2709,6 +2718,39 @@ button.ioto-task-view__section-delete-btn:not(.clickable-icon):hover {
    与是否重绘无关）。[[Discuss-20261010-133548]] §2.1 / [[Plan-20261010-135806]] */
 .ioto-task-view__scroll:has(> .ioto-task-view__section.is-editing)
 	> .ioto-task-view__section:not(.is-editing) {
+	display: none;
+}
+
+/* —— 只看本节（Section 级布局聚焦，[[Research-20261019-131228]] §4.4） ——
+   唯一真源 = `.is-section-zoomed`（纯布局态：不改排版、不建浮层、不进入编辑）。
+   与上面的 `.is-editing` 正交：编辑聚焦节时两套选择器同时命中，幂等。
+   level 0 引导区同属兄弟 `.section`，一并隐藏。 */
+.ioto-task-view__scroll:has(> .ioto-task-view__section.is-section-zoomed)
+	> .ioto-task-view__section:not(.is-section-zoomed) {
+	display: none;
+}
+
+/* 放大态底下「新增 Section」不可用（新节落在文末，聚焦中不可见） */
+.ioto-task-view__scroll:has(> .ioto-task-view__section.is-section-zoomed)
+	> .ioto-task-view__section-add {
+	display: none;
+}
+
+/* 放大态动作区常显：缩小入口不能依赖 hover（鼠标一移开就无路可退）。 */
+.ioto-task-view__section.is-section-zoomed .ioto-task-view__section-actions {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+/* 放大态不排序（grip 隐藏；手势侧另有 `beginDrag` 守卫双保险）。 */
+.ioto-task-view__section.is-section-zoomed
+	.ioto-task-view__section-drag-handle,
+.ioto-task-view__section.is-section-zoomed .ioto-task-view__card-drag-handle {
+	display: none;
+}
+
+/* 节编辑态隐藏放大按钮：已经隔离，避免两个隔离开关叠加。 */
+.ioto-task-view__section.is-editing .ioto-task-view__section-zoom-btn {
 	display: none;
 }
 
@@ -3707,7 +3749,8 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
    `.is-phone .…edit-btn` 特异性低于基础规则，padding 实际未生效） */
 .is-phone button.ioto-task-view__section-edit-btn:not(.clickable-icon),
 .is-phone button.ioto-task-view__section-delete-btn:not(.clickable-icon),
-.is-phone button.ioto-task-view__section-close-btn:not(.clickable-icon) {
+.is-phone button.ioto-task-view__section-close-btn:not(.clickable-icon),
+.is-phone button.ioto-task-view__section-zoom-btn:not(.clickable-icon) {
 	padding: 6px;
 }
 

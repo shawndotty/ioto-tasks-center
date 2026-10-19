@@ -12,8 +12,7 @@ import {
 } from './commit-task-line';
 import { mountEmbeddedEditor } from './embedded-editor';
 import type { EmbeddedEditorHandle } from './embedded-editor';
-import { IOTO_TASK_SCROLL_SELECTOR } from './ioto-task-scroll';
-import { querySectionEl } from './task-view-helpers';
+import { queryScrollEl, querySectionEl } from './task-view-helpers';
 import type { TaskViewHost } from './task-view-host';
 
 /**
@@ -28,13 +27,6 @@ import type { TaskViewHost } from './task-view-host';
  * - 与卡片 / 续行 / 标题编辑器互斥：进入前先提交另外三条链；
  * - 只在退出（Esc / 失焦 / 切换）时提交（Q5：不排 autosave）。
  */
-
-/** 取视图的滚动容器（`.ioto-task-view__scroll`）。 */
-function queryScrollEl(view: TaskViewHost): HTMLElement | null {
-	return (
-		view.bodyEl?.querySelector<HTMLElement>(IOTO_TASK_SCROLL_SELECTOR) ?? null
-	);
-}
 
 export async function beginSectionEdit(
 	view: TaskViewHost,
@@ -73,6 +65,15 @@ export async function beginSectionEdit(
 		if (!section || section.level <= 0) {
 			return;
 		}
+	}
+
+	// 防御：在「另一节」聚焦时进入本节编辑，两套隔离叠加会出现「两节都隐藏」的
+	// 空白页 → 先退出聚焦（编辑目标节则保持，两套隔离幂等）。
+	if (
+		view.sectionZoomLine !== null &&
+		view.sectionZoomLine !== startLine
+	) {
+		view.exitSectionZoom();
 	}
 
 	// 退出放大：Section 编辑与单卡放大态互斥（Q4）

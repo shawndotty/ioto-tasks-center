@@ -204,12 +204,18 @@ export interface CaptureResult {
 /** 视图根类名（离屏宿主复刻它，才能拿到同一套祖先选择器与容器查询上下文）。 */
 const VIEW_ROOT_SELECTOR = '.ioto-task-view';
 
-/** 只在交互中出现的瞬时态类，导出前从**克隆**上摘掉（不碰实时 DOM）。 */
+/**
+ * 只在交互中出现的瞬时态类，导出前从**克隆**上摘掉（不碰实时 DOM）。
+ *
+ * 🔴 新增任何「交互态类」都必须登记到这里，否则导出图会带上该态的视觉
+ * （例如漏掉 `is-section-zoomed` → 导出图只剩一节）。
+ */
 const TRANSIENT_CLASSES = [
 	'is-selected',
 	'is-pending-delete',
 	'is-zoom-hidden', // 新增：放大时不把「被隐藏的兄弟卡」一起拍进图
 	'is-zoomed', // 新增：还原被抬高的高度
+	'is-section-zoomed', // 「只看本节」：导出仍拍全部章节（与卡片放大同口径）
 ];
 
 /** 待删除确认遮罩的类名（整块剔除）。 */

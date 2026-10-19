@@ -93,6 +93,20 @@ export interface TaskNoteEditing {
 	 */
 	focusZoomEditor?(line: number): void;
 	/**
+	 * 当前「只看本节」聚焦的 Section 起始行（getter，读实时值）；未聚焦 `null`。
+	 *
+	 * 与 `zoomLine`（卡片放大）是两层：节聚焦是**布局态**，卡片放大是更内层的
+	 * 交互态（[[Research-20261019-131228]] §2.1）。渲染层据此决定放大 / 缩小图标。
+	 */
+	readonly sectionZoomLine?: number | null;
+	/**
+	 * 切换「只看本节」：同一节再次调用即缩小（幂等，纯 DOM 开关，不重绘）。
+	 * **缺省 = 按钮不渲染**（只读 / 不支持内联编辑时不显示放大按钮）。
+	 */
+	toggleSectionZoom?(startLine: number): void;
+	/** 退出「只看本节」（供放大按钮自身的 `Esc` 局部路径调用）。 */
+	exitSectionZoom?(): void;
+	/**
 	 * 点 Section 头部「编辑本节内容」：进入该节**正文**源码编辑（标题行之下）。
 	 * 参数是该 Section 的 `startLine`（不含 `NoteSection`，保持叶子模块零业务出边）。
 	 * **缺省 = 按钮不渲染**（只读 / 不支持内联编辑时不显示编辑按钮）。
