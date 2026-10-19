@@ -1,6 +1,7 @@
 import {
 	MarkdownView,
 	Notice,
+	Platform,
 	Plugin,
 	Scope,
 	type Workspace,
@@ -100,6 +101,7 @@ import {
 	updateExportImageWithFooter,
 	updateExportImageWithHeader,
 	updateInputRootPath,
+	updateMobileSectionActionsVisible,
 	updateOutcomeRootPath,
 	updateOutputRootPath,
 	updateProjectListGroupMode,
@@ -242,6 +244,7 @@ export default class IOTOTasksCenter extends Plugin {
 					() => this.resolveExportOptions(),
 					() => this.settings.entryTemplateConfig,
 					() => this.settings.showTaskViewDeleteButtonOnDesktop,
+					() => this.settings.mobileSectionActionsVisible,
 				),
 		);
 
@@ -330,6 +333,24 @@ export default class IOTOTasksCenter extends Plugin {
 						this.settings.tasksRootPath,
 						leaf,
 					);
+				}
+
+				return true;
+			},
+		});
+		this.addCommand({
+			id: 'itc-toggle-mobile-section-actions',
+			name: t('command.toggleMobileSectionActions'),
+			// 仅手机出现在命令面板；平板 / 桌面返回 false（与 CSS 的 .is-phone 成对）。
+			// 不判「当前是否 Task View」：这是全局显示模式，无视图时切换也应在下次打开时生效
+			// （[[Plan-20261019-202817]] §3.6）。
+			checkCallback: (checking) => {
+				if (!Platform.isPhone) {
+					return false;
+				}
+
+				if (!checking) {
+					void this.toggleMobileSectionActions();
 				}
 
 				return true;
@@ -695,6 +716,9 @@ export default class IOTOTasksCenter extends Plugin {
 		// Task View 桌面端删除按钮：非 true 一律回落 false（默认关闭）
 		this.settings.showTaskViewDeleteButtonOnDesktop =
 			this.settings.showTaskViewDeleteButtonOnDesktop === true;
+		// 移动端 Section 图标：非 true 一律回落 false（默认极简，[[Plan-20261019-202817]] §3.3）
+		this.settings.mobileSectionActionsVisible =
+			this.settings.mobileSectionActionsVisible === true;
 	}
 
 	async saveSettings() {
@@ -782,6 +806,22 @@ export default class IOTOTasksCenter extends Plugin {
 		// rAF 在其它窗口（popout）获得焦点时会被暂停，开关必须当场生效，
 		// 因此这里再同步扫一遍；关闭路径会连带清掉登记表里的 popout 按钮。
 		syncFloatingToggles(this.getViewToggleHost());
+	}
+
+	async updateMobileSectionActionsVisible(value: boolean): Promise<void> {
+		await updateMobileSectionActionsVisible(this, value);
+	}
+
+	private async toggleMobileSectionActions(): Promise<void> {
+		const next = !this.settings.mobileSectionActionsVisible;
+		await this.updateMobileSectionActionsVisible(next);
+		new Notice(
+			t(
+				next
+					? 'view.notice.mobileSectionActionsShown'
+					: 'view.notice.mobileSectionActionsHidden',
+			),
+		);
 	}
 
 	/**
@@ -1192,6 +1232,7 @@ export default class IOTOTasksCenter extends Plugin {
 			const view = leaf.view;
 			if (view instanceof IOTOTaskView) {
 				view.applyAppearanceStyle();
+				view.applyMobileSectionActions();
 				view.applyRecentTaskCount();
 				view.applyEntryTemplate();
 				view.applyDeleteButtonSetting();

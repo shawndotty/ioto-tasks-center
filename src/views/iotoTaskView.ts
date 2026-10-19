@@ -74,6 +74,7 @@ import {
 	applyAppearanceStyle,
 	applyDeleteButtonSetting,
 	applyEntryTemplate,
+	applyMobileSectionActions,
 	applyRecentTaskCount,
 	buildToolbar,
 	refreshDeleteButtonVisibility,
@@ -359,6 +360,8 @@ export class IOTOTaskView extends TextFileView {
 	readonly entryTemplateProvider: () => EntryTemplateConfig;
 	/** 桌面端是否显示工具栏「删除」按钮（移动端恒显示，见 `refreshDeleteButtonVisibility`）。 */
 	readonly deleteButtonOnDesktopProvider: () => boolean;
+	/** 手机端是否显示 Section 标题栏图标（[[Plan-20261019-202817]] §3.5）。 */
+	readonly mobileSectionActionsVisibleProvider: () => boolean;
 	/**
 	 * 导出重入锁（[[Plan-20261006-102142]] §三.6）：克隆几百张卡 + 内联样式可能耗时数秒，
 	 * 期间禁止重复触发（工具栏连点 / 命令面板重入）。
@@ -412,6 +415,7 @@ export class IOTOTaskView extends TextFileView {
 		exportOptionsProvider: () => TaskViewExportOptions,
 		entryTemplateProvider: () => EntryTemplateConfig,
 		deleteButtonOnDesktopProvider: () => boolean,
+		mobileSectionActionsVisibleProvider: () => boolean,
 	) {
 		super(leaf);
 		this.allowNoFile = false;
@@ -421,6 +425,8 @@ export class IOTOTaskView extends TextFileView {
 		this.exportOptionsProvider = exportOptionsProvider;
 		this.entryTemplateProvider = entryTemplateProvider;
 		this.deleteButtonOnDesktopProvider = deleteButtonOnDesktopProvider;
+		this.mobileSectionActionsVisibleProvider =
+			mobileSectionActionsVisibleProvider;
 	}
 
 	getViewType(): string {
@@ -527,6 +533,9 @@ export class IOTOTaskView extends TextFileView {
 		// 按设置挂 / 去外观风格类（玻璃 `.is-glass` / 现代 `.is-modern` / 简洁 `.is-simple` / 莫兰迪 `.is-morandi`），
 		// 保证打开即应用当前外观（[[Plan-20261003-215547]] §7.1、[[Plan-20261005-200436]]、[[Plan-20261007-063658]]）。
 		this.applyAppearanceStyle();
+		// 紧随外观：类挂在 contentEl，首次 renderNote 之前就位，不会闪一下
+		// （[[Plan-20261019-202817]] §3.5）。
+		this.applyMobileSectionActions();
 		// 常驻控制栏 + 列表容器（批次 A）：栏固定，renderNote 只重建 body。
 		this.buildToolbar();
 
@@ -552,6 +561,7 @@ export class IOTOTaskView extends TextFileView {
 	refreshDeleteButtonVisibility(): void { refreshDeleteButtonVisibility(this); }
 	applyDeleteButtonSetting(): void { applyDeleteButtonSetting(this); }
 	applyAppearanceStyle(): void { applyAppearanceStyle(this); }
+	applyMobileSectionActions(): void { applyMobileSectionActions(this); }
 	applyRecentTaskCount(): void { applyRecentTaskCount(this); }
 	applyEntryTemplate(): void { applyEntryTemplate(this); }
 

@@ -46,6 +46,8 @@ export interface TaskViewHost extends Component {
 	readonly exportOptionsProvider: () => TaskViewExportOptions;
 	readonly entryTemplateProvider: () => EntryTemplateConfig;
 	readonly deleteButtonOnDesktopProvider: () => boolean;
+	/** 手机端是否显示 Section 标题栏图标（[[Plan-20261019-202817]] §3.5）。 */
+	readonly mobileSectionActionsVisibleProvider: () => boolean;
 	readonly autosave: AutosaveScheduler;
 	readonly hoverPreviewParent: { hoverPopover: HoverPopover | null };
 

@@ -399,3 +399,21 @@ export async function updateShowTaskOutcomeOutlinkCount(
 	await host.saveSettings();
 	host.applySettingsToOpenViews();
 }
+
+/**
+ * 手机端 Section 标题栏图标的显示开关（[[Plan-20261019-202817]] §3.4）。
+ * 必须走 applySettingsToOpenViews()：类挂在 contentEl 上，只写盘不广播会出现
+ * 「已切换、图标不变，直到重开视图」。
+ */
+export async function updateMobileSectionActionsVisible(
+	host: SettingsUpdaterHost,
+	value: boolean,
+): Promise<void> {
+	if (host.settings.mobileSectionActionsVisible === value) {
+		return;
+	}
+
+	host.settings.mobileSectionActionsVisible = value;
+	await host.saveSettings();
+	host.applySettingsToOpenViews();
+}

@@ -144,6 +144,12 @@ export interface IOTOTasksCenterSettings {
 	 * 只控制悬浮按钮，不影响 `itc-toggle-task-view` 命令与右键菜单。
 	 */
 	showViewToggleButton: boolean;
+	/**
+	 * 手机端是否显示 Section 标题栏的操作图标（默认 false = 只留折叠箭头）。
+	 * 只影响 `.is-phone`；桌面 / 平板行为不变。由手机专属命令切换
+	 * （[[Plan-20261019-202817]] §3.2）。
+	 */
+	mobileSectionActionsVisible: boolean;
 }
 
 export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
@@ -186,6 +192,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	exportImageWithFooter: false,
 	showTaskViewDeleteButtonOnDesktop: false,
 	showViewToggleButton: true,
+	mobileSectionActionsVisible: false,
 };
 
 export { normalizeEnabledTaskCreationTypes } from './tasks-center/enabled-task-creation-types';

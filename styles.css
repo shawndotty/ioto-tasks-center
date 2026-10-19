@@ -3741,6 +3741,65 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 	--ioto-tv-pad-y: 10px;
 }
 
+/* ── 移动端 Section 标题栏精简模式（V270 / [[Plan-20261019-202817]]）──────────
+   默认只留折叠箭头；5 个操作图标（删除 / 编辑 / 放大 / 关闭 / 拖拽）与
+   动作区之外的改名图标，由手机专属命令整体开 / 关。
+
+   ① 隐藏规则必须 ≥ (0,4,0)：玻璃皮肤 `.ioto-task-view.is-glass … .section-actions`
+      以 (0,3,0) 声明了 display:flex（本文件下方）。真机实测 0,3,0 失败、0,4,0 成功。
+   ② 必须 display:none：要让图标让出宽度与行高，opacity / visibility 不回收空间。
+   ③ 三类状态例外缺一不可，否则会丢退出路径或破坏既有编辑语义。 */
+
+/* 默认隐藏（含动作区之外的改名图标） */
+.is-phone .ioto-task-view .ioto-task-view__section-header
+	> .ioto-task-view__section-actions,
+.is-phone .ioto-task-view .ioto-task-view__section-header
+	> .ioto-task-view__section-title-edit-btn {
+	display: none;
+}
+
+/* 命令打开：(0,5,0) 压过上面的隐藏 */
+.is-phone .ioto-task-view.is-section-actions-visible .ioto-task-view__section-header
+	> .ioto-task-view__section-actions {
+	display: flex;
+}
+.is-phone .ioto-task-view.is-section-actions-visible .ioto-task-view__section-header
+	> .ioto-task-view__section-title-edit-btn {
+	display: inline-flex;
+}
+
+/* 例外 A：节编辑 / 只看本节 —— 动作区必须可见。
+   关闭按钮是节编辑的唯一退出路径；缩小按钮是节放大的唯一退出路径。 */
+.is-phone .ioto-task-view .ioto-task-view__section.is-editing
+	> .ioto-task-view__section-header > .ioto-task-view__section-actions,
+.is-phone .ioto-task-view .ioto-task-view__section.is-section-zoomed
+	> .ioto-task-view__section-header > .ioto-task-view__section-actions {
+	display: flex;
+}
+
+/* 例外 B：标题编辑 / 节编辑 —— 回到「改名图标隐藏、标题编辑时动作区隐藏」。
+   否则上面的 (0,5,0) 会反向压过基础规则 is-title-editing / is-editing 的 display:none。 */
+.is-phone .ioto-task-view .ioto-task-view__section.is-title-editing
+	> .ioto-task-view__section-header > .ioto-task-view__section-actions,
+.is-phone .ioto-task-view .ioto-task-view__section.is-title-editing
+	> .ioto-task-view__section-header > .ioto-task-view__section-title-edit-btn,
+.is-phone .ioto-task-view .ioto-task-view__section.is-editing
+	> .ioto-task-view__section-header > .ioto-task-view__section-title-edit-btn {
+	display: none;
+}
+
+/* 折叠箭头热区修复：原 `.is-phone …toggle { padding:6px }` 是死规则
+   （(0,2,0) < 基础规则 (0,2,1)）。用 ::before 外扩 7px → 32×32，不改 padding、
+   不抬高 header；8px 的 gap 只被占 7px，不会盖到标题的双击区域。 */
+.is-phone button.ioto-task-view__section-toggle:not(.clickable-icon) {
+	position: relative;
+}
+.is-phone button.ioto-task-view__section-toggle:not(.clickable-icon)::before {
+	content: '';
+	position: absolute;
+	inset: -7px;
+}
+
 .is-phone .ioto-task-view__section-toggle {
 	padding: 6px;
 }

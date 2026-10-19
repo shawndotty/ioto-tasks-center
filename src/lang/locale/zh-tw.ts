@@ -161,6 +161,9 @@ const zhTW = {
 	'view.notice.invalidDropSelf': '不能將任務拖曳到自身上。',
 	'view.notice.invalidDropDescendant': '不能把父任務拖到自己的子任務下。',
 	'view.notice.invalidDropUnavailable': '拖曳目標已不可用，請重試。',
+	'view.notice.mobileSectionActionsShown':
+		'已顯示 Section 圖示；再次執行本指令可隱藏。',
+	'view.notice.mobileSectionActionsHidden': '已隱藏 Section 圖示。',
 	'view.label.currentFilter': '目前篩選',
 	'menu.category.sort': '排序',
 	'menu.category.group': '分組',
@@ -586,6 +589,7 @@ const zhTW = {
 	'command.searchTaskView': '在任務視圖中搜尋',
 	'command.exportTaskViewImage': '匯出任務檢視為圖片',
 	'command.copyTaskViewImage': '複製任務檢視圖片到剪貼簿',
+	'command.toggleMobileSectionActions': '顯示 / 隱藏行動版 Section 標題列圖示',
 	'menu.openAsIOTOTask': '以 IOTO 任務檢視開啟',
 	'menu.openAsMarkdown': '切回 Markdown',
 	'view.iotoTaskView.fallbackTitle': '任務檢視',

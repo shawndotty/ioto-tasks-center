@@ -181,6 +181,9 @@ const en = {
 		'A parent task cannot be dragged under its own child task.',
 	'view.notice.invalidDropUnavailable':
 		'The drop target is unavailable. Please try again.',
+	'view.notice.mobileSectionActionsShown':
+		'Section icons shown. Run this command again to hide them.',
+	'view.notice.mobileSectionActionsHidden': 'Section icons hidden.',
 	'view.label.currentFilter': 'Current filter',
 	'menu.category.sort': 'Sort',
 	'menu.category.group': 'Group',
@@ -638,6 +641,8 @@ const en = {
 	'command.searchTaskView': 'Search in task view',
 	'command.exportTaskViewImage': 'Export task view as image',
 	'command.copyTaskViewImage': 'Copy task view image to clipboard',
+	'command.toggleMobileSectionActions':
+		'Show / hide mobile section header icons',
 	'menu.openAsIOTOTask': 'Open as IOTO task view',
 	'menu.openAsMarkdown': 'Open as Markdown',
 	'view.iotoTaskView.fallbackTitle': 'Task view',

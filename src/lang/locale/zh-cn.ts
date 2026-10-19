@@ -161,6 +161,9 @@ const zhCN = {
 	'view.notice.invalidDropSelf': '不能将任务拖拽到自身上。',
 	'view.notice.invalidDropDescendant': '不能把父任务拖到自己的子任务下。',
 	'view.notice.invalidDropUnavailable': '拖拽目标已不可用，请重试。',
+	'view.notice.mobileSectionActionsShown':
+		'已显示 Section 图标；再次运行本命令可隐藏。',
+	'view.notice.mobileSectionActionsHidden': '已隐藏 Section 图标。',
 	'view.label.currentFilter': '当前筛选',
 	'menu.category.sort': '排序',
 	'menu.category.group': '分组',
@@ -585,6 +588,7 @@ const zhCN = {
 	'command.searchTaskView': '在任务视图中搜索',
 	'command.exportTaskViewImage': '导出任务视图为图片',
 	'command.copyTaskViewImage': '复制任务视图图片到剪贴板',
+	'command.toggleMobileSectionActions': '显示 / 隐藏移动端 Section 标题栏图标',
 	'menu.openAsIOTOTask': '以 IOTO 任务视图打开',
 	'menu.openAsMarkdown': '切回 Markdown',
 	'view.iotoTaskView.fallbackTitle': '任务视图',

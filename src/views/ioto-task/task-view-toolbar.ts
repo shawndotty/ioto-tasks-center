@@ -364,6 +364,19 @@ export function applyAppearanceStyle(view: TaskViewHost): void {
 }
 
 /**
+ * 手机端 Section 标题栏精简模式（[[Plan-20261019-202817]] §3.9）。
+ *
+ * 类挂在 contentEl：`renderNote` 只清空子节点、不摘根类，因此不随重绘丢失；
+ * 非手机端强制摘类，避免 `data.json` 从手机同步到桌面后留下脏类。
+ */
+export function applyMobileSectionActions(view: TaskViewHost): void {
+	view.contentEl.toggleClass(
+		'is-section-actions-visible',
+		Platform.isPhone && view.mobileSectionActionsVisibleProvider(),
+	);
+}
+
+/**
  * 阈值（`recentTaskCount`）设置变更后由 `main.ts` 调用：
  * 刷新按钮 tooltip；仅当「显示最近任务」开启时重绘（阈值变化需重算分组），
  * 其余情况不动 DOM（[[Plan-20261005-101007]] §2.6）。
