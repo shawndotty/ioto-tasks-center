@@ -187,6 +187,17 @@ function renderTaskViewSection(containerEl: HTMLElement, plugin: IOTOTasksCenter
 		);
 
 	new Setting(containerEl)
+		.setName(t('settings.showViewToggleButton.name'))
+		.setDesc(t('settings.showViewToggleButton.desc'))
+		.addToggle((toggle) =>
+			toggle
+				.setValue(plugin.settings.showViewToggleButton)
+				.onChange(async (value) => {
+					await plugin.updateShowViewToggleButton(value);
+				}),
+		);
+
+	new Setting(containerEl)
 		.setName(t('settings.appearanceStyle.name'))
 		.setDesc(t('settings.appearanceStyle.desc'))
 		.addDropdown((dropdown) => {

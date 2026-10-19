@@ -280,6 +280,24 @@ export async function updateShowTaskViewDeleteButtonOnDesktop(
 	host.applySettingsToOpenViews();
 }
 
+/**
+ * 视图切换悬浮按钮的显示开关（[[Plan-20261019-190001]] §3.5）。
+ * **必须**走 applySettingsToOpenViews()：按钮是常驻 DOM，只写盘不广播会出现
+ * 「设置已关、按钮还在，直到下次布局变化」。
+ */
+export async function updateShowViewToggleButton(
+	host: SettingsUpdaterHost,
+	value: boolean,
+): Promise<void> {
+	if (host.settings.showViewToggleButton === value) {
+		return;
+	}
+
+	host.settings.showViewToggleButton = value;
+	await host.saveSettings();
+	host.applySettingsToOpenViews();
+}
+
 // 导出设置改动**不**即时刷视图（下一次导出才读 provider），故不带 applySettingsToOpenViews。
 export async function updateExportImageWidthMode(
 	host: SettingsUpdaterHost,

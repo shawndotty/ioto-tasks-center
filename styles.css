@@ -5241,3 +5241,59 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 .ioto-task-view.is-exporting .ioto-task-view__card-drag-handle {
 	display: none;
 }
+
+/* ============================================================
+   视图切换悬浮按钮（[[Plan-20261019-190001]] §3.10）
+   挂在 view.containerEl（.workspace-leaf-content）右下角：
+   容器本身 position: relative + overflow: hidden，按钮不随正文滚动、不越出窗格。
+   显示与否由设置 showViewToggleButton 在 DOM 层控制，不由 CSS 控制。
+   ============================================================ */
+.ioto-view-toggle {
+	position: absolute;
+	inset-inline-end: 14px;
+	bottom: 35px;
+	right: 32px;
+	z-index: 15;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 30px;
+	padding: 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background: var(--background-primary);
+	color: var(--text-faint);
+	opacity: 0.45;
+	box-shadow: none;
+	cursor: pointer;
+	touch-action: manipulation;
+	-webkit-tap-highlight-color: transparent;
+	transition: opacity 120ms ease, color 120ms ease, background-color 120ms ease;
+}
+
+.ioto-view-toggle:hover {
+	opacity: 1;
+	color: var(--text-muted);
+	background: var(--background-modifier-hover);
+}
+
+.ioto-view-toggle:focus-visible {
+	opacity: 1;
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 1px;
+}
+
+.ioto-view-toggle svg {
+	width: 16px;
+	height: 16px;
+}
+
+/* 手机：38px 触屏热区 + 抬到底部导航栏之上。 */
+.is-phone .ioto-view-toggle {
+	inset-inline-end: calc(10px + env(safe-area-inset-right, 0px));
+	bottom: max(12px, calc(var(--view-bottom-spacing, 0px) + 10px));
+	width: 38px;
+	height: 38px;
+	opacity: 0.6;
+}

@@ -100,6 +100,36 @@ export async function setLeafToMarkdown(leaf: WorkspaceLeaf): Promise<void> {
 	});
 }
 
+/**
+ * 按**指定叶子**切换 Markdown / IOTO 任务视图（[[Plan-20261019-190001]] §3.3）。
+ * 命令面板与悬浮按钮共用；按钮必须传自己的 leaf，不能依赖 getMostRecentLeaf()。
+ * 方向在调用瞬间重新解析，不缓存——按钮即使因漏扫残留也能按当前视图自愈。
+ */
+export async function toggleTaskViewForLeaf(
+	app: App,
+	tasksRootPath: string,
+	leaf: WorkspaceLeaf,
+): Promise<void> {
+	const direction = resolveTaskViewToggleDirection(leaf, tasksRootPath);
+	if (!direction) return;
+
+	if (direction === 'to-markdown') {
+		const view = leaf.view;
+		if (view instanceof IOTOTaskView) {
+			// 高频入口必须显式落盘：blur 提交与 setViewState 销毁视图存在竞态。
+			await view.flushInlineEdits();
+			await view.flushZoomEdit(); // zoomLine === null 时内部短路，可无条件调
+		}
+		await setLeafToMarkdown(leaf);
+		return;
+	}
+
+	const view = leaf.view;
+	if (view instanceof MarkdownView && view.file) {
+		await openFileAsIOTOTask(app, tasksRootPath, view.file, leaf);
+	}
+}
+
 export function findIOTOTaskLeafForFile(
 	app: App,
 	path: string,

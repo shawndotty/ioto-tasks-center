@@ -335,6 +335,9 @@ const zhTW = {
 		'在任務中心開啟任務筆記時，預設使用IOTO任務檢視',
 	'settings.useIOTOTaskViewAsDefault.desc':
 		'關閉後，從任務中心開啟任務筆記將顯示為一般 Markdown；命令與右鍵選單不受此開關影響。',
+	'settings.showViewToggleButton.name': '顯示檢視切換懸浮按鈕',
+	'settings.showViewToggleButton.desc':
+		'在任務筆記與 IOTO 任務檢視的右下角顯示切換按鈕；關閉後立即隱藏，命令面板中的「切換 Markdown 與 IOTO 任務檢視」仍可用。',
 	'settings.appearanceStyle.name': 'IOTOTask 視圖外觀',
 	'settings.appearanceStyle.desc':
 		'選擇 IOTOTask 視圖的視覺風格：玻璃（深色 Aurora 漸變 + 玻璃擬態，預設）、現代（無邊框分層 + 大圓角 + 柔和投影，克制耐看）、簡潔（白卡 + 淺灰表頭帶 + 髮絲分隔線 + 藥丸按鈕）、卡片（經典扁平卡片）或莫蘭迪（自帶低飽和暖色板 + 寬行高，對乾眼 / 散光更友好的無障礙外觀）。',
@@ -586,6 +589,8 @@ const zhTW = {
 	'menu.openAsIOTOTask': '以 IOTO 任務檢視開啟',
 	'menu.openAsMarkdown': '切回 Markdown',
 	'view.iotoTaskView.fallbackTitle': '任務檢視',
+	'view.iotoTaskView.toggleToTaskView': '切換到 IOTO 任務檢視',
+	'view.iotoTaskView.toggleToMarkdown': '切換到 Markdown',
 	'view.iotoTaskView.sectionToggle': '折疊/展開章節：{0}',
 	'view.iotoTaskView.sectionEdit': '編輯本節內容',
 	'view.iotoTaskView.sectionEditTitle': '編輯本節標題',

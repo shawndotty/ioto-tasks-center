@@ -139,6 +139,11 @@ export interface IOTOTasksCenterSettings {
 	exportImageWithFooter: boolean;
 	/** Task View 桌面端是否在工具栏显示「删除」按钮（默认 false；移动端恒显示）。 */
 	showTaskViewDeleteButtonOnDesktop: boolean;
+	/**
+	 * 是否在任务笔记 / IOTOTask 视图所在叶子右下角显示视图切换悬浮按钮（默认 true）。
+	 * 只控制悬浮按钮，不影响 `itc-toggle-task-view` 命令与右键菜单。
+	 */
+	showViewToggleButton: boolean;
 }
 
 export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
@@ -180,6 +185,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	exportImageWithHeader: false,
 	exportImageWithFooter: false,
 	showTaskViewDeleteButtonOnDesktop: false,
+	showViewToggleButton: true,
 };
 
 export { normalizeEnabledTaskCreationTypes } from './tasks-center/enabled-task-creation-types';

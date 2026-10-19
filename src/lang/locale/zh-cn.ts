@@ -334,6 +334,9 @@ const zhCN = {
 		'在任务中心打开任务笔记时，默认使用IOTO任务视图',
 	'settings.useIOTOTaskViewAsDefault.desc':
 		'关闭后，从任务中心打开任务笔记将显示为普通 Markdown；命令与右键菜单不受此开关影响。',
+	'settings.showViewToggleButton.name': '显示视图切换悬浮按钮',
+	'settings.showViewToggleButton.desc':
+		'在任务笔记与 IOTO 任务视图的右下角显示切换按钮；关闭后立即隐藏，命令面板中的「切换 Markdown 与 IOTO 任务视图」仍可用。',
 	'settings.appearanceStyle.name': 'IOTOTask 视图外观',
 	'settings.appearanceStyle.desc':
 		'选择 IOTOTask 视图的视觉风格：玻璃（深色 Aurora 渐变 + 玻璃拟态，默认）、现代（无边框分层 + 大圆角 + 柔和投影，克制耐看）、简洁（白卡 + 浅灰表头带 + 发丝分隔线 + 药丸按钮）、卡片（经典扁平卡片）或莫兰迪（自带低饱和暖色板 + 宽行高，对干眼 / 散光更友好的无障碍外观）。',
@@ -585,6 +588,8 @@ const zhCN = {
 	'menu.openAsIOTOTask': '以 IOTO 任务视图打开',
 	'menu.openAsMarkdown': '切回 Markdown',
 	'view.iotoTaskView.fallbackTitle': '任务视图',
+	'view.iotoTaskView.toggleToTaskView': '切换到 IOTO 任务视图',
+	'view.iotoTaskView.toggleToMarkdown': '切换到 Markdown',
 	'view.iotoTaskView.sectionToggle': '折叠/展开章节：{0}',
 	'view.iotoTaskView.sectionEdit': '编辑本节内容',
 	'view.iotoTaskView.sectionEditTitle': '编辑本节标题',

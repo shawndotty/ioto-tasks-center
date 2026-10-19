@@ -356,6 +356,9 @@ const en = {
 		'Open task notes from Task Center in the IOTO Task View by default',
 	'settings.useIOTOTaskViewAsDefault.desc':
 		'When off, opening task notes from Task Center falls back to plain Markdown. The command and context-menu entries are unaffected.',
+	'settings.showViewToggleButton.name': 'Show floating view toggle',
+	'settings.showViewToggleButton.desc':
+		'Show a toggle in the bottom-right corner of task notes and the IOTO task view. Turning it off hides it immediately; the command palette toggle command stays available.',
 	'settings.appearanceStyle.name': 'IOTOTask view appearance',
 	'settings.appearanceStyle.desc':
 		'Choose the visual style of the IOTOTask view: Glass (dark aurora + glassmorphism, default), Modern (borderless layered surfaces with large radii and soft shadows), Simple (white surface + tinted header band + hairline separators + pill buttons), Card (classic flat cards), or Morandi (built-in low-saturation warm palette + generous line height, an accessibility-first look easier on dry eyes / astigmatism).',
@@ -638,6 +641,8 @@ const en = {
 	'menu.openAsIOTOTask': 'Open as IOTO task view',
 	'menu.openAsMarkdown': 'Open as Markdown',
 	'view.iotoTaskView.fallbackTitle': 'Task view',
+	'view.iotoTaskView.toggleToTaskView': 'Switch to IOTO task view',
+	'view.iotoTaskView.toggleToMarkdown': 'Switch to Markdown',
 	'view.iotoTaskView.sectionToggle': 'Toggle section: {0}',
 	'view.iotoTaskView.sectionEdit': 'Edit section content',
 	'view.iotoTaskView.sectionEditTitle': 'Edit section title',

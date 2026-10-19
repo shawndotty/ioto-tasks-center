@@ -3,6 +3,8 @@ import {
 	Notice,
 	Plugin,
 	Scope,
+	type Workspace,
+	type WorkspaceWindow,
 } from 'obsidian';
 import { t } from './lang/helpter';
 import {
@@ -114,6 +116,7 @@ import {
 	updateShowProjectNameInTaskList,
 	updateShowTaskSubtaskCount,
 	updateShowTaskViewDeleteButtonOnDesktop,
+	updateShowViewToggleButton,
 	updateTaskLinkBadgeBackgroundMode,
 	updateTaskListSortMode,
 	updateTaskListGroupMode,
@@ -136,7 +139,14 @@ import {
 	openFileAsIOTOTask,
 	resolveTaskViewToggleDirection,
 	setLeafToMarkdown,
+	toggleTaskViewForLeaf,
 } from './task-view-routing';
+// 视图切换悬浮按钮（[[Plan-20261019-190001]]）
+import {
+	type FloatingToggleHost,
+	removeFloatingToggles,
+	syncFloatingToggles,
+} from './view-toggle-button';
 
 export default class IOTOTasksCenter extends Plugin {
 	settings!: IOTOTasksCenterSettings;
@@ -145,6 +155,8 @@ export default class IOTOTasksCenter extends Plugin {
 	private vaultRefreshTimer: number | null = null;
 	private pendingFullRefresh = false;
 	private readonly pendingProjectRefreshes = new Set<string>();
+	/** 悬浮按钮同步的一帧合并句柄（[[Plan-20261019-190001]] §3.8）。 */
+	private toggleSyncFrame: number | null = null;
 
 	async onload() {
 		await this.loadSettings();
@@ -312,17 +324,12 @@ export default class IOTOTasksCenter extends Plugin {
 				}
 
 				if (!checking) {
-					if (direction === 'to-markdown') {
-						void setLeafToMarkdown(leaf);
-					} else if (leaf.view instanceof MarkdownView && leaf.view.file) {
-						// 显式传入活动叶子作 targetLeaf，贴合「切换作用于眼前这个叶子」的语义。
-						void openFileAsIOTOTask(
-							this.app,
-							this.settings.tasksRootPath,
-							leaf.view.file,
-							leaf,
-						);
-					}
+					// 与悬浮按钮共用同一条执行路径（[[Plan-20261019-190001]] §3.3）。
+					void toggleTaskViewForLeaf(
+						this.app,
+						this.settings.tasksRootPath,
+						leaf,
+					);
 				}
 
 				return true;
@@ -601,6 +608,7 @@ export default class IOTOTasksCenter extends Plugin {
 
 		this.addSettingTab(new IOTOTasksCenterSettingTab(this.app, this));
 		this.registerVaultRefreshEvents();
+		this.registerViewToggleEvents();
 		this.registerTaskNoteMenuEvent();
 		// 「条目控制」桥接：让 IOTOTask 卡片内联编辑态下的 Option+I 可用
 		// （[[Plan-20261003-105625]]）；`register` 会在 onunload 时还原原方法。
@@ -769,6 +777,13 @@ export default class IOTOTasksCenter extends Plugin {
 		await updateShowTaskViewDeleteButtonOnDesktop(this, value);
 	}
 
+	async updateShowViewToggleButton(value: boolean): Promise<void> {
+		await updateShowViewToggleButton(this, value);
+		// rAF 在其它窗口（popout）获得焦点时会被暂停，开关必须当场生效，
+		// 因此这里再同步扫一遍；关闭路径会连带清掉登记表里的 popout 按钮。
+		syncFloatingToggles(this.getViewToggleHost());
+	}
+
 	/**
 	 * 组装 Task View 导出图片的运行时设置（供视图构造时注入的 provider 调用）。
 	 * 惰性求值：每次导出都重取，改设置后**无需**即时刷视图（[[Plan-20261006-102142]] §2.5）。
@@ -902,6 +917,72 @@ export default class IOTOTasksCenter extends Plugin {
 
 	private getTasksCenterView(): IOTOTasksCenterView | null {
 		return getTasksCenterView(this.app);
+	}
+
+	// --- 生命周期：视图切换悬浮按钮（[[Plan-20261019-190001]]） ---
+
+	/** 用工厂方法提供 host，避免字段初始化顺序问题。 */
+	private getViewToggleHost(): FloatingToggleHost {
+		return {
+			app: this.app,
+			getTasksRootPath: () => this.settings.tasksRootPath,
+			isViewToggleVisible: () => this.settings.showViewToggleButton,
+			onToggle: (leaf) => {
+				void toggleTaskViewForLeaf(
+					this.app,
+					this.settings.tasksRootPath,
+					leaf,
+				);
+			},
+		};
+	}
+
+	private scheduleViewToggleSync(): void {
+		if (this.toggleSyncFrame !== null) {
+			return;
+		}
+		this.toggleSyncFrame = window.requestAnimationFrame(() => {
+			this.toggleSyncFrame = null;
+			syncFloatingToggles(this.getViewToggleHost());
+		});
+	}
+
+	private registerViewToggleEvents(): void {
+		this.registerEvent(
+			this.app.workspace.on('layout-change', () => {
+				this.scheduleViewToggleSync();
+			}),
+		);
+		this.registerEvent(
+			this.app.workspace.on('file-open', () => {
+				this.scheduleViewToggleSync();
+			}),
+		);
+		this.registerEvent(
+			this.app.vault.on('rename', () => {
+				this.scheduleViewToggleSync();
+			}),
+		);
+		// popout 的叶子不在 app.workspace.iterateAllLeaves 里，需按窗口补扫。
+		this.registerEvent(
+			this.app.workspace.on('window-open', (win) => {
+				const workspace = (
+					win as WorkspaceWindow & { workspace?: Workspace }
+				).workspace;
+				if (workspace) {
+					syncFloatingToggles(this.getViewToggleHost(), workspace);
+				}
+			}),
+		);
+		this.register(() => {
+			if (this.toggleSyncFrame !== null) {
+				window.cancelAnimationFrame(this.toggleSyncFrame);
+				this.toggleSyncFrame = null;
+			}
+		});
+		this.register(() => removeFloatingToggles(this.app));
+		// 插件加载时已打开的任务笔记 / TaskView 也要立即有按钮。
+		this.scheduleViewToggleSync();
 	}
 
 	// --- 生命周期：vault 事件注册与刷新 ---
@@ -1116,6 +1197,9 @@ export default class IOTOTasksCenter extends Plugin {
 				view.applyDeleteButtonSetting();
 			}
 		}
+
+		// 设置开关即时生效：改根目录 / 关开关都靠这一行刷悬浮按钮（§3.9）。
+		this.scheduleViewToggleSync();
 	}
 
 	private async refreshOpenViews(): Promise<void> {
