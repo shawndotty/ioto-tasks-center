@@ -2889,10 +2889,19 @@ button.ioto-task-view__card-drag-handle:not(.clickable-icon) {
 	inset-inline-start: calc(
 		(var(--ioto-tv-card-text-start) - var(--ioto-tv-grip-size)) / 2
 	);
-	top: calc(var(--ioto-tv-pad-y) + 4px);             /* 与首行文字视觉居中 */
+	/* 与正文首行垂直居中。top 以卡片 padding box 为原点，所以：
+	   ① 先加卡片实际 padding-top（= --ioto-tv-pad-y，见经典皮肤手机端的口径约束）；
+	   ② 再补 (行高 − 手柄高)/2，让 30px 的盒子中心落在首行行盒中心。
+	   第一行是降级值：不支持 lh 单位的老内核落回旧行为，不会更差。 */
+	top: calc(var(--ioto-tv-pad-y) + 4px);
+	top: calc(var(--ioto-tv-pad-y) + (1lh - var(--ioto-tv-grip-size)) / 2);
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+	/* 1lh 取的是「手柄自己的行高」：必须同时 inherit 字号，否则比例行高会按
+	   按钮默认 14.99px 重算成 19.49px，比首行 20.8px 少 1.3px。 */
+	font-size: inherit;
+	line-height: inherit;
 	width: var(--ioto-tv-grip-size);
 	height: var(--ioto-tv-grip-size);
 	padding: 0;
@@ -3859,7 +3868,9 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 /* 移动端（本期不做真机验证）：两段式点击需要更大的「选中」热区，
    否则第一次点击容易落空（[[Plan-20261003-194909]] §5.4）。 */
 .is-phone .ioto-task-view__card {
-	padding: 12px var(--ioto-tv-pad-x);
+	/* 与 --ioto-tv-pad-y 同源：手柄 top 公式把它当「卡片实际 padding-top」，
+	   写成字面量 12px 会让公式算出的图标比首行高 2px。 */
+	padding: var(--ioto-tv-pad-y) var(--ioto-tv-pad-x);
 	/* 简写会覆盖基线的 padding-inline-start，必须在此重新声明左侧留白，
 	   否则手机端编辑态 / 普通态文字左缘不同（[[Report-20261017-110130]]） */
 	padding-inline-start: var(--ioto-tv-card-text-start);
@@ -5125,6 +5136,12 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 .ioto-task-view.is-morandi .ioto-task-view__card-text {
 	line-height: var(--ioto-tv-m-line);
 	letter-spacing: var(--ioto-tv-m-track);
+}
+
+/* 手柄是卡片的子节点，`1lh` 默认取卡片行高（20.8），而莫兰迪首行是 28px；
+   不同源会让图标偏高 (28 − 20.8)/2 ≈ 3.6px。此处与 .card-text 共用令牌。 */
+.ioto-task-view.is-morandi .ioto-task-view__card-drag-handle {
+	line-height: var(--ioto-tv-m-line);
 }
 
 .ioto-task-view.is-morandi .ioto-task-view__card-editor .markdown-source-view.mod-cm6 .cm-scroller {
