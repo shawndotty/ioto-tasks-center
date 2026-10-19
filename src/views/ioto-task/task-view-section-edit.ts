@@ -8,6 +8,7 @@ import {
 	type CommitOutcome,
 } from './commit-task-line';
 import { mountEmbeddedEditor } from './embedded-editor';
+import type { EmbeddedEditorHandle } from './embedded-editor';
 import { IOTO_TASK_SCROLL_SELECTOR } from './ioto-task-scroll';
 import type { TaskViewHost } from './task-view-host';
 
@@ -187,6 +188,10 @@ export function onSectionEscape(view: TaskViewHost): void {
  *   可能已在编辑中写盘并同步 `view.data`（不重绘），DOM 会停在写盘前；
  * - 重建后把当前节滚回视口顶部（补偿 `beginSectionEdit` 的滚动归零）。
  *   [[Research-20261019-113227]] §五.1
+ * - **编辑器 DOM 留到写盘 await 之后**再拆：`.is-editing` 一撤，正文区与其他
+ *   Section（隔离态的 `display:none`）会立刻恢复成**编辑前**的样子；若这发生在
+ *   await 之前，会先画一帧「旧高度 / 其他节闪现」，写完后重建再收起
+ *   （[[Report-20261019-115725]] §3）。
  */
 export async function commitSectionEdit(view: TaskViewHost): Promise<void> {
 	const handle = view.sectionEditHandle;
@@ -199,7 +204,13 @@ export async function commitSectionEdit(view: TaskViewHost): Promise<void> {
 	const endLine = view.sectionEditEndLine;
 	const originalLines = view.sectionEditOriginalLines;
 	const file = view.file;
-	view.destroySectionEditor();
+	const editLine = view.sectionEditLine;
+	// 逻辑退出立刻生效（切断重入），DOM 拆除延后到重绘前。
+	view.autosave.cancel();
+	view.sectionEditHandle = null;
+	const releaseDom = (): void => {
+		teardownSectionEditorDom(view, handle, editLine);
+	};
 
 	const outcome: CommitOutcome = await commitBlockRange(view.app, file, {
 		startLine,
@@ -213,6 +224,7 @@ export async function commitSectionEdit(view: TaskViewHost): Promise<void> {
 
 	if (outcome.status === 'conflict') {
 		await view.reloadFromVault();
+		releaseDom();
 		view.renderNote(view.data);
 		return;
 	}
@@ -224,16 +236,19 @@ export async function commitSectionEdit(view: TaskViewHost): Promise<void> {
 	// data-line 已漂）→ resetScroll 跳过快照，重建后由下方统一滚回本节顶部
 	//（本节 startLine 稳定：编辑约束在块内，上方行数不变，标题改名也不影响 startLine）。
 	// [[Discuss-20261010-133548]] §2.3(a)
+	// releaseDom 与 renderNote 必须同在一个同步任务里（否则会先画一帧编辑前的旧高度 /
+	// 其他 Section 复现的中间态）。
+	releaseDom();
 	view.renderNote(view.data, { resetScroll: true });
 	querySectionEl(view, startLine)?.scrollIntoView({ block: 'start' });
 }
 
-/** 销毁 Section 编辑器：去 DOM 编辑态 + 卸载 handle + 置空（比对 destroyContinuationEditor）。 */
-export function destroySectionEditor(view: TaskViewHost): void {
-	view.autosave.cancel();
-	const handle = view.sectionEditHandle;
-	// 先置空，保证随后触发的 blur 走到 commitSectionEdit 时直接短路。
-	view.sectionEditHandle = null;
+/** Section 编辑器 DOM 拆除（`destroySectionEditor` 与提交收尾共用）。 */
+function teardownSectionEditorDom(
+	view: TaskViewHost,
+	handle: EmbeddedEditorHandle | null,
+	startLine: number | null,
+): void {
 	if (handle) {
 		try {
 			handle.destroy();
@@ -244,10 +259,18 @@ export function destroySectionEditor(view: TaskViewHost): void {
 	// destroy() 只 empty 了子节点，宿主 div 仍在 → 显式移除并置空
 	view.sectionEditHostEl?.remove();
 	view.sectionEditHostEl = null;
-	const startLine = view.sectionEditLine;
 	if (startLine !== null) {
 		querySectionEl(view, startLine)?.removeClass('is-editing');
 	}
+}
+
+/** 销毁 Section 编辑器：去 DOM 编辑态 + 卸载 handle + 置空（比对 destroyContinuationEditor）。 */
+export function destroySectionEditor(view: TaskViewHost): void {
+	view.autosave.cancel();
+	// 先置空，保证随后触发的 blur 走到 commitSectionEdit 时直接短路。
+	const handle = view.sectionEditHandle;
+	view.sectionEditHandle = null;
+	teardownSectionEditorDom(view, handle, view.sectionEditLine);
 }
 
 /**

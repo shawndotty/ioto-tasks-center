@@ -16,6 +16,7 @@ import {
 	type CommitOutcome,
 } from './commit-task-line';
 import { mountEmbeddedEditor } from './embedded-editor';
+import type { EmbeddedEditorHandle } from './embedded-editor';
 import type { TaskViewHost } from './task-view-host';
 
 /**
@@ -298,6 +299,10 @@ export function onContinuationEscape(view: TaskViewHost): void {
  * - `conflict` 拉权威内容重绘；`ok` / `unchanged` 退出后**均**整树重建
  *   （`unchanged` 只表示磁盘无需再写，不代表 DOM 与 `data` 一致：
  *   编辑期节流自动落盘已同步 `view.data` 但不重绘）。[[Research-20261019-113227]] §4.1
+ * - **编辑器 DOM 必须留到写盘 await 之后**再拆：`.is-editing` 一撤，只读区会立刻
+ *   显示**进入编辑前的旧内容**；若这发生在 await 之前，浏览器会先画一帧「旧内容
+ *   高度」，写完后 `renderNote` 再撑开 → 输入框「先缩小再扩大」
+ *   （[[Report-20261019-115725]] §2）。
  */
 export async function commitContinuationEdit(
 	view: TaskViewHost,
@@ -321,12 +326,23 @@ export async function commitContinuationEdit(
 	const originalLines = view.continuationOriginalLines;
 	const isNew = view.continuationIsNew;
 	const file = view.file;
-	view.destroyContinuationEditor();
+	// 逻辑退出立刻生效（切断 blur / 自动落盘的重入），DOM 拆除延后到重绘前。
+	view.autosave.cancel();
+	view.continuationHandle = null;
+	const releaseDom = (): void => {
+		teardownContinuationEditorDom(
+			view,
+			handle,
+			line,
+			view.continuationDraftContainerEl,
+		);
+	};
 
 	// ① 新草稿 + 空内容：磁盘上不可表示空续行 → 不落盘、不重绘
 	if (isNew && nextText.length === 0) {
 		view.continuationLine = null;
 		view.continuationOriginalLines = [];
+		releaseDom();
 		return;
 	}
 
@@ -338,6 +354,7 @@ export async function commitContinuationEdit(
 		if (indent === null) {
 			view.continuationLine = null;
 			view.continuationOriginalLines = [];
+			releaseDom();
 			return;
 		}
 		outcome = await commitTaskLineAction(view.app, file, {
@@ -363,6 +380,7 @@ export async function commitContinuationEdit(
 
 	if (outcome.status === 'conflict') {
 		await view.reloadFromVault();
+		releaseDom();
 		view.renderNote(view.data);
 		return;
 	}
@@ -371,16 +389,20 @@ export async function commitContinuationEdit(
 	// 写盘并同步 `view.data`（autosaveContinuation 设计上不重绘），此刻只读 DOM
 	// 仍停在进入编辑前的快照；续行行数若已变，后续卡片的 data-line 也一起漂。
 	// 不能只 refreshCard(line)：行号漂移必须整树重算。[[Research-20261019-113227]] §4.1
+	// releaseDom 与 renderNote 必须同在一个同步任务里：拆 DOM 会让卡片先退回**旧的**
+	// 只读续行（高度塌缩），若两者之间隔着帧边界就是用户看到的「先缩小再扩大」。
+	releaseDom();
 	view.selectedLine = line;
 	view.renderNote(view.data);
 }
 
-/** 销毁续行编辑器：去 DOM 编辑态 + 卸载 handle + 置空（比对 `destroyActiveEditor`）。 */
-export function destroyContinuationEditor(view: TaskViewHost): void {
-	view.autosave.cancel();
-	const handle = view.continuationHandle;
-	// 先置空，保证随后触发的 blur 走到 commitContinuationEdit 时直接短路。
-	view.continuationHandle = null;
+/** 续行编辑器 DOM 拆除（`destroyContinuationEditor` 与提交收尾共用）。 */
+function teardownContinuationEditorDom(
+	view: TaskViewHost,
+	handle: EmbeddedEditorHandle | null,
+	line: number | null,
+	draftContainerEl: HTMLElement | null,
+): void {
 	if (handle) {
 		try {
 			handle.destroy();
@@ -391,19 +413,31 @@ export function destroyContinuationEditor(view: TaskViewHost): void {
 	// destroy() 只 empty 了子节点，宿主 div 仍在 → 显式移除并置空
 	view.continuationHostEl?.remove();
 	view.continuationHostEl = null;
-	const line = view.continuationLine;
 	if (line !== null) {
 		view.queryCard(line)
 			?.querySelector('.ioto-task-view__card-continuation')
 			?.removeClass('is-editing');
 	}
 	// 新建草稿时临时建的空续行容器：一并回收，绝不留空壳
-	if (view.continuationDraftContainerEl) {
-		const el = view.continuationDraftContainerEl;
+	if (draftContainerEl) {
 		view.continuationDraftContainerEl = null;
-		el.remove();
+		draftContainerEl.remove();
 	}
 	view.continuationIsNew = false;
+}
+
+/** 销毁续行编辑器：去 DOM 编辑态 + 卸载 handle + 置空（比对 `destroyActiveEditor`）。 */
+export function destroyContinuationEditor(view: TaskViewHost): void {
+	view.autosave.cancel();
+	// 先置空，保证随后触发的 blur 走到 commitContinuationEdit 时直接短路。
+	const handle = view.continuationHandle;
+	view.continuationHandle = null;
+	teardownContinuationEditorDom(
+		view,
+		handle,
+		view.continuationLine,
+		view.continuationDraftContainerEl,
+	);
 }
 
 /**
