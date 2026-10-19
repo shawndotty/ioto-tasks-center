@@ -182,9 +182,11 @@ export function onSectionEscape(view: TaskViewHost): void {
  * → 整块写回。
  *
  * - 全空白 → 删除整块；
- * - `conflict` 拉权威内容重绘；`unchanged` 不写盘、不重绘；
- * - `ok` → 整树重建（行数会变，后续 `data-line` 全漂）；
- * - `ok` / `unchanged` 退出后均把当前节滚回视口顶部（补偿 `beginSectionEdit` 的滚动归零）。
+ * - `conflict` 拉权威内容重绘；其余一律整树重建（含 `unchanged`）——
+ *   `unchanged` 只说明磁盘无需再写，`onLinkNavigationBlur → autosaveSection`
+ *   可能已在编辑中写盘并同步 `view.data`（不重绘），DOM 会停在写盘前；
+ * - 重建后把当前节滚回视口顶部（补偿 `beginSectionEdit` 的滚动归零）。
+ *   [[Research-20261019-113227]] §五.1
  */
 export async function commitSectionEdit(view: TaskViewHost): Promise<void> {
 	const handle = view.sectionEditHandle;
@@ -214,17 +216,15 @@ export async function commitSectionEdit(view: TaskViewHost): Promise<void> {
 		view.renderNote(view.data);
 		return;
 	}
-	if (outcome.status === 'ok') {
-		// 行数可能变化 → 整树重建。隔离态下 renderNote 采到的滚动快照无意义
-		//（此刻只有本节、scrollTop≈0、锚点 data-line 已漂）→ resetScroll 跳过快照，
-		// 重建后由下方统一滚回本节顶部（本节 startLine 稳定：编辑约束在块内，上方行数不变，
-		// 标题改名也不影响 startLine）。[[Discuss-20261010-133548]] §2.3(a)
-		view.renderNote(view.data, { resetScroll: true });
-	}
-	// unchanged 不重绘（DOM 未重建、`.is-editing` 已由 destroySectionEditor 摘除、隔离已解除），
-	// 但进入编辑时曾把滚动容器归零（beginSectionEdit）→ 需同样把当前节滚回视口顶部，
-	// 否则其他节复原后会退回文首。ok / unchanged 统一在此兜底。
+	// 与续行同一条不变量：退出编辑一律按最新 data 重建。
+	// Section 常规路径不排 autosave，但 onLinkNavigationBlur → autosaveSection
+	// 会在编辑中写盘并同步 view.data（不重绘）；此后 Esc 提交就是 unchanged，
+	// 若仍按旧约定不重建，DOM 会停在写盘前。[[Research-20261019-113227]] §五.1
+	// 隔离态下 renderNote 采到的滚动快照无意义（此刻只有本节、scrollTop≈0、锚点
+	// data-line 已漂）→ resetScroll 跳过快照，重建后由下方统一滚回本节顶部
+	//（本节 startLine 稳定：编辑约束在块内，上方行数不变，标题改名也不影响 startLine）。
 	// [[Discuss-20261010-133548]] §2.3(a)
+	view.renderNote(view.data, { resetScroll: true });
 	querySectionEl(view, startLine)?.scrollIntoView({ block: 'start' });
 }
 

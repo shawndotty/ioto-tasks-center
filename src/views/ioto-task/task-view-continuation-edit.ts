@@ -294,8 +294,10 @@ export function onContinuationEscape(view: TaskViewHost): void {
  *   缩进从任务行推导；空草稿不落盘（磁盘上不可表示空续行）；
  * - **既有块**：`commitTaskContinuation` 整段替换（`''` → 删段，语义不变）；
  * - `forceEmpty`（空内容 `Backspace`）直接视为删段；
- * - 续行行数会变、后续卡 `data-line` 会漂 → `ok` 后整树重建；
- * - `conflict` 拉权威内容重绘；`unchanged` 不写盘、不重绘。
+ * - 续行行数会变、后续卡 `data-line` 会漂 → 退出后**必须**整树重建；
+ * - `conflict` 拉权威内容重绘；`ok` / `unchanged` 退出后**均**整树重建
+ *   （`unchanged` 只表示磁盘无需再写，不代表 DOM 与 `data` 一致：
+ *   编辑期节流自动落盘已同步 `view.data` 但不重绘）。[[Research-20261019-113227]] §4.1
  */
 export async function commitContinuationEdit(
 	view: TaskViewHost,
@@ -364,11 +366,11 @@ export async function commitContinuationEdit(
 		view.renderNote(view.data);
 		return;
 	}
-	if (outcome.status !== 'ok') {
-		return; // unchanged：无写入，无需重绘
-	}
-
-	// 续行行数可能变化 → 整树重建（带滚动快照）；选中回填到该卡
+	// 退出编辑的唯一收尾：除 conflict 外一律按最新 data 整树重建。
+	// `unchanged` 只代表「磁盘无需再写」——编辑期的节流自动落盘可能已把新正文
+	// 写盘并同步 `view.data`（autosaveContinuation 设计上不重绘），此刻只读 DOM
+	// 仍停在进入编辑前的快照；续行行数若已变，后续卡片的 data-line 也一起漂。
+	// 不能只 refreshCard(line)：行号漂移必须整树重算。[[Research-20261019-113227]] §4.1
 	view.selectedLine = line;
 	view.renderNote(view.data);
 }
