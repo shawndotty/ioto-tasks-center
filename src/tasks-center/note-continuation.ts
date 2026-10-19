@@ -35,6 +35,25 @@ const LIST_MARKER_PATTERN = /^(?:[-*+]|\d+[.)])(?:\s|$)/;
 const THEMATIC_BREAK_PATTERN = /^(?:(?:-\s*){3,}|(?:\*\s*){3,}|(?:_\s*){3,})$/;
 
 /**
+ * 续写区 `Enter` 是否该交给核心（原生列表续写）。
+ *
+ * 只对**普通列表行**（无序 / 有序 / 嵌套）放行：
+ * - 核心会补 marker / 自增序号 / 空项退出 / 按缩进续写，插件不复刻；
+ * - 任务行（`- [ ]`）排除 —— 提交后会脱离续行、变成一张嵌套任务卡；
+ * - 引用 / 标题 / 围栏 / 分隔线 / 普通正文维持插件自己的裸换行。
+ */
+export function shouldDelegateContinuationEnter(lineText: string): boolean {
+	const trimmed = lineText.trim();
+	if (trimmed.length === 0 || THEMATIC_BREAK_PATTERN.test(trimmed)) {
+		return false; // 空行 / `* * *` 这类会被列表正则误命中的分隔线
+	}
+	if (!LIST_MARKER_PATTERN.test(lineText.trimStart())) {
+		return false;
+	}
+	return splitTaskLine(lineText) === null;
+}
+
+/**
  * 该行能否作为上一张任务卡的**续行**。
  *
  * 口径：非空 + 不是块级结构起始（标题 / 围栏 / 引用 / 分隔线）。空行返回

@@ -8,6 +8,7 @@ import {
 	indentContinuationLines,
 	isTaskContinuationLine,
 	parentIndentLevelOfTaskLine,
+	shouldDelegateContinuationEnter,
 } from '../../tasks-center/note-structure';
 import {
 	commitTaskContinuation,
@@ -241,12 +242,20 @@ export async function beginNewContinuationEdit(
 	handle.focus();
 }
 
-/** 续行编辑器：`Enter` / `Shift+Enter` 都在光标处换行，不新建任务。 */
+/**
+ * 续行编辑器 Enter：
+ * - 普通列表行 → 放行核心（原生补 marker / 序号 / 空项退出）；
+ * - 其余行 → 光标处裸换行（原语义，含 Shift+Enter）。
+ */
 export function onContinuationEnter(view: TaskViewHost, cm: EditorView): boolean {
-	const sel = cm.state.selection.main;
+	const { from, to } = cm.state.selection.main;
+	const line = cm.state.doc.lineAt(from).text;
+	if (shouldDelegateContinuationEnter(line)) {
+		return false;
+	}
 	cm.dispatch({
-		changes: { from: sel.from, to: sel.to, insert: '\n' },
-		selection: { anchor: sel.from + 1 },
+		changes: { from, to, insert: '\n' },
+		selection: { anchor: from + 1 },
 		scrollIntoView: true,
 	});
 	return true;

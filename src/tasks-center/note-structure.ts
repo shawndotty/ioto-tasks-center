@@ -95,4 +95,5 @@ export {
 	dedentContinuationLines,
 	dedentLines,
 	commonIndentPrefix,
+	shouldDelegateContinuationEnter,
 } from './note-continuation';
