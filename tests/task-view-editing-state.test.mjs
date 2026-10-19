@@ -31,12 +31,13 @@ function host(overrides = {}) {
 		editingLine: null,
 		continuationLine: null,
 		sectionEditLine: null,
+		sectionTitleEditLine: null,
 		...overrides,
 	};
 }
 
 /* ------------------------------------------------------------------ *
- * ① 穷举判定表：4 kind × 5 语义
+ * ① 穷举判定表：5 kind × 5 语义
  * ------------------------------------------------------------------ */
 
 const TABLE = [
@@ -53,6 +54,15 @@ const TABLE = [
 		7,
 	],
 	['section', host({ sectionEditLine: 2 }), true, false, false, true, null],
+	[
+		'section-title',
+		host({ sectionTitleEditLine: 2 }),
+		true,
+		false,
+		false,
+		true,
+		null,
+	],
 ];
 
 for (const [
@@ -79,34 +89,62 @@ for (const [
  * ② 边界：行号 0 / 缺字段桩
  * ------------------------------------------------------------------ */
 
-test('边界：行号 0 是合法值 —— 三种编辑器都必须判为「有编辑器」', () => {
+test('边界：行号 0 是合法值 —— 四种编辑器都必须判为「有编辑器」', () => {
 	assert.equal(resolveEditingKind(host({ editingLine: 0 })), 'card');
 	assert.equal(hasLiveEditor(resolveEditingKind(host({ editingLine: 0 }))), true);
 	assert.equal(resolveEditingKind(host({ continuationLine: 0 })), 'continuation');
 	assert.equal(resolveEditingKind(host({ sectionEditLine: 0 })), 'section');
+	assert.equal(
+		resolveEditingKind(host({ sectionTitleEditLine: 0 })),
+		'section-title',
+	);
 	// 渲染层同理：第 0 行的卡要被无条件保留
 	assert.equal(keepVisibleCardLine(host({ editingLine: 0 })), 0);
 });
 
-test('边界：测试桩缺 sectionEditLine（undefined）→ 不得误判为 Section 编辑', () => {
+test('边界：测试桩缺 sectionEditLine / sectionTitleEditLine（undefined）→ 不得误判', () => {
 	const stub = { editingLine: null, continuationLine: null };
 	assert.equal(resolveEditingKind(stub), null);
 	assert.equal(hasLiveEditor(resolveEditingKind(stub)), false);
 	assert.equal(isSectionEditing(resolveEditingKind(stub)), false);
 	assert.equal(keepVisibleCardLine(stub), null);
+
+	const oldStub = {
+		editingLine: null,
+		continuationLine: null,
+		sectionEditLine: null,
+	};
+	assert.equal(resolveEditingKind(oldStub), null);
 });
 
-test('边界：三者互斥，优先级 card > continuation > section', () => {
+test('边界：四者互斥，优先级 card > continuation > section > section-title', () => {
 	// 理论上不会同时出现（进入一方前先提交另一方）；真出现时按表优先到先得。
 	assert.equal(
 		resolveEditingKind(
-			host({ editingLine: 5, continuationLine: 7, sectionEditLine: 2 }),
+			host({
+				editingLine: 5,
+				continuationLine: 7,
+				sectionEditLine: 2,
+				sectionTitleEditLine: 3,
+			}),
 		),
 		'card',
 	);
 	assert.equal(
-		resolveEditingKind(host({ continuationLine: 7, sectionEditLine: 2 })),
+		resolveEditingKind(
+			host({
+				continuationLine: 7,
+				sectionEditLine: 2,
+				sectionTitleEditLine: 3,
+			}),
+		),
 		'continuation',
+	);
+	assert.equal(
+		resolveEditingKind(
+			host({ sectionEditLine: 2, sectionTitleEditLine: 3 }),
+		),
+		'section',
 	);
 });
 
@@ -141,28 +179,39 @@ test('不变式：keepVisibleCardLine 走判定表 —— Section 编辑不保�
  * C 组：清字段 / 提交表
  * ------------------------------------------------------------------ */
 
-test('resetEditingLines：三个行号字段整体清零（含 sectionEditLine）', () => {
-	const view = host({ editingLine: 5, continuationLine: 7, sectionEditLine: 2 });
+test('resetEditingLines：四个行号字段整体清零（含 sectionTitleEditLine）', () => {
+	const view = host({
+		editingLine: 5,
+		continuationLine: 7,
+		sectionEditLine: 2,
+		sectionTitleEditLine: 3,
+	});
 	resetEditingLines(view);
 	assert.deepEqual(
-		[view.editingLine, view.continuationLine, view.sectionEditLine],
-		[null, null, null],
+		[
+			view.editingLine,
+			view.continuationLine,
+			view.sectionEditLine,
+			view.sectionTitleEditLine,
+		],
+		[null, null, null, null],
 	);
 	assert.equal(resolveEditingKind(view), null);
 });
 
-test('COMMIT_BY_KIND：三种 kind 各有一个提交器，插入顺序 = card → continuation', () => {
+test('COMMIT_BY_KIND：四种 kind 各有一个提交器，插入顺序 = card → continuation → section → section-title', () => {
 	assert.deepEqual(Object.keys(COMMIT_BY_KIND), [
 		'card',
 		'continuation',
 		'section',
+		'section-title',
 	]);
 	for (const kind of Object.keys(COMMIT_BY_KIND)) {
 		assert.equal(typeof COMMIT_BY_KIND[kind], 'function');
 	}
 });
 
-test('COMMIT_BY_KIND：按表提交 = 先标题后续写再 Section（与插入顺序一致）', async () => {
+test('COMMIT_BY_KIND：按表提交 = 先标题后续写再 Section 再节标题', async () => {
 	const calls = [];
 	const view = {
 		commitEdit: () => {
@@ -177,9 +226,13 @@ test('COMMIT_BY_KIND：按表提交 = 先标题后续写再 Section（与插入�
 			calls.push('section');
 			return Promise.resolve();
 		},
+		commitSectionTitleEdit: () => {
+			calls.push('section-title');
+			return Promise.resolve();
+		},
 	};
 	for (const commit of Object.values(COMMIT_BY_KIND)) {
 		await commit(view);
 	}
-	assert.deepEqual(calls, ['card', 'continuation', 'section']);
+	assert.deepEqual(calls, ['card', 'continuation', 'section', 'section-title']);
 });

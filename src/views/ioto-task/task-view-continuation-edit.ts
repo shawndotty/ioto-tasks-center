@@ -38,10 +38,11 @@ export async function beginContinuationEdit(
 		return;
 	}
 
-	// 切换：先提交另一个编辑器（标题 / 另一条续行 / Section），互斥
+	// 切换：先提交另一个编辑器（标题 / 另一条续行 / Section / 节标题），互斥
 	await view.commitEdit();
 	await view.commitContinuationEdit();
 	await view.commitSectionEdit();
+	await view.commitSectionTitleEdit();
 
 	const file = view.file;
 	if (!file) {
@@ -150,10 +151,11 @@ export async function beginNewContinuationEdit(
 		return;
 	}
 
-	// 切换：先提交另一个编辑器（标题 / 另一条续行 / Section），互斥
+	// 切换：先提交另一个编辑器（标题 / 另一条续行 / Section / 节标题），互斥
 	await view.commitEdit();
 	await view.commitContinuationEdit();
 	await view.commitSectionEdit();
+	await view.commitSectionTitleEdit();
 
 	const file = view.file;
 	if (!file) {

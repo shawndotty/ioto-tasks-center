@@ -1,10 +1,11 @@
 /**
  * Task View 底部「新增 Section」：文末原子追加一个与现有顶层 Section 同级的
- * 标题块（默认标题），重绘后立即进入该节整块编辑态，用户可直接改名。
+ * 标题块（默认标题），重绘后立即进入该节**标题编辑态**（[[Plan-20261019-122509]] §2.7），
+ * 默认标题全选，输入即替换。
  *
  * 链路与 `markAllTasksDone` 同构：守卫（落盘在册编辑）→ `vault.process`
  * （回调内按最新 content 重算）→ `applyOutcome` 同步 data → 整树重建 →
- * `beginSectionEdit`。纯结构计算在 `appendSectionHeading`（domain 层，可单测）。
+ * `beginSectionTitleEdit`。纯结构计算在 `appendSectionHeading`（domain 层，可单测）。
  */
 
 import { t } from '../../lang/helpter';
@@ -41,7 +42,8 @@ export async function addSection(view: TaskViewHost): Promise<void> {
 	// 🔴 红线：data / lastLoadedText 同步，避免 TextFileView 回写旧字节。
 	view.applyOutcome({ status: 'ok', content: nextContent });
 	view.renderNote(view.data);
-	// section 外壳由 renderNote 同步产出；进入整块编辑态（自动聚焦，失焦即提交改名）。
-	// 放大态由 beginSectionEdit 内部 exitZoom 处理。
-	await view.beginSectionEdit(headingLine);
+	// section 外壳由 renderNote 同步产出；进入标题编辑态（默认标题全选，输入即替换）。
+	// 直接 Enter = 保留默认标题（不产生空 body 行）；放大态由 beginSectionTitleEdit
+	// 之外的既有链路处理（标题编辑不涉及卡片放大）。
+	await view.beginSectionTitleEdit(headingLine);
 }

@@ -40,6 +40,8 @@ export async function toggleFilter(
 
 	// 竞态：点开关注定先 blur → 异步 commitEdit；必须先落盘再写属性。
 	await view.commitEdit();
+	// 标题编辑不参与 blur 的 CommitOutcome 链，也必须先落盘（随后写 frontmatter 会改行号）
+	await view.commitSectionTitleEdit();
 
 	const oldContent = view.data;
 	const nextValue = !view.filters[kind];

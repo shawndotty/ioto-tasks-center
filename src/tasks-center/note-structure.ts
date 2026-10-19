@@ -36,6 +36,9 @@ export {
 	appendSectionHeading,
 	removeTopLevelSection,
 	collectRootSections,
+	normalizeSectionTitle,
+	replaceSectionHeadingTitle,
+	composeSectionBlockLines,
 } from './note-sections';
 export type {
 	AppendSectionHeadingResult,

@@ -4,7 +4,8 @@
  * 背景：判断「现在有没有编辑器 / 是不是卡片级编辑」的判据曾散落 13 处，各自手写
  * `editingLine !== null || continuationLine !== null` 之类的组合，加第四种编辑器
  * （Section 编辑，[[Discuss-20261010-062220]] §五 批次 1）就要回头补 13 处。
- * 这里把它们收成一张判定表：三个行号字段是真源，`kind` 由它们推导，13 处只问 kind。
+ * 这里把它们收成一张判定表：四个行号字段是真源，`kind` 由它们推导，13 处只问 kind。
+ * 第五种（Section 标题编辑，[[Plan-20261019-122509]] §2.4）沿用同一张表。
  *
  * 两条实现红线：
  * 1. **判空一律 `typeof line === 'number'`**：行号 `0` 是合法值（首行），truthy 判据
@@ -20,17 +21,23 @@
 import type { TaskViewHost } from './task-view-host';
 
 /** 当前活跃的编辑器种类；`null` = 无编辑器。 */
-export type EditingKind = 'card' | 'continuation' | 'section' | null;
+export type EditingKind =
+	| 'card'
+	| 'continuation'
+	| 'section'
+	| 'section-title'
+	| null;
 
 /** 推导 `editingKind` 所需的最小状态面（`IOTOTaskView` / `TaskViewHost` 结构性满足）。 */
 export interface EditingStateHost {
 	editingLine: number | null;
 	continuationLine: number | null;
 	sectionEditLine: number | null;
+	sectionTitleEditLine: number | null;
 }
 
 /**
- * 🔴 唯一真源：kind 由三个行号推导，顺序即优先级（三者互斥，先到先得）。
+ * 🔴 唯一真源：kind 由四个行号推导，顺序即优先级（四者互斥，先到先得）。
  *
  * 刻意**不读 handle**：行号为「意图」、handle 为「挂载结果」，判据要覆盖两者之间的
  * 窗口（见文件头红线 2）。
@@ -39,6 +46,7 @@ export function resolveEditingKind(h: EditingStateHost): EditingKind {
 	if (typeof h.editingLine === 'number') return 'card';
 	if (typeof h.continuationLine === 'number') return 'continuation';
 	if (typeof h.sectionEditLine === 'number') return 'section';
+	if (typeof h.sectionTitleEditLine === 'number') return 'section-title';
 	return null;
 }
 
@@ -57,9 +65,9 @@ export function isCardOrContinuationEditing(kind: EditingKind): boolean {
 	return kind === 'card' || kind === 'continuation';
 }
 
-/** Section 编辑态（B3：AI 条目来源据此拒绝出条目）。 */
+/** Section 编辑态（B3：AI 条目来源据此拒绝出条目）。标题编辑同属「在改这一节」。 */
 export function isSectionEditing(kind: EditingKind): boolean {
-	return kind === 'section';
+	return kind === 'section' || kind === 'section-title';
 }
 
 /**
@@ -72,8 +80,9 @@ export function keepVisibleCardLine(h: EditingStateHost): number | null {
 }
 
 /**
- * C 组收口 1：按 kind 的「提交」表。插入顺序即提交顺序（card → continuation），
- * 与重构前 `flushInlineEdits` 手写两行等价；新增第四种编辑器只改这张表。
+ * C 组收口 1：按 kind 的「提交」表。插入顺序即提交顺序
+ * （card → continuation → section → section-title），与重构前手写顺序等价；
+ * 新增编辑器只改这张表。
  */
 export const COMMIT_BY_KIND: Record<
 	Exclude<EditingKind, null>,
@@ -82,11 +91,13 @@ export const COMMIT_BY_KIND: Record<
 	card: (view) => view.commitEdit(),
 	continuation: (view) => view.commitContinuationEdit(),
 	section: (view) => view.commitSectionEdit(),
+	'section-title': (view) => view.commitSectionTitleEdit(),
 };
 
-/** C 组收口 2：清三个行号字段（不 destroy 编辑器，由调用方先 destroy）。 */
+/** C 组收口 2：清四个行号字段（不 destroy 编辑器，由调用方先 destroy）。 */
 export function resetEditingLines(view: TaskViewHost): void {
 	view.editingLine = null;
 	view.continuationLine = null;
 	view.sectionEditLine = null;
+	view.sectionTitleEditLine = null;
 }

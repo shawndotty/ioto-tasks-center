@@ -19,6 +19,9 @@ const {
 	isTaskContinuationLine,
 	parentIndentLevelOfTaskLine,
 	sectionHasChecklist,
+	normalizeSectionTitle,
+	replaceSectionHeadingTitle,
+	composeSectionBlockLines,
 } = await jiti.import('../src/tasks-center/note-structure.ts');
 
 test('frontmatter 不进 Section，frontmatter 与首标题之间的正文进引导区', () => {
@@ -484,4 +487,78 @@ test('continuationIndentForTaskLine + indentContinuationLines：产出能被解�
 	}
 	// 与 Markdown View 的 dedent 口径互逆
 	assert.equal(dedentLines(physical.join('\n')), '补充一\n补充二');
+});
+
+/* ------------------------------------------------------------------ *
+ * Section 标题 / 正文写回原语（[[Plan-20261019-122509]] §3.1）
+ * ------------------------------------------------------------------ */
+
+test('normalizeSectionTitle：多行折叠成单行 + 首尾 trim', () => {
+	assert.equal(normalizeSectionTitle('  目标  '), '目标');
+	assert.equal(normalizeSectionTitle('第一行\n第二行'), '第一行 第二行');
+	assert.equal(normalizeSectionTitle('第一行\r\n  第二行  '), '第一行 第二行');
+	assert.equal(normalizeSectionTitle('\n\n目标\n'), '目标');
+	assert.equal(normalizeSectionTitle('   '), '');
+});
+
+test('replaceSectionHeadingTitle：保留级别与前缀空白，只换标题文本', () => {
+	assert.equal(replaceSectionHeadingTitle('# 目标', '目标 A'), '# 目标 A');
+	assert.equal(replaceSectionHeadingTitle('###   目标', '新名'), '###   新名');
+	// 写盘保留用户输入；收尾 # 由 parseSections 的 ATX 收尾规则吃掉
+	assert.equal(replaceSectionHeadingTitle('# 目标', 'foo #'), '# foo #');
+	assert.equal(
+		parseSections(
+			`${replaceSectionHeadingTitle('# 目标', 'foo #')}\n正文`,
+		)[0].title,
+		'foo',
+	);
+	// 内部换行折成空格
+	assert.equal(replaceSectionHeadingTitle('# 目标', '甲\n乙'), '# 甲 乙');
+});
+
+test('replaceSectionHeadingTitle：空标题 / 非标题行 → null', () => {
+	assert.equal(replaceSectionHeadingTitle('# 目标', ''), null);
+	assert.equal(replaceSectionHeadingTitle('# 目标', '   '), null);
+	assert.equal(replaceSectionHeadingTitle('# 目标', '\n\t\n'), null);
+	assert.equal(replaceSectionHeadingTitle('- [ ] 任务', '新名'), null);
+	assert.equal(replaceSectionHeadingTitle('普通正文', '新名'), null);
+	// 无空格的 `#标题` 不是合法 ATX 标题（与 HEADING_PATTERN 一致）
+	assert.equal(replaceSectionHeadingTitle('#标题', '新名'), null);
+});
+
+test('composeSectionBlockLines：空正文只留标题，其余逐行保留', () => {
+	assert.deepEqual(composeSectionBlockLines('# 目标', ''), ['# 目标']);
+	assert.deepEqual(composeSectionBlockLines('# 目标', '- 一\n- 二'), [
+		'# 目标',
+		'- 一',
+		'- 二',
+	]);
+	// 末尾空行原样保留：进入即退出必须逐行相等（commitBlockRange 判 unchanged）
+	assert.deepEqual(composeSectionBlockLines('# 目标', '- 一\n'), [
+		'# 目标',
+		'- 一',
+		'',
+	]);
+	// `'\n'`（两行空正文）逐行还原
+	assert.deepEqual(composeSectionBlockLines('# 目标', '\n'), [
+		'# 目标',
+		'',
+		'',
+	]);
+	// 原正文只有空行（一个空行 join 后就是 ''）→ 原样保留，进入即退出判 unchanged
+	assert.deepEqual(
+		composeSectionBlockLines('# 目标', '', ['']),
+		['# 目标', ''],
+	);
+	assert.deepEqual(
+		composeSectionBlockLines('# 目标', '', ['   ', '']),
+		['# 目标', '   ', ''],
+	);
+	// 原正文有实内容 + 用户全选删除 → 只留标题
+	assert.deepEqual(
+		composeSectionBlockLines('# 目标', '', ['- 旧内容']),
+		['# 目标'],
+	);
+	// 原正文为空数组 → 只留标题
+	assert.deepEqual(composeSectionBlockLines('# 目标', '', []), ['# 目标']);
 });

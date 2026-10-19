@@ -45,7 +45,8 @@ export interface RenderTaskNoteOptions {
 	sourcePath: string;
 	component: Component;
 	collapsedSections: Set<string>;
-	onToggleSection: (key: string) => void;
+	/** 折叠切换：回传 Section 起始行，key 由调用方按当前 `data` 实时解析。 */
+	onToggleSection: (startLine: number) => void;
 	editing: TaskNoteEditing;
 	/**
 	 * Section 拖拽排序控制器。缺省（只读 / 「只显示任务」）→ header 不渲染 grip。

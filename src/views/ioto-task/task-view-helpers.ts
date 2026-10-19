@@ -26,3 +26,15 @@ export function queryCard(view: TaskViewHost, line: number): HTMLElement | null 
 		`.ioto-task-view__card[data-line="${line}"]`,
 	);
 }
+
+/** 按 Section 起始行查 DOM 节点（`data-start-line` 由 `render-sections.ts` 输出）。 */
+export function querySectionEl(
+	view: TaskViewHost,
+	startLine: number,
+): HTMLElement | null {
+	return (
+		view.bodyEl?.querySelector<HTMLElement>(
+			`.ioto-task-view__section[data-start-line="${startLine}"]`,
+		) ?? null
+	);
+}

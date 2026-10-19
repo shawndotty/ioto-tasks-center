@@ -167,6 +167,12 @@ import {
 	commitSectionEdit,
 	destroySectionEditor,
 } from './ioto-task/task-view-section-edit';
+import {
+	beginSectionTitleEdit,
+	commitSectionTitleEdit,
+	destroySectionTitleEditor,
+	type SectionTitleEditorHandle,
+} from './ioto-task/task-view-section-title-edit';
 import { deleteSection } from './ioto-task/task-view-section-delete';
 import {
 	applyOutcome,
@@ -248,8 +254,16 @@ export class IOTOTaskView extends TextFileView {
 	sectionEditHandle: EmbeddedEditorHandle | null = null;
 	/** Section 编辑器宿主 div（`destroy()` 只 empty 不 remove，需显式回收）。 */
 	sectionEditHostEl: HTMLElement | null = null;
+	/** Section 标题编辑态：被改名 Section 的 `startLine`；非编辑态 `null`。 */
+	sectionTitleEditLine: number | null = null;
+	/** 标题行原文快照（提交时做行漂移复核）。 */
+	sectionTitleEditOriginalLine = '';
+	/** 标题输入框句柄（`null` = 未挂载）。 */
+	sectionTitleEditHandle: SectionTitleEditorHandle | null = null;
+	/** 带 `.is-title-editing` 的 `<section>`。 */
+	sectionTitleEditSectionEl: HTMLElement | null = null;
 	/**
-	 * 派生真源：**由三个行号推导**（`resolveEditingKind`），绝不手工同步第二份状态。
+	 * 派生真源：**由四个行号推导**（`resolveEditingKind`），绝不手工同步第二份状态。
 	 * 13 处「有没有编辑器 / 是不是卡片级编辑」的判据全部只问它。
 	 */
 	get editingKind(): EditingKind {
@@ -425,7 +439,8 @@ export class IOTOTaskView extends TextFileView {
 		this.destroyActiveEditor();
 		this.destroyContinuationEditor();
 		this.destroySectionEditor();
-		// 行号字段整体归零（含 sectionEditLine）：destroy 在前、清字段在后。
+		this.destroySectionTitleEditor();
+		// 行号字段整体归零（含 sectionEditLine / sectionTitleEditLine）：destroy 在前、清字段在后。
 		resetEditingLines(this);
 		this.zoomLine = null;
 		this.continuationOriginalLines = [];
@@ -450,6 +465,7 @@ export class IOTOTaskView extends TextFileView {
 		this.destroyActiveEditor();
 		this.destroyContinuationEditor();
 		this.destroySectionEditor();
+		this.destroySectionTitleEditor();
 		resetEditingLines(this);
 		this.resetSearchState();
 		this.clearCommandReadinessTimer();
@@ -640,6 +656,15 @@ export class IOTOTaskView extends TextFileView {
 	async deleteSection(startLine: number, title: string): Promise<void> {
 		await deleteSection(this, startLine, title);
 	}
+
+	// ---- Section 标题就地编辑 ----
+	async beginSectionTitleEdit(startLine: number): Promise<void> {
+		await beginSectionTitleEdit(this, startLine);
+	}
+	async commitSectionTitleEdit(): Promise<void> {
+		await commitSectionTitleEdit(this);
+	}
+	destroySectionTitleEditor(): void { destroySectionTitleEditor(this); }
 
 	// ---- 编辑器事件处理 ----
 	onEditorEscape(): void { onEditorEscape(this); }

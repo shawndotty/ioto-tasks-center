@@ -93,14 +93,20 @@ export interface TaskNoteEditing {
 	 */
 	focusZoomEditor?(line: number): void;
 	/**
-	 * 点 Section 头部「编辑本节」：进入该节整块源码编辑（[[Plan-20261010-080827]] 批次 2）。
+	 * 点 Section 头部「编辑本节内容」：进入该节**正文**源码编辑（标题行之下）。
 	 * 参数是该 Section 的 `startLine`（不含 `NoteSection`，保持叶子模块零业务出边）。
 	 * **缺省 = 按钮不渲染**（只读 / 不支持内联编辑时不显示编辑按钮）。
 	 */
 	editSection?(startLine: number): void;
 	/**
+	 * 双击标题 / 点标题右缘铅笔：进入该节标题的单行就地编辑。
+	 * **缺省 = 不可用**（只读 / 不支持内联编辑时不挂事件、不建铅笔）。
+	 */
+	editSectionTitle?(startLine: number): void;
+	/**
 	 * 点 Section 头部「删除本节」：二次确认后整块删除（含嵌套子标题与任务）。
-	 * `title` 既用于确认文案，也用于「行号漂移后复核是否仍是同一节」。
+	 * `title` 仅作兜底文案——实现会按 `startLine` 从当前 `data` 重新解析标题，
+	 * 避免改名后仍用渲染闭包里的旧标题。
 	 * **缺省 = 删除按钮不渲染**（只读 / 不支持内联编辑）。
 	 */
 	deleteSection?(startLine: number, title: string): void;

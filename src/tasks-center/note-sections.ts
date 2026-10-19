@@ -390,6 +390,64 @@ export function findSectionByTitle(
 	return null;
 }
 
+/* ------------------------------------------------------------------ *
+ * Section 标题 / 正文的写回原语（[[Plan-20261019-122509]] §3.1）
+ *
+ * 标题与正文走两条独立链路：标题只换那一行（单行 input），正文编辑器只吃
+ * 标题行之下、写回时再把标题行拼回去。三者都是纯字符串函数，可单测。
+ * ------------------------------------------------------------------ */
+
+/** 折叠粘贴进来的多行，统一成单行标题（与 `<input>` 的值净化互补）。 */
+export function normalizeSectionTitle(title: string): string {
+	return title.replace(/\s*\r?\n\s*/g, ' ').trim();
+}
+
+/**
+ * 只替换标题行文本，保留原有 `#` 级别与前缀空白；空标题 → `null`（调用方视为取消）。
+ *
+ * 收尾 `#` 不在这里保留：`parseSections` 的 ATX 收尾规则会把它吃掉，
+ * 提交后标题一律以解析结果为准（见 Plan §5「DOM 与 data 漂移」）。
+ */
+export function replaceSectionHeadingTitle(
+	line: string,
+	title: string,
+): string | null {
+	const match = /^(#{1,6}[ \t]+)/.exec(line);
+	if (!match) {
+		return null;
+	}
+	const next = normalizeSectionTitle(title);
+	if (next.length === 0) {
+		return null;
+	}
+	return `${match[1] ?? ''}${next}`;
+}
+
+/**
+ * 正文编辑器写回：标题行 + 正文行（`''` = 空正文，只留标题）。
+ *
+ * 不 trim 正文：Section 的 `endLine` 本来就常含块间空行，保留才能让
+ * 「进入即退出」逐行相等（`commitBlockRange` 判 `unchanged`）。
+ *
+ * `originalBodyLines` 只服务一个边界：原正文**全是空行**（两个标题之间只有一个
+ * 空行）时，`join('\n')` → `''` → `split('\n')` 会把这一行弄丢；此时按原样保留，
+ * 避免「进入再退出」把块间空行吃掉。原正文有实内容而我们拿到 `''`，才是用户
+ * 全选删除，只留标题。
+ */
+export function composeSectionBlockLines(
+	headingLine: string,
+	bodyText: string,
+	originalBodyLines: readonly string[] = [],
+): string[] {
+	if (bodyText.length === 0) {
+		const blankOnly =
+			originalBodyLines.length > 0 &&
+			originalBodyLines.every((line) => line.trim() === '');
+		return blankOnly ? [headingLine, ...originalBodyLines] : [headingLine];
+	}
+	return [headingLine, ...bodyText.split('\n')];
+}
+
 function findFrontmatterEndLine(lines: string[]): number {
 	for (let index = 1; index < lines.length; index += 1) {
 		if ((lines[index] ?? '').trim() === '---') {

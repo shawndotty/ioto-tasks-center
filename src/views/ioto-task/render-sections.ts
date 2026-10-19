@@ -47,7 +47,8 @@ interface RenderSectionOptions {
 	component: Component;
 	section: NoteSection;
 	collapsedSections: Set<string>;
-	onToggleSection: (key: string) => void;
+	/** 折叠切换：只回传 `startLine`，key 由调用方按当前 `data` 实时解析（改名后旧 key 失效）。 */
+	onToggleSection: (startLine: number) => void;
 	editing: TaskNoteEditing;
 	filters: TaskNoteFilters;
 	recentTaskCount: number;
@@ -182,7 +183,7 @@ export function renderSection(options: RenderSectionOptions): void {
 			scrollEl,
 			section,
 			collapsed,
-			onToggle: () => onToggleSection(key),
+			onToggle: () => onToggleSection(section.startLine),
 			editing: options.editing,
 			sectionDrag: options.sectionDrag,
 		});
@@ -234,13 +235,39 @@ function renderSectionHeader(options: {
 	setIcon(toggleEl, collapsed ? 'chevron-right' : 'chevron-down');
 	toggleEl.addEventListener('click', () => onToggle());
 
-	headerEl.createEl(
+	const titleEl = headerEl.createEl(
 		`h${Math.min(Math.max(section.level, 1), 6)}` as keyof HTMLElementTagNameMap,
 		{
 			cls: 'ioto-task-view__section-title',
 			text: section.title,
 		},
 	);
+	// 标题独立编辑（[[Plan-20261019-122509]] §3.7）：双击标题、或点右缘铅笔。
+	// 只监听 `dblclick`，不在 `mousedown` 阶段 preventDefault——否则第二次 click
+	// 命不中同一个元素，双击永远不触发。只读态不挂事件、不建铅笔。
+	if (editing.enabled && editing.editSectionTitle) {
+		titleEl.addEventListener('dblclick', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			editing.editSectionTitle?.(section.startLine);
+		});
+
+		const titleEditBtn = headerEl.createEl('button', {
+			cls: 'ioto-task-view__section-title-edit-btn',
+			attr: {
+				type: 'button',
+				'aria-label': t('view.iotoTaskView.sectionEditTitle'),
+				title: t('view.iotoTaskView.sectionEditTitle'),
+			},
+		});
+		setIcon(titleEditBtn, 'pencil');
+		titleEditBtn.addEventListener('click', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			editing.editSectionTitle?.(section.startLine);
+		});
+	}
+
 	const actionsEl = headerEl.createDiv({
 		cls: 'ioto-task-view__section-actions',
 	});

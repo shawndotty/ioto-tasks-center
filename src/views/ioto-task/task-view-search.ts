@@ -77,6 +77,7 @@ export async function applySearchQuery(
 	// 🔴 重绘会销毁编辑器：先让编辑态落盘退出（真正的保护，非 isCardVisible 的兜底）。
 	await view.commitEdit();
 	await view.commitContinuationEdit();
+	await view.commitSectionTitleEdit();
 	view.searchQuery = value;
 	view.renderNote(view.data, { resetScroll: true });
 }

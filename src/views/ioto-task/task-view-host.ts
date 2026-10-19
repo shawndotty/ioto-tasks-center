@@ -22,6 +22,7 @@ import type { EntryTemplateConfig } from '../../tasks-center/task-entry-template
 import type { CommitOutcome, TaskLineTransform } from './commit-task-line';
 import type { AutosaveScheduler } from './edit-autosave';
 import type { EmbeddedEditorHandle } from './embedded-editor';
+import type { SectionTitleEditorHandle } from './task-view-section-title-edit';
 import type { EditingKind } from './task-view-editing-state';
 import type {
 	TaskNoteEditing,
@@ -89,7 +90,18 @@ export interface TaskViewHost extends Component {
 	sectionEditHandle: EmbeddedEditorHandle | null;
 	/** Section 编辑器宿主 div（`destroy()` 只 empty 不 remove，需显式回收）。 */
 	sectionEditHostEl: HTMLElement | null;
-	/** 派生真源（只读）：由三个行号推导，禁止直接写（`task-view-editing-state.ts`）。 */
+
+	// ---- 可变状态：Section 标题就地编辑（[[Plan-20261019-122509]] §2.4）----
+	/** 被改名 Section 的 `startLine`；非编辑态 `null`。`resolveEditingKind` 见到即 `'section-title'`。 */
+	sectionTitleEditLine: number | null;
+	/** 标题行原文快照（提交时做行漂移复核）。 */
+	sectionTitleEditOriginalLine: string;
+	/** 标题输入框句柄（`null` = 未挂载）。 */
+	sectionTitleEditHandle: SectionTitleEditorHandle | null;
+	/** 带 `.is-title-editing` 的 `<section>`（提交收尾 / 失败兜底用）。 */
+	sectionTitleEditSectionEl: HTMLElement | null;
+
+	/** 派生真源（只读）：由四个行号推导，禁止直接写（`task-view-editing-state.ts`）。 */
 	readonly editingKind: EditingKind;
 
 	// ---- 可变状态：聚焦放大 ----
@@ -219,6 +231,11 @@ export interface TaskViewHost extends Component {
 	/** 整节删除（二次确认 + 写盘 + 行号迁移 + 重绘）。 */
 	deleteSection(startLine: number, title: string): Promise<void>;
 
+	// ---- 薄代理方法：Section 标题就地编辑 ----
+	beginSectionTitleEdit(startLine: number): Promise<void>;
+	commitSectionTitleEdit(): Promise<void>;
+	destroySectionTitleEditor(): void;
+
 	// ---- 薄代理方法：编辑器事件处理 ----
 	onEditorEscape(): void;
 	onEditorSoftBreak(cm: EditorView): boolean;
@@ -244,7 +261,7 @@ export interface TaskViewHost extends Component {
 	// ---- 薄代理方法：任务命令 ----
 	triggerAddTask(context?: ToolbarButtonClickContext): void;
 	addTask(): Promise<void>;
-	/** 文末新增同级 Section（默认标题）并进入该节整块编辑态。 */
+	/** 文末新增同级 Section（默认标题）并进入该节标题编辑态。 */
 	addSection(): Promise<void>;
 	insertEntryTemplate(): Promise<void>;
 	resolveCurrentProjectNames(): string[];

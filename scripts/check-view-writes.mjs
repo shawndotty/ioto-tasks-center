@@ -47,6 +47,9 @@ const WHITELIST = new Set([
 	'task-view-editing-state.ts :: continuationLine',
 	'task-view-editing-state.ts :: editingLine',
 	'task-view-editing-state.ts :: sectionEditLine',
+	// Section 标题就地编辑（[[Plan-20261019-122509]] §2.4）：新模块是这条链路的
+	// 唯一状态迁移点（四个会话字段 + 选中态 / 折叠键迁移）。
+	'task-view-editing-state.ts :: sectionTitleEditLine',
 	'task-view-editor-handlers.ts :: data',
 	'task-view-editor-handlers.ts :: editingOriginalLine',
 	'task-view-editor-handlers.ts :: lastLoadedText',
@@ -99,6 +102,13 @@ const WHITELIST = new Set([
 	'task-view-section-edit.ts :: sectionEditOriginalLines',
 	'task-view-section-edit.ts :: sectionEditStartLine',
 	'task-view-section-edit.ts :: selectedLine',
+	// Section 标题编辑器（[[Plan-20261019-122509]] §2.4）：会话快照四字段、选中态
+	// 清空、改名后折叠键迁移都在新模块内，与 section-edit 同性质的迁移点。
+	'task-view-section-title-edit.ts :: sectionTitleEditLine',
+	'task-view-section-title-edit.ts :: sectionTitleEditOriginalLine',
+	'task-view-section-title-edit.ts :: sectionTitleEditHandle',
+	'task-view-section-title-edit.ts :: sectionTitleEditSectionEl',
+	'task-view-section-title-edit.ts :: selectedLine',
 	'task-view-selection.ts :: editingLine',
 	'task-view-selection.ts :: editingOriginalLine',
 	'task-view-selection.ts :: pendingDeleteEl',

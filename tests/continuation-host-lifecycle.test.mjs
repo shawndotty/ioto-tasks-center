@@ -128,6 +128,7 @@ test('beginContinuationEdit：进前清掉历史空壳；降级时新宿主也�
 		async commitEdit() {},
 		async commitContinuationEdit() {},
 		async commitSectionEdit() {},
+		async commitSectionTitleEdit() {},
 		queryCard: () => cardEl,
 		app: {}, // 无 embedRegistry → mountEmbeddedEditor 返回 null → 走降级分支
 	};

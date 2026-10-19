@@ -51,10 +51,11 @@ export async function beginEdit(
 		view.exitZoom();
 	}
 
-	// 切换卡片：先提交上一个（标题编辑器 + 续行编辑器互相排斥）
+	// 切换卡片：先提交上一个（标题编辑器 + 续行编辑器 + 节编辑器 + 节标题互相排斥）
 	await view.commitEdit();
 	await view.commitContinuationEdit();
 	await view.commitSectionEdit();
+	await view.commitSectionTitleEdit();
 
 	const file = view.file;
 	if (!file) {

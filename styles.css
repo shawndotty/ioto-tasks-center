@@ -2546,6 +2546,59 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
 	color: var(--text-normal);
 }
 
+/* 标题 = 可编辑字段的嗅探面（[[Plan-20261019-122509]] §3.12）：双击进入单行编辑 */
+.ioto-task-view__section-title {
+	cursor: text;
+	padding: 0 2px;
+	border-radius: var(--radius-s, 4px);
+}
+
+/* 🔴 必须带 `input[…][type='text']`：核心 `input[type="text"]` 的 (0,1,1) 会压过
+   单类选择器，把高度锁在 `--input-height`（30px）、字号锁在 13px → 进入标题编辑时
+   header 会往下跳 ~10px。这里用同特异度 + 后加载取胜，并让行高继承 h# 的口径。 */
+input.ioto-task-view__section-title-input[type='text'] {
+	flex: 1 1 auto;
+	min-width: 0;
+	height: auto;
+	min-height: 0;
+	margin: 0;
+	padding: 0 2px;
+	font-family: inherit;
+	font-size: var(--font-ui-medium);
+	font-weight: var(--font-semibold);
+	line-height: inherit;
+	color: var(--text-normal);
+	background: var(--background-primary);
+	border: none;
+	border-bottom: 1px solid var(--interactive-accent);
+	border-radius: 0;
+	box-shadow: none;
+}
+
+/* 标题编辑态：只藏标题这一行的三件套，不影响 body 与其他 Section。
+   🔴 不进 `.is-editing`：那是「整节隔离 + 隐藏 body」的开关。 */
+.ioto-task-view__section.is-title-editing
+	> .ioto-task-view__section-header
+	> .ioto-task-view__section-title,
+.ioto-task-view__section.is-title-editing
+	> .ioto-task-view__section-header
+	> .ioto-task-view__section-title-edit-btn,
+.ioto-task-view__section.is-title-editing
+	> .ioto-task-view__section-header
+	> .ioto-task-view__section-actions {
+	display: none;
+}
+
+/* v1：正文整块编辑态不开放改名（JS 里也有守卫） */
+.ioto-task-view__section.is-editing
+	> .ioto-task-view__section-header
+	> .ioto-task-view__section-title {
+	pointer-events: none;
+}
+.ioto-task-view__section.is-editing .ioto-task-view__section-title-edit-btn {
+	display: none;
+}
+
 .ioto-task-view__section-actions {
 	margin-inline-start: auto;
 	display: flex;
@@ -2558,7 +2611,8 @@ button.ioto-task-view__section-toggle:not(.clickable-icon) {
    「删除本节」入口同源（[[Plan-20261018-183253]] §3.6）。 */
 button.ioto-task-view__section-edit-btn:not(.clickable-icon),
 button.ioto-task-view__section-delete-btn:not(.clickable-icon),
-button.ioto-task-view__section-close-btn:not(.clickable-icon) {
+button.ioto-task-view__section-close-btn:not(.clickable-icon),
+button.ioto-task-view__section-title-edit-btn:not(.clickable-icon) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -2572,7 +2626,8 @@ button.ioto-task-view__section-close-btn:not(.clickable-icon) {
 }
 
 .ioto-task-view__section-edit-btn:hover,
-.ioto-task-view__section-close-btn:hover {
+.ioto-task-view__section-close-btn:hover,
+.ioto-task-view__section-title-edit-btn:hover {
 	color: var(--text-normal);
 }
 
@@ -2596,6 +2651,22 @@ button.ioto-task-view__section-delete-btn:not(.clickable-icon):hover {
 	/* 热区 = 整行 header（非标题文字），避免指针移向图标途中 hover 断层 */
 	.ioto-task-view__section-header:hover .ioto-task-view__section-actions,
 	.ioto-task-view__section-header:focus-within .ioto-task-view__section-actions {
+		opacity: 1;
+		pointer-events: auto;
+	}
+	/* 标题嗅探面：hover 时给底色，暗示「这里可双击改名」 */
+	.ioto-task-view__section-header:hover .ioto-task-view__section-title {
+		background: var(--background-modifier-hover);
+	}
+	/* 铅笔复用动作区口径：opacity + pointer-events，保留 tab 序 */
+	.ioto-task-view__section-title-edit-btn {
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 0.15s ease;
+	}
+	.ioto-task-view__section-header:hover .ioto-task-view__section-title-edit-btn,
+	.ioto-task-view__section-header:focus-within
+		.ioto-task-view__section-title-edit-btn {
 		opacity: 1;
 		pointer-events: auto;
 	}
@@ -3638,6 +3709,20 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 .is-phone button.ioto-task-view__section-delete-btn:not(.clickable-icon),
 .is-phone button.ioto-task-view__section-close-btn:not(.clickable-icon) {
 	padding: 6px;
+}
+
+/* 手机：标题铅笔常显 + 加大热区；输入框 ≥16px，否则 iOS 聚焦会缩放一次。
+   🔴 必须带 `button…:not(.clickable-icon)`，否则特异性低于基础按钮规则，padding 不生效 */
+.is-phone button.ioto-task-view__section-title-edit-btn:not(.clickable-icon) {
+	opacity: 1;
+	pointer-events: auto;
+	padding: 6px;
+}
+
+/* 🔴 与基础规则同特异度再高一级：基础规则是 input+class+attr（0,2,1），
+   单靠 `.is-phone .…-input`（0,2,0）压不过，字号不会变成 16px。 */
+.is-phone input.ioto-task-view__section-title-input[type='text'] {
+	font-size: max(var(--font-ui-medium), 16px);
 }
 
 /* 移动端「新增 Section」加号：无 hover 设备默认全显，并加大触控热区 */

@@ -8,7 +8,8 @@ import {
 	IOTO_TASK_CARD_SELECTOR,
 	IOTO_TASK_SCROLL_SELECTOR,
 } from './ioto-task-scroll';
-import { renderTaskNote } from './render-note';
+import { renderTaskNote, getSectionStateKey } from './render-note';
+import { parseSections } from '../../tasks-center/note-structure';
 import { buildCardDragController } from './task-view-card-drag';
 import { buildSectionDragController } from './task-view-section-drag';
 import type { TaskNoteEditing, TaskNoteLinks } from './render-note-types';
@@ -29,7 +30,9 @@ import {
 	keepVisibleCardLine,
 } from './task-view-editing-state';
 
-/** 视图级渲染主入口：重建列表容器，保留常驻外壳，处理动画 / 选中回填 / 命令就绪补偿。 */
+/**
+ * 视图级渲染主入口：重建列表容器，保留常驻外壳，处理动画 / 选中回填 / 命令就绪补偿。
+ */
 export function renderNote(
 	view: TaskViewHost,
 	data: string,
@@ -43,6 +46,9 @@ export function renderNote(
 	// 整树重建会摘掉正在拖拽的手柄：先就地收尸（ghost / 落点线 / 类名 / 捕获），
 	// 否则 state 卡在 dragging=true，只能 Esc 或刷新（[[Research-20261017-112730]] §四）。
 	view.cancelActiveDrag?.();
+	// 标题输入框随整树重建必定失效：若不清字段，`hasLiveEditor` 会永远为真，
+	// 外部重读被永久挡住（[[Plan-20261019-122509]] §2.4）。
+	view.destroySectionTitleEditor();
 	if (view.isRendering) {
 		return;
 	}
@@ -99,7 +105,15 @@ export function renderNote(
 			sourcePath: view.file?.path ?? '',
 			component: view,
 			collapsedSections: view.collapsedSections,
-			onToggleSection: (key) => {
+			onToggleSection: (startLine) => {
+				// 闭包里的渲染期 key 会在改名后失效 → 每次按当前 data 实时解析
+				const section = parseSections(view.data).find(
+					(s) => s.startLine === startLine && s.level > 0,
+				);
+				if (!section) {
+					return;
+				}
+				const key = getSectionStateKey(section);
 				if (view.collapsedSections.has(key)) {
 					view.collapsedSections.delete(key);
 				} else {
@@ -373,6 +387,10 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 					},
 					editSection: (startLine: number) => {
 						void view.beginSectionEdit(startLine);
+					},
+					// 标题独立编辑：双击标题 / 点右缘铅笔（不重绘、单行写回）。
+					editSectionTitle: (startLine: number) => {
+						void view.beginSectionTitleEdit(startLine);
 					},
 					// 整节删除：确认 → 写盘 → 行号迁移 → 重绘都在 deleteSection 内。
 					deleteSection: (startLine: number, title: string) => {

@@ -1,7 +1,10 @@
 import { Notice } from 'obsidian';
 
 import { t } from '../../lang/helpter';
-import { parseSections } from '../../tasks-center/note-structure';
+import {
+	composeSectionBlockLines,
+	parseSections,
+} from '../../tasks-center/note-structure';
 import { getSectionStateKey } from './render-note';
 import {
 	commitBlockRange,
@@ -10,29 +13,21 @@ import {
 import { mountEmbeddedEditor } from './embedded-editor';
 import type { EmbeddedEditorHandle } from './embedded-editor';
 import { IOTO_TASK_SCROLL_SELECTOR } from './ioto-task-scroll';
+import { querySectionEl } from './task-view-helpers';
 import type { TaskViewHost } from './task-view-host';
 
 /**
- * 点 Section 头部「编辑本节」→ 该节**整块源码**（含标题行）换成内嵌核心编辑器
- * （[[Plan-20261010-080827]] 批次 1，B 路线）。
+ * 点 Section 头部「编辑本节内容」→ 该节**正文源码**（标题行之下）换成内嵌核心
+ * 编辑器（[[Plan-20261019-122509]] §2.1，标题编辑拆到
+ * `task-view-section-title-edit.ts`）。
  *
- * - 块范围 = `NoteSection.startLine..endLine`（含标题行，兑现「顺手改名」）；
- * - 与卡片 / 续行编辑器互斥：进入前先提交另外两条链；
- * - 只在退出（Esc / 失焦 / 切换）时提交（Q5：不排 autosave）；
- * - 提交后整树重建（行数几乎必然变，后续 `data-line` 全漂）。
+ * - 编辑器只呈现正文：`initialValue = originalLines.slice(1).join('\n')`；
+ * - 写回区间仍然覆盖整块（含标题行）：行漂移复核用「标题行 + 原块序列」，
+ *   写回时把标题行拼回去（`composeSectionBlockLines`）；
+ * - 清空正文只留标题，**不再等于删整节**（删整节只走垃圾桶按钮）；
+ * - 与卡片 / 续行 / 标题编辑器互斥：进入前先提交另外三条链；
+ * - 只在退出（Esc / 失焦 / 切换）时提交（Q5：不排 autosave）。
  */
-
-/** 取某 Section 的 DOM 节点（`data-start-line` 由 `render-sections.ts` 输出）。 */
-function querySectionEl(
-	view: TaskViewHost,
-	startLine: number,
-): HTMLElement | null {
-	return (
-		view.bodyEl?.querySelector<HTMLElement>(
-			`.ioto-task-view__section[data-start-line="${startLine}"]`,
-		) ?? null
-	);
-}
 
 /** 取视图的滚动容器（`.ioto-task-view__scroll`）。 */
 function queryScrollEl(view: TaskViewHost): HTMLElement | null {
@@ -53,10 +48,11 @@ export async function beginSectionEdit(
 		return;
 	}
 
-	// 切换：先提交另一个编辑器（标题 / 续行 / 另一节），互斥
+	// 切换：先提交另一个编辑器（标题 / 续行 / 另一节 / 节标题），互斥
 	await view.commitEdit();
 	await view.commitContinuationEdit();
 	await view.commitSectionEdit();
+	await view.commitSectionTitleEdit();
 
 	const file = view.file;
 	if (!file) {
@@ -101,7 +97,8 @@ export async function beginSectionEdit(
 
 	const lines = view.data.split('\n');
 	const originalLines = lines.slice(section.startLine, section.endLine + 1);
-	const initialValue = originalLines.join('\n'); // 含标题行
+	// 编辑器只吃正文：写回区间仍含标题行（见文件头注释）
+	const initialValue = originalLines.slice(1).join('\n');
 
 	const handle = await mountEmbeddedEditor({
 		app: view.app,
@@ -112,7 +109,7 @@ export async function beginSectionEdit(
 		handlers: {
 			// 多行源码编辑：Enter 放行给核心真换行（不是新建同级任务）
 			onEnter: () => false,
-			// 不因清空而删整节（删除整节由提交时的空白判定负责）
+			// 清空正文只清正文（标题行由提交时拼回），删整节走垃圾桶按钮
 			onDeleteEmpty: () => false,
 			onIndent: () => false, // Tab 放行核心，本期不接管
 			onEscape: () => onSectionEscape(view),
@@ -179,10 +176,10 @@ export function onSectionEscape(view: TaskViewHost): void {
 }
 
 /**
- * 提交 / 删节：读编辑器正文（**不 trim 尾随换行** —— 块边界即 section 边界）
- * → 整块写回。
+ * 提交：读编辑器正文（**不 trim 尾随换行** —— 块边界即 section 边界）→ 标题行 +
+ * 正文拼成 `nextLines` 整块写回。
  *
- * - 全空白 → 删除整块；
+ * - 空正文 → 只保留标题行（Section 不会消失，删整节只走垃圾桶）；
  * - `conflict` 拉权威内容重绘；其余一律整树重建（含 `unchanged`）——
  *   `unchanged` 只说明磁盘无需再写，`onLinkNavigationBlur → autosaveSection`
  *   可能已在编辑中写盘并同步 `view.data`（不重绘），DOM 会停在写盘前；
@@ -217,6 +214,11 @@ export async function commitSectionEdit(view: TaskViewHost): Promise<void> {
 		endLine,
 		originalLines,
 		nextText: rawText,
+		nextLines: composeSectionBlockLines(
+			originalLines[0] ?? '',
+			rawText,
+			originalLines.slice(1),
+		),
 	});
 	view.sectionEditLine = null;
 	view.sectionEditOriginalLines = [];
@@ -299,6 +301,12 @@ export async function autosaveSection(view: TaskViewHost): Promise<void> {
 			endLine: view.sectionEditEndLine,
 			originalLines: view.sectionEditOriginalLines,
 			nextText,
+			// 行漂移 / 编辑中点链接的自动落盘同样要把标题行拼回，否则标题会被吞掉
+			nextLines: composeSectionBlockLines(
+				view.sectionEditOriginalLines[0] ?? '',
+				nextText,
+				view.sectionEditOriginalLines.slice(1),
+			),
 		});
 
 		// 落盘期间已退出编辑：以随后那次提交为准，不再改内存 / 快照
