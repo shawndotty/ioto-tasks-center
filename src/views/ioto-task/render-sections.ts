@@ -194,6 +194,31 @@ export function renderSection(options: RenderSectionOptions): void {
 	}
 
 	const bodyEl = sectionEl.createDiv({ cls: 'ioto-task-view__section-body' });
+
+	// 双击正文区进「编辑本节内容」（[[Research-20261019-135324]] 方案 A）：
+	// 与铅笔按钮同一条链路 `editSection`，不另造状态。
+	// 🔴 必须挂在 `.section-body`（卡片与 markdown 块的共同父级），并先排除 `.card`：
+	// 卡片自带「选中 → 编辑（或续行编辑）」两段式语义，不能被节编辑抢走。
+	// 标题双击已被「改标题」占用，故不挂 `.section`；也不挂 `scrollEl`（要回查行号）。
+	if (section.level > 0 && options.editing.enabled && options.editing.editSection) {
+		bodyEl.addEventListener('dblclick', (event) => {
+			const target = event.target;
+			if (!(target instanceof HTMLElement)) {
+				return;
+			}
+			// Task Item（正文 / 续行 / checkbox / 动作区 / 内联编辑器）→ 保持卡片链路。
+			if (target.closest('.ioto-task-view__card')) {
+				return;
+			}
+			// 自带点击语义的元素 → 放行（双链点一次就打开，双击不应再进节编辑）。
+			if (target.closest('a, button, input, select, textarea')) {
+				return;
+			}
+			event.preventDefault();
+			options.editing.editSection?.(section.startLine);
+		});
+	}
+
 	renderSectionBody({
 		app,
 		scrollEl,
