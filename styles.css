@@ -2658,7 +2658,7 @@ button.ioto-task-view__section-delete-btn:not(.clickable-icon):hover {
 	.ioto-task-view__section-header:hover .ioto-task-view__section-title {
 		background: var(--background-modifier-hover);
 	}
-	/* 铅笔复用动作区口径：opacity + pointer-events，保留 tab 序 */
+	/* 标题改名按钮复用动作区口径：opacity + pointer-events，保留 tab 序 */
 	.ioto-task-view__section-title-edit-btn {
 		opacity: 0;
 		pointer-events: none;
@@ -3711,7 +3711,7 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 	padding: 6px;
 }
 
-/* 手机：标题铅笔常显 + 加大热区；输入框 ≥16px，否则 iOS 聚焦会缩放一次。
+/* 手机：标题改名图标常显 + 加大热区；输入框 ≥16px，否则 iOS 聚焦会缩放一次。
    🔴 必须带 `button…:not(.clickable-icon)`，否则特异性低于基础按钮规则，padding 不生效 */
 .is-phone button.ioto-task-view__section-title-edit-btn:not(.clickable-icon) {
 	opacity: 1;

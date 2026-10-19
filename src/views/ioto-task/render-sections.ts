@@ -242,9 +242,10 @@ function renderSectionHeader(options: {
 			text: section.title,
 		},
 	);
-	// 标题独立编辑（[[Plan-20261019-122509]] §3.7）：双击标题、或点右缘铅笔。
+	// 标题独立编辑（[[Plan-20261019-122509]] §3.7）：双击标题、或点右缘输入框图标
+	// （图标与「编辑本节内容」的铅笔刻意区分，避免同形不同义，[[Discuss-20261019-125340]]）。
 	// 只监听 `dblclick`，不在 `mousedown` 阶段 preventDefault——否则第二次 click
-	// 命不中同一个元素，双击永远不触发。只读态不挂事件、不建铅笔。
+	// 命不中同一个元素，双击永远不触发。只读态不挂事件、不建改名入口。
 	if (editing.enabled && editing.editSectionTitle) {
 		titleEl.addEventListener('dblclick', (event) => {
 			event.preventDefault();
@@ -260,7 +261,13 @@ function renderSectionHeader(options: {
 				title: t('view.iotoTaskView.sectionEditTitle'),
 			},
 		});
-		setIcon(titleEditBtn, 'pencil');
+		// `text-cursor-input`（输入框 + 光标）读作「改这段文字」，与行尾 `pencil`
+		// （通用「编辑内容」）语义分工。该图标较新，而 `minAppVersion` 仍是 1.5.7：
+		// 老客户端缺图标时 `setIcon` 不产 svg（按钮空白、不报错），退回极老极稳的 `type`。
+		setIcon(titleEditBtn, 'text-cursor-input');
+		if (!titleEditBtn.querySelector('svg')) {
+			setIcon(titleEditBtn, 'type');
+		}
 		titleEditBtn.addEventListener('click', (event) => {
 			event.preventDefault();
 			event.stopPropagation();
@@ -299,6 +306,9 @@ function renderSectionHeader(options: {
 			attr: {
 				type: 'button',
 				'aria-label': t('view.iotoTaskView.sectionEdit'),
+				// 与标题按钮补齐对等的 tooltip：同形按钮「一个有名字一个没名字」
+				// 是误解的最大放大器（[[Discuss-20261019-125340]] §2.3）。
+				title: t('view.iotoTaskView.sectionEdit'),
 			},
 		});
 		setIcon(editBtn, 'pencil');
