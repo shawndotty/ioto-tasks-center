@@ -2305,6 +2305,11 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	--ioto-tv-card-text-start: 27px;
 	/* 拖拽手柄图标热区（[[Research-20261017-103822]] §5.1） */
 	--ioto-tv-grip-size: 18px;
+	/* 单行正文所在行的最小高度（[[Research-20261020-085033]] §3.2(3)）：
+	   取「勾选框高度」而不是 0，常规字号下 max(1lh, 18px) 仍等于 1lh，
+	   不改变单行 / 多行对齐；空正文塌到勾选框高度时手柄也能与勾选框同轴。
+	   各外观在自身根块内按勾选框尺寸覆盖（现代 20px / 莫兰迪 22px / 玻璃 24px）。 */
+	--ioto-tv-card-row-min: 18px;
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
@@ -2892,9 +2897,15 @@ button.ioto-task-view__card-drag-handle:not(.clickable-icon) {
 	/* 与正文首行垂直居中。top 以卡片 padding box 为原点，所以：
 	   ① 先加卡片实际 padding-top（= --ioto-tv-pad-y，见经典皮肤手机端的口径约束）；
 	   ② 再补 (行高 − 手柄高)/2，让 30px 的盒子中心落在首行行盒中心。
-	   第一行是降级值：不支持 lh 单位的老内核落回旧行为，不会更差。 */
+	   行高取 max(1lh, --ioto-tv-card-row-min)：单行时 lh 就是盒高（min-height:auto），
+	   勾选框高于行高时（玻璃 / 现代 / 莫兰迪）则改用勾选框高度，三者中心才一致
+	   （[[Research-20261020-085033]] §3.2(3)）。
+	   第一行是降级值：不支持 lh / max() 的老内核落回旧行为，不会更差。 */
 	top: calc(var(--ioto-tv-pad-y) + 4px);
-	top: calc(var(--ioto-tv-pad-y) + (1lh - var(--ioto-tv-grip-size)) / 2);
+	top: calc(
+		var(--ioto-tv-pad-y)
+		+ (max(1lh, var(--ioto-tv-card-row-min)) - var(--ioto-tv-grip-size)) / 2
+	);
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -2912,6 +2923,18 @@ button.ioto-task-view__card-drag-handle:not(.clickable-icon) {
 	cursor: grab;
 	/* 未长按的触摸滑动仍交还原生滚动（JS 拖拽中才 preventDefault） */
 	touch-action: auto;
+}
+
+/* 空正文：`.card-text` 高度为 0，卡片行高由勾选框决定；此时 1lh 仍按文字行高
+   计算，会让手柄比勾选框低（经典/简洁 0.75px、莫兰迪 2.1px）。空文本经
+   MarkdownRenderer 渲染后无子节点（实测 `:empty` 成立），直接按勾选框高度定位。
+   （[[Research-20261020-085033]] §3.4 的「:empty 手柄覆盖」选项） */
+.ioto-task-view__card:has(> .ioto-task-view__card-text:empty)
+	.ioto-task-view__card-drag-handle {
+	top: calc(
+		var(--ioto-tv-pad-y)
+		+ (var(--ioto-tv-card-row-min) - var(--ioto-tv-grip-size)) / 2
+	);
 }
 
 .ioto-task-view__card-drag-handle:hover {
@@ -3441,8 +3464,9 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 .ioto-task-view__card-text {
 	flex: 1 1 0; /* basis 0 → 与勾选框同处第一行，并由 grow 吃满剩余空间（Plan-20261003-191547） */
 	min-width: 0;
-	/* 空条目：保证有可见且可命中的正文区（与 __card-editor 的 1.6em 对齐） */
-	min-height: 1.6em;
+	/* 单行时盒高 = 行高，交给卡片的 align-items:center 对齐（[[Research-20261020-085033]] §3.2(1)）。
+	   空条目不再需要自带点击高度：点击监听挂在卡片 <li> 上（render-checklist-card.ts）。 */
+	min-height: auto;
 }
 
 .ioto-task-view__card-text > :first-child {
@@ -3862,7 +3886,9 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 }
 
 .is-phone .ioto-task-view__card-text {
-	min-height: 24px;
+	/* 必须与桌面一起改：此选择器优先级更高，保留 24px 会让手机端改动完全失效
+	   （[[Research-20261020-085033]] §3.2(2)）。 */
+	min-height: auto;
 }
 
 /* 移动端（本期不做真机验证）：两段式点击需要更大的「选中」热区，
@@ -3967,6 +3993,8 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 	/* 正文左缘 = 标题左缘 44px（header 16 + chevron 18 + gap 10）
 	   −（section-body 12 + 卡片描边 1）= 31px（[[Report-20261017-110130]]） */
 	--ioto-tv-card-text-start: 31px;
+	/* 24px 勾选框是行内最高元素：单行时手柄按 24px 居中（[[Research-20261020-085033]] §3.2(3)） */
+	--ioto-tv-card-row-min: 24px;
 
 	position: relative;
 	isolation: isolate;              /* 背景层与卡片稳定分层，不被外层 mix-blend 影响 */
@@ -4352,6 +4380,8 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 	/* 正文左缘 = 标题左缘 44px（header 14 + chevron 22 + gap 8）
 	   −（section-body 12 + 卡片无描边）= 32px（[[Report-20261017-110130]]） */
 	--ioto-tv-card-text-start: 32px;
+	/* 20px 勾选框是行内最高元素：单行时手柄按 20px 居中（[[Research-20261020-085033]] §3.2(3)） */
+	--ioto-tv-card-row-min: 20px;
 
 	/* 面 / 线 / 影（浅色分层是现代风格的核心，不靠描边） */
 	--ioto-tv-canvas: color-mix(in srgb, var(--background-secondary) 55%, var(--background-primary));
@@ -4887,6 +4917,9 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 	/* 正文左缘 = 标题左缘 44px（header 14 + chevron 22 + gap 8）
 	   −（section-body 14 + 卡片描边 1）= 29px（[[Report-20261017-110130]]） */
 	--ioto-tv-card-text-start: 29px;
+	/* 22px 勾选框：行高 1.75（26.25/28px）通常更高，max() 仍取行高；此值只兜底小字号
+	   （[[Research-20261020-085033]] §3.2(3)） */
+	--ioto-tv-card-row-min: 22px;
 
 	--ioto-tv-m-line: 1.75;               /* 行高（笔记指定） */
 	--ioto-tv-m-track: 0.02em;            /* 字距（笔记指定） */
