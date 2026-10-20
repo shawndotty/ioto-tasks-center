@@ -448,6 +448,30 @@ export function composeSectionBlockLines(
 	return [headingLine, ...bodyText.split('\n')];
 }
 
+/**
+ * Section 正文编辑器的默认光标位置：**最后一行实内容的行尾**。
+ *
+ * `parseSections` 的 `endLine` 到「下一个同级/更高级标题的前一行」为止，正文末尾
+ * 通常带一条块间空行；直接落 `doc.length` 会停在那条空行上（用户看到的「下一行」）。
+ * 不 trim 正文本身：写回要逐行相等（见 composeSectionBlockLines）。
+ * [[Research-20261020-111245]] §3.1
+ */
+export function sectionBodyCaretOffset(bodyText: string): number {
+	let end = bodyText.length;
+	while (end > 0) {
+		const lineBreak = bodyText.lastIndexOf('\n', end - 1);
+		if (lineBreak === -1) {
+			break; // 已到首行
+		}
+		if (bodyText.slice(lineBreak + 1, end).trim() !== '') {
+			break; // 末行有实内容 → 停在它行尾
+		}
+		end = lineBreak; // 丢掉这条空行（连同分隔它的换行）
+	}
+	// CRLF：退回 \r 之前，否则会停在「行尾之后一格」
+	return end > 0 && bodyText[end - 1] === '\r' ? end - 1 : end;
+}
+
 function findFrontmatterEndLine(lines: string[]): number {
 	for (let index = 1; index < lines.length; index += 1) {
 		if ((lines[index] ?? '').trim() === '---') {

@@ -183,8 +183,11 @@ export interface EmbeddedEditorHandle {
 	getValue(): string;
 	setValue(value: string): void;
 	focus(): void;
-	/** 把光标落到 `offset`（clamp 到正文长度）；供模板 `%%Cursor%%` 落点使用。 */
-	setCursor(offset: number): void;
+	/**
+	 * 把光标落到 `offset`（clamp 到正文长度）；供模板 `%%Cursor%%` 落点使用。
+	 * `scrollIntoView` 默认关（卡片落点另有 `scrollCardIntoView`，两条滚动叠着没收益）。
+	 */
+	setCursor(offset: number, options?: { scrollIntoView?: boolean }): void;
 	destroy(): void;
 }
 
@@ -477,11 +480,14 @@ export async function mountEmbeddedEditor(
 		controller.editMode = editor;
 		editor.set(initialValue ?? '');
 		// 把光标落到给定偏移（clamp 到正文长度）；默认落末尾，符合「点开继续写」的直觉。
-		const setCursorInternal = (offset: number) => {
+		const setCursorInternal = (offset: number, scrollIntoView = false) => {
 			try {
 				const length = Number(editor.cm.state.doc.length);
 				const anchor = Math.min(Math.max(offset, 0), length);
-				editor.cm.dispatch({ selection: { anchor, head: anchor } });
+				editor.cm.dispatch({
+					selection: { anchor, head: anchor },
+					scrollIntoView,
+				});
 			} catch {
 				/* ignore */
 			}
@@ -666,8 +672,8 @@ export async function mountEmbeddedEditor(
 					/* ignore */
 				}
 			},
-			setCursor: (offset: number) => {
-				setCursorInternal(offset);
+			setCursor: (offset: number, options?: { scrollIntoView?: boolean }) => {
+				setCursorInternal(offset, options?.scrollIntoView ?? false);
 			},
 			destroy,
 		};

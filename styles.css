@@ -5355,7 +5355,7 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
    视图切换悬浮按钮（[[Plan-20261019-190001]] §3.10）
    挂在 view.containerEl（.workspace-leaf-content）右下角：
    容器本身 position: relative + overflow: hidden，按钮不随正文滚动、不越出窗格。
-   显示与否由设置 showViewToggleButton 在 DOM 层控制，不由 CSS 控制。
+   设置开关 showViewToggleButton 在 DOM 层增删；视图过矮则由 data-collapsed 收起。
    ============================================================ */
 .ioto-view-toggle {
 	position: absolute;
@@ -5398,11 +5398,20 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 	height: 16px;
 }
 
-/* 手机：38px 触屏热区 + 抬到底部导航栏之上。 */
+/* 手机：38px 触屏热区 + 抬到底部导航栏之上。
+   核心在 .is-phone 上给的 --view-bottom-spacing 是无单位的 0（app.css），
+   代入 calc() 会让整条 bottom 声明作废、按钮退回顶部（[[Research-20261020-111403]] §三），
+   故改为只依赖恒有长度值的 --navbar-height。 */
 .is-phone .ioto-view-toggle {
 	inset-inline-end: calc(10px + env(safe-area-inset-right, 0px));
-	bottom: max(12px, calc(var(--view-bottom-spacing, 0px) + 10px));
+	bottom: calc(var(--navbar-height, 0px) + 10px);
 	width: 38px;
 	height: 38px;
 	opacity: 0.6;
+}
+
+/* 高度闸门（[[Research-20261020-111403]] §4.2）：视图过矮时收起，键盘态不再压住右侧按钮。
+   属性选择器压过上面的 display: inline-flex；display: none 同时把它移出 Tab 序。 */
+.ioto-view-toggle[data-collapsed='true'] {
+	display: none;
 }

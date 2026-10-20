@@ -4,6 +4,7 @@ import { t } from '../../lang/helpter';
 import {
 	composeSectionBlockLines,
 	parseSections,
+	sectionBodyCaretOffset,
 } from '../../tasks-center/note-structure';
 import { getSectionStateKey } from './render-note';
 import {
@@ -163,6 +164,12 @@ export async function beginSectionEdit(
 	if (scrollEl) {
 		scrollEl.scrollTop = 0;
 	}
+	// 光标落「正文最后一行实内容的行尾」，而不是文档末尾的块间空行；
+	// 长节才真的会滚（scrollIntoView 是 nearest 语义，短节零跳动）。
+	// [[Research-20261020-111245]] §3.3
+	handle.setCursor(sectionBodyCaretOffset(initialValue), {
+		scrollIntoView: true,
+	});
 }
 
 /** `Esc`：先提交、再落回（与续行同构；Section 无卡片选中态可回填）。 */

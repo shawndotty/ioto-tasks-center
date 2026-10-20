@@ -39,6 +39,7 @@ export {
 	normalizeSectionTitle,
 	replaceSectionHeadingTitle,
 	composeSectionBlockLines,
+	sectionBodyCaretOffset,
 } from './note-sections';
 export type {
 	AppendSectionHeadingResult,

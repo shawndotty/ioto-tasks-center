@@ -22,6 +22,7 @@ const {
 	normalizeSectionTitle,
 	replaceSectionHeadingTitle,
 	composeSectionBlockLines,
+	sectionBodyCaretOffset,
 } = await jiti.import('../src/tasks-center/note-structure.ts');
 
 test('frontmatter 不进 Section，frontmatter 与首标题之间的正文进引导区', () => {
@@ -561,4 +562,24 @@ test('composeSectionBlockLines：空正文只留标题，其余逐行保留', ()
 	);
 	// 原正文为空数组 → 只留标题
 	assert.deepEqual(composeSectionBlockLines('# 目标', '', []), ['# 目标']);
+});
+
+test('sectionBodyCaretOffset：落在最后一行实内容的行尾', () => {
+	// 无尾空行：就是 doc.length
+	assert.equal(sectionBodyCaretOffset('- a\n- b'), 7);
+	// 单条尾空行（今天的 doc.length = 8，会停在空行上）→ 回到上一行行尾
+	assert.equal(sectionBodyCaretOffset('- a\n- b\n'), 7);
+	// 多条尾空行逐条剥掉
+	assert.equal(sectionBodyCaretOffset('- a\n\n\n'), 3);
+	// 全是空行 → 回到 0，不停在第 2 条空行上
+	assert.equal(sectionBodyCaretOffset('\n'), 0);
+	assert.equal(sectionBodyCaretOffset('\n\n\n'), 0);
+	// 空正文
+	assert.equal(sectionBodyCaretOffset(''), 0);
+	// 末行只有空格 → 视为空行剥掉，但行内尾随空格不 trim（- [ ] 后面那格要保留）
+	assert.equal(sectionBodyCaretOffset('- a\n  '), 3);
+	assert.equal(sectionBodyCaretOffset('- [ ] '), 6);
+	// CRLF：退回 \r 之前，不停在「行尾之后一格」
+	assert.equal(sectionBodyCaretOffset('- a\r\n\r\n'), 3);
+	assert.equal(sectionBodyCaretOffset('- a\r\n- b\r\n'), 8);
 });

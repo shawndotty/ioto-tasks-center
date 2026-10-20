@@ -9,6 +9,17 @@
 
 export type ToggleDirection = 'to-markdown' | 'to-task-view';
 
+/** 叶子容器（.workspace-leaf-content）低于该高度即收起悬浮按钮（[[Research-20261020-111403]] §4.1）。 */
+export const TOGGLE_MIN_VIEW_HEIGHT = 600;
+
+/** 从「收起」恢复为「显示」的延迟：键盘动画期核心会临时放开 max-height，不延迟会闪一下。 */
+export const TOGGLE_SHOW_DELAY_MS = 150;
+
+/** 高度闸门判据：过矮（含未布局的 0）即视为需要收起。 */
+export function isViewTooShortForToggle(height: number): boolean {
+	return height < TOGGLE_MIN_VIEW_HEIGHT;
+}
+
 export interface ToggleDescriptor {
 	direction: ToggleDirection;
 	icon: 'file-text' | 'list-todo';

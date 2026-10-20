@@ -2,9 +2,13 @@
  * 视图切换悬浮按钮（[[Plan-20261019-190001]] §3.7）。
  *
  * 每叶子在自己 `view.containerEl`（`.workspace-leaf-content`）右下角挂一枚低调按钮，
- * 点击按**该叶子**切换 Markdown / IOTO 任务视图。显示与否由设置
- * `showViewToggleButton` 在 DOM 层闸门控制，**不用 CSS 隐藏**——关闭后不留
- * 可被 Tab 聚焦的残骸。
+ * 点击按**该叶子**切换 Markdown / IOTO 任务视图。
+ *
+ * 两道闸门：
+ * - 设置 `showViewToggleButton`：DOM 层增删，**不用 CSS 隐藏**——关闭后不留
+ *   可被 Tab 聚焦的残骸；
+ * - 叶子高度（[[Research-20261020-111403]]）：`ResizeObserver` 观察容器，
+ *   过矮（键盘弹出 / 窄窗格）时打 `data-collapsed` 由 CSS 收起，DOM 保留。
  */
 import {
 	type App,
@@ -14,12 +18,25 @@ import {
 } from 'obsidian';
 import { t } from './lang/helpter';
 import { resolveTaskViewToggleDirection } from './task-view-routing';
-import { describeToggle, type ToggleDescriptor } from './view-toggle-model';
+import {
+	describeToggle,
+	isViewTooShortForToggle,
+	type ToggleDescriptor,
+	TOGGLE_SHOW_DELAY_MS,
+} from './view-toggle-model';
 
 const TOGGLE_CLASS = 'ioto-view-toggle';
+/** 高度闸门收起态：样式里据此 `display: none`（见 styles.css）。 */
+const COLLAPSED_ATTR = 'data-collapsed';
 
 /** 登记 live 按钮，供「关闭开关立即全窗口清场」覆盖 popout 叶子。 */
 const liveToggleButtons = new Set<HTMLButtonElement>();
+
+/** containerEl → 观察它的 RO（按叶子去重；内置浏览器 / popout 叶子也能覆盖）。 */
+const containerObservers = new Map<HTMLElement, ResizeObserver>();
+
+/** 待恢复的定时器（按钮被销毁即自然回收）。 */
+const showTimers = new WeakMap<HTMLButtonElement, number>();
 
 export interface FloatingToggleHost {
 	app: App;
@@ -52,6 +69,11 @@ export function syncFloatingToggles(
 			liveToggleButtons.delete(btn);
 		}
 	}
+	for (const container of containerObservers.keys()) {
+		if (!container.isConnected) {
+			unwatchContainer(container);
+		}
+	}
 
 	workspace.iterateAllLeaves((leaf) => {
 		const container = leaf.view?.containerEl;
@@ -65,6 +87,7 @@ export function syncFloatingToggles(
 		);
 
 		if (!descriptor) {
+			unwatchContainer(container);
 			if (existing) {
 				liveToggleButtons.delete(existing);
 				existing.remove();
@@ -90,6 +113,9 @@ export function removeFloatingToggles(app: App): void {
 		btn.remove();
 	}
 	liveToggleButtons.clear();
+
+	for (const observer of containerObservers.values()) observer.disconnect();
+	containerObservers.clear();
 }
 
 function createToggleButton(
@@ -114,7 +140,92 @@ function createToggleButton(
 		host.onToggle(leaf);
 	});
 
+	// 创建即定态，避免先亮后收（后台标签的 clientHeight 为 0 → 直接收起）。
+	watchContainer(container);
+	applyHeightGate(btn, container.clientHeight);
+
 	return btn;
+}
+
+/**
+ * 按叶子挂一个 ResizeObserver（[[Research-20261020-111403]] §4.2）。
+ *
+ * 键盘弹出 / 分栏拖动都不会触发 workspace 的 layout-change，只有 RO 能覆盖；
+ * 核心键盘态是把 `.app-container` 的 max-height 压给 `100vh - --keyboard-height`，
+ * 所以叶子高度天然是「键盘是否弹出」的可靠代理。
+ */
+function watchContainer(container: HTMLElement): void {
+	if (containerObservers.has(container)) return;
+	const observer = new ResizeObserver((entries) => {
+		for (const entry of entries) {
+			const host = entry.target as HTMLElement;
+			const btn = host.querySelector<HTMLButtonElement>(
+				`:scope > .${TOGGLE_CLASS}`,
+			);
+			if (!btn) {
+				// 按钮已被 sync 移除：自行退订，避免悬挂观察。
+				unwatchContainer(host);
+				return;
+			}
+			applyHeightGate(btn, entry.contentRect.height);
+		}
+	});
+	containerObservers.set(container, observer);
+	observer.observe(container);
+}
+
+function unwatchContainer(container: HTMLElement): void {
+	containerObservers.get(container)?.disconnect();
+	containerObservers.delete(container);
+}
+
+/**
+ * 高度闸门：收起立刻生效，恢复延迟 `TOGGLE_SHOW_DELAY_MS`。
+ *
+ * 键盘动画期核心会给 body 加 `keyboard-animating` 并临时放开 max-height，
+ * 高度会先回全高再收缩，不延迟就会闪一下。
+ */
+function applyHeightGate(btn: HTMLButtonElement, height: number): void {
+	const win = btn.ownerDocument.defaultView ?? window;
+	const pending = showTimers.get(btn);
+
+	if (isViewTooShortForToggle(height)) {
+		if (pending !== undefined) {
+			win.clearTimeout(pending);
+			showTimers.delete(btn);
+		}
+		setToggleCollapsed(btn, true);
+		return;
+	}
+
+	// 已经可见，或已在等待恢复：不再排队。
+	if (
+		btn.getAttribute(COLLAPSED_ATTR) !== 'true' ||
+		pending !== undefined
+	) {
+		return;
+	}
+
+	showTimers.set(
+		btn,
+		win.setTimeout(() => {
+			showTimers.delete(btn);
+			if (!btn.isConnected) return;
+			const next = btn.parentElement?.clientHeight ?? 0;
+			if (isViewTooShortForToggle(next)) return; // 仍矮：保持收起
+			setToggleCollapsed(btn, false);
+		}, TOGGLE_SHOW_DELAY_MS),
+	);
+}
+
+function setToggleCollapsed(btn: HTMLButtonElement, collapsed: boolean): void {
+	if (collapsed) {
+		if (btn.getAttribute(COLLAPSED_ATTR) !== 'true') {
+			btn.setAttribute(COLLAPSED_ATTR, 'true');
+		}
+		return;
+	}
+	btn.removeAttribute(COLLAPSED_ATTR);
 }
 
 function updateToggleButton(
