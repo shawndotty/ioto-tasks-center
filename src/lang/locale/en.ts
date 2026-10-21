@@ -385,6 +385,18 @@ const en = {
 	'settings.projectSort.name': 'Sorting rule',
 	'settings.projectSort.desc':
 		'Controls how the project list on the left is sorted. The default is by incomplete task count, descending.',
+	'settings.heading.taskFilterTabs': 'Task list filter tabs',
+	'settings.taskFilterTabs.desc':
+		'Choose which filter tabs appear above the task list. At least one tab is kept; hiding the active tab switches the list to the first remaining tab. More tabs are planned for a later version.',
+	'settings.taskFilterTabs.core.desc':
+		'Show only tasks marked as core (★).',
+	'settings.taskFilterTabs.today.desc':
+		'Show only task notes created today.',
+	'settings.taskFilterTabs.incomplete.desc':
+		'Show only tasks that are not started or in progress.',
+	'settings.taskFilterTabs.completed.desc': 'Show only completed tasks.',
+	'settings.taskFilterTabs.all.desc':
+		'Show every task in the project.',
 	'settings.heading.hiddenProjects': 'Hidden projects',
 	'settings.hiddenProjects.desc':
 		'Checked projects are hidden from the left-side project list. Changes apply immediately and are saved automatically.',

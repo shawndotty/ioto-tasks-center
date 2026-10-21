@@ -1,7 +1,6 @@
 import { Menu, setIcon } from 'obsidian';
 
 import type { IOTOTasksCenterView } from '../iotoTasksCenterView';
-import { getTaskFilterTabs } from '../task-filter-tabs';
 import { t } from '../../lang/helpter';
 
 export function renderTaskTabs(
@@ -15,7 +14,7 @@ export function renderTaskTabs(
 	if (view.isCompactLayout) {
 		renderCompactTaskFilterSwitcher(view, tabBarEl);
 	} else {
-		const taskFilterTabs = getTaskFilterTabs();
+		const taskFilterTabs = view.getVisibleTaskFilterTabs();
 		const tabListEl = tabBarEl.createDiv({
 			cls: 'ioto-tasks-center__tabs ioto-tasks-center__tabs-list',
 		});
@@ -70,6 +69,11 @@ function renderCompactTaskFilterSwitcher(
 	view: IOTOTasksCenterView,
 	tabBarEl: HTMLElement,
 ): void {
+	// 只剩一个可选 tab 时切无可切，整个 switcher 不渲染（右侧 gear 按钮照常）。
+	if (view.getVisibleTaskFilterTabs().length <= 1) {
+		return;
+	}
+
 	const buttonLabel = view.getTaskFilterSwitcherLabel();
 	const switcherEl = tabBarEl.createEl('button', {
 		cls: 'ioto-tasks-center__task-filter-switcher',
@@ -89,7 +93,7 @@ function showTaskFilterSwitcherMenu(
 ): void {
 	const counts = view.getTaskFilterCounts();
 	const menu = new Menu();
-	for (const tab of getTaskFilterTabs()) {
+	for (const tab of view.getVisibleTaskFilterTabs()) {
 		const isActive = tab.key === view.activeTaskFilterTab;
 		menu.addItem((item) => {
 			item.setTitle(

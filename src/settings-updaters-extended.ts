@@ -35,6 +35,7 @@ import {
 	type TaskCreationType,
 	type TaskTemplateConfig,
 } from './tasks-center/task-template-config';
+import { normalizeHiddenTaskFilterTabs } from './views/task-filter-tabs';
 
 /** 两个字符串数组内容是否完全相等（顺序敏感）。 */
 export function areStringArraysEqual(
@@ -168,6 +169,24 @@ export async function setProjectHidden(
 	}
 
 	host.settings.hiddenProjectNames = nextHiddenProjectNames;
+	await host.saveSettings();
+	host.applySettingsToOpenViews();
+}
+
+/**
+ * 更新「任务列表筛选标签」隐藏名单。归一化后顺序与注册表一致，
+ * 因此数组相等即可判定「未变更」；顺序刻意不按字母序，顺序交给注册表。
+ */
+export async function updateHiddenTaskFilterTabs(
+	host: SettingsUpdaterHost,
+	hiddenIds: string[],
+): Promise<void> {
+	const next = normalizeHiddenTaskFilterTabs(hiddenIds);
+	if (areStringArraysEqual(host.settings.hiddenTaskFilterTabs, next)) {
+		return;
+	}
+
+	host.settings.hiddenTaskFilterTabs = next;
 	await host.saveSettings();
 	host.applySettingsToOpenViews();
 }

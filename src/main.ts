@@ -54,6 +54,7 @@ import {
 	normalizeTaskLinkBadgeBackgroundMode,
 	normalizeTaskSearchEntryMode,
 } from './settings';
+import { normalizeHiddenTaskFilterTabs } from './views/task-filter-tabs';
 import {
 	type BatchTemplateConfig,
 	normalizeBatchTemplateConfig,
@@ -131,6 +132,7 @@ import {
 	renameProjectCategoryOption,
 	removeProjectCategoryOption,
 	setProjectHidden,
+	updateHiddenTaskFilterTabs,
 } from './settings-updaters';
 // 视图路由 / 激活实现
 import {
@@ -215,6 +217,7 @@ export default class IOTOTasksCenter extends Plugin {
 					() => this.settings.projectCategoryOptions,
 					(category) => this.addProjectCategoryOption(category),
 					() => this.settings.showProjectNameInTaskList,
+					() => this.settings.hiddenTaskFilterTabs,
 				),
 		);
 		this.registerView(
@@ -687,6 +690,9 @@ export default class IOTOTasksCenter extends Plugin {
 		this.settings.projectCategoryOptions = normalizeProjectCategoryOptions(
 			loadedData?.projectCategoryOptions,
 		);
+		this.settings.hiddenTaskFilterTabs = normalizeHiddenTaskFilterTabs(
+			loadedData?.hiddenTaskFilterTabs,
+		);
 		this.settings.batchTemplateConfig = normalizeBatchTemplateConfig(
 			loadedData?.batchTemplateConfig,
 		);
@@ -899,6 +905,10 @@ export default class IOTOTasksCenter extends Plugin {
 		hidden: boolean,
 	): Promise<void> {
 		await setProjectHidden(this, projectName, hidden);
+	}
+
+	async updateHiddenTaskFilterTabs(ids: string[]): Promise<void> {
+		await updateHiddenTaskFilterTabs(this, ids);
 	}
 
 	async updateTaskTemplateConfig(

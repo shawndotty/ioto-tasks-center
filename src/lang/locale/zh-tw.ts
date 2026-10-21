@@ -364,6 +364,15 @@ const zhTW = {
 	'settings.projectSort.name': '排序規則',
 	'settings.projectSort.desc':
 		'控制左側專案列表的排序方式。預設按未完成任務數量從多到少顯示。',
+	'settings.heading.taskFilterTabs': '任務列表篩選標籤',
+	'settings.taskFilterTabs.desc':
+		'控制任務列表頂部顯示哪些篩選標籤。至少保留一個；關閉目前標籤後，任務列表會自動切換到仍可見的第一個標籤。更多標籤將在後續版本提供。',
+	'settings.taskFilterTabs.core.desc': '只看標記為核心任務（★）的任務。',
+	'settings.taskFilterTabs.today.desc': '只看今天建立的任務筆記。',
+	'settings.taskFilterTabs.incomplete.desc':
+		'只看狀態為待開始或進行中的任務。',
+	'settings.taskFilterTabs.completed.desc': '只看已完成的任務。',
+	'settings.taskFilterTabs.all.desc': '顯示專案內的全部任務。',
 	'settings.heading.hiddenProjects': '隱藏專案列表',
 	'settings.hiddenProjects.desc':
 		'勾選後，對應專案會從左側專案列表中隱藏。修改後立即生效，並會自動儲存。',

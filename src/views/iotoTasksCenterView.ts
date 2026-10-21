@@ -59,7 +59,11 @@ import {
 	clearCurrentTaskDropTargetClasses,
 	removeDraggedTaskParent,
 } from './tasks-center/drag-controller';
-import { type TaskFilterTab } from './task-filter-tabs';
+import {
+	resolveActiveTaskFilterTab,
+	resolveVisibleTaskFilterTabs,
+	type TaskFilterTab,
+} from './task-filter-tabs';
 import * as SearchController from './tasks-center/search-controller';
 import {
 	refreshFromVaultChange,
@@ -308,6 +312,8 @@ export class IOTOTasksCenterView extends ItemView {
 	readonly getProjectCategoryOptions: () => string[];
 	readonly addProjectCategoryOption: (category: string) => Promise<void>;
 	readonly getShowProjectNameInTaskList: () => boolean;
+	/** 任务列表筛选标签的隐藏名单（全局偏好，不进 view state）。 */
+	readonly getHiddenTaskFilterTabs: () => string[];
 	public readonly taskSearchSession = createTaskSearchSession();
 	public taskFilterCountsCache: {
 		key: string;
@@ -361,6 +367,7 @@ export class IOTOTasksCenterView extends ItemView {
 		getProjectCategoryOptions: () => string[],
 		addProjectCategoryOption: (category: string) => Promise<void>,
 		getShowProjectNameInTaskList: () => boolean,
+		getHiddenTaskFilterTabs: () => string[],
 	) {
 		super(leaf);
 		this.navigation = true;
@@ -400,6 +407,7 @@ export class IOTOTasksCenterView extends ItemView {
 		this.getProjectCategoryOptions = getProjectCategoryOptions;
 		this.addProjectCategoryOption = addProjectCategoryOption;
 		this.getShowProjectNameInTaskList = getShowProjectNameInTaskList;
+		this.getHiddenTaskFilterTabs = getHiddenTaskFilterTabs;
 	}
 
 	getViewType(): string {
@@ -593,6 +601,9 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	public render(): void {
+		// 回退只有一个入口：任何路径（setState / 设置变更 / 角标切换 / 交互）
+		// 只要激活项已不可见，都在这里落到可见首项。
+		this.syncActiveTaskFilterTab();
 		this.outlinkPopover?.close();
 		this.taskStatusChecklistPopover?.close();
 		this.taskSearchInputEl = null;
@@ -742,6 +753,28 @@ export class IOTOTasksCenterView extends ItemView {
 
 	public getTaskFilterCounts(): Record<TaskFilterTab, number> {
 		return getTaskFilterCountsFn(this);
+	}
+
+	/**
+	 * 当前可见的筛选标签（按注册表顺序）。所有渲染与列表查询的 tab 入口，
+	 * 隐藏项据此「不产生 DOM」，而不是靠 CSS 藏起来。
+	 */
+	public getVisibleTaskFilterTabs(): Array<{
+		key: TaskFilterTab;
+		label: string;
+	}> {
+		return resolveVisibleTaskFilterTabs(this.getHiddenTaskFilterTabs());
+	}
+
+	/**
+	 * 激活项被隐藏时回退到可见列表首项。只在 `render()` 首行调用：
+	 * setState 恢复、设置变更、角标切换、普通交互都汇入这一个出口。
+	 */
+	private syncActiveTaskFilterTab(): void {
+		this.activeTaskFilterTab = resolveActiveTaskFilterTab(
+			this.activeTaskFilterTab,
+			this.getVisibleTaskFilterTabs(),
+		);
 	}
 
 	public getTaskFilterSwitcherLabel(): string {

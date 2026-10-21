@@ -2,7 +2,6 @@ import type { IOTOTasksCenterView } from '../iotoTasksCenterView';
 import type { TaskFileEntry } from '../../tasks-center/types';
 import {
 	getTaskFilterCounts as getTaskFilterCountsFn,
-	getTaskFilterTabs,
 	isTaskFilterTab,
 	type TaskFilterTab,
 } from '../task-filter-tabs';
@@ -142,9 +141,9 @@ export function getTaskFilterCounts(
 
 export function getTaskFilterSwitcherLabel(view: IOTOTasksCenterView): string {
 	const counts = view.getTaskFilterCounts();
-	const activeTab = getTaskFilterTabs().find(
-		(tab) => tab.key === view.activeTaskFilterTab,
-	);
+	const activeTab = view
+		.getVisibleTaskFilterTabs()
+		.find((tab) => tab.key === view.activeTaskFilterTab);
 	return t('view.taskFilterSwitcher.current', [
 		activeTab?.label ?? t('view.filter.current'),
 		String(activeTab ? counts[activeTab.key] : 0),

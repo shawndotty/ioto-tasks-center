@@ -1,15 +1,15 @@
 import type { IOTOTasksCenterView } from '../iotoTasksCenterView';
-import { getTaskFilterTabs } from '../task-filter-tabs';
 import { t } from '../../lang/helpter';
 
 export function renderTaskFilterEmptyState(
 	view: IOTOTasksCenterView,
 	container: HTMLElement,
 ): void {
-	const taskFilterTabs = getTaskFilterTabs();
 	const tabLabel =
-		taskFilterTabs.find((tab) => tab.key === view.activeTaskFilterTab)
-			?.label ?? t('view.label.currentFilter');
+		view
+			.getVisibleTaskFilterTabs()
+			.find((tab) => tab.key === view.activeTaskFilterTab)?.label ??
+		t('view.label.currentFilter');
 	view.renderState(
 		container,
 		t('view.filter.emptyTitle'),

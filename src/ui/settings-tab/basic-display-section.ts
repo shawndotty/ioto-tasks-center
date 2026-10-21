@@ -11,6 +11,7 @@ import {
 	isTaskViewExportWidthMode,
 } from '../../settings-options';
 import type IOTOTasksCenter from '../../main';
+import { renderTaskFilterTabsSection } from './task-filter-tabs-section';
 
 /**
  * 「基础」标签页下半部分：导出图片 / 任务双链计数 / 双链徽章背景 /
@@ -28,6 +29,7 @@ export function renderBasicDisplaySection(
 	renderSubtasksSection(containerEl, plugin);
 	renderTaskNoteMenuSection(containerEl, plugin);
 	renderProjectSortSection(containerEl, plugin);
+	renderTaskFilterTabsSection(containerEl, plugin);
 }
 
 function renderExportImageSection(

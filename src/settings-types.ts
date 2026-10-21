@@ -110,6 +110,8 @@ export interface IOTOTasksCenterSettings {
 	showTaskOutputOutlinkCount: boolean;
 	showTaskOutcomeOutlinkCount: boolean;
 	hiddenProjectNames: string[];
+	/** 任务列表筛选标签中被隐藏的 tab id（默认空数组 = 全部显示）。 */
+	hiddenTaskFilterTabs: string[];
 	projectCategoryOptions: string[];
 	enabledTaskCreationTypes: TaskCreationType[];
 	taskTemplateConfigs: TaskTemplateConfigMap;
@@ -175,6 +177,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	showTaskOutputOutlinkCount: true,
 	showTaskOutcomeOutlinkCount: true,
 	hiddenProjectNames: [],
+	hiddenTaskFilterTabs: [],
 	projectCategoryOptions: [],
 	enabledTaskCreationTypes: [...ENABLED_TASK_CREATION_TYPE_ORDER],
 	taskTemplateConfigs: createDefaultTaskTemplateConfigMap(),

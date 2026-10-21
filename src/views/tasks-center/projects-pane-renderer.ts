@@ -218,7 +218,13 @@ export function renderProjectsPane(
 					event.stopPropagation();
 
 					const switchToIncompleteTab = (): void => {
-						if (view.activeTaskFilterTab !== 'incomplete') {
+						const canSwitchTab = view
+							.getVisibleTaskFilterTabs()
+							.some((tab) => tab.key === 'incomplete');
+						if (
+							canSwitchTab &&
+							view.activeTaskFilterTab !== 'incomplete'
+						) {
 							view.activeTaskFilterTab = 'incomplete';
 							view.render();
 						}

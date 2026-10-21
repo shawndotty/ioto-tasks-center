@@ -9,6 +9,10 @@ const {
 	isTaskCreatedToday,
 	isTaskFilterTab,
 	matchesTaskFilterTab,
+	normalizeHiddenTaskFilterTabs,
+	resolveActiveTaskFilterTab,
+	resolveVisibleTaskFilterTabs,
+	setTaskFilterTabVisible,
 } = await jiti.import('../src/views/task-filter-tabs.ts');
 
 function createTask(title, options = {}) {
@@ -109,4 +113,84 @@ test('today tab 计数只统计今天创建的任务', () => {
 		all: 3,
 		core: 1,
 	});
+});
+
+test('未配置隐藏名单时可见 tab 为全部 5 个且按注册表顺序', () => {
+	assert.deepEqual(
+		resolveVisibleTaskFilterTabs([]).map((tab) => tab.key),
+		['core', 'today', 'incomplete', 'completed', 'all'],
+	);
+});
+
+test('隐藏 core 后可见 tab 少一项且不含 core', () => {
+	const visible = resolveVisibleTaskFilterTabs(['core']);
+
+	assert.deepEqual(
+		visible.map((tab) => tab.key),
+		['today', 'incomplete', 'completed', 'all'],
+	);
+});
+
+test('隐藏全部 tab 时兜底返回 core，绝不返回空数组', () => {
+	const visible = resolveVisibleTaskFilterTabs([
+		'core',
+		'today',
+		'incomplete',
+		'completed',
+		'all',
+	]);
+
+	assert.deepEqual(
+		visible.map((tab) => tab.key),
+		['core'],
+	);
+});
+
+test('隐藏名单归一化会丢弃非法项、去重并按注册表排序', () => {
+	assert.deepEqual(
+		normalizeHiddenTaskFilterTabs(['core', 'core', '不存在', 123]),
+		['core'],
+	);
+	assert.deepEqual(normalizeHiddenTaskFilterTabs(undefined), []);
+	assert.deepEqual(
+		normalizeHiddenTaskFilterTabs(['all', 'core', 'today']),
+		['core', 'today', 'all'],
+	);
+});
+
+test('隐藏名单归一化发现全部被隐藏时回落成空数组', () => {
+	assert.deepEqual(
+		normalizeHiddenTaskFilterTabs([
+			'all',
+			'completed',
+			'incomplete',
+			'today',
+			'core',
+		]),
+		[],
+	);
+});
+
+test('只剩一个可见 tab 时无法再关闭它', () => {
+	assert.deepEqual(
+		setTaskFilterTabVisible(['core', 'incomplete', 'completed', 'all'], 'today', false),
+		['core', 'incomplete', 'completed', 'all'],
+	);
+});
+
+test('切换单个 tab 可见性返回按注册表顺序的新名单', () => {
+	assert.deepEqual(setTaskFilterTabVisible(['core'], 'today', false), [
+		'core',
+		'today',
+	]);
+	assert.deepEqual(setTaskFilterTabVisible(['core', 'today'], 'today', true), [
+		'core',
+	]);
+});
+
+test('激活 tab 不可见时回退到可见列表首项', () => {
+	const visible = resolveVisibleTaskFilterTabs(['core', 'completed']);
+
+	assert.equal(resolveActiveTaskFilterTab('completed', visible), 'today');
+	assert.equal(resolveActiveTaskFilterTab('today', visible), 'today');
 });

@@ -363,6 +363,15 @@ const zhCN = {
 	'settings.projectSort.name': '排序规则',
 	'settings.projectSort.desc':
 		'控制左侧项目列表的排序方式。默认按未完成任务数量从多到少显示。',
+	'settings.heading.taskFilterTabs': '任务列表筛选标签',
+	'settings.taskFilterTabs.desc':
+		'控制任务列表顶部显示哪些筛选标签。至少保留一个；关闭当前标签后，任务列表会自动切换到仍可见的第一个标签。更多标签将在后续版本提供。',
+	'settings.taskFilterTabs.core.desc': '只看被标记为核心任务（★）的任务。',
+	'settings.taskFilterTabs.today.desc': '只看今天创建的任务笔记。',
+	'settings.taskFilterTabs.incomplete.desc':
+		'只看状态为待开始或进行中的任务。',
+	'settings.taskFilterTabs.completed.desc': '只看已完成的任务。',
+	'settings.taskFilterTabs.all.desc': '显示项目内的全部任务。',
 	'settings.heading.hiddenProjects': '隐藏项目列表',
 	'settings.hiddenProjects.desc':
 		'勾选后，对应项目会从左侧项目列表中隐藏。修改后立即生效，并会自动保存。',

@@ -37,6 +37,7 @@ export {
 	updateOutputRootPath,
 	updateOutcomeRootPath,
 	setProjectHidden,
+	updateHiddenTaskFilterTabs,
 	updateTaskTemplateConfig,
 	updateDateTaskDateFormat,
 	updateEnabledTaskCreationTypes,
