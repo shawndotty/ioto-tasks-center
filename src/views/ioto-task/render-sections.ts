@@ -33,6 +33,7 @@ import {
 import { renderChecklistGroup, renderMarkdownChunk } from './render-checklist-card';
 import type {
 	TaskCardDrag,
+	TaskContinuationFold,
 	TaskNoteEditing,
 	TaskNoteFilters,
 	TaskNoteLinks,
@@ -58,6 +59,8 @@ interface RenderSectionOptions {
 	sectionDrag?: TaskSectionDrag;
 	/** 任务卡片拖拽排序（缺省 = 不渲染 grip：只读 / 过滤 / 搜索态） */
 	cardDrag?: TaskCardDrag;
+	/** 续写区折叠控制器（缺省 = 全展开且不渲染箭头） */
+	continuationFold?: TaskContinuationFold;
 }
 
 /** Section 折叠状态的稳定 key（Level + 起始行 + 标题，重排后不会错位）。 */
@@ -232,6 +235,7 @@ export function renderSection(options: RenderSectionOptions): void {
 		recentTaskCount: options.recentTaskCount,
 		searchQuery: options.searchQuery,
 		cardDrag: options.cardDrag,
+		continuationFold: options.continuationFold,
 	});
 }
 
@@ -435,6 +439,8 @@ function renderSectionBody(options: {
 	searchQuery: string;
 	/** 任务卡片拖拽排序（缺省 = 不渲染 grip） */
 	cardDrag?: TaskCardDrag;
+	/** 续写区折叠控制器（缺省 = 全展开且不渲染箭头） */
+	continuationFold?: TaskContinuationFold;
 }): void {
 	const {
 		app,
@@ -449,6 +455,7 @@ function renderSectionBody(options: {
 		recentTaskCount,
 		searchQuery,
 		cardDrag,
+		continuationFold,
 	} = options;
 	const lines = content.split(/\r?\n/);
 	const bodyStartLine =
@@ -560,6 +567,7 @@ function renderSectionBody(options: {
 				continuationLines: continuationByLine,
 				cardDrag,
 				scrollEl,
+				continuationFold,
 			});
 			continue;
 		}

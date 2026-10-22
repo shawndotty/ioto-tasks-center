@@ -25,6 +25,7 @@ import type { EmbeddedEditorHandle } from './embedded-editor';
 import type { SectionTitleEditorHandle } from './task-view-section-title-edit';
 import type { EditingKind } from './task-view-editing-state';
 import type {
+	TaskContinuationFold,
 	TaskNoteEditing,
 	TaskNoteFilters,
 } from './render-note-types';
@@ -53,6 +54,17 @@ export interface TaskViewHost extends Component {
 
 	// ---- 可变状态：数据 / 渲染 ----
 	collapsedSections: Set<string>;
+	/**
+	 * 续写区折叠态（键 = 续写正文哈希，见 `continuation-fold.ts`）。
+	 * **内存真源**；每次装载由 `hydrateContinuationFolds` 按笔记路径从 store 灌回
+	 * （`task-view-fold-store.ts`），`clear()` 只负责把叶子态归零。
+	 */
+	continuationCollapsed: Set<string>;
+	/**
+	 * `setState` 暂存的叶子级折叠键（一次性迁移），由 hydrate 认领后清空。
+	 * `path` = `state.file`，与当前文件不符时丢弃（防叶子复用串态）。
+	 */
+	pendingLeafFolds: { path: string; keys: string[] } | null;
 	lastLoadedText: string;
 	isRendering: boolean;
 	isExporting: boolean;
@@ -185,6 +197,10 @@ export interface TaskViewHost extends Component {
 	syncSelectionClass(): void;
 	reloadFromVault(): Promise<void>;
 	buildEditingController(): TaskNoteEditing;
+	/** 续写区折叠控制器（薄代理；缺省不作为 = 全展开且不渲染箭头）。 */
+	getContinuationFold(): TaskContinuationFold;
+	/** 取走 `setState` 暂存的叶子级折叠键（一次性迁移用）。 */
+	takePendingLeafFolds(): { path: string; keys: string[] } | null;
 
 	// ---- 薄代理方法：聚焦放大 ----
 	toggleZoomCard(line: number): void;

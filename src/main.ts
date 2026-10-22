@@ -80,6 +80,12 @@ import {
 	resolveSearchHost,
 } from './views/iotoTaskView';
 import { probeEmbeddedEditorSupport } from './views/ioto-task/embedded-editor';
+import {
+	createFoldStorage,
+	pruneContinuationFolds,
+	renameContinuationFolds,
+	resolveAppId,
+} from './views/ioto-task/task-view-fold-store';
 import { installItemControlBridge } from './views/ioto-task/item-control-bridge';
 import { registerModEnterHandler } from './views/ioto-task/select-mode-scope';
 import { registerSearchHandler } from './views/ioto-task/search-scope';
@@ -651,6 +657,7 @@ export default class IOTOTasksCenter extends Plugin {
 
 		this.addSettingTab(new IOTOTasksCenterSettingTab(this.app, this));
 		this.registerVaultRefreshEvents();
+		this.registerFoldStoreMaintenance();
 		this.registerViewToggleEvents();
 		this.registerTaskNoteMenuEvent();
 		// 「条目控制」桥接：让 IOTOTask 卡片内联编辑态下的 Option+I 可用
@@ -1052,6 +1059,38 @@ export default class IOTOTasksCenter extends Plugin {
 		this.register(() => removeFloatingToggles(this.app));
 		// 插件加载时已打开的任务笔记 / TaskView 也要立即有按钮。
 		this.scheduleViewToggleSync();
+	}
+
+	/**
+	 * 续写折叠态 store 的两项生命周期维护（[[Plan-20261023-001403]] S4）：
+	 * 笔记重命名跟着搬记录（否则折叠态「丢在旧路径」），以及启动后清掉文件已不存在的死键。
+	 *
+	 * 清理放 `onLayoutReady`：别和首屏装载抢；`appId` 取不到就跳过（只是留死键，不影响折叠）。
+	 */
+	private registerFoldStoreMaintenance(): void {
+		this.registerEvent(
+			this.app.vault.on('rename', (file, oldPath) => {
+				const storage = createFoldStorage(this.app);
+				if (storage) {
+					renameContinuationFolds(storage, oldPath, file.path);
+				}
+			}),
+		);
+		this.app.workspace.onLayoutReady(() => {
+			const storage = createFoldStorage(this.app);
+			const appId = resolveAppId(this.app);
+			if (!storage || !appId || typeof window === 'undefined') {
+				return;
+			}
+			// 🔴 必须先按本库 appId 过滤：同机 localStorage 里同时存在多个库的记录，
+			// 不筛会误删别的库（[[Plan-20261023-001403]] §0.1）。
+			pruneContinuationFolds(
+				storage,
+				appId,
+				Object.keys(window.localStorage),
+				(path) => this.app.vault.getAbstractFileByPath(path) !== null,
+			);
+		});
 	}
 
 	// --- 生命周期：vault 事件注册与刷新 ---

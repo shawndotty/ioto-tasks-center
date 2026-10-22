@@ -168,6 +168,19 @@ export interface TaskCardDrag {
 	): void;
 }
 
+/**
+ * 续写区折叠控制器（由 `IOTOTaskView` 注入；缺省 = 全展开且不渲染箭头）。
+ *
+ * 只做「查状态 / 切换状态」两件事：切换后由实现把结果写回该容器（纯 DOM 类 +
+ * aria，**不重绘**）。缺省语义让旧调用与单测零差异
+ * （[[Plan-20261022-232148]] §0-8）。
+ */
+export interface TaskContinuationFold {
+	isCollapsed(key: string): boolean;
+	/** 切换并把结果写回该容器（纯 DOM 类 + aria；不重绘）。 */
+	toggle(key: string, continuationEl: HTMLElement): void;
+}
+
 /** 链接交互回调（由 `IOTOTaskView` 注入；只读态同样生效）。 */
 export interface TaskNoteLinks {
 	/** 打开双链：`newLeaf` = 核心同款叶子类型（`Keymap.isModEvent` 的结果） */

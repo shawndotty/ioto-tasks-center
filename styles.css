@@ -2430,6 +2430,9 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	--ioto-tv-card-text-start: 27px;
 	/* 拖拽手柄图标热区（[[Research-20261017-103822]] §5.1） */
 	--ioto-tv-grip-size: 18px;
+	/* 续写区折叠箭头热区（[[Plan-20261022-232148]] S5）。与 grip 分属两个入口
+	   （手柄 = 排序，箭头 = 折叠），同列不同高，别混用同一个变量。 */
+	--ioto-tv-cont-fold-size: 20px;
 	/* 单行正文所在行的最小高度（[[Research-20261020-085033]] §3.2(3)）：
 	   取「勾选框高度」而不是 0，常规字号下 max(1lh, 18px) 仍等于 1lh，
 	   不改变单行 / 多行对齐；空正文塌到勾选框高度时手柄也能与勾选框同轴。
@@ -3891,6 +3894,161 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 	margin: 0; /* 进卡片后不再需要负 margin 贴卡 / 额外缩进 */
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
+}
+
+/* ── 续写区折叠（[[Plan-20261022-232148]]）────────────────────────────
+   入口 = 续写区左侧一个 10px 折叠箭头（核心 `right-triangle` 图标 = 朝下 chevron，
+   与核心折叠指示器同形同尺寸），落在卡片左槽位里、与拖拽手柄同列；纯图标、
+   无底色无边框（见下方 `button.` 覆盖块）。折叠后正文收起、原位留一条
+   「续写 · N 行」占位条（第二个展开入口，解决「折回去找不到路」）。
+   容器加 position: relative 只为箭头定位，flex / order / 背景 / 选中态全不变。 */
+.ioto-task-view__card-continuation {
+	position: relative;
+}
+
+.ioto-task-view__continuation-toggle {
+	position: absolute;
+	/* 与 grip 同列：容器左缘距卡片 padding-box 恰好 text-start，
+	   要把盒子中心对到 grip 的列心，就得跨过「整个槽位 + 自身宽度」的一半。 */
+	inset-inline-start: calc(
+		-1 * (var(--ioto-tv-card-text-start) + var(--ioto-tv-cont-fold-size)) / 2
+	);
+	top: 0;
+	width: var(--ioto-tv-cont-fold-size);
+	height: var(--ioto-tv-cont-fold-size);
+	padding: 0;
+	border: none;
+	color: var(--nav-collapse-icon-color, var(--text-faint));
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+}
+
+/* 纯图标按钮：核心 `button:not(.clickable-icon)` 会铺底色 --interactive-normal，
+   `button:hover` / `button:not(.clickable-icon).mobile-tap` 再叠 --interactive-hover。
+   它们分别是 (0,2,1) / (0,1,1) / (0,3,1)，都压过单个类名 (0,1,0) —— 只写
+   `background: transparent` 在基础态就输，hover / 触屏点了更会浮出一整块盒子。
+   这里用 `button.类` 抬到 (0,2,1) 起，逐态覆盖成完全透明。 */
+button.ioto-task-view__continuation-toggle,
+button.ioto-task-view__continuation-toggle:hover,
+button.ioto-task-view__continuation-toggle:active,
+button.ioto-task-view__continuation-toggle:focus-visible,
+button.ioto-task-view__continuation-toggle.mobile-tap {
+	background-color: transparent;
+	background-image: none;
+	border: none;
+	box-shadow: none;
+}
+
+.ioto-task-view__continuation-toggle svg {
+	width: 10px;
+	height: 10px;
+	stroke-width: 4px;
+	transition: transform 100ms ease-in-out;
+	/* 🔴 `right-triangle` 这枚图标（`M3 8L12 17L21 8`）其实是一根**朝下的 chevron**，
+	   不是三角；核心 `.collapse-icon` 用的就是它：0° = 朝下（展开），
+	   `rotate(calc(var(--direction) * -1 * 90deg))` = 朝右（折叠）。
+	   旧写法按「朝右的三角」假设转 +90°，实际得到朝左，方向整个反了。
+	   --direction 是核心给 RTL 的变量（LTR = 1）。 */
+	transform: rotate(0deg);
+}
+
+/* hover 显隐：口径逐字对齐 grip —— 用 opacity 而非 display（保住 tab 序），
+   且只在真有 hover 的设备上收起（触屏没有 hover，箭头必须常显）。 */
+@media (hover: hover) {
+	.ioto-task-view__continuation-toggle {
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 100ms ease-in-out;
+	}
+	/* 内容方向：hover 整张卡（热区 = 整卡，与 grip 一致）、键盘聚焦、
+	   以及折叠态常显（折叠后没有别的入口）。 */
+	.ioto-task-view__card:hover .ioto-task-view__continuation-toggle,
+	.ioto-task-view__continuation-toggle:focus-visible,
+	.ioto-task-view__card-continuation.is-continuation-collapsed
+		.ioto-task-view__continuation-toggle {
+		opacity: 1;
+		pointer-events: auto;
+	}
+}
+
+.ioto-task-view__continuation-toggle:focus-visible {
+	outline: 2px solid var(--ioto-tv-accent);
+	outline-offset: 2px;
+	opacity: 1;
+	pointer-events: auto;
+}
+
+.ioto-task-view__card-continuation.is-continuation-collapsed
+	.ioto-task-view__continuation-toggle
+	svg {
+	/* 折叠：朝右（与核心折叠指示器同一算式，RTL 自动镜像） */
+	transform: rotate(calc(var(--direction, 1) * -90deg));
+}
+
+.ioto-task-view__continuation-summary {
+	display: none;
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+	/* 与折叠箭头「同一行盒」：折叠后容器内只剩这条，箭头是 20px 绝对定位在 top: 0
+	   （移动端 24px），而占位条默认行高只有 1.3（12px 字号 → 15.6px），两者中心
+	   差 ≈2.7px，看上去箭头偏低。把行盒高度取成箭头热区尺寸，文字按半行距自然
+	   居中，两侧中心差降到 <1px（字体 ascent/descent 不对称的残差）；换行时箭头
+	   仍咬住第一行。展开态占位条 display: none，不受影响。
+	   （[[Task View中任务折叠功能]] 条目 5） */
+	line-height: var(--ioto-tv-cont-fold-size);
+	cursor: pointer;
+	user-select: none;
+}
+
+.ioto-task-view__card-continuation.is-continuation-collapsed {
+	cursor: pointer;
+}
+
+.ioto-task-view__card-continuation.is-continuation-collapsed
+	> .ioto-task-view__md {
+	display: none;
+}
+
+.ioto-task-view__card-continuation.is-continuation-collapsed
+	> .ioto-task-view__continuation-summary {
+	display: block;
+}
+
+/* 放大态（单卡编辑面）：强制展开，但**不改**折叠态 —— 纯 CSS 覆盖，退出放大自动回来。
+   🔴 `:not(.is-editing)` 是硬条件：续行编辑态靠 `.is-editing > :not(editor)` 全隐藏，
+   少了它会把只读正文与编辑器同时显示。 */
+.ioto-task-view__card.is-zoomed
+	.ioto-task-view__card-continuation.is-continuation-collapsed:not(.is-editing)
+	> .ioto-task-view__md {
+	display: block;
+}
+
+.ioto-task-view__card.is-zoomed
+	.ioto-task-view__card-continuation.is-continuation-collapsed:not(.is-editing)
+	> .ioto-task-view__continuation-summary {
+	display: none;
+}
+
+/* 放大态隐藏入口：这一面只有「看 / 改内容」的语义（同 grip 在放大态隐藏的口径） */
+.ioto-task-view__card.is-zoomed
+	.ioto-task-view__card-continuation
+	.ioto-task-view__continuation-toggle {
+	display: none;
+}
+
+/* 移动端：没有 hover → 箭头必须常显；热区 24px（grip 是 30px，别把折叠做成同重量）。
+   写在基础规则之后即可（自定义属性无特指度竞争）。 */
+.is-phone .ioto-task-view {
+	--ioto-tv-cont-fold-size: 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ioto-task-view__continuation-toggle,
+	.ioto-task-view__continuation-toggle svg {
+		transition: none;
+	}
 }
 
 .is-phone .ioto-task-view {
@@ -5488,6 +5646,13 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 /* 卡片拖拽手柄：纯交互控件，不入图。克隆宿主离屏不会触发 `:hover`（手柄本就
    `opacity: 0`），这里再显式兜底，避免任何「拍图时指针正悬停」的边角路径。 */
 .ioto-task-view.is-exporting .ioto-task-view__card-drag-handle {
+	display: none;
+}
+
+/* 续写区折叠入口同理：纯交互控件，不入图（折叠态本身已由 `TRANSIENT_CLASSES`
+   摘类还原成展开，这里只兜住「箭头 / 占位条」这两个交互件）。 */
+.ioto-task-view.is-exporting .ioto-task-view__continuation-toggle,
+.ioto-task-view.is-exporting .ioto-task-view__continuation-summary {
 	display: none;
 }
 

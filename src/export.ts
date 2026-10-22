@@ -216,6 +216,7 @@ const TRANSIENT_CLASSES = [
 	'is-zoom-hidden', // 新增：放大时不把「被隐藏的兄弟卡」一起拍进图
 	'is-zoomed', // 新增：还原被抬高的高度
 	'is-section-zoomed', // 「只看本节」：导出仍拍全部章节（与卡片放大同口径）
+	'is-continuation-collapsed', // 续写区折叠：导出图里正文自动可见、占位条自动隐藏
 ];
 
 /** 待删除确认遮罩的类名（整块剔除）。 */

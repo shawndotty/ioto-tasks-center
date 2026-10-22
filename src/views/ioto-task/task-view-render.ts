@@ -147,6 +147,7 @@ export function renderNote(
 			filters: view.filters,
 			recentTaskCount: view.recentTaskCountProvider(),
 			searchQuery: view.searchQuery,
+			continuationFold: view.getContinuationFold(),
 		});
 		// 「只看本节」回填必须早于滚动快照恢复：`captureIotoTaskScroll` 的锚点是
 		// 「第一张底边越过视口顶的卡」，先上 `.is-section-zoomed` 才能让快照与

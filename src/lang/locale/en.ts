@@ -677,6 +677,9 @@ const en = {
 	'view.iotoTaskView.checkboxToggle': 'Toggle task: {0}',
 	'view.iotoTaskView.selectCardHint': 'Click to select, click again to edit',
 	'view.iotoTaskView.continuationEditHint': 'Click to edit the continuation',
+	'view.iotoTaskView.continuationCollapse': 'Collapse continuation',
+	'view.iotoTaskView.continuationExpand': 'Expand continuation',
+	'view.iotoTaskView.continuationCollapsedSummary': 'Continuation · {0} lines',
 	'view.iotoTaskView.selectedHint':
 		'Selected: Enter to edit · Del to delete · ↑↓ to move · Cmd+Enter to toggle · Cmd+↑↓ to jump',
 	'view.iotoTaskView.selectedHintMobile':

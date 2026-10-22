@@ -53,6 +53,7 @@ import {
 	type EditingKind,
 } from './ioto-task/task-view-editing-state';
 import type {
+	TaskContinuationFold,
 	TaskNoteEditing,
 	TaskNoteFilters,
 	TaskNoteLinks,
@@ -108,6 +109,10 @@ import {
 	scheduleListPlay,
 	syncSelectionClass,
 } from './ioto-task/task-view-render';
+import {
+	buildContinuationFoldController,
+	hydrateContinuationFolds,
+} from './ioto-task/task-view-continuation-fold';
 import {
 	applyZoomDom,
 	enterZoom,
@@ -238,6 +243,19 @@ export type { ItemControlBridgeHost } from './ioto-task/task-view-constants';
 
 export class IOTOTaskView extends TextFileView {
 	collapsedSections = new Set<string>();
+	/**
+	 * 续写区折叠态（键 = 续写正文哈希，[[Plan-20261022-232148]] S2）。
+	 * **内存真源**；每次装载由 `hydrateContinuationFolds` 按笔记路径从 store 灌回
+	 * （`task-view-fold-store.ts`，[[Plan-20261023-001403]] S3）。`clear()` 仍负责把
+	 * 叶子态归零，「同一叶子换文件」的串态由 hydrate 的按路径取数挡住。
+	 */
+	continuationCollapsed = new Set<string>();
+	/**
+	 * `state` 里带来的叶子级折叠键，等 hydrate 认领（一次性迁移用）。
+	 * 🔴 不能直接写进 `continuationCollapsed`：`setState` 早于 `loadFile`，随后的
+	 * `setViewData(clear=true)` → `clear()` 会把刚写进去的键擦掉。
+	 */
+	pendingLeafFolds: { path: string; keys: string[] } | null = null;
 	lastLoadedText = '';
 	isRendering = false;
 	/** 见 `TaskViewHost.cancelActiveDrag`：结构化实现接口，需显式声明。 */
@@ -457,6 +475,12 @@ export class IOTOTaskView extends TextFileView {
 		this.zoomLine = null;
 		// 换文件 / 重载不带旧的「只看本节」状态（与 `zoomLine` 同口径）。
 		resetSectionZoomState(this);
+		if (clear) {
+			// `clear()` 已把叶子态归零；此处按笔记路径从 store 灌回
+			// （[[Plan-20261023-001403]] §0.2：必须在唯一一次 `renderNote` 之前完成，
+			// 卡片构建期同步读 `isCollapsed`，不需要第二次渲染）。
+			hydrateContinuationFolds(this);
+		}
 		this.renderNote(data);
 	}
 
@@ -487,6 +511,7 @@ export class IOTOTaskView extends TextFileView {
 		this.data = '';
 		this.lastLoadedText = '';
 		this.collapsedSections.clear();
+		this.continuationCollapsed.clear();
 	}
 
 	onunload(): void {
@@ -510,6 +535,7 @@ export class IOTOTaskView extends TextFileView {
 		return {
 			...super.getState(),
 			collapsedSections: [...this.collapsedSections],
+			continuationCollapsed: [...this.continuationCollapsed],
 		};
 	}
 
@@ -523,6 +549,20 @@ export class IOTOTaskView extends TextFileView {
 						(key): key is string => typeof key === 'string',
 					),
 				);
+			}
+			// 叶子级折叠键**只收不发**：`setState` 早于 `loadFile`，直接写进
+			// `continuationCollapsed` 会被随后的 `setViewData(clear=true)` → `clear()` 擦掉，
+			// 故先存这里，由 `hydrateContinuationFolds` 在装载时认领（[[Plan-20261023-001403]] S2）。
+			const contCollapsed = (state as { continuationCollapsed?: unknown })
+				.continuationCollapsed;
+			if (Array.isArray(contCollapsed)) {
+				const file = (state as { file?: unknown }).file;
+				this.pendingLeafFolds = {
+					path: typeof file === 'string' ? file : '',
+					keys: contCollapsed.filter(
+						(key): key is string => typeof key === 'string',
+					),
+				};
 			}
 		}
 
@@ -606,6 +646,15 @@ export class IOTOTaskView extends TextFileView {
 	syncSelectionClass(): void { syncSelectionClass(this); }
 	async reloadFromVault(): Promise<void> { await reloadFromVault(this); }
 	buildEditingController(): TaskNoteEditing { return buildEditingController(this); }
+	getContinuationFold(): TaskContinuationFold {
+		return buildContinuationFoldController(this);
+	}
+	/** 取走 `setState` 暂存的叶子级折叠键（一次性迁移；见 `pendingLeafFolds`）。 */
+	takePendingLeafFolds(): { path: string; keys: string[] } | null {
+		const pending = this.pendingLeafFolds;
+		this.pendingLeafFolds = null;
+		return pending;
+	}
 	buildLinkController(): TaskNoteLinks { return buildLinkController(this); }
 
 	// ---- 聚焦放大 ----

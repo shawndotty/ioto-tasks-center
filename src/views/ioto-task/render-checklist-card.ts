@@ -26,8 +26,16 @@ import {
 	type CardVisibilityContext,
 } from './task-query-filter';
 import { applySearchHighlight } from './search-highlight';
+import {
+	CONTINUATION_COLLAPSED_CLASS,
+	CONTINUATION_SUMMARY_CLASS,
+	CONTINUATION_TOGGLE_CLASS,
+	continuationFoldKey,
+	shouldForceExpand,
+} from './continuation-fold';
 import type {
 	TaskCardDrag,
+	TaskContinuationFold,
 	TaskNoteEditing,
 } from './render-note-types';
 
@@ -59,6 +67,11 @@ export function renderChecklistGroup(options: {
 	 */
 	cardDrag?: TaskCardDrag;
 	scrollEl?: HTMLElement;
+	/**
+	 * 续写区折叠控制器（缺省 = 全展开且不渲染箭头）。
+	 * 缺省语义让旧调用 / 单测与「折叠前」零差异（[[Plan-20261022-232148]] §0-8）。
+	 */
+	continuationFold?: TaskContinuationFold;
 }): void {
 	const {
 		app,
@@ -72,6 +85,7 @@ export function renderChecklistGroup(options: {
 		continuationLines,
 		cardDrag,
 		scrollEl,
+		continuationFold,
 	} = options;
 	const listEl = bodyEl.createEl('ul', { cls: 'ioto-task-view__checklist' });
 
@@ -214,6 +228,19 @@ export function renderChecklistGroup(options: {
 			if (target.closest('.ioto-task-view__card-editor')) {
 				return;
 			}
+			// 折叠态：整块都是「展开」入口（箭头 / 占位条 / 容器留白一视同仁），
+			// 不能落到下面的「点续行进编辑」分支，否则想展开却进了编辑器。
+			// 🔴 必须在 `.card-continuation` 分支**之前**。
+			const collapsedEl = target.closest<HTMLElement>(
+				`.${CONTINUATION_COLLAPSED_CLASS}`,
+			);
+			if (collapsedEl) {
+				const contKey = collapsedEl.dataset.contKey;
+				if (contKey) {
+					continuationFold?.toggle(contKey, collapsedEl);
+				}
+				return;
+			}
 			// 续行虽已成卡片后代，但它不是任务行（标题编辑器只编辑任务那一行），
 			// 点它进**续行编辑器**，而不是「选中该卡 / 再点进标题编辑」。
 			if (target.closest('.ioto-task-view__card-continuation')) {
@@ -265,6 +292,18 @@ export function renderChecklistGroup(options: {
 		const continuation = continuationMarkdown.get(item.line);
 		if (continuation !== undefined) {
 			const contLines = continuationLines.get(item.line) ?? [];
+			// 折叠态键 = 续写正文哈希（键不含标题：改标题不掉态，改内容自动展开）。
+			const foldKey = continuationFoldKey(continuation);
+			// 缺省控制器 / 强制展开时一律按展开渲染，且不渲染箭头：
+			// 旧调用与只读降级零差异。
+			const foldable = continuationFold !== undefined;
+			const forceExpand = shouldForceExpand({
+				continuation,
+				normalizedQuery: visibilityCtx.normalizedQuery,
+				editing: editing.keepVisibleLine === item.line,
+			});
+			const collapsed =
+				foldable && !forceExpand && continuationFold.isCollapsed(foldKey);
 			const continuationEl = cardEl.createDiv({
 				cls: 'ioto-task-view__card-continuation',
 				attr: {
@@ -275,11 +314,60 @@ export function renderChecklistGroup(options: {
 					'data-cont-end': String(
 						contLines[contLines.length - 1] ?? item.line + 1,
 					),
+					'data-cont-key': foldKey,
+					// 展开态的容器 tooltip（折叠时由 applyContinuationFoldState 换成
+					// 「展开」文案，纯模块不引 i18n）。
+					'data-hint-expanded': editing.enabled
+						? t('view.iotoTaskView.continuationEditHint')
+						: '',
 					title: editing.enabled
 						? t('view.iotoTaskView.continuationEditHint')
 						: '',
 				},
 			});
+			if (collapsed) {
+				continuationEl.addClass(CONTINUATION_COLLAPSED_CLASS);
+			}
+			if (foldable) {
+				// 占位条必须在 `.md` 之前（折叠时它自然成为首行）。
+				const summaryEl = continuationEl.createDiv({
+					cls: CONTINUATION_SUMMARY_CLASS,
+					text: t('view.iotoTaskView.continuationCollapsedSummary', [
+						String(contLines.length),
+					]),
+				});
+				summaryEl.addEventListener('click', (event) => {
+					event.preventDefault();
+					event.stopPropagation();
+					continuationFold?.toggle(foldKey, continuationEl);
+				});
+
+				const labelCollapsed = t('view.iotoTaskView.continuationExpand');
+				const labelExpanded = t('view.iotoTaskView.continuationCollapse');
+				const toggleEl = continuationEl.createEl('button', {
+					cls: CONTINUATION_TOGGLE_CLASS,
+					attr: {
+						type: 'button',
+						'aria-expanded': collapsed ? 'false' : 'true',
+						'aria-label': collapsed ? labelCollapsed : labelExpanded,
+						title: collapsed ? labelCollapsed : labelExpanded,
+						// 两条文案都预先挂在 DOM 上，供纯模块切换（避免纯模块引 i18n）
+						'data-label-collapsed': labelCollapsed,
+						'data-label-expanded': labelExpanded,
+					},
+				});
+				setIcon(toggleEl, 'right-triangle');
+				// 🔴 不 preventDefault 会让焦点落到按钮上，卡片选中态的 ↑↓ / Enter /
+				// Shift+Enter 全部失灵，直到用户再点一次卡片（照抄核心折叠指示器口径）。
+				toggleEl.addEventListener('mousedown', (event) => {
+					event.preventDefault();
+				});
+				toggleEl.addEventListener('click', (event) => {
+					event.preventDefault();
+					event.stopPropagation();
+					continuationFold?.toggle(foldKey, continuationEl);
+				});
+			}
 			const mdEl = continuationEl.createDiv({
 				cls: 'ioto-task-view__md',
 			});

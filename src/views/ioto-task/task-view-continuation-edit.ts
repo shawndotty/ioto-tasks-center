@@ -17,6 +17,11 @@ import {
 } from './commit-task-line';
 import { mountEmbeddedEditor } from './embedded-editor';
 import type { EmbeddedEditorHandle } from './embedded-editor';
+import {
+	CONTINUATION_COLLAPSED_CLASS,
+	continuationFoldKey,
+} from './continuation-fold';
+import { forgetContinuationFold } from './task-view-continuation-fold';
 import type { TaskViewHost } from './task-view-host';
 
 /**
@@ -72,6 +77,14 @@ export async function beginContinuationEdit(
 		return;
 	}
 
+	// 折叠态下进编辑必须先**真展开**：删键（写回视图状态）+ 摘 DOM 类。
+	// 只摘类不删键的话，续行提交走整树重建，会按陈旧键重新折回去
+	// （[[Plan-20261022-232148]] S4-1）。键与渲染层同源（dedent 后的整段正文）。
+	forgetContinuationFold(
+		view,
+		continuationFoldKey(dedentLines(originalLines.join('\n'))),
+	);
+	contEl.removeClass(CONTINUATION_COLLAPSED_CLASS);
 	contEl.addClass('is-editing');
 	// 防御：同一个 .card-continuation 只允许存在一个续行宿主（历史空壳先清掉）
 	contEl
@@ -181,6 +194,8 @@ export async function beginNewContinuationEdit(
 		});
 		createdContainer = true;
 	}
+	// 折叠后新起一条续行同样要展开（正常路径是新建空容器 → 天然不折叠，此处为防御）。
+	contEl.removeClass(CONTINUATION_COLLAPSED_CLASS);
 	contEl.addClass('is-editing');
 	// 防御：同一容器只允许一个编辑器宿主（历史空壳先清掉）
 	contEl

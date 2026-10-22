@@ -31,6 +31,7 @@ import {
 // （Plan-20261009-142035 §七 C-1），本文件只从叶子引类型，不再对外「持有」它们。
 import type {
 	TaskCardDrag,
+	TaskContinuationFold,
 	TaskNoteEditing,
 	TaskNoteFilters,
 	TaskNoteLinks,
@@ -66,6 +67,10 @@ export interface RenderTaskNoteOptions {
 	recentTaskCount?: number;
 	/** 关键词过滤的瞬态输入（**不进 `TaskNoteFilters`**，不落盘）。缺省 = 不过滤。 */
 	searchQuery?: string;
+	/**
+	 * 续写区折叠控制器。缺省 = 全展开且不渲染箭头（旧调用 / 只读降级零差异）。
+	 */
+	continuationFold?: TaskContinuationFold;
 }
 
 export function renderTaskNote(options: RenderTaskNoteOptions): void {

@@ -125,6 +125,8 @@ test('beginContinuationEdit：进前清掉历史空壳；降级时新宿主也�
 		continuationLine: null,
 		continuationHandle: null,
 		continuationHostEl: null,
+		// 折叠态集合（[[Plan-20261022-232148]] S2）：进续行编辑前要按正文哈希删键。
+		continuationCollapsed: new Set(),
 		async commitEdit() {},
 		async commitContinuationEdit() {},
 		async commitSectionEdit() {},
