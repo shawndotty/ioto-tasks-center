@@ -261,9 +261,22 @@ const zhTW = {
 	'modal.confirm': '確認',
 	'modal.cancel': '取消',
 	'settings.heading.main': '任務中心',
-	'settings.tabs.basic': '基礎',
+	'settings.tabs.general': '一般',
+	'settings.tabs.taskList': '任務列表',
+	'settings.tabs.taskView': '任務視圖',
+	'settings.tabs.templates': '範本',
 	'settings.tabs.taskTypes': '任務類型',
-	'settings.tabs.taskTemplates': '任務模板',
+	'settings.subTabs.taskTemplates': '任務範本',
+	'settings.subTabs.batchTemplates': '批次範本',
+	'settings.subTabs.entryTemplates': '條目範本',
+	'settings.heading.dataLocation': '資料位置',
+	'settings.heading.namingRules': '命名規則',
+	'settings.heading.entrypoints': '入口',
+	'settings.heading.listContent': '列表內容',
+	'settings.heading.outlinksBadges': '出鏈與徽章',
+	'settings.heading.taskViewBehavior': '視圖行為',
+	'settings.heading.appearance': '外觀',
+	'settings.heading.search': '搜尋',
 	'settings.tasksRootPath.name': '任務根目錄',
 	'settings.tasksRootPath.desc':
 		'填寫一個 vault 相對路徑。任務中心會將該目錄的一級子資料夾識別為專案列表。',
@@ -284,12 +297,8 @@ const zhTW = {
 	'settings.projectCenterEntry.desc':
 		'可透過命令面板執行「打開專案中心視圖」，也可以在這裡直接打開專案中心。',
 	'settings.projectCenterEntry.button': '打開專案中心',
-	'settings.taskListBehavior.name': '任務列表行為',
-	'settings.taskListBehavior.desc':
-		'右側僅顯示目前專案目錄下的一級 Markdown 檔案。點擊任務項會在任務中心右側固定 pane 中打開對應檔案。',
-	'settings.autoRefresh.name': '自動重新整理',
-	'settings.autoRefresh.desc':
-		'當 {0} 目錄下發生建立、刪除、重新命名或內容修改時，已打開的任務中心視圖會自動重新整理。',
+	'settings.taskList.intro':
+		'右側僅顯示目前專案目錄下的一級 Markdown 檔案。點擊任務項會在任務中心右側固定 pane 中打開對應檔案。當 {0} 目錄下發生建立、刪除、重新命名或內容修改時，已打開的任務中心視圖會自動重新整理。',
 	'settings.heading.taskCreation': '任務建立',
 	'settings.enabledTaskTypes.name': '可建立的任務類型',
 	'settings.enabledTaskTypes.desc':
@@ -301,7 +310,6 @@ const zhTW = {
 	'settings.dateTaskFormat.name': '日期任務日期格式',
 	'settings.dateTaskFormat.desc':
 		'支援 Moment/Day.js 風格格式，例如 {0}、YYYY[年]M[月]D[日]、HH:mm。僅空白輸入會回退為預設值；若格式化結果包含檔名非法字元，會自動替換為 -。',
-	'settings.heading.taskOutlinks': '任務出鏈計數',
 	'settings.taskOutlinks.show.name': '顯示任務出鏈計數',
 	'settings.taskOutlinks.show.desc':
 		'在任務列表中顯示每個任務筆記的出鏈數量，並按輸入/輸出/成果根目錄分類統計。',
@@ -319,12 +327,10 @@ const zhTW = {
 		'設定子任務和任務出鏈 Badge 使用多彩配色或單色背景。',
 	'settings.taskLinkBadges.backgroundMode.multicolor': '多彩配色',
 	'settings.taskLinkBadges.backgroundMode.monochrome': '單色背景',
-	'settings.heading.taskTitle': '任務名稱',
 	'settings.taskTitle.showProjectName.name':
 		'在任務列表中顯示任務筆記中的專案名稱',
 	'settings.taskTitle.showProjectName.desc':
 		'關閉時，任務列表會隱藏任務檔名開頭的「專案名-」前綴，例如「IOTO Task Center-2026-10-18」顯示為「2026-10-18」。只影響顯示，不改動檔名；搜尋與排序仍使用完整名稱。',
-	'settings.heading.priority': '優先級',
 	'settings.priority.colorTaskTitle.name': '任務標題使用優先級顏色',
 	'settings.priority.colorTaskTitle.desc':
 		'讓設定了 Priority 的任務標題使用對應優先級 Badge 的顏色，不顯示優先級 Badge 時也能看出任務優先級。',
@@ -333,7 +339,6 @@ const zhTW = {
 		'在任務清單上方顯示常駐內聯搜尋框（輸入即篩選），或使用舊版搜尋對話框。',
 	'settings.taskSearchEntryMode.inline': '內聯欄位（推薦）',
 	'settings.taskSearchEntryMode.modal': '搜尋對話框',
-	'settings.heading.taskView': 'IOTOTask 檢視',
 	'settings.useIOTOTaskViewAsDefault.name':
 		'在任務中心開啟任務筆記時，預設使用IOTO任務檢視',
 	'settings.useIOTOTaskViewAsDefault.desc':
@@ -349,7 +354,6 @@ const zhTW = {
 	'settings.appearanceStyle.simple': '簡潔（Simple）',
 	'settings.appearanceStyle.card': '卡片（經典）',
 	'settings.appearanceStyle.morandi': '莫蘭迪（護眼）',
-	'settings.heading.subtasks': '子任務',
 	'settings.subtasks.showCount.name': '顯示子任務數量',
 	'settings.subtasks.showCount.desc':
 		'在任務列表中顯示每個任務的直接子任務數量，並在懸浮時顯示子任務列表。',
@@ -446,7 +450,6 @@ const zhTW = {
 	'modal.newTask.desc': '請輸入新任務檔案的名稱。',
 	'modal.taskSettings.priority.none': '未設定',
 	'command.batchCreateTasksFromTemplate': '根據範本批次建立任務',
-	'settings.tabs.batchTemplates': '批次範本',
 	'settings.batchTemplates.heading': '批次任務範本',
 	'settings.batchTemplates.enabled.name': '啟用批次範本',
 	'settings.batchTemplates.enabled.desc':
@@ -485,7 +488,6 @@ const zhTW = {
 	'modal.batchSelect.title': '選擇批次範本',
 	'modal.batchSelect.desc': '選擇一個範本，在目前專案下批次建立任務。',
 	'modal.batchSelect.empty': '暫無可用範本，請先在設定中配置。',
-	'settings.tabs.entryTemplates': '條目範本',
 	'settings.entryTemplates.heading': '任務條目範本',
 	'settings.entryTemplates.enabled.name': '啟用條目範本',
 	'settings.entryTemplates.enabled.desc':

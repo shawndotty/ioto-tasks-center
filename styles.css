@@ -1,22 +1,147 @@
-.settings-tabs {
+/* ===== 设置页标签条：一级「下划线」/ 二级「胶囊」 =====
+   全部规则都收敛到 .ioto-tasks-center-tab-page 之下。ioto-settings 用的是同一组
+   全局类名（.settings-tabs / .settings-tab），不限定作用域就会变成「谁后加载谁生效」。
+   自定义属性沿 DOM 继承，两级标签条都是 .ioto-tasks-center-tab-page 的后代，
+   一处定义即可同时驱动「标签条自身尺寸」与「二级吸附线」。 */
+.ioto-tasks-center-tab-page {
+    --itc-tab-pad-y: 8px;      /* .settings-tab 上下内边距 */
+    --itc-tab-underline: 2px;  /* 一级选中下划线（未选中为透明占位） */
+    --itc-tab-line: 1.3;       /* .settings-tab 行高（= 原生 --line-height-tight） */
+    --itc-tabs-border: 1px;    /* .settings-tabs 下分隔线 */
+    /* 一级标签条总高 = 上下内边距 + 下划线 + 分隔线 + 文本行盒（行高 × 字号） */
+    --itc-l1-tabbar-height: calc(
+        2 * var(--itc-tab-pad-y) + var(--itc-tab-underline) + var(--itc-tabs-border) +
+            var(--itc-tab-line) * var(--font-ui-medium)
+    );
+}
+
+.ioto-tasks-center-tab-page .settings-tabs {
     display: flex;
-    border-bottom: 1px solid var(--background-modifier-border);
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    border-bottom: var(--itc-tabs-border) solid var(--background-modifier-border);
     margin-bottom: 1em;
 }
 
-.settings-tab {
-    padding: 8px 16px;
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
+.ioto-tasks-center-tab-page .settings-tabs::-webkit-scrollbar {
+    display: none;
 }
 
-.settings-tab.active {
+.ioto-tasks-center-tab-page .settings-tab {
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: var(--itc-tab-pad-y) 16px;
+    line-height: var(--itc-tab-line);
+    cursor: pointer;
+    border-bottom: var(--itc-tab-underline) solid transparent;
+}
+
+.ioto-tasks-center-tab-page .settings-tab.active {
     border-bottom-color: var(--interactive-accent);
     color: var(--interactive-accent);
 }
 
-.settings-tab:hover {
+.ioto-tasks-center-tab-page .settings-tab:hover {
     color: var(--text-accent);
+}
+
+/* ===== 二级标签：胶囊（页内分区用弱化样式，与一级的「大板块」区分） =====
+   用子代选择器精确命中二级：二级标签条是 .settings-content 的直接子元素，
+   一级标签条不是，天然不受影响。 */
+.ioto-tasks-center-tab-page .settings-content > .settings-tabs {
+    border-bottom: none;
+    /* 底槽色要比设置项背景（原生 --setting-items-background）深一档：
+       很多主题把 --background-primary-alt 与 --background-secondary 映射成同色，
+       旧写法会让吸附后的胶囊条与设置项卡片糊成一片。 */
+    background-color: var(--background-secondary-alt, var(--background-secondary));
+    /* 1px 细环保证跨主题有硬边界；用 box-shadow 而非 border：不改变盒尺寸，
+       不影响 --itc-l1-tabbar-height 推算出的吸附几何。 */
+    box-shadow: 0 0 0 1px var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    padding: 2px;
+    gap: 2px;
+    margin-bottom: 0.75em;
+}
+
+.ioto-tasks-center-tab-page .settings-content > .settings-tabs > .settings-tab {
+    font-size: 0.85em;
+    color: var(--text-muted);
+    padding: 5px 12px;
+    border-bottom: none;
+    border-radius: var(--radius-s);
+}
+
+.ioto-tasks-center-tab-page
+    .settings-content
+    > .settings-tabs
+    > .settings-tab:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal); /* 二级 hover 不变 accent，避免与选中态抢语义 */
+}
+
+.ioto-tasks-center-tab-page
+    .settings-content
+    > .settings-tabs
+    > .settings-tab.active {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-bottom: none;
+}
+
+/* ===== 吸顶：一级贴内容区顶部，二级贴一级标签条正下方 =====
+   二级吸附线 = 一级吸附线 + 一级标签条高度，两层滚动时严丝合缝。
+   z-index 必须 ≥ 1：设置行是 position: relative（app.css），z-index 为 0
+   时滚动中的设置行会盖住标签条；同时低于 --layer-modal(50)，不影响其它弹层。 */
+.ioto-tasks-center-tab-page > .settings-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: inherit; /* 跟随 .vertical-tab-content 的实际背景 */
+    margin-bottom: 10px;
+}
+
+.ioto-tasks-center-tab-page > .settings-content > .settings-tabs {
+    position: sticky;
+    top: var(--itc-l1-tabbar-height);
+    z-index: 1;
+}
+
+/* 前提：Chromium 里吸附线 = 滚动容器 padding-top + top。Obsidian 给
+   .vertical-tab-content 加了 48px padding-top，会把吸附线整体压下 48px，
+   标签条便「原地悬浮」不随内容滚动。所以把这份留白从容器 padding 挪到
+   首个可见子元素（顶部「任务中心」标题行）的 margin 上。 */
+.vertical-tab-content.ioto-tasks-center-tab-page {
+    padding-top: 0;
+}
+
+.ioto-tasks-center-tab-page > .setting-item:first-child {
+    margin-top: var(--size-4-12); /* = 原容器 padding-top，静止时视觉不变 */
+}
+
+/* 手机端：settings header 是绝对定位悬浮层（高 = 安全区 + 48px），
+   吸附线必须下移，否则标签条会被 header 整段盖住；顶部留白同理改由子元素 margin 提供。
+   注意不要引用 --modal-header-height：其默认值为 auto，会让 sticky 静默失效。 */
+.is-phone .modal.mod-sidebar-layout .modal-content
+    .vertical-tab-content.ioto-tasks-center-tab-page {
+    padding-top: 0;
+}
+
+.is-phone .ioto-tasks-center-tab-page > .setting-item:first-child {
+    margin-top: calc(
+        var(--safe-area-inset-top, 0px) + var(--size-4-12) + var(--size-4-4)
+    );
+}
+
+.is-phone .ioto-tasks-center-tab-page > .settings-tabs {
+    top: calc(var(--safe-area-inset-top, 0px) + var(--size-4-12));
+}
+
+.is-phone .ioto-tasks-center-tab-page > .settings-content > .settings-tabs {
+    top: calc(
+        var(--safe-area-inset-top, 0px) + var(--size-4-12) + var(--itc-l1-tabbar-height)
+    );
 }
 
 .ioto-tasks-center-view {

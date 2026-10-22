@@ -1,16 +1,15 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
-import { t } from './lang/helpter';
+import { t, type TranslationKey } from './lang/helpter';
 // `IOTOTasksCenter` 在本文件**只作类型使用**（`IOTOTasksCenterSettingTab.plugin` 的注解）。
 // 必须保持 `import type`：否则 `settings → main` 会成为**值级**反向边，与 `main → settings`
 // 构成唯一的值级环（值图上实测 11 条环共此一根因，见 Plan-20261009-142035 §六.B.4/§十一）。
 import type IOTOTasksCenter from './main';
-import { TabbedSettings } from './ui/tabbed-settings';
-import { renderBasicDisplaySection } from './ui/settings-tab/basic-display-section';
-import { renderBasicGeneralSection } from './ui/settings-tab/basic-general-section';
-import { renderBatchTemplateSection } from './ui/settings-tab/batch-templates-section';
-import { renderEntryTemplateSection } from './ui/settings-tab/entry-templates-section';
-import { renderTaskTemplatesSection } from './ui/settings-tab/task-templates-section';
+import { TabbedSettings, resetTabInstanceCounter } from './ui/tabbed-settings';
+import { renderGeneralSection } from './ui/settings-tab/general-section';
+import { renderTaskListSection } from './ui/settings-tab/task-list-section';
 import { renderTaskTypesSection } from './ui/settings-tab/task-types-section';
+import { renderTaskViewSection } from './ui/settings-tab/task-view-section';
+import { renderTemplatesSection } from './ui/settings-tab/templates-section';
 
 // 公共 API barrel：保持外部 `from './settings'` 引用不变。
 export type {
@@ -85,41 +84,59 @@ export class IOTOTasksCenterSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 
 		containerEl.empty();
+		// CSS 作用域锚点：标签条样式全部挂在 .ioto-tasks-center-tab-page 之下，
+		// 避免与 ioto-settings 等插件的同名全局类 .settings-tabs 争加载顺序。
+		containerEl.addClass('ioto-tasks-center-tab-page');
 
 		new Setting(containerEl)
 			.setName(t('settings.heading.main'))
 			.setHeading();
 
-		const tabbedSettings = new TabbedSettings(containerEl);
+		resetTabInstanceCounter();
 
-		tabbedSettings.addTab(t('settings.tabs.basic'), (containerEl) => {
-			renderBasicGeneralSection(containerEl, this.plugin);
-			renderBasicDisplaySection(containerEl, this.plugin);
-		});
-
-		tabbedSettings.addTab(t('settings.tabs.taskTypes'), (containerEl) => {
-			renderTaskTypesSection(containerEl, this.plugin);
-		});
-
-		tabbedSettings.addTab(
-			t('settings.tabs.taskTemplates'),
-			(containerEl) => {
-				renderTaskTemplatesSection(containerEl, this.app, this.plugin);
-			},
+		const tabbedSettings = new TabbedSettings(
+			containerEl,
+			'ioto-tasks-center-root',
 		);
 
-		tabbedSettings.addTab(
-			t('settings.tabs.batchTemplates'),
-			(containerEl) => {
-				renderBatchTemplateSection(containerEl, this.app, this.plugin);
+		const configs: Array<{
+			titleKey: TranslationKey;
+			render: (contentEl: HTMLElement) => void;
+		}> = [
+			{
+				titleKey: 'settings.tabs.general',
+				render: (contentEl) => {
+					renderGeneralSection(contentEl, this.plugin);
+				},
 			},
-		);
+			{
+				titleKey: 'settings.tabs.taskList',
+				render: (contentEl) => {
+					renderTaskListSection(contentEl, this.plugin);
+				},
+			},
+			{
+				titleKey: 'settings.tabs.taskView',
+				render: (contentEl) => {
+					renderTaskViewSection(contentEl, this.plugin);
+				},
+			},
+			{
+				titleKey: 'settings.tabs.templates',
+				render: (contentEl) => {
+					renderTemplatesSection(contentEl, this.app, this.plugin);
+				},
+			},
+			{
+				titleKey: 'settings.tabs.taskTypes',
+				render: (contentEl) => {
+					renderTaskTypesSection(contentEl, this.plugin);
+				},
+			},
+		];
 
-		tabbedSettings.addTab(
-			t('settings.tabs.entryTemplates'),
-			(containerEl) => {
-				renderEntryTemplateSection(containerEl, this.app, this.plugin);
-			},
-		);
+		for (const config of configs) {
+			tabbedSettings.addTab(t(config.titleKey), config.render);
+		}
 	}
 }

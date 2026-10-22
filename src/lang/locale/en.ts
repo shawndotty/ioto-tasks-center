@@ -281,9 +281,22 @@ const en = {
 	'modal.confirm': 'Confirm',
 	'modal.cancel': 'Cancel',
 	'settings.heading.main': 'Tasks center',
-	'settings.tabs.basic': 'Basic',
+	'settings.tabs.general': 'General',
+	'settings.tabs.taskList': 'Task list',
+	'settings.tabs.taskView': 'Task view',
+	'settings.tabs.templates': 'Templates',
 	'settings.tabs.taskTypes': 'Task Types',
-	'settings.tabs.taskTemplates': 'Task Templates',
+	'settings.subTabs.taskTemplates': 'Task templates',
+	'settings.subTabs.batchTemplates': 'Batch templates',
+	'settings.subTabs.entryTemplates': 'Entry templates',
+	'settings.heading.dataLocation': 'Data location',
+	'settings.heading.namingRules': 'Naming',
+	'settings.heading.entrypoints': 'Entry points',
+	'settings.heading.listContent': 'List content',
+	'settings.heading.outlinksBadges': 'Outlinks and badges',
+	'settings.heading.taskViewBehavior': 'View behavior',
+	'settings.heading.appearance': 'Appearance',
+	'settings.heading.search': 'Search',
 	'settings.tasksRootPath.name': 'Tasks root path',
 	'settings.tasksRootPath.desc':
 		'Enter a vault-relative path. First-level folders under this directory are treated as projects.',
@@ -304,12 +317,8 @@ const en = {
 	'settings.projectCenterEntry.desc':
 		'Open the project center to manage projects, categories, dates, and archived status.',
 	'settings.projectCenterEntry.button': 'Open project center',
-	'settings.taskListBehavior.name': 'Task list behavior',
-	'settings.taskListBehavior.desc':
-		'Only first-level Markdown files in the current project are shown on the right. Clicking a task opens it in the pinned pane on the right side of the tasks center.',
-	'settings.autoRefresh.name': 'Auto refresh',
-	'settings.autoRefresh.desc':
-		'When files under {0} are created, deleted, renamed, or modified, open tasks center views refresh automatically.',
+	'settings.taskList.intro':
+		'Only first-level Markdown files in the current project are shown on the right. Clicking a task opens it in the pinned pane on the right side of the tasks center. When files under {0} are created, deleted, renamed, or modified, open tasks center views refresh automatically.',
 	'settings.heading.taskCreation': 'Task creation',
 	'settings.enabledTaskTypes.name': 'Enabled task types',
 	'settings.enabledTaskTypes.desc':
@@ -321,7 +330,6 @@ const en = {
 	'settings.dateTaskFormat.name': 'Date task date format',
 	'settings.dateTaskFormat.desc':
 		'Supports Moment/Day.js patterns such as {0}, YYYY[year]M[month]D[day], and HH:mm. Only blank input falls back to the default, and filename-illegal characters in the output are replaced with -.',
-	'settings.heading.taskOutlinks': 'Task outlink counters',
 	'settings.taskOutlinks.show.name': 'Show task outlink counters',
 	'settings.taskOutlinks.show.desc':
 		'Display counts of outgoing links from each task note, grouped by input/output/outcome roots.',
@@ -340,12 +348,10 @@ const en = {
 		'Choose multicolor or monochrome backgrounds for subtask and task outlink badges.',
 	'settings.taskLinkBadges.backgroundMode.multicolor': 'Multicolor',
 	'settings.taskLinkBadges.backgroundMode.monochrome': 'Monochrome',
-	'settings.heading.taskTitle': 'Task names',
 	'settings.taskTitle.showProjectName.name':
 		'Show the project name in task names',
 	'settings.taskTitle.showProjectName.desc':
 		'When off, the task list hides the leading "project name-" prefix, so "IOTO Task Center-2026-10-18" is shown as "2026-10-18". Display only; file names are unchanged, and search/sorting still use the full name.',
-	'settings.heading.priority': 'Priority',
 	'settings.priority.colorTaskTitle.name': 'Color task title by priority',
 	'settings.priority.colorTaskTitle.desc':
 		'Color the title of tasks that have a Priority with the matching priority badge color, so priority stays visible even when the badge is hidden.',
@@ -354,7 +360,6 @@ const en = {
 		'Show a persistent inline search field above the task list (filters as you type), or use the legacy search dialog.',
 	'settings.taskSearchEntryMode.inline': 'Inline field (recommended)',
 	'settings.taskSearchEntryMode.modal': 'Search dialog',
-	'settings.heading.taskView': 'IOTOTask view',
 	'settings.useIOTOTaskViewAsDefault.name':
 		'Open task notes from Task Center in the IOTO Task View by default',
 	'settings.useIOTOTaskViewAsDefault.desc':
@@ -370,7 +375,6 @@ const en = {
 	'settings.appearanceStyle.simple': 'Simple',
 	'settings.appearanceStyle.card': 'Card (classic)',
 	'settings.appearanceStyle.morandi': 'Morandi (low-glare)',
-	'settings.heading.subtasks': 'Subtasks',
 	'settings.subtasks.showCount.name': 'Show subtask count',
 	'settings.subtasks.showCount.desc':
 		'Show direct subtask counts in the task list and display subtasks in a hover popover.',
@@ -486,7 +490,6 @@ const en = {
 	'modal.newTask.desc': 'Please enter a name for the new task file.',
 	'modal.taskSettings.priority.none': 'None',
 	'command.batchCreateTasksFromTemplate': 'Batch create tasks from template',
-	'settings.tabs.batchTemplates': 'Batch Templates',
 	'settings.batchTemplates.heading': 'Batch Task Templates',
 	'settings.batchTemplates.enabled.name': 'Enable batch templates',
 	'settings.batchTemplates.enabled.desc':
@@ -529,7 +532,6 @@ const en = {
 		'Choose a template to batch-create tasks under the current project.',
 	'modal.batchSelect.empty':
 		'No templates available. Please configure one in settings first.',
-	'settings.tabs.entryTemplates': 'Entry Templates',
 	'settings.entryTemplates.heading': 'Task Entry Templates',
 	'settings.entryTemplates.enabled.name': 'Enable entry templates',
 	'settings.entryTemplates.enabled.desc':

@@ -260,9 +260,22 @@ const zhCN = {
 	'modal.confirm': '确认',
 	'modal.cancel': '取消',
 	'settings.heading.main': '任务中心',
-	'settings.tabs.basic': '基础',
+	'settings.tabs.general': '常规',
+	'settings.tabs.taskList': '任务列表',
+	'settings.tabs.taskView': '任务视图',
+	'settings.tabs.templates': '模板',
 	'settings.tabs.taskTypes': '任务类型',
-	'settings.tabs.taskTemplates': '任务模板',
+	'settings.subTabs.taskTemplates': '任务模板',
+	'settings.subTabs.batchTemplates': '批量模板',
+	'settings.subTabs.entryTemplates': '条目模板',
+	'settings.heading.dataLocation': '数据位置',
+	'settings.heading.namingRules': '命名规则',
+	'settings.heading.entrypoints': '入口',
+	'settings.heading.listContent': '列表内容',
+	'settings.heading.outlinksBadges': '出链与徽章',
+	'settings.heading.taskViewBehavior': '视图行为',
+	'settings.heading.appearance': '外观',
+	'settings.heading.search': '搜索',
 	'settings.tasksRootPath.name': '任务根目录',
 	'settings.tasksRootPath.desc':
 		'填写一个 vault 相对路径。任务中心会将该目录的一级子文件夹识别为项目列表。',
@@ -283,12 +296,8 @@ const zhCN = {
 	'settings.projectCenterEntry.desc':
 		'可通过命令面板执行“打开项目中心视图”，也可以在这里直接打开项目中心。',
 	'settings.projectCenterEntry.button': '打开项目中心',
-	'settings.taskListBehavior.name': '任务列表行为',
-	'settings.taskListBehavior.desc':
-		'右侧仅显示当前项目目录下的一级 Markdown 文件。点击任务项会在任务中心右侧固定 pane 中打开对应文件。',
-	'settings.autoRefresh.name': '自动刷新',
-	'settings.autoRefresh.desc':
-		'当 {0} 目录下发生创建、删除、重命名或内容修改时，已打开的任务中心视图会自动刷新。',
+	'settings.taskList.intro':
+		'右侧仅显示当前项目目录下的一级 Markdown 文件。点击任务项会在任务中心右侧固定 pane 中打开对应文件。当 {0} 目录下发生创建、删除、重命名或内容修改时，已打开的任务中心视图会自动刷新。',
 	'settings.heading.taskCreation': '任务创建',
 	'settings.enabledTaskTypes.name': '可创建的任务类型',
 	'settings.enabledTaskTypes.desc':
@@ -300,7 +309,6 @@ const zhCN = {
 	'settings.dateTaskFormat.name': '日期任务日期格式',
 	'settings.dateTaskFormat.desc':
 		'支持 Moment/Day.js 风格格式，例如 {0}、YYYY[年]M[月]D[日]、HH:mm。仅空白输入会回退为默认值；若格式化结果包含文件名非法字符，会自动替换为 -。',
-	'settings.heading.taskOutlinks': '任务出链计数',
 	'settings.taskOutlinks.show.name': '显示任务出链计数',
 	'settings.taskOutlinks.show.desc':
 		'在任务列表中显示每个任务笔记的出链数量，并按输入/输出/成果根目录分类统计。',
@@ -318,12 +326,10 @@ const zhCN = {
 		'设置子任务和任务出链 Badge 使用多彩配色或单色背景。',
 	'settings.taskLinkBadges.backgroundMode.multicolor': '多彩配色',
 	'settings.taskLinkBadges.backgroundMode.monochrome': '单色背景',
-	'settings.heading.taskTitle': '任务名称',
 	'settings.taskTitle.showProjectName.name':
 		'在任务列表中显示任务笔记中的项目名',
 	'settings.taskTitle.showProjectName.desc':
 		'关闭时，任务列表会隐藏任务文件名开头的「项目名-」前缀，例如「IOTO Task Center-2026-10-18」显示为「2026-10-18」。只影响显示，不改动文件名；搜索与排序仍使用完整名称。',
-	'settings.heading.priority': '优先级',
 	'settings.priority.colorTaskTitle.name': '任务标题使用优先级颜色',
 	'settings.priority.colorTaskTitle.desc':
 		'让设置了 Priority 的任务标题使用对应优先级 Badge 的颜色，不显示优先级 Badge 时也能看出任务优先级。',
@@ -332,7 +338,6 @@ const zhCN = {
 		'在任务列表上方显示常驻内联搜索框（输入即筛选），或使用旧版搜索对话框。',
 	'settings.taskSearchEntryMode.inline': '内联字段（推荐）',
 	'settings.taskSearchEntryMode.modal': '搜索对话框',
-	'settings.heading.taskView': 'IOTOTask 视图',
 	'settings.useIOTOTaskViewAsDefault.name':
 		'在任务中心打开任务笔记时，默认使用IOTO任务视图',
 	'settings.useIOTOTaskViewAsDefault.desc':
@@ -348,7 +353,6 @@ const zhCN = {
 	'settings.appearanceStyle.simple': '简洁（Simple）',
 	'settings.appearanceStyle.card': '卡片（经典）',
 	'settings.appearanceStyle.morandi': '莫兰迪（护眼）',
-	'settings.heading.subtasks': '子任务',
 	'settings.subtasks.showCount.name': '显示子任务数量',
 	'settings.subtasks.showCount.desc':
 		'在任务列表中显示每个任务的直接子任务数量，并在悬浮时展示子任务列表。',
@@ -445,7 +449,6 @@ const zhCN = {
 	'modal.newTask.desc': '请输入新任务文件的名称。',
 	'modal.taskSettings.priority.none': '未设置',
 	'command.batchCreateTasksFromTemplate': '根据模板批量创建任务',
-	'settings.tabs.batchTemplates': '批量模板',
 	'settings.batchTemplates.heading': '批量任务模板',
 	'settings.batchTemplates.enabled.name': '启用批量模板',
 	'settings.batchTemplates.enabled.desc':
@@ -484,7 +487,6 @@ const zhCN = {
 	'modal.batchSelect.title': '选择批量模板',
 	'modal.batchSelect.desc': '选择一个模板，在当前项目下批量创建任务。',
 	'modal.batchSelect.empty': '暂无可用模板，请先在设置中配置。',
-	'settings.tabs.entryTemplates': '条目模板',
 	'settings.entryTemplates.heading': '任务条目模板',
 	'settings.entryTemplates.enabled.name': '启用条目模板',
 	'settings.entryTemplates.enabled.desc':
