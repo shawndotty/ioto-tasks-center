@@ -220,6 +220,9 @@ export interface TaskViewHost extends Component {
 	/** 同级任务互换（[[Plan-20261014-194115]] §4.4）：与上 / 下一个同级兄弟整块对调。 */
 	canSwapSelectedTask(direction: 'prev' | 'next'): boolean;
 	swapSelectedTask(direction: 'prev' | 'next'): Promise<void>;
+	/** 条目 pin 切换（[[Plan-20261022-200135]] S4）：给选中卡加 / 去 `#ioto/pin`。 */
+	canToggleSelectedTaskPin(): boolean;
+	toggleSelectedTaskPin(): Promise<void>;
 
 	// ---- 薄代理方法：内联编辑（标题） ----
 	beginEdit(line: number, caretOffset?: number | null): Promise<void>;

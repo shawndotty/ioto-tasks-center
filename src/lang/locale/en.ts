@@ -652,6 +652,7 @@ const en = {
 	'command.addTask': 'Add task in IOTO task view',
 	'command.swapWithPrevTask': 'Swap with previous sibling task',
 	'command.swapWithNextTask': 'Swap with next sibling task',
+	'command.toggleTaskPin': 'Toggle pin on selected task',
 	'command.searchTaskView': 'Search in task view',
 	'command.exportTaskViewImage': 'Export task view as image',
 	'command.copyTaskViewImage': 'Copy task view image to clipboard',
@@ -742,6 +743,9 @@ const en = {
 	'view.iotoTaskView.badge.repeatHint': 'Runs every time; stays unchecked',
 	'view.iotoTaskView.badge.lite': 'Lite',
 	'view.iotoTaskView.badge.liteHint': 'Skip skill, project context and summaries',
+	'view.iotoTaskView.badge.pin': 'Pinned',
+	'view.iotoTaskView.badge.pinHint':
+		'Stays visible under "Recent tasks"; does not use up the N quota',
 	'view.iotoTaskView.cardActions.insertOutgoingLink': 'Insert outgoing link',
 	'view.iotoTaskView.cardActions.editItemControls': 'Edit item controls',
 	'view.iotoTaskView.cardActions.zoomIn': 'Zoom in',
@@ -755,6 +759,9 @@ const en = {
 		'The file changed during editing; this change was discarded.',
 	'notice.iotoTaskView.swapNoPrev': 'Already the first sibling task.',
 	'notice.iotoTaskView.swapNoNext': 'Already the last sibling task.',
+	'notice.iotoTaskView.pinAdded':
+		'Pinned — stays visible in the recent-only view.',
+	'notice.iotoTaskView.pinRemoved': 'Unpinned.',
 	'notice.iotoTaskView.inlineEditUnavailable':
 		'Inline editing is unavailable in this Obsidian version. Edit in Markdown instead.',
 	'notice.iotoTaskView.bodyMultilineRejected':

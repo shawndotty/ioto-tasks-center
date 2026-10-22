@@ -4430,6 +4430,7 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 .ioto-task-view.is-glass .ioto-task-view__badge[data-kind="fanout"]  { color: #f0abfc; }
 .ioto-task-view.is-glass .ioto-task-view__badge[data-kind="repeat"]  { color: #fbbf24; }
 .ioto-task-view.is-glass .ioto-task-view__badge[data-kind="lite"]    { color: #86efac; }
+.ioto-task-view.is-glass .ioto-task-view__badge[data-kind="pin"]     { color: #fb7185; }
 
 /* 主题适配 / 降级 / 移动端 */
 /* 浅色主题：玻璃面提高不透明度、光斑降强度，保证文字对比度 */
@@ -4967,6 +4968,7 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 .ioto-task-view.is-simple .ioto-task-view__badge[data-kind="fanout"]  { --ink: #c026d3; }
 .ioto-task-view.is-simple .ioto-task-view__badge[data-kind="repeat"]  { --ink: #b45309; }
 .ioto-task-view.is-simple .ioto-task-view__badge[data-kind="lite"]    { --ink: #15803d; }
+.ioto-task-view.is-simple .ioto-task-view__badge[data-kind="pin"]     { --ink: #be123c; }
 
 /* 深浅自适应：深色下画布收一点混比、选中态提高 accent alpha（暗底低 alpha 不够醒目） */
 .theme-dark .ioto-task-view.is-simple {
@@ -5065,6 +5067,7 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 	--ioto-tv-m-ink-fanout: #B5655A;
 	--ioto-tv-m-ink-repeat: #B08968;
 	--ioto-tv-m-ink-lite: #A08FA8;
+	--ioto-tv-m-ink-pin: #B0767E;
 
 	background: var(--background-secondary);
 }
@@ -5105,6 +5108,7 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 	--ioto-tv-m-ink-fanout: #C97B6E;
 	--ioto-tv-m-ink-repeat: #C9A484;
 	--ioto-tv-m-ink-lite: #B9A7C0;
+	--ioto-tv-m-ink-pin: #C79AA0;
 }
 
 /* 画布 / Section / 表头 */
@@ -5285,6 +5289,7 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 .ioto-task-view.is-morandi .ioto-task-view__badge[data-kind="fanout"]  { --ink: var(--ioto-tv-m-ink-fanout); }
 .ioto-task-view.is-morandi .ioto-task-view__badge[data-kind="repeat"]  { --ink: var(--ioto-tv-m-ink-repeat); }
 .ioto-task-view.is-morandi .ioto-task-view__badge[data-kind="lite"]    { --ink: var(--ioto-tv-m-ink-lite); }
+.ioto-task-view.is-morandi .ioto-task-view__badge[data-kind="pin"]     { --ink: var(--ioto-tv-m-ink-pin); }
 
 /* 行内图标按钮：柔圆角，平时透明，hover 浮出暖底 */
 .ioto-task-view.is-morandi .ioto-task-view__card-action-btn {

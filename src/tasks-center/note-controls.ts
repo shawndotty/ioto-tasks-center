@@ -14,7 +14,8 @@ export type ControlKind =
 	| 'fanout' // #ioto/fanout 或 #ioto/fanout/N
 	| 'turns' // #ioto/turns/<N>
 	| 'repeat' // #ioto/repeat（无值）
-	| 'lite'; // #ioto/lite（无值）
+	| 'lite' // #ioto/lite（无值）
+	| 'pin'; // #ioto/pin（无值，纯视图语义：最近任务视图里常驻）
 
 /** 一条控制项：`raw` 逐字节保留用于无损写回，`value` 供渲染层展示。 */
 export interface ControlToken {
@@ -83,6 +84,14 @@ const CONTROL_SCANNERS: ControlScanner[] = [
 	{
 		kind: 'lite',
 		pattern: /#ioto\/lite(?![\w-])(?:\/[A-Za-z0-9_/-]*)?/g,
+		build: () => true,
+	},
+	{
+		kind: 'pin',
+		// 右边界与 ioto-settings 的 MANAGED_TAG_RE 同口径：`#ioto/pinbox` /
+		// `#ioto/pin-2` 不算 pin；末尾可选段吞掉 `#ioto/pin/xxx`，避免只吃前缀
+		// 把 `/xxx` 留在正文里。
+		pattern: /#ioto\/pin(?![\w-])(?:\/[A-Za-z0-9_/-]*)?/g,
 		build: () => true,
 	},
 ];

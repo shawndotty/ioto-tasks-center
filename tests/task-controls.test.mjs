@@ -10,6 +10,7 @@ const {
 	replaceTaskBody,
 	taskBodyForEditor,
 	buildSiblingTaskLine,
+	setTaskPin,
 } = await jiti.import('../src/tasks-center/note-structure.ts');
 
 /* ------------------------------------------------------------------ *
@@ -237,4 +238,85 @@ test('repeat / lite 的往返与写回', () => {
 		'- [ ] 新 #ioto/repeat',
 	);
 	assert.equal(taskBodyForEditor(line), '写日报');
+});
+
+/* ------------------------------------------------------------------ *
+ * 7. pin（纯视图语义，见 [[Plan-20261022-200135]] S1 / S4）
+ * ------------------------------------------------------------------ */
+
+test('控制项识别：pin 从正文剥离，raw / value 正确', () => {
+	const item = parseChecklistItems('- [ ] 常驻任务 #ioto/pin')[0];
+	assert.deepEqual(item.controls, [
+		{ kind: 'pin', raw: '#ioto/pin', value: true },
+	]);
+	assert.equal(item.text, '常驻任务');
+});
+
+test('防误剥：pin 的右边界（pinbox / pin-2 不算 pin）', () => {
+	const plain = parseChecklistItems(
+		'- [ ] 正文 #ioto/pinbox #ioto/pin-2',
+	)[0];
+	assert.deepEqual(plain.controls, []);
+	assert.equal(plain.text, '正文 #ioto/pinbox #ioto/pin-2');
+});
+
+test('pin 多余段整段吞掉，不留 /x 在正文里', () => {
+	const extra = parseChecklistItems('- [ ] 正文 #ioto/pin/x')[0];
+	assert.deepEqual(extra.controls, [
+		{ kind: 'pin', raw: '#ioto/pin/x', value: true },
+	]);
+	assert.equal(extra.text, '正文');
+});
+
+test('setTaskPin：加 pin 追加到行尾', () => {
+	assert.equal(
+		setTaskPin('- [ ] 常驻任务', true),
+		'- [ ] 常驻任务 #ioto/pin',
+	);
+	// 与其它控制项共存：pin 追加在最后（不在中间插队）
+	assert.equal(
+		setTaskPin('- [ ] 常驻 #ioto/turns/120', true),
+		'- [ ] 常驻 #ioto/turns/120 #ioto/pin',
+	);
+});
+
+test('setTaskPin：已 pin 再加逐字节返回原行（幂等）', () => {
+	const line = '- [ ] 常驻 #ioto/pin';
+	assert.equal(setTaskPin(line, true), line);
+});
+
+test('setTaskPin：去 pin 不留空白与双空格', () => {
+	// 行尾
+	assert.equal(setTaskPin('- [ ] 常驻 #ioto/pin', false), '- [ ] 常驻');
+	// 行中：剥离点两侧空白收敛为单空格
+	assert.equal(
+		setTaskPin('- [ ] 常驻 #ioto/pin 说明', false),
+		'- [ ] 常驻 说明',
+	);
+	// 行首（紧跟 gap 之后）
+	assert.equal(
+		setTaskPin('- [ ] #ioto/pin 常驻', false),
+		'- [ ] 常驻',
+	);
+});
+
+test('setTaskPin：未 pin 时再去，返回原行', () => {
+	const line = '- [ ] 普通任务 #ioto/turns/5';
+	assert.equal(setTaskPin(line, false), line);
+});
+
+test('setTaskPin：非任务行返回 null', () => {
+	assert.equal(setTaskPin('普通段落 #ioto/pin', false), null);
+	assert.equal(setTaskPin('', true), null);
+});
+
+test('setTaskPin：保留 Tab 缩进与行尾 \\r', () => {
+	assert.equal(
+		setTaskPin('\t- [ ] 子任务 #ioto/pin\r', false),
+		'\t- [ ] 子任务\r',
+	);
+	assert.equal(
+		setTaskPin('\t- [ ] 子任务\r', true),
+		'\t- [ ] 子任务 #ioto/pin\r',
+	);
 });

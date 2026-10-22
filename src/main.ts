@@ -417,6 +417,25 @@ export default class IOTOTasksCenter extends Plugin {
 				return true;
 			},
 		});
+		// 条目 pin（[[Plan-20261022-200135]] S4）：纯视图语义，低频→命令面板，不占工具栏按钮位。
+		this.addCommand({
+			id: 'itc-toggle-task-pin',
+			name: t('command.toggleTaskPin'),
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(
+					IOTOTaskView,
+				);
+				if (!view || !view.canToggleSelectedTaskPin()) {
+					return false;
+				}
+
+				if (!checking) {
+					void view.toggleSelectedTaskPin();
+				}
+
+				return true;
+			},
+		});
 		// 低频操作走命令面板（不占工具栏按钮位，[[Discuss-20261006-223908]] §5.3）。
 		this.addCommand({
 			id: 'itc-insert-entry-template',

@@ -1,6 +1,6 @@
 /**
  * 卡片动作区右栏的只读徽章渲染：把条目控制项（depends / agent / model /
- * fanout / turns / repeat / lite）画成图标 + 文案。
+ * fanout / turns / repeat / lite / pin）画成图标 + 文案。
  *
  * 从 `render-note.ts` 拆出（Phase 2），纯 DOM 渲染，无状态。
  */
@@ -27,6 +27,8 @@ function controlIcon(kind: ControlKind): string {
 			return 'repeat';
 		case 'lite':
 			return 'feather';
+		case 'pin':
+			return 'pin';
 		default:
 			return 'circle';
 	}
@@ -59,6 +61,8 @@ function controlLabel(control: ControlToken): string {
 			return t('view.iotoTaskView.badge.repeat');
 		case 'lite':
 			return t('view.iotoTaskView.badge.lite');
+		case 'pin':
+			return t('view.iotoTaskView.badge.pin');
 		default:
 			return control.raw;
 	}
@@ -74,6 +78,9 @@ function controlTitle(control: ControlToken): string {
 	}
 	if (control.kind === 'lite') {
 		return `${control.raw} — ${t('view.iotoTaskView.badge.liteHint')}`;
+	}
+	if (control.kind === 'pin') {
+		return `${control.raw} — ${t('view.iotoTaskView.badge.pinHint')}`;
 	}
 	return control.raw;
 }

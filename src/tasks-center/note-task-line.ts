@@ -206,6 +206,42 @@ export function markTaskLineDone(line: string): string | null {
 }
 
 /**
+ * 设置 / 取消任务行的 pin。纯函数：
+ * - 非任务行 → `null`；
+ * - 目标态已达（已 pin 再加 / 未 pin 再去）→ 逐字节返回原行（幂等）；
+ * - 去 pin 时连同标记前紧邻的空白一起剥，正文内部多空格不动。
+ *
+ * 不能走 `composeTaskLine`：它在 `body === sourceText` 时逐字节还原 `source`，
+ * **控制项增删会被它忽略**。所以这里显式重组，只换 core。
+ */
+export function setTaskPin(line: string, pinned: boolean): string | null {
+	const parts = splitTaskLine(line);
+	if (!parts) {
+		return null;
+	}
+
+	const pinControls = parts.controls.filter((control) => control.kind === 'pin');
+	const hasPin = pinControls.length > 0;
+	if (pinned === hasPin) return line;
+
+	let core = parts.source;
+	if (pinned) {
+		core = `${core.trimEnd()} #ioto/pin`;
+	} else {
+		for (const control of pinControls) {
+			const at = core.lastIndexOf(control.raw);
+			if (at < 0) continue;
+			core =
+				core.slice(0, at).replace(/[ \t]+$/, '') +
+				core.slice(at + control.raw.length);
+		}
+		// 标签在行首时剥离点会留下前导空白，一并收掉（正文本身两侧已 trim）
+		core = core.replace(/^[ \t]+/, '').trimEnd();
+	}
+	return `${parts.indent}${parts.listMarker}[${parts.checked}]${parts.gap}${core}${parts.trail}`;
+}
+
+/**
  * 3c-3 缩进：`delta = ±1` 级，clamp 到 `[0, maxLevel]`。
  * 输出统一为「每级 2 空格」（Tab 会被规整，属已知取舍）；缩进一律**重算**
  * 而不是在原字符串上加/减，避免混用导致层级错乱。

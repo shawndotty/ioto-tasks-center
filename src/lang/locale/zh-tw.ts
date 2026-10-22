@@ -597,6 +597,7 @@ const zhTW = {
 	'command.addTask': '在 IOTO 任務檢視中新增任務',
 	'command.swapWithPrevTask': '與上一個同級任務互換',
 	'command.swapWithNextTask': '與下一個同級任務互換',
+	'command.toggleTaskPin': '固定 / 取消固定當前任務（選中卡）',
 	'command.searchTaskView': '在任務視圖中搜尋',
 	'command.exportTaskViewImage': '匯出任務檢視為圖片',
 	'command.copyTaskViewImage': '複製任務檢視圖片到剪貼簿',
@@ -680,6 +681,9 @@ const zhTW = {
 	'view.iotoTaskView.badge.repeatHint': '每次執行都執行，成功後不落勾',
 	'view.iotoTaskView.badge.lite': '輕量',
 	'view.iotoTaskView.badge.liteHint': '不注入 Skill、專案規範與摘要',
+	'view.iotoTaskView.badge.pin': '固定',
+	'view.iotoTaskView.badge.pinHint':
+		'「顯示最近任務」下始終保留，不佔最近 N 條配額',
 	'view.iotoTaskView.cardActions.insertOutgoingLink': '插入出鏈',
 	'view.iotoTaskView.cardActions.editItemControls': '編輯條目控制',
 	'view.iotoTaskView.cardActions.zoomIn': '放大',
@@ -692,6 +696,8 @@ const zhTW = {
 	'notice.iotoTaskView.commitConflict': '檔案在編輯期間被外部修改，本次變更已捨棄。',
 	'notice.iotoTaskView.swapNoPrev': '已經是同級任務中的第一條',
 	'notice.iotoTaskView.swapNoNext': '已經是同級任務中的最後一條',
+	'notice.iotoTaskView.pinAdded': '已固定：最近任務檢視下始終保留。',
+	'notice.iotoTaskView.pinRemoved': '已取消固定。',
 	'notice.iotoTaskView.inlineEditUnavailable':
 		'目前 Obsidian 版本不支援內嵌編輯，請在 Markdown 中編輯。',
 	'notice.iotoTaskView.bodyMultilineRejected':

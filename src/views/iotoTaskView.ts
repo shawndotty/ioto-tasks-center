@@ -207,6 +207,7 @@ import {
 	canInsertEntryTemplate,
 	canMarkAllTasksDone,
 	canSwapSelectedTask,
+	canToggleSelectedTaskPin,
 	findTasksSection,
 	insertEntryTemplate,
 	markAllTasksDone,
@@ -214,6 +215,7 @@ import {
 	resolveCurrentSubject,
 	runTask,
 	swapSelectedTask,
+	toggleSelectedTaskPin,
 	triggerAddTask,
 } from './ioto-task/task-view-task-commands';
 import { addSection } from './ioto-task/task-view-add-section';
@@ -776,6 +778,8 @@ export class IOTOTaskView extends TextFileView {
 	async swapSelectedTask(direction: 'prev' | 'next'): Promise<void> {
 		await swapSelectedTask(this, direction);
 	}
+	canToggleSelectedTaskPin(): boolean { return canToggleSelectedTaskPin(this); }
+	async toggleSelectedTaskPin(): Promise<void> { await toggleSelectedTaskPin(this); }
 
 	// ---- 外部写回窗口 ----
 	async flushInlineEdits(): Promise<void> { await flushInlineEdits(this); }

@@ -483,9 +483,17 @@ function renderSectionBody(options: {
 		);
 	}
 
-	// ③ 只显示最近任务：每个顶层 Section 各自取末尾 N 组（口径 A：先取组、后套 onlyPending）。
+	// ③ 只显示最近任务：每个顶层 Section 各自取末尾 N 组（口径 A：先取组、后套 onlyPending）；
+	//    `#ioto/pin` 的组无条件并入（不占 N 配额，见 [[Plan-20261022-200135]] S2）。
 	const recentLines = filters.recentOnly
-		? pickRecentTopLevelLines(items, recentTaskCount)
+		? pickRecentTopLevelLines(
+				items.map((item) => ({
+					line: item.line,
+					indentLevel: item.indentLevel,
+					pinned: item.controls.some((control) => control.kind === 'pin'),
+				})),
+				recentTaskCount,
+			)
 		: null;
 
 	// 四层过滤（①=Section 层已在外层处理；②③ + 关键词 = 卡片层）的唯一真源：

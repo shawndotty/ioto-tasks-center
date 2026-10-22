@@ -5,7 +5,7 @@
  * 的外部引用路径不变（5 个源文件 + 6 个测试文件均经此 barrel 导入）。
  *
  * 子域拆分（均纯字符串 / 零 DOM / 零 obsidian 依赖）：
- * - `note-controls`：控制项扫描（depends / agent / model / fanout / turns / repeat / lite）
+ * - `note-controls`：控制项扫描（depends / agent / model / fanout / turns / repeat / lite / pin）
  * - `note-sections`：Section 解析（frontmatter / 围栏 / 标题 / 引导区）
  * - `note-task-line`：任务行拆分 / 重组 / 缩进 / 勾选等编辑原语
  * - `note-checklist`：Checklist 条目解析与 Section 过滤谓词
@@ -74,6 +74,7 @@ export {
 	insertSoftBreak,
 	toggleTaskMarker,
 	markTaskLineDone,
+	setTaskPin,
 	setTaskIndent,
 	buildSiblingTaskLine,
 	buildTasksSectionHeading,

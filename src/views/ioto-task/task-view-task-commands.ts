@@ -11,6 +11,7 @@ import {
 	parseChecklistItems,
 	parseChecklistItemsInRange,
 	parseSections,
+	setTaskPin,
 	splitTaskLine,
 	type NoteChecklistItem,
 	type NoteSection,
@@ -388,6 +389,65 @@ export async function markAllTasksDone(view: TaskViewHost): Promise<void> {
 
 	// ⑤ 反馈
 	new Notice(t('notice.markAllTasksDone.done', [String(changed)]));
+}
+
+/* ------------------------------------------------------------------ *
+ * 条目 pin 切换（[[Plan-20261022-200135]] §3 S4）
+ *
+ * pin 是纯视图语义（`#ioto/pin`）：只影响「显示最近任务」的保留集，
+ * 不参与执行。写盘走单行原地改，行号不变。
+ * ------------------------------------------------------------------ */
+
+/** 行内是否已 pin（复用解析层，不做第二套字符串分析）。 */
+function isPinnedLine(line: string): boolean {
+	return (
+		splitTaskLine(line)?.controls.some((control) => control.kind === 'pin') ===
+		true
+	);
+}
+
+/** 供 main.ts 的 checkCallback 门控：有选中卡且可写。 */
+export function canToggleSelectedTaskPin(view: TaskViewHost): boolean {
+	return (
+		view.file !== null && view.supportsInlineEdit() && view.selectedLine !== null
+	);
+}
+
+/** 把选中卡加 / 去 `#ioto/pin`，一次原子读改写后整树重绘。 */
+export async function toggleSelectedTaskPin(view: TaskViewHost): Promise<void> {
+	const file = view.file;
+	const line = view.selectedLine;
+	if (!file || !view.supportsInlineEdit() || line === null) return;
+
+	// ① 先落盘在册编辑器，避免与未提交正文双写错位（与 markAllTasksDone 同序）
+	await view.flushInlineEdits();
+
+	// ② 原子读改写；回调内按最新 content 重算（并发外部写入自洽，同 commitTaskLineAction 红线）
+	let nextLine = '';
+	let nextContent = '';
+	await view.app.vault.process(file, (content) => {
+		const lines = content.split('\n');
+		const current = lines[line];
+		if (current === undefined) return content;
+		const updated = setTaskPin(current, !isPinnedLine(current));
+		if (updated === null || updated === current) return content;
+		lines[line] = updated;
+		nextLine = updated;
+		nextContent = lines.join('\n');
+		return nextContent;
+	});
+	if (!nextLine) return;
+
+	// ③ 同步 data/lastLoadedText + 重绘（对齐 runLineAction 收尾）
+	view.applyOutcome({ status: 'ok', content: nextContent });
+	view.renderNote(view.data);
+	new Notice(
+		t(
+			isPinnedLine(nextLine)
+				? 'notice.iotoTaskView.pinAdded'
+				: 'notice.iotoTaskView.pinRemoved',
+		),
+	);
 }
 
 /* ------------------------------------------------------------------ *
