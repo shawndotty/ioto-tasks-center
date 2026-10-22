@@ -136,3 +136,7 @@ export class TextComponent {}
 export class TextAreaComponent {}
 export class DropdownComponent {}
 export class ToggleComponent {}
+
+// preview-leaf 的具名导入需要这两个导出（真实运行时它们只用于 instanceof）。
+export class FileView {}
+export class WorkspaceLeaf {}

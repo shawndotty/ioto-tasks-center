@@ -1,6 +1,7 @@
 import {
 	MarkdownView,
 	TFile,
+	type WorkspaceParent,
 	WorkspaceLeaf,
 } from 'obsidian';
 
@@ -16,6 +17,7 @@ import { IOTO_TASK_VIEW_TYPE } from '../iotoTaskView';
 import { resolveCursorMarkerSearchStart } from '../../tasks-center/cursor-marker';
 import { PROJECT_METADATA_FILE_NAME } from '../../tasks-center/project-metadata';
 import { type TaskOpenTarget } from './constants';
+import { isLeafInSidebar } from './preview-leaf';
 
 export async function openTaskFile(
 	view: IOTOTasksCenterView,
@@ -296,10 +298,11 @@ async function openFileInCurrentPaneTab(
 	view: IOTOTasksCenterView,
 	file: TFile,
 ): Promise<void> {
-	const existingLeaf = findLeafInCurrentTabGroupByFilePath(
-		view,
-		file.path,
-	);
+	const tabGroup = resolveTargetTabGroup(view);
+	const existingLeaf =
+		tabGroup === null
+			? null
+			: findLeafInCurrentTabGroupByFilePath(view, file.path, tabGroup);
 	if (existingLeaf) {
 		view.openedTaskPath = file.path;
 		if (view.selectedProject) {
@@ -335,24 +338,40 @@ async function openFileInCurrentPaneTab(
 	}
 }
 
+/** Alt+点击应该去哪个 tab 组找「已打开的同文件标签」。 */
+function resolveTargetTabGroup(
+	view: IOTOTasksCenterView,
+): WorkspaceParent | null {
+	const ws = view.app.workspace;
+	if (!isLeafInSidebar(ws, view.leaf)) {
+		return view.leaf.parent;
+	}
+	return ws.getMostRecentLeaf(ws.rootSplit)?.parent ?? null;
+}
+
 function findLeafInCurrentTabGroupByFilePath(
 	view: IOTOTasksCenterView,
 	filePath: string,
+	tabGroup: WorkspaceParent,
 ): WorkspaceLeaf | null {
-	const currentTabs = view.leaf.parent;
 	let matchedLeaf: WorkspaceLeaf | null = null;
 
 	view.app.workspace.iterateAllLeaves((leaf) => {
 		if (
 			matchedLeaf ||
 			leaf === view.leaf ||
-			leaf.parent !== currentTabs
+			leaf.parent !== tabGroup
 		) {
 			return;
 		}
 
 		const viewState = leaf.getViewState();
-		if (viewState.type !== 'markdown') {
+		// 任务笔记默认以 IOTOTask 视图打开（useIOTOTaskViewAsDefault），
+		// 只认 markdown 会把它当成「没开过」，Alt+点击就会重复新增标签。
+		if (
+			viewState.type !== 'markdown' &&
+			viewState.type !== IOTO_TASK_VIEW_TYPE
+		) {
 			return;
 		}
 
