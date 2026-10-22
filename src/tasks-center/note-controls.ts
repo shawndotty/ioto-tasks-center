@@ -12,14 +12,16 @@ export type ControlKind =
 	| 'agent' // #ioto/agent/<id>
 	| 'model' // #ioto/model/<id> 或 [model:: <id>]
 	| 'fanout' // #ioto/fanout 或 #ioto/fanout/N
-	| 'turns'; // #ioto/turns/<N>
+	| 'turns' // #ioto/turns/<N>
+	| 'repeat' // #ioto/repeat（无值）
+	| 'lite'; // #ioto/lite（无值）
 
 /** 一条控制项：`raw` 逐字节保留用于无损写回，`value` 供渲染层展示。 */
 export interface ControlToken {
 	kind: ControlKind;
 	/** 原文片段，逐字节保留（含 `depends：` / `#ioto/…` / `[model:: …]` 全串） */
 	raw: string;
-	/** 解析出的值：depends=string[]、fanout=true|number、turns=number、agent/model=string */
+	/** 解析出的值：depends=string[]、fanout/repeat/lite=true|number、turns=number、agent/model=string */
 	value: string | number | true | string[];
 }
 
@@ -69,6 +71,19 @@ const CONTROL_SCANNERS: ControlScanner[] = [
 		kind: 'turns',
 		pattern: /#ioto\/turns\/(\d+)/g,
 		build: (match) => Number(match[1]),
+	},
+	{
+		kind: 'repeat',
+		// 右边界与 ioto-settings 的 MANAGED_TAG_RE 同口径：`#ioto/repeatfoo` /
+		// `#ioto/repeat-2` 不算 repeat（设置面板把它们的 kind 读成未知并整段忽略）；
+		// 末尾可选段吞掉 `#ioto/repeat/xxx`，避免只吃前缀、把 `/xxx` 留在正文里。
+		pattern: /#ioto\/repeat(?![\w-])(?:\/[A-Za-z0-9_/-]*)?/g,
+		build: () => true,
+	},
+	{
+		kind: 'lite',
+		pattern: /#ioto\/lite(?![\w-])(?:\/[A-Za-z0-9_/-]*)?/g,
+		build: () => true,
 	},
 ];
 

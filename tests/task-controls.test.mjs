@@ -200,3 +200,41 @@ test('buildSiblingTaskLine：新行无 controls，逐字节正确', () => {
 	assert.equal(parts.source, '');
 	assert.equal(parts.sourceText, '');
 });
+
+/* ------------------------------------------------------------------ *
+ * 6. repeat / lite（无值标签，见 [[Plan-20261022-111723]] S1）
+ * ------------------------------------------------------------------ */
+
+test('控制项识别：repeat / lite（无值标签）', () => {
+	const item = parseChecklistItems('- [ ] 写日报 #ioto/repeat #ioto/lite')[0];
+	assert.deepEqual(item.controls, [
+		{ kind: 'repeat', raw: '#ioto/repeat', value: true },
+		{ kind: 'lite', raw: '#ioto/lite', value: true },
+	]);
+	assert.equal(item.text, '写日报');
+});
+
+test('防误剥：repeat / lite 的右边界与多余段', () => {
+	const plain = parseChecklistItems(
+		'- [ ] 正文 #ioto/repeatfoo #ioto/repeat-2 #ioto/litebox',
+	)[0];
+	assert.deepEqual(plain.controls, []);
+	assert.equal(plain.text, '正文 #ioto/repeatfoo #ioto/repeat-2 #ioto/litebox');
+
+	// 多余段整段吞掉，不留 `/x` 在正文里（与设置面板「多余段忽略」同口径）
+	const extra = parseChecklistItems('- [ ] 正文 #ioto/lite/x')[0];
+	assert.deepEqual(extra.controls, [
+		{ kind: 'lite', raw: '#ioto/lite/x', value: true },
+	]);
+	assert.equal(extra.text, '正文');
+});
+
+test('repeat / lite 的往返与写回', () => {
+	const line = '- [ ] 写日报 #ioto/repeat #ioto/lite';
+	assert.equal(composeTaskLine(splitTaskLine(line)), line);
+	assert.equal(
+		replaceTaskBody('- [ ] 旧 #ioto/repeat', '新'),
+		'- [ ] 新 #ioto/repeat',
+	);
+	assert.equal(taskBodyForEditor(line), '写日报');
+});

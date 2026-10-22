@@ -1,6 +1,6 @@
 /**
  * 卡片动作区右栏的只读徽章渲染：把条目控制项（depends / agent / model /
- * fanout / turns）画成图标 + 文案。
+ * fanout / turns / repeat / lite）画成图标 + 文案。
  *
  * 从 `render-note.ts` 拆出（Phase 2），纯 DOM 渲染，无状态。
  */
@@ -23,6 +23,10 @@ function controlIcon(kind: ControlKind): string {
 			return 'git-fork';
 		case 'turns':
 			return 'refresh-cw';
+		case 'repeat':
+			return 'repeat';
+		case 'lite':
+			return 'feather';
 		default:
 			return 'circle';
 	}
@@ -51,15 +55,25 @@ function controlLabel(control: ControlToken): string {
 			return control.value === 0
 				? t('view.iotoTaskView.badge.turnsUnlimited')
 				: t('view.iotoTaskView.badge.turns', [String(control.value)]);
+		case 'repeat':
+			return t('view.iotoTaskView.badge.repeat');
+		case 'lite':
+			return t('view.iotoTaskView.badge.lite');
 		default:
 			return control.raw;
 	}
 }
 
-/** 徽章 tooltip：depends 列全部笔记名，其余保留原文。 */
+/** 徽章 tooltip：depends 列全部笔记名，repeat / lite 带语义句，其余保留原文。 */
 function controlTitle(control: ControlToken): string {
 	if (control.kind === 'depends' && Array.isArray(control.value)) {
 		return control.value.join('、');
+	}
+	if (control.kind === 'repeat') {
+		return `${control.raw} — ${t('view.iotoTaskView.badge.repeatHint')}`;
+	}
+	if (control.kind === 'lite') {
+		return `${control.raw} — ${t('view.iotoTaskView.badge.liteHint')}`;
 	}
 	return control.raw;
 }
