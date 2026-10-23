@@ -91,6 +91,18 @@ export function readScalarProperty(
 	content: string,
 	propertyName: string,
 ): string | null {
+	return readRawScalarProperty(content, propertyName)
+		?.replace(/^["']|["']$/g, '') ?? null;
+}
+
+/**
+ * 读取标量属性的**原始**字面量（保留 YAML 引号）；缺失返回 `null`。
+ * 需要区分「裸值」与「带引号值」的调用方（如主任务区标题）走这个入口。
+ */
+export function readRawScalarProperty(
+	content: string,
+	propertyName: string,
+): string | null {
 	const frontmatterMatch = content.match(
 		/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/,
 	);
@@ -104,11 +116,85 @@ export function readScalarProperty(
 	for (const line of (frontmatterMatch[1] ?? '').split(/\r?\n/)) {
 		const match = line.match(propertyPattern);
 		if (match) {
-			return (match[1] ?? '').trim().replace(/^["']|["']$/g, '');
+			return (match[1] ?? '').trim();
 		}
 	}
 
 	return null;
+}
+
+/* ------------------------------------------------------------------ *
+ * 带引号的标量读写（[[Plan-20261024-072014]] §3 S1）
+ *
+ * 标题里可能出现 `: ` / `#` / `"` / `[`，裸拼会写坏 YAML。这里只提供
+ * 「总是加双引号」的专用入口，不改既有 `upsertScalarProperty` 的裸值口径。
+ * ------------------------------------------------------------------ */
+
+/** YAML 双引号标量：总是包引号，转义 `\` 与 `"`。 */
+export function quoteYamlString(value: string): string {
+	return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+/** 剥引号 + 反转义；裸值原样返回（兼容手写的无引号属性）。 */
+export function unquoteYamlString(raw: string): string {
+	const value = raw.trim();
+	if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
+		return value.slice(1, -1).replace(/\\(["\\])/g, '$1');
+	}
+	if (value.length >= 2 && value.startsWith("'") && value.endsWith("'")) {
+		return value.slice(1, -1).replace(/''/g, "'");
+	}
+	return value;
+}
+
+/** 读带引号（或裸值）标量，返回剥引号后的文本；缺失返回 `null`。 */
+export function readQuotedScalarProperty(
+	content: string,
+	propertyName: string,
+): string | null {
+	const raw = readRawScalarProperty(content, propertyName);
+	return raw === null ? null : unquoteYamlString(raw);
+}
+
+/** 写入带引号的标量属性（纯字符串版，便于单测）。 */
+export function upsertQuotedScalarProperty(
+	content: string,
+	propertyName: string,
+	value: string,
+): string {
+	return upsertScalarProperty(content, propertyName, quoteYamlString(value));
+}
+
+/**
+ * 原子地写入一个带引号的标量属性，返回写盘后的完整内容
+ * （调用方据此算 frontmatter 行数 Δ，做 `shiftTrackedLines`）。
+ */
+export async function writeQuotedScalarProperty(
+	app: App,
+	file: TFile,
+	propertyName: string,
+	value: string,
+): Promise<string> {
+	let next = '';
+	await app.vault.process(file, (content) => {
+		next = upsertQuotedScalarProperty(content, propertyName, value);
+		return next;
+	});
+	return next;
+}
+
+/** 原子地删除一个标量属性，返回写盘后的完整内容。 */
+export async function removeScalarPropertyInFile(
+	app: App,
+	file: TFile,
+	propertyName: string,
+): Promise<string> {
+	let next = '';
+	await app.vault.process(file, (content) => {
+		next = removeScalarProperty(content, propertyName);
+		return next;
+	});
+	return next;
 }
 
 /**

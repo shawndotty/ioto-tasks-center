@@ -611,6 +611,7 @@ const zhTW = {
 	'command.exportTaskViewImage': '匯出任務檢視為圖片',
 	'command.copyTaskViewImage': '複製任務檢視圖片到剪貼簿',
 	'command.toggleMobileSectionActions': '顯示 / 隱藏行動版 Section 標題列圖示',
+	'command.togglePrimaryTaskSection': '切換主任務區標記（目前章節）',
 	'menu.openAsIOTOTask': '以 IOTO 任務檢視開啟',
 	'menu.openAsMarkdown': '切回 Markdown',
 	'view.iotoTaskView.fallbackTitle': '任務檢視',
@@ -619,6 +620,8 @@ const zhTW = {
 	'view.iotoTaskView.sectionToggle': '折疊/展開章節：{0}',
 	'view.iotoTaskView.sectionEdit': '編輯本節內容',
 	'view.iotoTaskView.sectionEditTitle': '編輯本節標題',
+	'view.iotoTaskView.sectionPrimaryMark': '設為主任務區',
+	'view.iotoTaskView.sectionPrimaryUnmark': '取消主任務區',
 	'view.iotoTaskView.sectionZoomIn': '只看本節',
 	'view.iotoTaskView.sectionZoomOut': '顯示全部章節',
 	'view.iotoTaskView.sectionDelete': '刪除本節',
@@ -715,6 +718,12 @@ const zhTW = {
 	'notice.iotoTaskView.swapNoNext': '已經是同級任務中的最後一條',
 	'notice.iotoTaskView.pinAdded': '已固定：最近任務檢視下始終保留。',
 	'notice.iotoTaskView.pinRemoved': '已取消固定。',
+	'notice.iotoTaskView.primarySectionMarked': '已將「{0}」設為主任務區',
+	'notice.iotoTaskView.primarySectionUnmarked': '已取消主任務區標記',
+	'notice.iotoTaskView.primarySectionMissing':
+		'主任務區「{0}」已不存在，本次依原規則新增任務',
+	'notice.iotoTaskView.primarySectionDuplicate':
+		'存在多個同名章節「{0}」，已標記最前面的一個',
 	'notice.iotoTaskView.duplicateCreated': '已建立任務副本，並選取新副本。',
 	'notice.iotoTaskView.repeatAdded':
 		'已標記為重複任務：每次執行都執行，成功後不落勾。',

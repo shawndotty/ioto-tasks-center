@@ -311,6 +311,35 @@ function renderSectionHeader(options: {
 		});
 	}
 
+	// 主任务区标记（[[Plan-20261024-072014]] §4.3）：紧跟「编辑本节标题」之后。
+	// 缺省 = 不渲染（只读态天然没有这个入口，与 insertOutgoingLink 同约定）。
+	if (editing.enabled && editing.togglePrimarySection) {
+		const isPrimary = (editing.primarySectionLine ?? null) === section.startLine;
+		const primaryLabel = t(
+			isPrimary
+				? 'view.iotoTaskView.sectionPrimaryUnmark'
+				: 'view.iotoTaskView.sectionPrimaryMark',
+		);
+		const primaryBtn = headerEl.createEl('button', {
+			cls:
+				'ioto-task-view__section-primary-btn' +
+				(isPrimary ? ' is-primary-section' : ''),
+			attr: {
+				type: 'button',
+				'aria-pressed': isPrimary ? 'true' : 'false',
+				'aria-label': primaryLabel,
+				title: primaryLabel,
+			},
+		});
+		// 不用 pin：`#ioto/pin` 已占用该语义（条目 pin）。
+		setIcon(primaryBtn, 'flag');
+		primaryBtn.addEventListener('click', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			editing.togglePrimarySection?.(section.startLine);
+		});
+	}
+
 	const actionsEl = headerEl.createDiv({
 		cls: 'ioto-task-view__section-actions',
 	});

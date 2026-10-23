@@ -668,6 +668,8 @@ const en = {
 	'command.copyTaskViewImage': 'Copy task view image to clipboard',
 	'command.toggleMobileSectionActions':
 		'Show / hide mobile section header icons',
+	'command.togglePrimaryTaskSection':
+		'Toggle primary task section (current section)',
 	'menu.openAsIOTOTask': 'Open as IOTO task view',
 	'menu.openAsMarkdown': 'Open as Markdown',
 	'view.iotoTaskView.fallbackTitle': 'Task view',
@@ -676,6 +678,8 @@ const en = {
 	'view.iotoTaskView.sectionToggle': 'Toggle section: {0}',
 	'view.iotoTaskView.sectionEdit': 'Edit section content',
 	'view.iotoTaskView.sectionEditTitle': 'Edit section title',
+	'view.iotoTaskView.sectionPrimaryMark': 'Set as primary task section',
+	'view.iotoTaskView.sectionPrimaryUnmark': 'Unset primary task section',
 	'view.iotoTaskView.sectionZoomIn': 'Focus this section',
 	'view.iotoTaskView.sectionZoomOut': 'Show all sections',
 	'view.iotoTaskView.sectionDelete': 'Delete section',
@@ -780,6 +784,13 @@ const en = {
 	'notice.iotoTaskView.pinAdded':
 		'Pinned — stays visible in the recent-only view.',
 	'notice.iotoTaskView.pinRemoved': 'Unpinned.',
+	'notice.iotoTaskView.primarySectionMarked':
+		'Marked "{0}" as the primary task section',
+	'notice.iotoTaskView.primarySectionUnmarked': 'Primary task section unset',
+	'notice.iotoTaskView.primarySectionMissing':
+		'Primary task section "{0}" no longer exists; used the default rule',
+	'notice.iotoTaskView.primarySectionDuplicate':
+		'Multiple sections named "{0}"; marked the first one',
 	'notice.iotoTaskView.duplicateCreated': 'Task duplicated; the copy is selected.',
 	'notice.iotoTaskView.repeatAdded':
 		'Marked as repeat: runs every time, stays unchecked.',

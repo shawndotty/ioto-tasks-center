@@ -2729,6 +2729,9 @@ input.ioto-task-view__section-title-input[type='text'] {
 	> .ioto-task-view__section-title-edit-btn,
 .ioto-task-view__section.is-title-editing
 	> .ioto-task-view__section-header
+	> .ioto-task-view__section-primary-btn,
+.ioto-task-view__section.is-title-editing
+	> .ioto-task-view__section-header
 	> .ioto-task-view__section-actions {
 	display: none;
 }
@@ -2739,7 +2742,8 @@ input.ioto-task-view__section-title-input[type='text'] {
 	> .ioto-task-view__section-title {
 	pointer-events: none;
 }
-.ioto-task-view__section.is-editing .ioto-task-view__section-title-edit-btn {
+.ioto-task-view__section.is-editing .ioto-task-view__section-title-edit-btn,
+.ioto-task-view__section.is-editing .ioto-task-view__section-primary-btn {
 	display: none;
 }
 
@@ -2758,6 +2762,7 @@ button.ioto-task-view__section-edit-btn:not(.clickable-icon),
 button.ioto-task-view__section-delete-btn:not(.clickable-icon),
 button.ioto-task-view__section-close-btn:not(.clickable-icon),
 button.ioto-task-view__section-zoom-btn:not(.clickable-icon),
+button.ioto-task-view__section-primary-btn:not(.clickable-icon),
 button.ioto-task-view__section-title-edit-btn:not(.clickable-icon) {
 	display: inline-flex;
 	align-items: center;
@@ -2774,6 +2779,7 @@ button.ioto-task-view__section-title-edit-btn:not(.clickable-icon) {
 .ioto-task-view__section-edit-btn:hover,
 .ioto-task-view__section-close-btn:hover,
 .ioto-task-view__section-zoom-btn:hover,
+.ioto-task-view__section-primary-btn:hover,
 .ioto-task-view__section-title-edit-btn:hover {
 	color: var(--text-normal);
 }
@@ -2805,18 +2811,33 @@ button.ioto-task-view__section-delete-btn:not(.clickable-icon):hover {
 	.ioto-task-view__section-header:hover .ioto-task-view__section-title {
 		background: var(--background-modifier-hover);
 	}
-	/* 标题改名按钮复用动作区口径：opacity + pointer-events，保留 tab 序 */
-	.ioto-task-view__section-title-edit-btn {
+	/* 标题改名 / 主任务区标记按钮复用动作区口径：opacity + pointer-events，保留 tab 序 */
+	.ioto-task-view__section-title-edit-btn,
+	.ioto-task-view__section-primary-btn {
 		opacity: 0;
 		pointer-events: none;
 		transition: opacity 0.15s ease;
 	}
 	.ioto-task-view__section-header:hover .ioto-task-view__section-title-edit-btn,
 	.ioto-task-view__section-header:focus-within
-		.ioto-task-view__section-title-edit-btn {
+		.ioto-task-view__section-title-edit-btn,
+	.ioto-task-view__section-header:hover .ioto-task-view__section-primary-btn,
+	.ioto-task-view__section-header:focus-within
+		.ioto-task-view__section-primary-btn {
 		opacity: 1;
 		pointer-events: auto;
 	}
+}
+
+/* 已标记态放在媒体查询外：桌面端压过「hover 才显」，手机端仍受上方 display:none 门控。
+   🔴 基础按钮规则靠 `:not(.clickable-icon)` 拿到 (0,2,1)，裸 `.…-primary-btn`
+   只有 (0,2,0)，打不过颜色 → 必须带 `button` + `:not(.clickable-icon)`（同 :2782 的坑）。 */
+button.ioto-task-view__section-primary-btn.is-primary-section:not(
+		.clickable-icon
+	) {
+	opacity: 1;
+	pointer-events: auto;
+	color: var(--interactive-accent);
 }
 
 /* 编辑态常显：压过上面的隐藏规则；置于媒体查询外 → 触屏也常显（Johnny 确认） */
@@ -4071,11 +4092,13 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
    ② 必须 display:none：要让图标让出宽度与行高，opacity / visibility 不回收空间。
    ③ 三类状态例外缺一不可，否则会丢退出路径或破坏既有编辑语义。 */
 
-/* 默认隐藏（含动作区之外的改名图标） */
+/* 默认隐藏（含动作区之外的改名 / 主任务区图标） */
 .is-phone .ioto-task-view .ioto-task-view__section-header
 	> .ioto-task-view__section-actions,
 .is-phone .ioto-task-view .ioto-task-view__section-header
-	> .ioto-task-view__section-title-edit-btn {
+	> .ioto-task-view__section-title-edit-btn,
+.is-phone .ioto-task-view .ioto-task-view__section-header
+	> .ioto-task-view__section-primary-btn {
 	display: none;
 }
 
@@ -4085,7 +4108,9 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 	display: flex;
 }
 .is-phone .ioto-task-view.is-section-actions-visible .ioto-task-view__section-header
-	> .ioto-task-view__section-title-edit-btn {
+	> .ioto-task-view__section-title-edit-btn,
+.is-phone .ioto-task-view.is-section-actions-visible .ioto-task-view__section-header
+	> .ioto-task-view__section-primary-btn {
 	display: inline-flex;
 }
 
@@ -4104,8 +4129,12 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 	> .ioto-task-view__section-header > .ioto-task-view__section-actions,
 .is-phone .ioto-task-view .ioto-task-view__section.is-title-editing
 	> .ioto-task-view__section-header > .ioto-task-view__section-title-edit-btn,
+.is-phone .ioto-task-view .ioto-task-view__section.is-title-editing
+	> .ioto-task-view__section-header > .ioto-task-view__section-primary-btn,
 .is-phone .ioto-task-view .ioto-task-view__section.is-editing
-	> .ioto-task-view__section-header > .ioto-task-view__section-title-edit-btn {
+	> .ioto-task-view__section-header > .ioto-task-view__section-title-edit-btn,
+.is-phone .ioto-task-view .ioto-task-view__section.is-editing
+	> .ioto-task-view__section-header > .ioto-task-view__section-primary-btn {
 	display: none;
 }
 
@@ -4134,9 +4163,10 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 	padding: 6px;
 }
 
-/* 手机：标题改名图标常显 + 加大热区；输入框 ≥16px，否则 iOS 聚焦会缩放一次。
+/* 手机：标题改名 / 主任务区图标常显 + 加大热区；输入框 ≥16px，否则 iOS 聚焦会缩放一次。
    🔴 必须带 `button…:not(.clickable-icon)`，否则特异性低于基础按钮规则，padding 不生效 */
-.is-phone button.ioto-task-view__section-title-edit-btn:not(.clickable-icon) {
+.is-phone button.ioto-task-view__section-title-edit-btn:not(.clickable-icon),
+.is-phone button.ioto-task-view__section-primary-btn:not(.clickable-icon) {
 	opacity: 1;
 	pointer-events: auto;
 	padding: 6px;

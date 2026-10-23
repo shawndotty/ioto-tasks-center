@@ -462,6 +462,26 @@ export default class IOTOTasksCenter extends Plugin {
 				return true;
 			},
 		});
+		// 主任务区标记（[[Plan-20261024-072014]] §4.7）：低频 → 命令面板，不占工具栏按钮位。
+		// 无锚点（无选中 / 无编辑 / 无聚焦）时 `checkCallback` 返回 false → 命令不可见。
+		this.addCommand({
+			id: 'itc-toggle-primary-task-section',
+			name: t('command.togglePrimaryTaskSection'),
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(
+					IOTOTaskView,
+				);
+				if (!view || !view.canTogglePrimarySection()) {
+					return false;
+				}
+
+				if (!checking) {
+					void view.toggleCurrentPrimarySection();
+				}
+
+				return true;
+			},
+		});
 		// 低频操作走命令面板（不占工具栏按钮位，[[Discuss-20261006-223908]] §5.3）。
 		this.addCommand({
 			id: 'itc-insert-entry-template',

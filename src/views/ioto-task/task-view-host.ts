@@ -130,6 +130,11 @@ export interface TaskViewHost extends Component {
 	// ---- 可变状态：只看本节（Section 级布局聚焦）----
 	/** 被聚焦 Section 的 `startLine`；`null` = 未聚焦。瞬态，不进 `getState`。 */
 	sectionZoomLine: number | null;
+	/**
+	 * 主任务区命中的顶层 Section 起始行；未标记 / 属性失效 → `null`。
+	 * 由 `reloadFilters()` 在每次重绘时从 `data` 重算（外部改属性自动生效）。
+	 */
+	primarySectionLine: number | null;
 	/** 进入聚焦前的滚动位置（退出恢复）。 */
 	sectionZoomScrollTop: number | null;
 	/** 进入聚焦前选中的行（退出时若仍存在且未被改选则回填）。 */
@@ -225,6 +230,13 @@ export interface TaskViewHost extends Component {
 	enterSectionZoom(startLine: number): void;
 	exitSectionZoom(): void;
 	restoreSectionZoom(): void;
+
+	/** 只读态（切 Markdown / 关内联编辑）：无 flag 按钮、命令不可用。 */
+	canTogglePrimarySection(): boolean;
+	/** 切换指定 Section 的主任务区标记（[[Plan-20261024-072014]] §4.4）。 */
+	togglePrimarySection(startLine: number): Promise<void>;
+	/** 按「当前上下文」推导 Section 再切换（命令面板入口）。 */
+	toggleCurrentPrimarySection(): Promise<void>;
 
 	// ---- 薄代理方法：命令就绪补偿 ----
 	canDispatch(commandId: string): boolean;

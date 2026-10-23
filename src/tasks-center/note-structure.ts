@@ -33,6 +33,7 @@ export {
 	stripCommentContentFromLine,
 	parseSections,
 	findSectionByTitle,
+	findSectionAtLine,
 	appendSectionHeading,
 	removeTopLevelSection,
 	collectRootSections,

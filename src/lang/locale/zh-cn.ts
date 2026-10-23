@@ -610,6 +610,7 @@ const zhCN = {
 	'command.exportTaskViewImage': '导出任务视图为图片',
 	'command.copyTaskViewImage': '复制任务视图图片到剪贴板',
 	'command.toggleMobileSectionActions': '显示 / 隐藏移动端 Section 标题栏图标',
+	'command.togglePrimaryTaskSection': '切换主任务区标记（当前章节）',
 	'menu.openAsIOTOTask': '以 IOTO 任务视图打开',
 	'menu.openAsMarkdown': '切回 Markdown',
 	'view.iotoTaskView.fallbackTitle': '任务视图',
@@ -618,6 +619,8 @@ const zhCN = {
 	'view.iotoTaskView.sectionToggle': '折叠/展开章节：{0}',
 	'view.iotoTaskView.sectionEdit': '编辑本节内容',
 	'view.iotoTaskView.sectionEditTitle': '编辑本节标题',
+	'view.iotoTaskView.sectionPrimaryMark': '设为主任务区',
+	'view.iotoTaskView.sectionPrimaryUnmark': '取消主任务区',
 	'view.iotoTaskView.sectionZoomIn': '只看本节',
 	'view.iotoTaskView.sectionZoomOut': '显示全部章节',
 	'view.iotoTaskView.sectionDelete': '删除本节',
@@ -714,6 +717,12 @@ const zhCN = {
 	'notice.iotoTaskView.swapNoNext': '已经是同级任务中的最后一条',
 	'notice.iotoTaskView.pinAdded': '已固定：最近任务视图下始终保留。',
 	'notice.iotoTaskView.pinRemoved': '已取消固定。',
+	'notice.iotoTaskView.primarySectionMarked': '已将「{0}」设为主任务区',
+	'notice.iotoTaskView.primarySectionUnmarked': '已取消主任务区标记',
+	'notice.iotoTaskView.primarySectionMissing':
+		'主任务区「{0}」已不存在，本次按原规则添加任务',
+	'notice.iotoTaskView.primarySectionDuplicate':
+		'存在多个同名章节「{0}」，已标记最靠前的一个',
 	'notice.iotoTaskView.duplicateCreated': '已创建任务副本，并选中新副本。',
 	'notice.iotoTaskView.repeatAdded':
 		'已标记为重复任务：每次运行都执行，成功后不落勾。',

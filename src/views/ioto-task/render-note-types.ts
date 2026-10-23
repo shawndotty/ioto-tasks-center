@@ -119,6 +119,16 @@ export interface TaskNoteEditing {
 	/** 退出「只看本节」（供放大按钮自身的 `Esc` 局部路径调用）。 */
 	exitSectionZoom?(): void;
 	/**
+	 * 已标记为主任务区的顶层 Section 起始行；未标记 `null`。
+	 * **必须是 getter**：标记切换后不重建动作区，闭包要读实时值。
+	 */
+	readonly primarySectionLine?: number | null;
+	/**
+	 * 切换该节的主任务区标记（[[Plan-20261024-072014]] §4.3）。
+	 * **缺省 = 按钮不渲染**（只读 / 不支持内联编辑）。
+	 */
+	togglePrimarySection?(startLine: number): void;
+	/**
 	 * 点 Section 头部「编辑本节内容」：进入该节**正文**源码编辑（标题行之下）。
 	 * 参数是该 Section 的 `startLine`（不含 `NoteSection`，保持叶子模块零业务出边）。
 	 * **缺省 = 按钮不渲染**（只读 / 不支持内联编辑时不显示编辑按钮）。

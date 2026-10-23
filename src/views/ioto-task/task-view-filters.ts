@@ -3,6 +3,7 @@ import {
 	readScalarProperty,
 	writeScalarProperties,
 } from '../../tasks-center/frontmatter-properties';
+import { resolvePrimarySection } from '../../tasks-center/primary-section';
 import type { TaskNoteFilters } from './render-note-types';
 import type { TaskViewHost } from './task-view-host';
 import {
@@ -23,6 +24,12 @@ export function reloadFilters(view: TaskViewHost): void {
 		onlyPending: readBooleanProperty(view.data, PROPERTY_ONLY_PENDING),
 		recentOnly: readBooleanProperty(view.data, PROPERTY_RECENT_ONLY),
 	};
+
+	// 主任务区标记与过滤开关同源（都在 frontmatter）：每次重绘只解析一次，
+	// 渲染层再按节比 `startLine`（[[Plan-20261024-072014]] §4.2 / 落地修正 M1）。
+	const primary = resolvePrimarySection(view.data);
+	view.primarySectionLine =
+		primary.status === 'ok' ? primary.section.startLine : null;
 }
 
 /**

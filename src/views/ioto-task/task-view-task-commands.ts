@@ -5,6 +5,7 @@ import { t } from '../../lang/helpter';
 import {
 	buildTasksSectionHeading,
 	buildTopLevelTaskLine,
+	findSectionAtLine,
 	findSectionByTitle,
 	indentLevelOf,
 	markAllChecklistItemsDone,
@@ -17,6 +18,19 @@ import {
 	type NoteChecklistItem,
 	type NoteSection,
 } from '../../tasks-center/note-structure';
+import {
+	removeScalarPropertyInFile,
+	writeQuotedScalarProperty,
+} from '../../tasks-center/frontmatter-properties';
+import {
+	PRIMARY_SECTION_PROPERTY,
+	computeSectionEndInsertion,
+	readPrimarySectionTitle,
+	resolvePrimarySection,
+} from '../../tasks-center/primary-section';
+import { sectionFoldKey } from './section-fold-key';
+import { persistSectionFolds } from './task-view-section-fold';
+import { shiftTrackedLines } from './task-view-filters';
 import {
 	computeSwapRange,
 	findSiblingTarget,
@@ -225,6 +239,40 @@ export async function appendTaskBlock(
 
 	// 先落盘未提交正文，否则 runLineAction 里的 destroyActiveEditor 会丢弃它。
 	await view.commitEdit();
+
+	// ① 最高优先级：笔记标记了主任务区 → 落到该 Section 末尾
+	// （[[Plan-20261024-072014]] §4.1）。原三段落点一行不动，只在此前置分流。
+	const primary = resolvePrimarySection(view.data);
+	if (primary.status === 'ok') {
+		// 折叠态不展开 → 新任务落进看不见的块，紧随的 beginEdit 打在隐藏卡上
+		const foldKey = sectionFoldKey(primary.section.level, primary.section.title);
+		if (view.collapsedSections.delete(foldKey)) {
+			persistSectionFolds(view);
+		}
+		const plan = computeSectionEndInsertion(
+			view.data,
+			primary.section,
+			buildNewLines('- '),
+		);
+		await runLineAction(
+			view,
+			plan.line,
+			plan.originalLine,
+			() => plan.nextLines,
+			plan.nextEditLine,
+			{
+				animateRecentSwap: true,
+				caretOffset: options?.caretOffset,
+			},
+		);
+		return;
+	}
+	if (primary.status === 'missing') {
+		// fail-open：不清属性（自动清会静默吞掉用户意图），继续走原三段
+		new Notice(
+			t('notice.iotoTaskView.primarySectionMissing', [primary.title]),
+		);
+	}
 
 	const items = parseChecklistItems(view.data, { includeEmpty: true });
 	const last = items.length > 0 ? items[items.length - 1] : undefined;
@@ -621,6 +669,120 @@ export async function duplicateSelectedTask(
 		return;
 	}
 	await duplicateTask(view, line);
+}
+
+/* ------------------------------------------------------------------ *
+ * 主任务区标记（[[Plan-20261024-072014]] §4.4 / §4.5）
+ *
+ * 标记是**内容语义**（决定新任务写到哪里），真源在 frontmatter 的
+ * `ioto-primary-task-section`，因此写盘走「原子写 / 删标量属性」。
+ * ------------------------------------------------------------------ */
+
+/**
+ * 当前上下文能定位到的顶层 Section 起始行；无法定位 → `null`。
+ *
+ * 优先级 = 数组顺序：正在改标题 / 正在编辑本节 / 正在编辑某卡 / 续写区 /
+ * 选中卡 / 放大卡 / 只看本节。hover 不参与（没有「鼠标停在哪」的瞬态状态）。
+ */
+export function resolveCurrentSectionLine(view: TaskViewHost): number | null {
+	const candidates = [
+		view.sectionTitleEditLine,
+		view.sectionEditLine,
+		view.editingLine,
+		view.continuationLine,
+		view.selectedLine,
+		view.zoomLine,
+		view.sectionZoomLine,
+	];
+	for (const line of candidates) {
+		if (line === null || line === undefined) continue;
+		const section = findSectionAtLine(view.data, line);
+		if (section) return section.startLine;
+	}
+	return null;
+}
+
+/** 供 main.ts 门控：能定位到一个顶层 Section 才让命令出现。 */
+export function canTogglePrimarySection(view: TaskViewHost): boolean {
+	return (
+		view.file !== null &&
+		view.supportsInlineEdit() &&
+		resolveCurrentSectionLine(view) !== null
+	);
+}
+
+/** 二态切换：已标记该节 → 删键；否则写入该节标题（替换旧标记）。 */
+export async function togglePrimarySection(
+	view: TaskViewHost,
+	startLine: number,
+): Promise<void> {
+	const file = view.file;
+	if (!file || !view.supportsInlineEdit()) return;
+
+	// ① 先落盘在册编辑器（卡片 / 续写 / 标题），否则随后改 frontmatter 会与未提交正文错位
+	await view.flushInlineEdits();
+
+	const section = parseSections(view.data).find(
+		(entry) => entry.startLine === startLine && entry.level > 0,
+	);
+	if (!section) return;
+
+	// ② 判「是否已是标记目标」：按标题比，不按行号比（行号漂移后仍能取消）
+	const oldContent = view.data;
+	const isMarked = readPrimarySectionTitle(oldContent) === section.title;
+
+	// ③ 原子写 / 删
+	const newContent = isMarked
+		? await removeScalarPropertyInFile(
+				view.app,
+				file,
+				PRIMARY_SECTION_PROPERTY,
+			)
+		: await writeQuotedScalarProperty(
+				view.app,
+				file,
+				PRIMARY_SECTION_PROPERTY,
+				section.title,
+			);
+
+	// ④ frontmatter 行数变化 → 平移跟踪态（同 toggleFilter）
+	const delta =
+		newContent.split('\n').length - oldContent.split('\n').length;
+	if (delta !== 0) {
+		shiftTrackedLines(view, delta, oldContent, newContent);
+	}
+
+	// ⑤ 🔴 红线：data / lastLoadedText 一起同步，避免 TextFileView 回写旧字节
+	view.data = newContent;
+	view.lastLoadedText = newContent;
+	view.renderNote(view.data);
+
+	// ⑥ 反馈
+	if (isMarked) {
+		new Notice(t('notice.iotoTaskView.primarySectionUnmarked'));
+		return;
+	}
+	const duplicates = parseSections(newContent).filter(
+		(entry) => entry.level > 0 && entry.title === section.title,
+	).length;
+	new Notice(
+		duplicates > 1
+			? t('notice.iotoTaskView.primarySectionDuplicate', [
+					section.title,
+				])
+			: t('notice.iotoTaskView.primarySectionMarked', [
+					section.title,
+				]),
+	);
+}
+
+/** 命令入口：按当前上下文推导 Section，再二态切换。 */
+export async function toggleCurrentPrimarySection(
+	view: TaskViewHost,
+): Promise<void> {
+	const startLine = resolveCurrentSectionLine(view);
+	if (startLine === null) return;
+	await togglePrimarySection(view, startLine);
 }
 
 /* ------------------------------------------------------------------ *

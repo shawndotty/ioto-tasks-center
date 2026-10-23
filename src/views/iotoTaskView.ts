@@ -216,6 +216,7 @@ import {
 	canInsertEntryTemplate,
 	canMarkAllTasksDone,
 	canSwapSelectedTask,
+	canTogglePrimarySection,
 	canToggleSelectedTaskPin,
 	duplicateSelectedTask,
 	duplicateTask,
@@ -226,6 +227,8 @@ import {
 	resolveCurrentSubject,
 	runTask,
 	swapSelectedTask,
+	toggleCurrentPrimarySection,
+	togglePrimarySection,
 	toggleSelectedTaskPin,
 	toggleTaskPin,
 	toggleTaskRepeat,
@@ -330,6 +333,11 @@ export class IOTOTaskView extends TextFileView {
 	 * （[[Research-20261019-131228]] §4.1）。
 	 */
 	sectionZoomLine: number | null = null;
+	/**
+	 * 主任务区命中的顶层 Section `startLine`；未标记 / 属性失效 → `null`。
+	 * 每次重绘由 `reloadFilters()` 从 `data` 重算（外部改属性自动生效）。
+	 */
+	primarySectionLine: number | null = null;
 	/** 进入聚焦前的滚动位置（退出恢复）。 */
 	sectionZoomScrollTop: number | null = null;
 	/** 进入聚焦前选中的行（退出时尽力回填）。 */
@@ -497,6 +505,8 @@ export class IOTOTaskView extends TextFileView {
 		this.zoomLine = null;
 		// 换文件 / 重载不带旧的「只看本节」状态（与 `zoomLine` 同口径）。
 		resetSectionZoomState(this);
+		// 主任务区行号随后由 `renderNote → reloadFilters` 按新 `data` 重算，先归零防串态。
+		this.primarySectionLine = null;
 		if (clear) {
 			// `clear()` 已把叶子态归零；此处按笔记路径从 store 灌回
 			// （[[Plan-20261023-001403]] §0.2：必须在唯一一次 `renderNote` 之前完成，
@@ -520,6 +530,7 @@ export class IOTOTaskView extends TextFileView {
 		resetEditingLines(this);
 		this.zoomLine = null;
 		resetSectionZoomState(this);
+		this.primarySectionLine = null;
 		this.continuationOriginalLines = [];
 		this.selectedLine = null;
 		this.editingOriginalLine = '';
@@ -867,6 +878,13 @@ export class IOTOTaskView extends TextFileView {
 	canDuplicateTask(): boolean { return canDuplicateTask(this); }
 	async duplicateTask(line: number): Promise<void> { await duplicateTask(this, line); }
 	async duplicateSelectedTask(): Promise<void> { await duplicateSelectedTask(this); }
+	canTogglePrimarySection(): boolean { return canTogglePrimarySection(this); }
+	async togglePrimarySection(startLine: number): Promise<void> {
+		await togglePrimarySection(this, startLine);
+	}
+	async toggleCurrentPrimarySection(): Promise<void> {
+		await toggleCurrentPrimarySection(this);
+	}
 
 	// ---- 外部写回窗口 ----
 	async flushInlineEdits(): Promise<void> { await flushInlineEdits(this); }

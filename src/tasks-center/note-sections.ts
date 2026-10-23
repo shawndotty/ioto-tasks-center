@@ -390,6 +390,30 @@ export function findSectionByTitle(
 	return null;
 }
 
+/**
+ * 行号 → Section 反查：**含标题行本身**、只认顶层（`level > 0`）、返回最外层。
+ * 引导区 / 行号越界 / 无命中 → `null`。
+ */
+export function findSectionAtLine(
+	content: string,
+	line: number,
+): NoteSection | null {
+	if (line < 0 || !Number.isFinite(line)) {
+		return null;
+	}
+	for (const section of collectRootSections(parseSections(content))) {
+		if (
+			section.level > 0 &&
+			line >= section.startLine &&
+			line <= section.endLine
+		) {
+			return section;
+		}
+	}
+
+	return null;
+}
+
 /* ------------------------------------------------------------------ *
  * Section 标题 / 正文的写回原语（[[Plan-20261019-122509]] §3.1）
  *

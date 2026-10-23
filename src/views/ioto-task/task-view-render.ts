@@ -326,6 +326,7 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 	const readKeepVisibleLine = (): number | null => keepVisibleCardLine(view);
 	const readZoomLine = (): number | null => view.zoomLine;
 	const readSectionZoomLine = (): number | null => view.sectionZoomLine;
+	const readPrimarySectionLine = (): number | null => view.primarySectionLine;
 	// 卡片动作区按钮：仅在「支持内联编辑」且「目标命令已注册」时才注入，
 	// 缺省即渲染层隐藏按钮（Q5：只读 / ioto-settings 未启用 → 隐藏）。
 	const inlineEdit = view.supportsInlineEdit();
@@ -365,6 +366,10 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 		// 按钮闭包必须读实时值（同 `zoomLine`）。
 		get sectionZoomLine() {
 			return readSectionZoomLine();
+		},
+		// 同上：标记态切换后不重建动作区，flag 按钮必须读实时值。
+		get primarySectionLine() {
+			return readPrimarySectionLine();
 		},
 		beginEdit: (line) => {
 			void view.beginEdit(line);
@@ -423,6 +428,10 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 					// 供放大按钮自身的 Esc 局部路径调用。
 					exitSectionZoom: () => {
 						view.exitSectionZoom();
+					},
+					// 主任务区标记：二态切换（写 / 删 frontmatter 键 + 整树重绘）。
+					togglePrimarySection: (startLine: number) => {
+						void view.togglePrimarySection(startLine);
 					},
 					editSection: (startLine: number) => {
 						void view.beginSectionEdit(startLine);
