@@ -346,6 +346,10 @@ export function renderChecklistGroup(options: {
 						contLines[contLines.length - 1] ?? item.line + 1,
 					),
 					'data-cont-key': foldKey,
+					// 批量折叠跳过标记：编辑中的卡 / 续写命中搜索词时本次强制展开
+					// （[[Plan-20261024-060243]] S3）。语义是「本次渲染」，搜索词清空
+					// 后即消失，命中期间执行的批量折叠不会落到这个键上——有意为之。
+					'data-cont-force': forceExpand ? '1' : null,
 					// 展开态的容器 tooltip（折叠时由 applyContinuationFoldState 换成
 					// 「展开」文案，纯模块不引 i18n）。
 					'data-hint-expanded': editing.enabled

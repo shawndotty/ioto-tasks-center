@@ -7,7 +7,10 @@
  * 控制器只做「查 / 切换」，DOM 应用交给纯模块 `applyContinuationFoldState`。
  */
 
-import { applyContinuationFoldState } from './continuation-fold';
+import {
+	applyContinuationFoldState,
+	collectContinuationFoldKeys,
+} from './continuation-fold';
 import {
 	createFoldStorage,
 	resolveContinuationFolds,
@@ -48,6 +51,60 @@ export function forgetContinuationFold(view: TaskViewHost, key: string): void {
 	persistContinuationFolds(view);
 }
 
+/** 当前文件是否有任何续写区（命令门禁用；只读 `view.data`，不扫 DOM）。 */
+export function hasContinuationFolds(view: TaskViewHost): boolean {
+	return collectContinuationFoldKeys(view.data ?? '').length > 0;
+}
+
+/**
+ * 二态切换**全文件**的全部续写区（[[Plan-20261024-060243]] S2）。
+ *
+ * - 作用域取 `view.data` 而非 DOM：被过滤 / 被放大隐藏的卡也要进集合，
+ *   否则关掉过滤后它们仍是旧态（计划 §3.2 场景 4）。
+ * - 二态判据：全部已折叠 → 展开，否则折叠；空集短路返回 `false`。
+ * - 逐键 `add` / `delete`，**不** `clear()` 重写：保留历史死键（D4）。
+ * - 只对**已渲染**节点应用，跳过 `data-cont-force`（编辑中 / 续写命中搜索）；
+ *   这些节点连键都不 add —— 否则提交后整树重建会把刚编辑完的卡折上。
+ * - 落盘在循环外只调一次；不重绘（D9）。
+ *
+ * @returns 是否真的改了（`false` = 该笔记没有任何续写区）
+ */
+export function toggleAllContinuationFolds(view: TaskViewHost): boolean {
+	const keys = collectContinuationFoldKeys(view.data ?? '');
+	if (keys.length === 0) {
+		return false;
+	}
+	const collapse = !keys.every((key) => view.continuationCollapsed.has(key));
+	const nodes = view.contentEl.querySelectorAll<HTMLElement>(
+		'.ioto-task-view__card-continuation[data-cont-key]',
+	);
+	// 强制展开的卡（编辑中 / 续写命中搜索）连键都不 add：键一旦落进集合，提交后的
+	// 整树重建会立刻把刚编辑完的卡折上（计划 §5 风险 4 / 验收「不污染集合」）。
+	const forcedKeys = new Set<string>();
+	for (const el of Array.from(nodes)) {
+		const key = el.dataset.contKey;
+		if (el.dataset.contForce === '1' && key) {
+			forcedKeys.add(key);
+		}
+	}
+	for (const key of keys) {
+		if (!collapse) {
+			view.continuationCollapsed.delete(key);
+			continue;
+		}
+		if (!forcedKeys.has(key)) {
+			view.continuationCollapsed.add(key);
+		}
+	}
+	for (const el of Array.from(nodes)) {
+		if (el.dataset.contForce === '1') {
+			continue;
+		}
+		applyContinuationFoldState(el, collapse);
+	}
+	persistContinuationFolds(view);
+	return true;
+}
 /**
  * 装载时调用（`setViewData` 的 `clear === true` 分支、`renderNote` 之前）。
  *

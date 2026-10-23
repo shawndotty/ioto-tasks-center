@@ -111,7 +111,9 @@ import {
 } from './ioto-task/task-view-render';
 import {
 	buildContinuationFoldController,
+	hasContinuationFolds,
 	hydrateContinuationFolds,
+	toggleAllContinuationFolds as toggleAllContinuationFoldsFn,
 } from './ioto-task/task-view-continuation-fold';
 import { hydrateSectionFolds } from './ioto-task/task-view-section-fold';
 import {
@@ -667,6 +669,13 @@ export class IOTOTaskView extends TextFileView {
 	getContinuationFold(): TaskContinuationFold {
 		return buildContinuationFoldController(this);
 	}
+	/**
+	 * 当前笔记是否有任何续写区（命令门禁用，纯 `data` 解析不扫 DOM）。
+	 * 空集 → 命令从面板隐藏，而不是点了没反应（[[Plan-20261024-060243]] D7）。
+	 */
+	canToggleAllContinuationFolds(): boolean { return hasContinuationFolds(this); }
+	/** 二态切换全文件全部续写区；`false` = 无续写区（正常路径下门禁已挡）。 */
+	toggleAllContinuationFolds(): boolean { return toggleAllContinuationFoldsFn(this); }
 	/** 取走 `setState` 暂存的叶子级折叠键（一次性迁移；见 `pendingLeafFolds`）。 */
 	takePendingLeafFolds(): {
 		path: string;

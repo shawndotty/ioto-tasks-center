@@ -10,6 +10,13 @@
  * 能重绘的场合（续行提交）本来就走整树重建，键随内容变化自然收敛。
  */
 
+import {
+	collectRootSections,
+	collectTaskContinuations,
+	dedentLines,
+	parseChecklistItemsInRange,
+	parseSections,
+} from '../../tasks-center/note-structure';
 import { findMatchRanges } from './search-highlight';
 
 /** 折叠态类名（挂在 `.card-continuation` 上；导出摘的就是它）。 */
@@ -34,6 +41,45 @@ export function continuationFoldKey(markdown: string): string {
 		hash = Math.imul(hash, 0x01000193) >>> 0;
 	}
 	return `c${hash.toString(16).padStart(8, '0')}`;
+}
+
+/**
+ * 全文件续写区折叠键（与渲染期写进 `data-cont-key` 的键**同源**）。
+ *
+ * 🔴 口径必须与 `render-sections.ts` 的 `renderSectionBody` 逐字一致，否则批量
+ * 折叠会出现「集合改完了但界面没反应」。改那边的取续行口径时必须同步改这里。
+ *
+ * 不去重：相同正文共享键是既有语义（见 §5 风险 2），保留重复便于断言「N 个续写区」。
+ */
+export function collectContinuationFoldKeys(content: string): string[] {
+	const lines = content.split(/\r?\n/);
+	const keys: string[] = [];
+	for (const section of collectRootSections(parseSections(content))) {
+		// 引导区（level 0）没有标题行，正文从 startLine 起；标题块要跳过标题行。
+		const bodyStartLine =
+			section.level === 0 ? section.startLine : section.startLine + 1;
+		const items = parseChecklistItemsInRange(
+			content,
+			bodyStartLine,
+			section.endLine,
+			{ includeEmpty: true },
+		);
+		for (const lineNos of collectTaskContinuations(
+			content,
+			items,
+			section.endLine,
+		).values()) {
+			const text = dedentLines(
+				lineNos.map((index) => lines[index] ?? '').join('\n'),
+			);
+			if (text.length === 0) {
+				// 与渲染层「dedent 后为空则不给 DOM」对齐，否则键比节点多。
+				continue;
+			}
+			keys.push(continuationFoldKey(text));
+		}
+	}
+	return keys;
 }
 
 /** 本次渲染是否必须展开（只影响本次 DOM，**不改**用户折叠态）。 */

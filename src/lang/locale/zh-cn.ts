@@ -606,6 +606,7 @@ const zhCN = {
 	'command.toggleTaskPin': '固定 / 取消固定当前任务（选中卡）',
 	'command.duplicateTask': '创建当前任务的副本（选中卡）',
 	'command.searchTaskView': '在任务视图中搜索',
+	'command.toggleAllContinuationFolds': '折叠 / 展开全部续写区',
 	'command.exportTaskViewImage': '导出任务视图为图片',
 	'command.copyTaskViewImage': '复制任务视图图片到剪贴板',
 	'command.toggleMobileSectionActions': '显示 / 隐藏移动端 Section 标题栏图标',

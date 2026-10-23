@@ -524,6 +524,25 @@ export default class IOTOTasksCenter extends Plugin {
 				return true;
 			},
 		});
+		// 批量折叠 / 展开当前任务笔记的全部续写区（[[Plan-20261024-060243]]）。
+		// 二态一条命令；无续写区时 `checkCallback` 返回 false → 命令从面板隐藏，
+		// 不留下「点了没反应」的空转入口。
+		this.addCommand({
+			id: 'itc-toggle-all-continuation-folds',
+			name: t('command.toggleAllContinuationFolds'),
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(
+					IOTOTaskView,
+				);
+				if (!view?.canToggleAllContinuationFolds()) {
+					return false;
+				}
+				if (!checking) {
+					view.toggleAllContinuationFolds();
+				}
+				return true;
+			},
+		});
 		// 导出任务视图为图片（[[Plan-20261006-102142]] §2.4）。两条命令共用同一套门控与
 		// 视图实现，区别只在最后「落盘附件」还是「写系统剪贴板」。
 		this.addCommand({

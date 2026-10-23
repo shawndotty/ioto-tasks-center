@@ -607,6 +607,7 @@ const zhTW = {
 	'command.toggleTaskPin': '固定 / 取消固定當前任務（選中卡）',
 	'command.duplicateTask': '建立目前任務的副本（選取卡）',
 	'command.searchTaskView': '在任務視圖中搜尋',
+	'command.toggleAllContinuationFolds': '摺疊 / 展開全部續寫區',
 	'command.exportTaskViewImage': '匯出任務檢視為圖片',
 	'command.copyTaskViewImage': '複製任務檢視圖片到剪貼簿',
 	'command.toggleMobileSectionActions': '顯示 / 隱藏行動版 Section 標題列圖示',
