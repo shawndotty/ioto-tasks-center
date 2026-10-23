@@ -7,12 +7,22 @@ import { createJiti } from 'jiti';
 // hydrate / persist 壳函数同理（只 import 纯模块 + 类型）。
 const jiti = createJiti(import.meta.url, { moduleCache: false });
 const {
+	sectionFoldKey,
+	parseSectionFoldKey,
+	claimSectionFoldKeys,
+	intersectSectionFoldKeys,
+} = await jiti.import('../src/views/ioto-task/section-fold-key.ts');
+const {
 	FOLD_STORE_PREFIX,
 	foldStoreKey,
 	readFoldRecord,
+	readFoldSections,
 	loadContinuationFolds,
 	saveContinuationFolds,
 	resolveContinuationFolds,
+	loadSectionFolds,
+	saveSectionFolds,
+	resolveSectionFolds,
 	renameContinuationFolds,
 	listStoredFoldPaths,
 	pruneContinuationFolds,
@@ -201,7 +211,7 @@ test('hydrate：有记录 → 集合 = 记录值，pending 被忽略且不落盘
 	const view = makeView({
 		app,
 		path: 'A.md',
-		pending: { path: 'A.md', keys: ['cX'] },
+		pending: { path: 'A.md', continuations: ['cX'] },
 	});
 	hydrateContinuationFolds(view);
 	assert.deepEqual([...view.continuationCollapsed], ['c1']);
@@ -215,7 +225,7 @@ test('hydrate：无记录 + 同 path 的 pending → 采纳并落盘（老 works
 	const view = makeView({
 		app,
 		path: 'A.md',
-		pending: { path: 'A.md', keys: ['cX', 'cY'] },
+		pending: { path: 'A.md', continuations: ['cX', 'cY'] },
 	});
 	hydrateContinuationFolds(view);
 	assert.deepEqual([...view.continuationCollapsed], ['cX', 'cY']);
@@ -226,7 +236,7 @@ test('hydrate：无记录 + 同 path 的 pending → 采纳并落盘（老 works
 	const legacyView = makeView({
 		app: emptyPath.app,
 		path: 'B.md',
-		pending: { path: '', keys: ['cZ'] },
+		pending: { path: '', continuations: ['cZ'] },
 	});
 	hydrateContinuationFolds(legacyView);
 	assert.deepEqual([...legacyView.continuationCollapsed], ['cZ']);
@@ -237,7 +247,7 @@ test('hydrate：pending 的 path 与当前文件不同 → 丢弃（防叶子复
 	const view = makeView({
 		app,
 		path: 'B.md',
-		pending: { path: 'A.md', keys: ['cX'] },
+		pending: { path: 'A.md', continuations: ['cX'] },
 	});
 	hydrateContinuationFolds(view);
 	assert.equal(view.continuationCollapsed.size, 0);
@@ -248,7 +258,7 @@ test('hydrate：老客户端（无 localStorage API）→ 退化为只认领 pen
 	const view = makeView({
 		app: {},
 		path: 'A.md',
-		pending: { path: 'A.md', keys: ['cX'] },
+		pending: { path: 'A.md', continuations: ['cX'] },
 	});
 	hydrateContinuationFolds(view);
 	assert.deepEqual([...view.continuationCollapsed], ['cX']);
@@ -286,4 +296,121 @@ test('forget：进续行编辑删键后必须落盘（否则 Esc → 重载会�
 	forgetContinuationFold(view, 'c1');
 	assert.deepEqual([...view.continuationCollapsed], ['c2']);
 	assert.deepEqual(loadContinuationFolds(app, 'A.md'), ['c2']);
+});
+
+// ---- Section 折叠态（[[Plan-20261023-062616]] S6 用例 1-15）----
+
+/** 顶层节种子（hydrate 交集的入参形态）。 */
+const roots = (...pairs) => pairs.map(([level, title]) => ({ level, title }));
+
+test('键：新键不含行号，形如 s:<level>:<title>', () => {
+	assert.equal(sectionFoldKey(1, '目标'), 's:1:目标');
+	assert.equal(sectionFoldKey(2, '子:节'), 's:2:子:节');
+	// 旧键形态（含行号）不应再被产出来
+	assert.equal(sectionFoldKey(1, '目标').includes(':12:'), false);
+});
+
+test('解析：新键 / legacy 键都能解出 level+title；坏键 → null', () => {
+	assert.deepEqual(parseSectionFoldKey('s:1:目标'), { level: 1, title: '目标' });
+	// legacy：行号被丢弃（12 已漂移也无所谓）
+	assert.deepEqual(parseSectionFoldKey('1:12:目标'), { level: 1, title: '目标' });
+	// 标题含 `:`：只切前两个冒号
+	assert.deepEqual(parseSectionFoldKey('s:2:a:b'), { level: 2, title: 'a:b' });
+	assert.deepEqual(parseSectionFoldKey('2:7:a:b'), { level: 2, title: 'a:b' });
+	for (const bad of ['', 's:', 's:x:目标', '目标', '1:目标', 'x:12:目标']) {
+		assert.equal(parseSectionFoldKey(bad), null);
+	}
+});
+
+test('认领：新键直通；legacy 转成新键；找不到标题则丢弃', () => {
+	const rs = roots([1, '目标'], [2, '子节']);
+	assert.deepEqual(claimSectionFoldKeys(['s:1:目标'], rs), ['s:1:目标']);
+	assert.deepEqual(claimSectionFoldKeys(['1:12:目标'], rs), ['s:1:目标']);
+	assert.deepEqual(claimSectionFoldKeys(['1:999:目标'], rs), ['s:1:目标']);
+	assert.deepEqual(claimSectionFoldKeys(['3:5:不存在'], rs), []);
+	assert.deepEqual(claimSectionFoldKeys(['乱七八糟'], rs), []);
+	// 新键与 legacy 指向同一节 → 去重只留一条
+	assert.deepEqual(
+		claimSectionFoldKeys(['s:1:目标', '1:12:目标'], rs),
+		['s:1:目标'],
+	);
+	// level 漂移时按标题兜底（取当前节的 level）
+	assert.deepEqual(claimSectionFoldKeys(['9:12:目标'], rs), ['s:1:目标']);
+});
+
+test('交集：死键 / level 不符的键被剔除，保序去重', () => {
+	const rs = roots([1, '目标'], [2, '子节']);
+	assert.deepEqual(
+		intersectSectionFoldKeys(['s:1:目标', 's:2:子节', 's:1:已删'], rs),
+		['s:1:目标', 's:2:子节'],
+	);
+	// level 不符（标题还在但降级了）
+	assert.deepEqual(intersectSectionFoldKeys(['s:3:目标'], rs), []);
+	assert.deepEqual(intersectSectionFoldKeys(['s:1:目标', 's:1:目标'], rs), [
+		's:1:目标',
+	]);
+});
+
+test('readFoldSections：缺 sections → null（= 无记录，让 legacy 认领生效）', () => {
+	assert.equal(readFoldSections({ v: 1, continuations: [] }), null);
+	assert.deepEqual(readFoldSections({ v: 1, continuations: [], sections: [] }), []);
+	assert.equal(readFoldSections({ v: 2, continuations: [], sections: ['x'] }), null);
+	assert.equal(readFoldSections({ v: 1, continuations: [], sections: 'x' }), null);
+	assert.equal(readFoldSections(null), null);
+});
+
+test('两个 save 互不覆盖：写 sections 保 continuations，反之亦然', () => {
+	const { app, map } = makeStorage();
+	saveContinuationFolds(app, 'A.md', ['c1']);
+	saveSectionFolds(app, 'A.md', ['s:1:目标']);
+	assert.deepEqual(loadContinuationFolds(app, 'A.md'), ['c1']);
+	assert.deepEqual(loadSectionFolds(app, 'A.md'), ['s:1:目标']);
+
+	saveContinuationFolds(app, 'A.md', ['c2']);
+	assert.deepEqual(loadContinuationFolds(app, 'A.md'), ['c2']);
+	assert.deepEqual(loadSectionFolds(app, 'A.md'), ['s:1:目标']);
+	assert.equal(map.get(rawKey('aaa', 'A.md')).v, 1);
+});
+
+test('老记录不补空 sections：只写 continuations 时记录里没有该键', () => {
+	const { app, map } = makeStorage();
+	saveContinuationFolds(app, 'A.md', ['c1']);
+	assert.equal('sections' in map.get(rawKey('aaa', 'A.md')), false);
+	assert.equal(loadSectionFolds(app, 'A.md'), null);
+});
+
+test('rename 搬整条记录：sections 跟着走，旧键消失', () => {
+	const { app, map } = makeStorage();
+	saveContinuationFolds(app, 'old.md', ['c1']);
+	saveSectionFolds(app, 'old.md', ['s:1:目标']);
+	renameContinuationFolds(app, 'old.md', 'new.md');
+	assert.equal(map.has(rawKey('aaa', 'old.md')), false);
+	assert.deepEqual(loadSectionFolds(app, 'new.md'), ['s:1:目标']);
+	assert.deepEqual(loadContinuationFolds(app, 'new.md'), ['c1']);
+});
+
+test('resolveSectionFolds：有记录 → 取交集，交集变小则回写', () => {
+	const { app } = makeStorage();
+	saveSectionFolds(app, 'A.md', ['s:1:目标', 's:1:已删']);
+	assert.deepEqual(
+		resolveSectionFolds(app, 'A.md', ['s:1:别的'], roots([1, '目标'])),
+		['s:1:目标'],
+	);
+	assert.deepEqual(loadSectionFolds(app, 'A.md'), ['s:1:目标']);
+});
+
+test('resolveSectionFolds：无记录 + legacy → 认领并落盘；无 legacy → 不写键', () => {
+	const { app, map } = makeStorage();
+	assert.deepEqual(
+		resolveSectionFolds(app, 'A.md', ['1:12:目标'], roots([1, '目标'])),
+		['s:1:目标'],
+	);
+	assert.deepEqual(loadSectionFolds(app, 'A.md'), ['s:1:目标']);
+
+	const empty = makeStorage();
+	assert.deepEqual(
+		resolveSectionFolds(empty.app, 'B.md', [], roots([1, '目标'])),
+		[],
+	);
+	assert.equal(empty.map.size, 0);
 });

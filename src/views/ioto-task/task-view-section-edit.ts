@@ -14,6 +14,7 @@ import {
 import { mountEmbeddedEditor } from './embedded-editor';
 import type { EmbeddedEditorHandle } from './embedded-editor';
 import { queryScrollEl, querySectionEl } from './task-view-helpers';
+import { persistSectionFolds } from './task-view-section-fold';
 import type { TaskViewHost } from './task-view-host';
 
 /**
@@ -59,8 +60,11 @@ export async function beginSectionEdit(
 	}
 
 	// 折叠态：先展开再进入（折叠时不渲染 body，点不到；与 beginEdit 同口径）
+	// 🔴 隐式展开也要落盘：否则「进编辑 → Esc（内容没改）→ 重载」会折回去
+	// （[[Plan-20261023-062616]] S5，与续写区 `forgetContinuationFold` 同一个坑）。
 	if (view.collapsedSections.has(getSectionStateKey(section))) {
 		view.collapsedSections.delete(getSectionStateKey(section));
+		persistSectionFolds(view);
 		view.renderNote(view.data);
 		section = parseSections(view.data).find((s) => s.startLine === startLine);
 		if (!section || section.level <= 0) {

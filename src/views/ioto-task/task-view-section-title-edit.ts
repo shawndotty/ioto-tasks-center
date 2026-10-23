@@ -8,6 +8,7 @@ import {
 } from '../../tasks-center/note-structure';
 import { commitTaskLineAction } from './commit-task-line';
 import { getSectionStateKey } from './render-note';
+import { persistSectionFolds } from './task-view-section-fold';
 import { querySectionEl } from './task-view-helpers';
 import type { TaskViewHost } from './task-view-host';
 
@@ -257,8 +258,9 @@ export async function commitSectionTitleEdit(
 	if (outcome.status === 'ok' && oldKey) {
 		const newKey = getSectionStateKey(nextSection);
 		if (newKey !== oldKey && view.collapsedSections.delete(oldKey)) {
-			// 折叠态迁移：改名的节不该自己展开
+			// 折叠态迁移：改名的节不该自己展开（换 key 后必须落盘，否则重载会掉态）
 			view.collapsedSections.add(newKey);
+			persistSectionFolds(view);
 		}
 	}
 }

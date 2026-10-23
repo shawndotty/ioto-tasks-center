@@ -13,6 +13,7 @@ import { mountEmbeddedEditor } from './embedded-editor';
 import { getSectionStateKey, renderCardActions } from './render-note';
 import type { TaskViewHost } from './task-view-host';
 import { isCardEditing } from './task-view-editing-state';
+import { persistSectionFolds } from './task-view-section-fold';
 import { lineAt, queryCard } from './task-view-helpers';
 
 /** 销毁标题编辑器：先撤 autosave、置空 handle、再 destroy（防递归）。 */
@@ -184,6 +185,9 @@ export async function beginEdit(
  * 只有**顶层 Section** 会进 `collapsedSections`（`renderTaskNote` 只对 roots 调
  * `renderSection`），所以按「命中 key 在集合内」判定即可，无需再算顶层结构。
  * 展开后调用方需重绘一次才能取到卡片（[[Discuss-20261008-164745]] §四·2 / Q3）。
+ *
+ * 🔴 落盘放在 helper 内：这是**隐式**展开，任何调用方都不会漏
+ * （[[Plan-20261023-062616]] S5）。
  */
 export function expandSectionContaining(
 	view: TaskViewHost,
@@ -196,6 +200,7 @@ export function expandSectionContaining(
 		}
 		if (line >= section.startLine && line <= section.endLine) {
 			view.collapsedSections.delete(key);
+			persistSectionFolds(view);
 			return true;
 		}
 	}

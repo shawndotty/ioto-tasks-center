@@ -24,6 +24,7 @@ import {
 } from '../../tasks-center/note-structure';
 import { shouldTriggerTaskHoverPreview } from '../task-hover-preview';
 import { pickRecentTopLevelLines } from './recent-task-filter';
+import { sectionFoldKey } from './section-fold-key';
 import {
 	isCardVisible,
 	normalizeQuery,
@@ -63,9 +64,15 @@ interface RenderSectionOptions {
 	continuationFold?: TaskContinuationFold;
 }
 
-/** Section 折叠状态的稳定 key（Level + 起始行 + 标题，重排后不会错位）。 */
+/**
+ * Section 折叠状态的稳定 key：**Level + 标题，不含行号**（[[Plan-20261023-062616]] S2）。
+ *
+ * 不含行号 ⇒ 上方插入 / 删除行不会让折叠态失效（旧键 `level:startLine:title` 一加
+ * 任务就掉态）；代价是改标题会掉态——与续写区「内容改了就展开」同口径，fail-open。
+ * 键的构造 / 解析 / 认领全收口在 `section-fold-key.ts`。
+ */
 export function getSectionStateKey(section: NoteSection): string {
-	return `${section.level}:${section.startLine}:${section.title}`;
+	return sectionFoldKey(section.level, section.title);
 }
 
 /**

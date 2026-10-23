@@ -1,3 +1,9 @@
+import {
+	claimSectionFoldKeys,
+	intersectSectionFoldKeys,
+	type SectionFoldSeed,
+} from './section-fold-key';
+
 /**
  * 续写区折叠态的**跨会话镜像**（[[Plan-20261023-001403]] S1 / [[Discuss-20261023-000621]] 方案 B）。
  *
@@ -21,8 +27,19 @@ export const FOLD_STORE_PREFIX = 'ioto-task-fold-';
 /** 记录格式版本；读到别的版本一律当「无记录」，不尝试升级。 */
 export const FOLD_STORE_VERSION = 1;
 
-/** 一个笔记的折叠记录（`continuations` = 续写正文哈希键集合）。 */
-export type FoldRecord = { v: number; continuations: string[] };
+/**
+ * 一个笔记的折叠记录。
+ *
+ * - `continuations`：续写正文哈希键集合（[[Plan-20261023-001403]]）；
+ * - `sections`：Section 折叠键集合（`s:<level>:<title>`，[[Plan-20261023-062616]] S3）。
+ *   **optional 且刻意不补空**：缺字段 =「无记录」，是升级后一次性认领老
+ *   `workspace.json` 键的判据（见 `readFoldSections`）。
+ */
+export type FoldRecord = {
+	v: number;
+	continuations: string[];
+	sections?: string[];
+};
 
 export function foldStoreKey(path: string): string {
 	return `${FOLD_STORE_PREFIX}${path}`;
@@ -42,54 +59,133 @@ function normalizeKeys(values: readonly unknown[]): string[] {
 	return keys;
 }
 
-/**
- * 把任意读到的值解析成记录。
- *
- * 坏结构 / 坏版本一律 `null`（= 无记录），不抛错：手改 localStorage 或旧版本残留
- * 只该让折叠态「恢复不了」，不该让视图装载失败。
- */
-export function readFoldRecord(raw: unknown): string[] | null {
-	if (!raw || typeof raw !== 'object') {
-		return null;
-	}
-	const record = raw as { v?: unknown; continuations?: unknown };
-	if (record.v !== FOLD_STORE_VERSION || !Array.isArray(record.continuations)) {
-		return null;
-	}
-	return normalizeKeys(record.continuations);
-}
-
-/** 读一个笔记的记录；`null` = 从没写过。 */
-export function loadContinuationFolds(
-	storage: FoldStorageLike,
-	path: string,
-): string[] | null {
+/** 读原始记录值（不做解析）；读失败当「无记录」。 */
+function loadRawRecord(storage: FoldStorageLike, path: string): unknown {
 	try {
-		return readFoldRecord(storage.loadLocalStorage(foldStoreKey(path)));
+		return storage.loadLocalStorage(foldStoreKey(path));
 	} catch {
 		return null;
 	}
 }
 
 /**
- * 整份镜像落盘（**永不删键**：显式展开要留下 `[]`，详见 `resolveContinuationFolds`）。
+ * 把任意读到的值解析成**完整**记录。
  *
- * 写失败（localStorage 满 / 被禁用）只影响持久化，不影响本次折叠，因此静默吞掉。
+ * 坏结构 / 坏版本一律 `null`（= 无记录），不抛错：手改 localStorage 或旧版本残留
+ * 只该让折叠态「恢复不了」，不该让视图装载失败。
+ * `sections` 不是数组时**不带这个键**（区别于空数组，见 `readFoldSections`）。
+ */
+export function readFoldRecordFull(raw: unknown): FoldRecord | null {
+	if (!raw || typeof raw !== 'object') {
+		return null;
+	}
+	const record = raw as {
+		v?: unknown;
+		continuations?: unknown;
+		sections?: unknown;
+	};
+	if (record.v !== FOLD_STORE_VERSION || !Array.isArray(record.continuations)) {
+		return null;
+	}
+	const full: FoldRecord = {
+		v: FOLD_STORE_VERSION,
+		continuations: normalizeKeys(record.continuations),
+	};
+	if (Array.isArray(record.sections)) {
+		full.sections = normalizeKeys(record.sections);
+	}
+	return full;
+}
+
+/** 兼容口径：只取续写区键（坏数据 / 无记录 → `null`）。 */
+export function readFoldRecord(raw: unknown): string[] | null {
+	return readFoldRecordFull(raw)?.continuations ?? null;
+}
+
+/**
+ * 只取 Section 键；**缺 `sections` 字段返回 `null`（= 无记录）**。
+ *
+ * 🔴 不能退化成 `[]`：那样「有记录但为空」与「从没写过」就分不开了，而 legacy 认领
+ * 只在「无记录」时发生——升级后本机已有的 `{v:1,continuations:[…]}` 会被判成
+ * 「有记录且为空」，老 `workspace.json` 里一行都认领不到（[[Plan-20261023-062616]] §0.1-①）。
+ */
+export function readFoldSections(raw: unknown): string[] | null {
+	return readFoldRecordFull(raw)?.sections ?? null;
+}
+
+/** 读一个笔记的续写区记录；`null` = 从没写过。 */
+export function loadContinuationFolds(
+	storage: FoldStorageLike,
+	path: string,
+): string[] | null {
+	return readFoldRecord(loadRawRecord(storage, path));
+}
+
+/** 读一个笔记的 Section 记录；`null` = 从没写过。 */
+export function loadSectionFolds(
+	storage: FoldStorageLike,
+	path: string,
+): string[] | null {
+	return readFoldSections(loadRawRecord(storage, path));
+}
+
+/** 整条记录落盘（写失败静默吞掉：只影响持久化，不影响本次折叠）。 */
+function writeFoldRecord(
+	storage: FoldStorageLike,
+	path: string,
+	record: FoldRecord,
+): void {
+	try {
+		storage.saveLocalStorage(foldStoreKey(path), record);
+	} catch {
+		// 存不了 = 退化为「不持久化」，与旧客户端同口径。
+	}
+}
+
+/**
+ * read-modify-write 补丁写：**只替换传入的字段**，另一个折叠态原样保留。
+ *
+ * 🔴 这是续写区与 Section 两个折叠态能共存于同一条记录的关键：早期实现各自整条
+ * 覆盖，后写的会把先写的字段冲掉（[[Plan-20261023-062616]] §0.1-③）。
+ * 原记录没有 `sections` 且本次也不写时**不补空字段**（保持老记录字节不变）。
+ */
+function patchFoldRecord(
+	storage: FoldStorageLike,
+	path: string,
+	patch: { continuations?: readonly string[]; sections?: readonly string[] },
+): void {
+	const full = readFoldRecordFull(loadRawRecord(storage, path));
+	const base: FoldRecord = full ?? {
+		v: FOLD_STORE_VERSION,
+		continuations: [],
+	};
+	if (patch.continuations !== undefined) {
+		base.continuations = normalizeKeys(patch.continuations);
+	}
+	if (patch.sections !== undefined) {
+		base.sections = normalizeKeys(patch.sections);
+	}
+	writeFoldRecord(storage, path, base);
+}
+
+/**
+ * 整份续写区镜像落盘（**永不删键**：显式展开要留下 `[]`，详见 `resolveContinuationFolds`）。
  */
 export function saveContinuationFolds(
 	storage: FoldStorageLike,
 	path: string,
 	keys: readonly string[],
 ): void {
-	const record: FoldRecord = {
-		v: FOLD_STORE_VERSION,
-		continuations: normalizeKeys(keys),
-	};
-	try {
-		storage.saveLocalStorage(foldStoreKey(path), record);
-	} catch {
-		// 存不了 = 退化为「不持久化」，与旧客户端同口径。
-	}
+	patchFoldRecord(storage, path, { continuations: keys });
+}
+
+/** 整份 Section 镜像落盘（同上：显式展开要留下 `[]`，不是删键）。 */
+export function saveSectionFolds(
+	storage: FoldStorageLike,
+	path: string,
+	keys: readonly string[],
+): void {
+	patchFoldRecord(storage, path, { sections: keys });
 }
 
 /**
@@ -130,14 +226,46 @@ export function renameContinuationFolds(
 	if (!oldPath || !newPath || oldPath === newPath) {
 		return;
 	}
-	const stored = loadContinuationFolds(storage, oldPath);
-	if (stored === null) {
+	// 🔴 搬**整条记录**（含 `sections`），不能只搬 continuations：否则重命名
+	// 会把 Section 折叠态丢掉（[[Plan-20261023-062616]] §0.1-④）。
+	const full = readFoldRecordFull(loadRawRecord(storage, oldPath));
+	if (full === null) {
 		return;
 	}
-	if (loadContinuationFolds(storage, newPath) === null) {
-		saveContinuationFolds(storage, newPath, stored);
+	if (readFoldRecordFull(loadRawRecord(storage, newPath)) === null) {
+		writeFoldRecord(storage, newPath, full);
 	}
 	dropFoldRecord(storage, oldPath);
+}
+
+/**
+ * Section 折叠态的 hydrate 取数口（与 `resolveContinuationFolds` 同构，多一步交集）：
+ *
+ * - 有记录（含 `[]`）→ 以记录为准，**不认领 legacy**（「显式展开后重载不复活」的关键）；
+ *   顺带做**交集清理**，丢掉匹配不到当前 root 的死键，交集变小则回写一次；
+ * - 无记录 + legacy 非空 → 认领（行号键 → 新键）并落盘（老 `workspace.json` 迁移）；
+ * - 无记录 + legacy 为空 → 返回 `[]` 且**不写键**。
+ */
+export function resolveSectionFolds(
+	storage: FoldStorageLike,
+	path: string,
+	legacy: readonly string[],
+	roots: readonly SectionFoldSeed[],
+): string[] {
+	const stored = loadSectionFolds(storage, path);
+	if (stored !== null) {
+		const kept = intersectSectionFoldKeys(stored, roots);
+		if (kept.length !== stored.length) {
+			saveSectionFolds(storage, path, kept);
+		}
+		return kept;
+	}
+	const claimed = claimSectionFoldKeys(legacy, roots);
+	if (claimed.length === 0) {
+		return [];
+	}
+	saveSectionFolds(storage, path, claimed);
+	return claimed;
 }
 
 function dropFoldRecord(storage: FoldStorageLike, path: string): boolean {

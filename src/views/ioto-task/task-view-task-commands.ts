@@ -12,6 +12,7 @@ import {
 	parseChecklistItemsInRange,
 	parseSections,
 	setTaskPin,
+	setTaskRepeat,
 	splitTaskLine,
 	type NoteChecklistItem,
 	type NoteSection,
@@ -40,7 +41,7 @@ import {
 } from './task-view-constants';
 import { lineAt, countContinuationLines } from './task-view-helpers';
 import { runLineAction } from './task-view-editor-handlers';
-import { commitBlockRange } from './commit-task-line';
+import { commitBlockRange, commitTaskLineAction } from './commit-task-line';
 
 /**
  * 命令面板 / 快捷键入口：仅转发到 `addTask`，不复制逻辑。
@@ -406,6 +407,15 @@ function isPinnedLine(line: string): boolean {
 	);
 }
 
+/** 行内是否已 repeat（复用解析层，不做第二套字符串分析）。 */
+function isRepeatedLine(line: string): boolean {
+	return (
+		splitTaskLine(line)?.controls.some(
+			(control) => control.kind === 'repeat',
+		) === true
+	);
+}
+
 /** 供 main.ts 的 checkCallback 门控：有选中卡且可写。 */
 export function canToggleSelectedTaskPin(view: TaskViewHost): boolean {
 	return (
@@ -413,41 +423,81 @@ export function canToggleSelectedTaskPin(view: TaskViewHost): boolean {
 	);
 }
 
-/** 把选中卡加 / 去 `#ioto/pin`，一次原子读改写后整树重绘。 */
-export async function toggleSelectedTaskPin(view: TaskViewHost): Promise<void> {
+/**
+ * pin / repeat 的公共写回：**显式行号**，不读 `selectedLine`
+ * （[[Plan-20261023-104335]] M2/M3：右键在放大态 / 正编辑另一张卡时改选不可靠）。
+ *
+ * ① 先落盘在册编辑器 → ② `commitTaskLineAction`（data-line 定位 + originalLine
+ * 二次定位 + unchanged 短路 + conflict 三态）→ ③ `applyOutcome` + 整树重绘 + Notice。
+ * 与 `indentSelected` / `deleteSelected` 同构，取代裸 `vault.process`（M4）。
+ */
+async function toggleTaskControl(
+	view: TaskViewHost,
+	line: number,
+	kind: 'pin' | 'repeat',
+): Promise<void> {
 	const file = view.file;
-	const line = view.selectedLine;
-	if (!file || !view.supportsInlineEdit() || line === null) return;
+	if (!file || !view.supportsInlineEdit()) return;
 
 	// ① 先落盘在册编辑器，避免与未提交正文双写错位（与 markAllTasksDone 同序）
 	await view.flushInlineEdits();
 
-	// ② 原子读改写；回调内按最新 content 重算（并发外部写入自洽，同 commitTaskLineAction 红线）
-	let nextLine = '';
-	let nextContent = '';
-	await view.app.vault.process(file, (content) => {
-		const lines = content.split('\n');
-		const current = lines[line];
-		if (current === undefined) return content;
-		const updated = setTaskPin(current, !isPinnedLine(current));
-		if (updated === null || updated === current) return content;
-		lines[line] = updated;
-		nextLine = updated;
-		nextContent = lines.join('\n');
-		return nextContent;
-	});
-	if (!nextLine) return;
+	const transform =
+		kind === 'pin'
+			? (raw: string) => setTaskPin(raw, !isPinnedLine(raw))
+			: (raw: string) => setTaskRepeat(raw, !isRepeatedLine(raw));
 
-	// ③ 同步 data/lastLoadedText + 重绘（对齐 runLineAction 收尾）
-	view.applyOutcome({ status: 'ok', content: nextContent });
+	const outcome = await commitTaskLineAction(view.app, file, {
+		line,
+		originalLine: view.lineAt(line),
+		transform,
+	});
+	// 🔴 红线：data / lastLoadedText 必须同步
+	view.applyOutcome(outcome);
+
+	if (outcome.status === 'conflict') {
+		await view.reloadFromVault();
+		view.renderNote(view.data);
+		return;
+	}
+	if (outcome.status !== 'ok') return; // unchanged：目标态已达，无写盘、无重绘
+
 	view.renderNote(view.data);
+	const nextLine = view.lineAt(line);
 	new Notice(
 		t(
-			isPinnedLine(nextLine)
-				? 'notice.iotoTaskView.pinAdded'
-				: 'notice.iotoTaskView.pinRemoved',
+			kind === 'pin'
+				? isPinnedLine(nextLine)
+					? 'notice.iotoTaskView.pinAdded'
+					: 'notice.iotoTaskView.pinRemoved'
+				: isRepeatedLine(nextLine)
+					? 'notice.iotoTaskView.repeatAdded'
+					: 'notice.iotoTaskView.repeatRemoved',
 		),
 	);
+}
+
+/** 右键菜单：给**指定行**加 / 去 `#ioto/pin`。 */
+export async function toggleTaskPin(
+	view: TaskViewHost,
+	line: number,
+): Promise<void> {
+	await toggleTaskControl(view, line, 'pin');
+}
+
+/** 右键菜单：给**指定行**加 / 去 `#ioto/repeat`。 */
+export async function toggleTaskRepeat(
+	view: TaskViewHost,
+	line: number,
+): Promise<void> {
+	await toggleTaskControl(view, line, 'repeat');
+}
+
+/** 命令入口（`itc-toggle-task-pin`）：语义不变，改为委托 toggleTaskPin。 */
+export async function toggleSelectedTaskPin(view: TaskViewHost): Promise<void> {
+	const line = view.selectedLine;
+	if (!canToggleSelectedTaskPin(view) || line === null) return;
+	await toggleTaskPin(view, line);
 }
 
 /* ------------------------------------------------------------------ *

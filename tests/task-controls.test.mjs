@@ -11,6 +11,7 @@ const {
 	taskBodyForEditor,
 	buildSiblingTaskLine,
 	setTaskPin,
+	setTaskRepeat,
 } = await jiti.import('../src/tasks-center/note-structure.ts');
 
 /* ------------------------------------------------------------------ *
@@ -318,5 +319,67 @@ test('setTaskPin：保留 Tab 缩进与行尾 \\r', () => {
 	assert.equal(
 		setTaskPin('\t- [ ] 子任务\r', true),
 		'\t- [ ] 子任务 #ioto/pin\r',
+	);
+});
+
+/* ------------------------------------------------------------------ *
+ * setTaskRepeat（[[Plan-20261023-104335]] §4.10）
+ * 与 setTaskPin 逐条对称：repeat 的右边界解析（repeatfoo / repeat-2 不算）
+ * 已在 §1 覆盖，这里只测写回。
+ * ------------------------------------------------------------------ */
+
+test('setTaskRepeat：加 repeat 追加到行尾', () => {
+	assert.equal(
+		setTaskRepeat('- [ ] 每日站会', true),
+		'- [ ] 每日站会 #ioto/repeat',
+	);
+	// 与其它控制项共存：repeat 追加在最后（不在中间插队）
+	assert.equal(
+		setTaskRepeat('- [ ] 每日站会 #ioto/pin', true),
+		'- [ ] 每日站会 #ioto/pin #ioto/repeat',
+	);
+});
+
+test('setTaskRepeat：已 repeat 再加逐字节返回原行（幂等）', () => {
+	const line = '- [ ] 每日站会 #ioto/repeat';
+	assert.equal(setTaskRepeat(line, true), line);
+});
+
+test('setTaskRepeat：去 repeat 不留空白与双空格', () => {
+	// 行尾
+	assert.equal(
+		setTaskRepeat('- [ ] 每日站会 #ioto/repeat', false),
+		'- [ ] 每日站会',
+	);
+	// 行中：剥离点两侧空白收敛为单空格
+	assert.equal(
+		setTaskRepeat('- [ ] 每日站会 #ioto/repeat 说明', false),
+		'- [ ] 每日站会 说明',
+	);
+	// 行首（紧跟 gap 之后）
+	assert.equal(
+		setTaskRepeat('- [ ] #ioto/repeat 每日站会', false),
+		'- [ ] 每日站会',
+	);
+});
+
+test('setTaskRepeat：未 repeat 时再去，返回原行', () => {
+	const line = '- [ ] 普通任务 #ioto/turns/5';
+	assert.equal(setTaskRepeat(line, false), line);
+});
+
+test('setTaskRepeat：非任务行返回 null', () => {
+	assert.equal(setTaskRepeat('普通段落 #ioto/repeat', false), null);
+	assert.equal(setTaskRepeat('', true), null);
+});
+
+test('setTaskRepeat：保留 Tab 缩进与行尾 \\r', () => {
+	assert.equal(
+		setTaskRepeat('\t- [ ] 子任务 #ioto/repeat\r', false),
+		'\t- [ ] 子任务\r',
+	);
+	assert.equal(
+		setTaskRepeat('\t- [ ] 子任务\r', true),
+		'\t- [ ] 子任务 #ioto/repeat\r',
 	);
 });

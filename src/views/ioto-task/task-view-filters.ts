@@ -27,7 +27,9 @@ export function reloadFilters(view: TaskViewHost): void {
 
 /**
  * 切换 ① / ②：先 `commitEdit`（避免与落盘交错），一次补齐两个属性键，写盘后
- * 按 frontmatter 行数变化平移 `selectedLine` / `collapsedSections`，再整树重绘。
+ * 按 frontmatter 行数变化平移 `selectedLine`，再整树重绘。
+ *
+ * 🔴 `collapsedSections` 不再参与平移：折叠键不含行号（[[Plan-20261023-062616]]）。
  */
 export async function toggleFilter(
 	view: TaskViewHost,
@@ -103,24 +105,4 @@ export function shiftTrackedLines(
 		}
 	}
 
-	const shifted = new Set<string>();
-	for (const key of view.collapsedSections) {
-		// key = `level:startLine:title`（只 split 前两个 `:`，标题可能含 `:`）
-		const firstColon = key.indexOf(':');
-		const secondColon = key.indexOf(':', firstColon + 1);
-		if (firstColon < 0 || secondColon < 0) {
-			continue;
-		}
-		const level = key.slice(0, firstColon);
-		const startLine = Number.parseInt(
-			key.slice(firstColon + 1, secondColon),
-			10,
-		);
-		if (Number.isNaN(startLine)) {
-			continue;
-		}
-		const title = key.slice(secondColon + 1);
-		shifted.add(`${level}:${startLine + delta}:${title}`);
-	}
-	view.collapsedSections = shifted;
 }

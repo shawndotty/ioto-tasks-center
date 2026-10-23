@@ -23,6 +23,7 @@ import {
 	queryScrollEl,
 	querySectionEl,
 } from './task-view-helpers';
+import { persistSectionFolds } from './task-view-section-fold';
 
 /** 唯一的 DOM 真源类名（导出时按瞬时态摘除）。 */
 export const SECTION_ZOOM_CLASS = 'is-section-zoomed';
@@ -126,6 +127,9 @@ export function enterSectionZoom(
 	const key = getSectionStateKey(section);
 	if (view.collapsedSections.has(key)) {
 		view.collapsedSections.delete(key);
+		// 隐式展开也要落盘（[[Plan-20261023-062616]] S5）：否则「只看本节 → 退出 →
+		// 重载」会把折叠态复活。🔴 必须在 `return` 之前写。
+		persistSectionFolds(view);
 		// 跨「全部可见 → 单节」两种布局，滚动快照必然失真 → 跳过并归顶。
 		view.renderNote(view.data, { resetScroll: true });
 		return;

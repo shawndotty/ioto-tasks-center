@@ -33,6 +33,7 @@ import {
 	isCardInZoomedSection,
 	restoreSectionZoom,
 } from './task-view-section-zoom';
+import { persistSectionFolds } from './task-view-section-fold';
 
 /**
  * 视图级渲染主入口：重建列表容器，保留常驻外壳，处理动画 / 选中回填 / 命令就绪补偿。
@@ -123,6 +124,8 @@ export function renderNote(
 				} else {
 					view.collapsedSections.add(key);
 				}
+				// 折叠态跨会话留存：改了集合就落盘（[[Plan-20261023-062616]] S5）。
+				persistSectionFolds(view);
 				view.renderNote(view.data);
 			},
 			editing: buildEditingController(view),
@@ -398,6 +401,13 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 			? {
 					toggleZoom: (line: number) => {
 						view.toggleZoomCard(line);
+					},
+					// 右键菜单的 pin / repeat：显式行号，不读 selectedLine。
+					toggleTaskPin: (line: number) => {
+						void view.toggleTaskPin(line);
+					},
+					toggleTaskRepeat: (line: number) => {
+						void view.toggleTaskRepeat(line);
 					},
 					focusZoomEditor: (line: number) => {
 						view.focusZoomEditor(line);

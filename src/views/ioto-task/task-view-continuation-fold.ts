@@ -53,16 +53,21 @@ export function forgetContinuationFold(view: TaskViewHost, key: string): void {
  *
  * 顺序有讲究：先取走 `setState` 暂存的 legacy 键、再归零集合、最后按路径从 store 灌回。
  * 集合归零后再灌是幂等的（`clear()` 已清过一次，这里覆盖「clear 被绕过」的调用方）。
+ *
+ * `pending` 用**默认参数**：`setViewData` 里与 `hydrateSectionFolds` 共用同一份
+ * （`takePendingLeafFolds()` 取走即清空，各 take 一次会有一个拿到 `null`）。
  */
-export function hydrateContinuationFolds(view: TaskViewHost): void {
+export function hydrateContinuationFolds(
+	view: TaskViewHost,
+	pending = view.takePendingLeafFolds(),
+): void {
 	const storage = createFoldStorage(view.app);
 	const path = view.file?.path ?? '';
 	// 认领范围限定「同一文件」（或 path 缺失的老状态），防叶子复用把 A 的键串给 B。
-	const pending = view.takePendingLeafFolds();
 	view.continuationCollapsed.clear();
 	const legacy =
 		pending && (pending.path === '' || pending.path === path)
-			? pending.keys
+			? pending.continuations
 			: [];
 	if (!storage || !path) {
 		// 老客户端（无 localStorage API）/ 尚未绑定文件 → 退化为今天的行为。

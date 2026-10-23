@@ -59,7 +59,6 @@ const WHITELIST = new Set([
 	'task-view-external-writeback.ts :: externalWritebackActive',
 	'task-view-external-writeback.ts :: externalWritebackBlurred',
 	'task-view-external-writeback.ts :: externalWritebackDirty',
-	'task-view-filters.ts :: collapsedSections',
 	'task-view-filters.ts :: data',
 	'task-view-filters.ts :: filters',
 	'task-view-filters.ts :: lastLoadedText',
@@ -86,9 +85,8 @@ const WHITELIST = new Set([
 	'task-view-task-commands.ts :: selectedLine',
 	// 行块移动（Section 拖拽 / 任务卡片拖拽 / 任务互换等）提交后的统一行号重映射
 	// 迁移点（[[Plan task-view-section-drag-reorder]] / card-drag-reorder）：
-	// 区间原子重写后，selectedLine 按 mapLine 迁移 / 清空，collapsedSections 的
-	// `level:startLine:title` 键集按新行号整体重建。所有拖拽模块共享，写点收口于此。
-	'task-view-tracked-lines.ts :: collapsedSections',
+	// 区间原子重写后，selectedLine 按 mapLine 迁移 / 清空。所有拖拽模块共享，写点
+	// 收口于此。折叠键已不含行号（[[Plan-20261023-062616]]），故不再在此迁移。
 	'task-view-tracked-lines.ts :: selectedLine',
 	// Section 编辑器（[[Plan-20261010-080827]] 批次 1）：与续行模块同口径的状态迁移点，
 	// 会话快照字段（start/end/originalLines/handle/hostEl）与编辑行号都在本模块维护。

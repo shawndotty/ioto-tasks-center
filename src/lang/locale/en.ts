@@ -755,6 +755,10 @@ const en = {
 	'view.iotoTaskView.cardActions.zoomOut': 'Exit zoom',
 	'view.iotoTaskView.cardActions.deleteTask': 'Delete task',
 	'view.iotoTaskView.cardActions.deleteTaskTooltip': 'Delete this task',
+	'view.iotoTaskView.contextMenu.pinTask': 'Pin task',
+	'view.iotoTaskView.contextMenu.unpinTask': 'Unpin task',
+	'view.iotoTaskView.contextMenu.repeatTask': 'Mark as repeat task',
+	'view.iotoTaskView.contextMenu.unrepeatTask': 'Unmark repeat task',
 	'view.iotoTaskView.deleteConfirm.confirm': 'Confirm delete',
 	'view.iotoTaskView.deleteConfirm.cancel': 'Cancel',
 	'view.iotoTaskView.deleteConfirm.aria': 'Delete confirmation',
@@ -765,6 +769,9 @@ const en = {
 	'notice.iotoTaskView.pinAdded':
 		'Pinned — stays visible in the recent-only view.',
 	'notice.iotoTaskView.pinRemoved': 'Unpinned.',
+	'notice.iotoTaskView.repeatAdded':
+		'Marked as repeat: runs every time, stays unchecked.',
+	'notice.iotoTaskView.repeatRemoved': 'Repeat mark removed.',
 	'notice.iotoTaskView.inlineEditUnavailable':
 		'Inline editing is unavailable in this Obsidian version. Edit in Markdown instead.',
 	'notice.iotoTaskView.bodyMultilineRejected':

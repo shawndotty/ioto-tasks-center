@@ -693,6 +693,10 @@ const zhTW = {
 	'view.iotoTaskView.cardActions.zoomOut': '退出放大',
 	'view.iotoTaskView.cardActions.deleteTask': '刪除任務',
 	'view.iotoTaskView.cardActions.deleteTaskTooltip': '刪除本條任務',
+	'view.iotoTaskView.contextMenu.pinTask': '固定任務',
+	'view.iotoTaskView.contextMenu.unpinTask': '取消固定',
+	'view.iotoTaskView.contextMenu.repeatTask': '標記為重複任務',
+	'view.iotoTaskView.contextMenu.unrepeatTask': '取消重複',
 	'view.iotoTaskView.deleteConfirm.confirm': '確認刪除',
 	'view.iotoTaskView.deleteConfirm.cancel': '取消',
 	'view.iotoTaskView.deleteConfirm.aria': '刪除確認',
@@ -701,6 +705,9 @@ const zhTW = {
 	'notice.iotoTaskView.swapNoNext': '已經是同級任務中的最後一條',
 	'notice.iotoTaskView.pinAdded': '已固定：最近任務檢視下始終保留。',
 	'notice.iotoTaskView.pinRemoved': '已取消固定。',
+	'notice.iotoTaskView.repeatAdded':
+		'已標記為重複任務：每次執行都執行，成功後不落勾。',
+	'notice.iotoTaskView.repeatRemoved': '已取消重複標記。',
 	'notice.iotoTaskView.inlineEditUnavailable':
 		'目前 Obsidian 版本不支援內嵌編輯，請在 Markdown 中編輯。',
 	'notice.iotoTaskView.bodyMultilineRejected':

@@ -61,10 +61,16 @@ export interface TaskViewHost extends Component {
 	 */
 	continuationCollapsed: Set<string>;
 	/**
-	 * `setState` 暂存的叶子级折叠键（一次性迁移），由 hydrate 认领后清空。
+	 * `setState` 暂存的叶子级折叠键（一次性迁移），由两个 hydrate 认领后清空。
 	 * `path` = `state.file`，与当前文件不符时丢弃（防叶子复用串态）。
+	 * `continuations` / `sections` 分别由 `hydrateContinuationFolds` /
+	 * `hydrateSectionFolds` 认领（[[Plan-20261023-062616]] S5）。
 	 */
-	pendingLeafFolds: { path: string; keys: string[] } | null;
+	pendingLeafFolds: {
+		path: string;
+		continuations: string[];
+		sections: string[];
+	} | null;
 	lastLoadedText: string;
 	isRendering: boolean;
 	isExporting: boolean;
@@ -200,7 +206,11 @@ export interface TaskViewHost extends Component {
 	/** 续写区折叠控制器（薄代理；缺省不作为 = 全展开且不渲染箭头）。 */
 	getContinuationFold(): TaskContinuationFold;
 	/** 取走 `setState` 暂存的叶子级折叠键（一次性迁移用）。 */
-	takePendingLeafFolds(): { path: string; keys: string[] } | null;
+	takePendingLeafFolds(): {
+		path: string;
+		continuations: string[];
+		sections: string[];
+	} | null;
 
 	// ---- 薄代理方法：聚焦放大 ----
 	toggleZoomCard(line: number): void;
@@ -239,6 +249,12 @@ export interface TaskViewHost extends Component {
 	/** 条目 pin 切换（[[Plan-20261022-200135]] S4）：给选中卡加 / 去 `#ioto/pin`。 */
 	canToggleSelectedTaskPin(): boolean;
 	toggleSelectedTaskPin(): Promise<void>;
+	/**
+	 * 条目 pin / repeat 切换（右键菜单，**显式行号**，不依赖 selectedLine；
+	 * [[Plan-20261023-104335]] §4.4）。
+	 */
+	toggleTaskPin(line: number): Promise<void>;
+	toggleTaskRepeat(line: number): Promise<void>;
 
 	// ---- 薄代理方法：内联编辑（标题） ----
 	beginEdit(line: number, caretOffset?: number | null): Promise<void>;

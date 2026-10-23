@@ -242,6 +242,47 @@ export function setTaskPin(line: string, pinned: boolean): string | null {
 }
 
 /**
+ * 设置 / 取消任务行的 repeat（`#ioto/repeat`：每次运行都执行、成功后不落勾）。
+ * 与 `setTaskPin` 逐行对称：非任务行 → `null`；目标态已达 → 逐字节返回原行；
+ * 剥离时连同标记前紧邻的空白一起收掉。
+ *
+ * 🔴 同样**不能**走 `composeTaskLine`（`body === sourceText` 时会逐字节还原
+ * `source`，控制项增删被忽略）——必须显式重组、只换 core。
+ *
+ * 追加位置照 `setTaskPin` 同款「`trimEnd` 后追加行尾」，**不做顺序归一化**：
+ * `#ioto/*` 的规范序仍归 ioto-settings 面板负责，避免两处实现同一套排序规则
+ * （[[Plan-20261023-104335]] §4.1）。
+ */
+export function setTaskRepeat(line: string, repeat: boolean): string | null {
+	const parts = splitTaskLine(line);
+	if (!parts) {
+		return null;
+	}
+
+	const repeatControls = parts.controls.filter(
+		(control) => control.kind === 'repeat',
+	);
+	const hasRepeat = repeatControls.length > 0;
+	if (repeat === hasRepeat) return line;
+
+	let core = parts.source;
+	if (repeat) {
+		core = `${core.trimEnd()} #ioto/repeat`;
+	} else {
+		for (const control of repeatControls) {
+			const at = core.lastIndexOf(control.raw);
+			if (at < 0) continue;
+			core =
+				core.slice(0, at).replace(/[ \t]+$/, '') +
+				core.slice(at + control.raw.length);
+		}
+		// 标签在行首时剥离点会留下前导空白，一并收掉（正文本身两侧已 trim）
+		core = core.replace(/^[ \t]+/, '').trimEnd();
+	}
+	return `${parts.indent}${parts.listMarker}[${parts.checked}]${parts.gap}${core}${parts.trail}`;
+}
+
+/**
  * 3c-3 缩进：`delta = ±1` 级，clamp 到 `[0, maxLevel]`。
  * 输出统一为「每级 2 空格」（Tab 会被规整，属已知取舍）；缩进一律**重算**
  * 而不是在原字符串上加/减，避免混用导致层级错乱。

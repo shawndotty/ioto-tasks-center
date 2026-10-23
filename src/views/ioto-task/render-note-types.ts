@@ -87,6 +87,13 @@ export interface TaskNoteEditing {
 	 */
 	toggleZoom?(line: number): void;
 	/**
+	 * 右键菜单：给该行加 / 去 `#ioto/pin`（[[Plan-20261023-104335]] §4.8）。
+	 * **缺省 = 菜单项置灰**（只读 / 不支持内联编辑时不可写，但入口仍保留）。
+	 */
+	toggleTaskPin?(line: number): void;
+	/** 右键菜单：给该行加 / 去 `#ioto/repeat`（同上）。 */
+	toggleTaskRepeat?(line: number): void;
+	/**
 	 * 放大态点击卡片：把焦点交还内嵌编辑器（[[Discuss-20261008-173935]] 方案 A）。
 	 * 放大卡点击一律走这里——不走「未选中 → 先选中」两段式，也不回落选中态。
 	 * **缺省 = 放大不可用**（只读 / 不支持内联编辑时不显示放大按钮）。

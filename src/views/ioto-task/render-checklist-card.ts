@@ -20,6 +20,10 @@ import {
 import { t } from '../../lang/helpter';
 import { isChecklistItemDone, type NoteChecklistItem } from '../../tasks-center/note-structure';
 import { renderCardActions } from './render-card-actions';
+import {
+	shouldShowCardContextMenu,
+	showCardContextMenu,
+} from './render-card-context-menu';
 import { attachCardKeydownHandler } from './render-card-keybind';
 import {
 	isCardVisible,
@@ -266,6 +270,32 @@ export function renderChecklistGroup(options: {
 			} else {
 				editing.select(item.line);
 			}
+		});
+
+		// 右键菜单（[[Plan-20261023-104335]] §4.7）：桌面端 only（移动端无 contextmenu，
+		// 长按已被拖拽手柄占用，见 [[Research-20261023-090756]] D7）。
+		cardEl.addEventListener('contextmenu', (event) => {
+			// 移动端直接放行系统行为，不 preventDefault
+			if (Platform.isMobile) return;
+			if (!shouldShowCardContextMenu(event.target as HTMLElement | null)) {
+				return;
+			}
+			event.preventDefault();
+			event.stopPropagation();
+			// 惰性选中：只作视觉副作用（select 内部会顺带 cancelPendingDelete）。
+			// 放大态一律不改选——applySelection 的 focus 会把常驻编辑器打掉（M3）。
+			if (editing.zoomLine == null && editing.selectedLine !== item.line) {
+				editing.select(item.line);
+			}
+			showCardContextMenu(event, {
+				line: item.line,
+				pinned: item.controls.some((control) => control.kind === 'pin'),
+				repeated: item.controls.some((control) => control.kind === 'repeat'),
+				writable: editing.enabled,
+				onPin: (line) => editing.toggleTaskPin?.(line),
+				onRepeat: (line) => editing.toggleTaskRepeat?.(line),
+				onDelete: (line) => editing.delete(line),
+			});
 		});
 
 		// 选择态键位：Enter 编辑 / ↑↓ 移动选择 / Delete·Backspace 删除

@@ -75,6 +75,7 @@ export {
 	toggleTaskMarker,
 	markTaskLineDone,
 	setTaskPin,
+	setTaskRepeat,
 	setTaskIndent,
 	buildSiblingTaskLine,
 	buildTasksSectionHeading,
