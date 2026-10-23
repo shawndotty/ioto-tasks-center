@@ -409,6 +409,10 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 					toggleTaskRepeat: (line: number) => {
 						void view.toggleTaskRepeat(line);
 					},
+					// 右键菜单的「创建任务副本」：整块复制，副本落在该卡块尾。
+					duplicateTask: (line: number) => {
+						void view.duplicateTask(line);
+					},
 					focusZoomEditor: (line: number) => {
 						view.focusZoomEditor(line);
 					},

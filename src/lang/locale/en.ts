@@ -591,6 +591,12 @@ const en = {
 	'modal.batchNameAffix.suffix': 'Suffix',
 	'modal.batchNameAffix.suffixDesc': 'Content added after the task name.',
 	'modal.batchNameAffix.suffixPlaceholder': 'e.g., -Notes',
+	'modal.duplicateTask.title': 'Duplicate task',
+	'modal.duplicateTask.desc':
+		'This task has a continuation block ({0} lines). Copy it too?',
+	'modal.duplicateTask.cancel': 'Cancel',
+	'modal.duplicateTask.taskOnly': 'Task only',
+	'modal.duplicateTask.withContinuation': 'Include continuation',
 	'modal.batchConfirm.title': 'Confirm batch creation',
 	'modal.batchConfirm.summary':
 		'Template: {0} | Prefix: {1} | Suffix: {2} | Project: {3}',
@@ -653,6 +659,7 @@ const en = {
 	'command.swapWithPrevTask': 'Swap with previous sibling task',
 	'command.swapWithNextTask': 'Swap with next sibling task',
 	'command.toggleTaskPin': 'Toggle pin on selected task',
+	'command.duplicateTask': 'Duplicate selected task',
 	'command.searchTaskView': 'Search in task view',
 	'command.exportTaskViewImage': 'Export task view as image',
 	'command.copyTaskViewImage': 'Copy task view image to clipboard',
@@ -759,6 +766,7 @@ const en = {
 	'view.iotoTaskView.contextMenu.unpinTask': 'Unpin task',
 	'view.iotoTaskView.contextMenu.repeatTask': 'Mark as repeat task',
 	'view.iotoTaskView.contextMenu.unrepeatTask': 'Unmark repeat task',
+	'view.iotoTaskView.contextMenu.duplicateTask': 'Duplicate task',
 	'view.iotoTaskView.deleteConfirm.confirm': 'Confirm delete',
 	'view.iotoTaskView.deleteConfirm.cancel': 'Cancel',
 	'view.iotoTaskView.deleteConfirm.aria': 'Delete confirmation',
@@ -769,6 +777,7 @@ const en = {
 	'notice.iotoTaskView.pinAdded':
 		'Pinned — stays visible in the recent-only view.',
 	'notice.iotoTaskView.pinRemoved': 'Unpinned.',
+	'notice.iotoTaskView.duplicateCreated': 'Task duplicated; the copy is selected.',
 	'notice.iotoTaskView.repeatAdded':
 		'Marked as repeat: runs every time, stays unchecked.',
 	'notice.iotoTaskView.repeatRemoved': 'Repeat mark removed.',

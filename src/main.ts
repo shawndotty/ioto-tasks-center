@@ -442,6 +442,26 @@ export default class IOTOTasksCenter extends Plugin {
 				return true;
 			},
 		});
+		// 创建任务副本：低频 → 命令面板；移动端的唯一入口（桌面另有右键菜单）。
+		// 整块复制（任务行 + 续写区 + 子树），副本落在块尾（[[Plan-20261023-145916]] §5.4）。
+		this.addCommand({
+			id: 'itc-duplicate-task',
+			name: t('command.duplicateTask'),
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(
+					IOTOTaskView,
+				);
+				if (!view || !view.canDuplicateTask()) {
+					return false;
+				}
+
+				if (!checking) {
+					void view.duplicateSelectedTask();
+				}
+
+				return true;
+			},
+		});
 		// 低频操作走命令面板（不占工具栏按钮位，[[Discuss-20261006-223908]] §5.3）。
 		this.addCommand({
 			id: 'itc-insert-entry-template',

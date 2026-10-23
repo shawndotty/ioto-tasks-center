@@ -540,6 +540,12 @@ const zhTW = {
 	'modal.batchNameAffix.suffix': '後綴',
 	'modal.batchNameAffix.suffixDesc': '加入在任務名稱後面的內容。',
 	'modal.batchNameAffix.suffixPlaceholder': '例如：-筆記',
+	'modal.duplicateTask.title': '建立任務副本',
+	'modal.duplicateTask.desc':
+		'該任務帶有續寫區（{0} 行）。副本要一併複製嗎？',
+	'modal.duplicateTask.cancel': '取消',
+	'modal.duplicateTask.taskOnly': '僅複製任務',
+	'modal.duplicateTask.withContinuation': '連同續寫區',
 	'modal.batchConfirm.title': '確認批次建立',
 	'modal.batchConfirm.summary':
 		'範本：{0} | 前綴：{1} | 後綴：{2} | 專案：{3}',
@@ -598,6 +604,7 @@ const zhTW = {
 	'command.swapWithPrevTask': '與上一個同級任務互換',
 	'command.swapWithNextTask': '與下一個同級任務互換',
 	'command.toggleTaskPin': '固定 / 取消固定當前任務（選中卡）',
+	'command.duplicateTask': '建立目前任務的副本（選取卡）',
 	'command.searchTaskView': '在任務視圖中搜尋',
 	'command.exportTaskViewImage': '匯出任務檢視為圖片',
 	'command.copyTaskViewImage': '複製任務檢視圖片到剪貼簿',
@@ -697,6 +704,7 @@ const zhTW = {
 	'view.iotoTaskView.contextMenu.unpinTask': '取消固定',
 	'view.iotoTaskView.contextMenu.repeatTask': '標記為重複任務',
 	'view.iotoTaskView.contextMenu.unrepeatTask': '取消重複',
+	'view.iotoTaskView.contextMenu.duplicateTask': '建立任務副本',
 	'view.iotoTaskView.deleteConfirm.confirm': '確認刪除',
 	'view.iotoTaskView.deleteConfirm.cancel': '取消',
 	'view.iotoTaskView.deleteConfirm.aria': '刪除確認',
@@ -705,6 +713,7 @@ const zhTW = {
 	'notice.iotoTaskView.swapNoNext': '已經是同級任務中的最後一條',
 	'notice.iotoTaskView.pinAdded': '已固定：最近任務檢視下始終保留。',
 	'notice.iotoTaskView.pinRemoved': '已取消固定。',
+	'notice.iotoTaskView.duplicateCreated': '已建立任務副本，並選取新副本。',
 	'notice.iotoTaskView.repeatAdded':
 		'已標記為重複任務：每次執行都執行，成功後不落勾。',
 	'notice.iotoTaskView.repeatRemoved': '已取消重複標記。',

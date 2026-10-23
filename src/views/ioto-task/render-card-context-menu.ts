@@ -1,8 +1,9 @@
 /**
  * 任务卡右键菜单（[[Plan-20261023-104335]] §4.6）。
  *
- * 三项：固定任务 / 取消固定 → 标记为重复任务 / 取消重复 → 分隔线 → 删除任务
- * （顺序由 Johnny 拍板，[[Research-20261023-090756]] §八 #3）。
+ * 四项：固定任务 / 取消固定 → 标记为重复任务 / 取消重复 → 分隔线
+ * → 创建任务副本 → 删除任务（顺序由 Johnny 拍板，[[Research-20261023-090756]] §八 #3 /
+ * [[Plan-20261023-145916]] §二 #4）。
  *
  * 只吃 `TaskNoteEditing` 级别的回调，**不碰 `TaskViewHost`**：渲染层拿不到 host
  * （`render-note.ts` → `render-sections.ts` → `render-checklist-card.ts` 全程只透传
@@ -24,10 +25,11 @@ export interface CardContextMenuOptions {
 	/** 渲染期从 `item.controls` 读的快照：卡片每次写回都整树重建，快照在一次渲染周期内恒真 */
 	pinned: boolean;
 	repeated: boolean;
-	/** 可写（`editing.enabled`）；false → 三项全部置灰（Johnny 拍板 #2） */
+	/** 可写（`editing.enabled`）；false → 四项全部置灰（Johnny 拍板 #2） */
 	writable: boolean;
 	onPin: (line: number) => void;
 	onRepeat: (line: number) => void;
+	onDuplicate: (line: number) => void;
 	onDelete: (line: number) => void;
 }
 
@@ -74,7 +76,16 @@ export function showCardContextMenu(
 	// ③ 分隔线（删除放最后且与前两项隔开）
 	menu.addSeparator();
 
-	// ④ 删除任务（复用既有文案键；走 requestDelete 的二次确认链，不直接 deleteSelected）
+	// ④ 创建任务副本（Johnny 拍板：分隔线之后、删除之前）
+	menu.addItem((item) =>
+		item
+			.setTitle(t('view.iotoTaskView.contextMenu.duplicateTask'))
+			.setIcon('copy')
+			.setDisabled(!writable)
+			.onClick(() => defer(() => options.onDuplicate(line))),
+	);
+
+	// ⑤ 删除任务（复用既有文案键；走 requestDelete 的二次确认链，不直接 deleteSelected）
 	menu.addItem((item) =>
 		item
 			.setTitle(t('view.iotoTaskView.cardActions.deleteTask'))

@@ -210,10 +210,13 @@ import {
 	addTask,
 	appendTaskBlock,
 	canAddTask,
+	canDuplicateTask,
 	canInsertEntryTemplate,
 	canMarkAllTasksDone,
 	canSwapSelectedTask,
 	canToggleSelectedTaskPin,
+	duplicateSelectedTask,
+	duplicateTask,
 	findTasksSection,
 	insertEntryTemplate,
 	markAllTasksDone,
@@ -852,6 +855,9 @@ export class IOTOTaskView extends TextFileView {
 	async toggleTaskRepeat(line: number): Promise<void> {
 		await toggleTaskRepeat(this, line);
 	}
+	canDuplicateTask(): boolean { return canDuplicateTask(this); }
+	async duplicateTask(line: number): Promise<void> { await duplicateTask(this, line); }
+	async duplicateSelectedTask(): Promise<void> { await duplicateSelectedTask(this); }
 
 	// ---- 外部写回窗口 ----
 	async flushInlineEdits(): Promise<void> { await flushInlineEdits(this); }

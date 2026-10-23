@@ -255,6 +255,10 @@ export interface TaskViewHost extends Component {
 	 */
 	toggleTaskPin(line: number): Promise<void>;
 	toggleTaskRepeat(line: number): Promise<void>;
+	/** 创建任务副本（[[Plan-20261023-145916]]）：整块复制，副本落在块尾。 */
+	canDuplicateTask(): boolean;
+	duplicateTask(line: number): Promise<void>;
+	duplicateSelectedTask(): Promise<void>;
 
 	// ---- 薄代理方法：内联编辑（标题） ----
 	beginEdit(line: number, caretOffset?: number | null): Promise<void>;

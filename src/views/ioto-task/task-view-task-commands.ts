@@ -22,6 +22,8 @@ import {
 	findSiblingTarget,
 	type SwapDirection,
 } from '../../tasks-center/note-task-swap';
+import { buildTaskDuplicatePlan } from '../../tasks-center/note-task-duplicate';
+import { DuplicateTaskModal } from '../../ui/duplicateTaskModal';
 import { isTemplateAvailableForProject } from '../../tasks-center/batch-task-template';
 import { extractListPropertyValuesFromContent } from '../../tasks-center/task-creation';
 import {
@@ -498,6 +500,127 @@ export async function toggleSelectedTaskPin(view: TaskViewHost): Promise<void> {
 	const line = view.selectedLine;
 	if (!canToggleSelectedTaskPin(view) || line === null) return;
 	await toggleTaskPin(view, line);
+}
+
+/* ------------------------------------------------------------------ *
+ * 创建任务副本（[[Plan-20261023-145916]]）
+ *
+ * 写盘复用 `commitBlockRange`（一次原子区间替换），不新增写盘原语。
+ * 链路照 `swapSelectedTask`：守卫 → 算块 → 原子写 → 同步 data → 重建 → 回填选中。
+ * ------------------------------------------------------------------ */
+
+/** 供 main.ts 的 checkCallback 门控：有选中卡且可写。 */
+export function canDuplicateTask(view: TaskViewHost): boolean {
+	return (
+		view.file !== null &&
+		view.supportsInlineEdit() &&
+		view.selectedLine !== null
+	);
+}
+
+/**
+ * 把 `line` 那张卡整块复制一份（任务行 + 续写区 + 整棵子树），副本落在**块尾**。
+ *
+ * 有续写区时先问「是否连同续写区」，无续写区零交互直接复制。复制完只选中副本
+ * 并滚入视野，**不进编辑**（Johnny 已拍板，Plan §二 #3）。
+ */
+export async function duplicateTask(
+	view: TaskViewHost,
+	line: number,
+): Promise<void> {
+	const file = view.file;
+	if (!file || !view.supportsInlineEdit()) {
+		return; // 只读降级：静默
+	}
+
+	// ① 守卫：先落盘在册编辑器，否则复制的是旧字节
+	await view.flushInlineEdits();
+	// ② 守卫：放大态重绘后 restoreZoom 会停在原卡，新副本看不见
+	if (view.zoomLine !== null) {
+		view.exitZoom();
+	}
+	// ③ 守卫：撤待删除确认遮罩（与 swapSelectedTask 同序）
+	view.cancelPendingDelete(false);
+
+	// ④ 快照锚点：行号会随别的编辑漂移，原文用于弹窗关闭后的二次定位
+	const originalLine = view.lineAt(line);
+	if (splitTaskLine(originalLine) === null) {
+		return; // 已不是任务行（stale data-line）
+	}
+	const ownContinuations = countContinuationLines(view, line);
+
+	// ⑤ 有续写区才问；无续写区 → 零交互直接复制
+	let includeContinuation = true;
+	if (ownContinuations > 0) {
+		const choice = await new DuplicateTaskModal(view.app, {
+			continuationCount: ownContinuations,
+		}).openAndPick();
+		if (choice === null) {
+			return; // 取消：不写盘
+		}
+		includeContinuation = choice === 'withContinuation';
+	}
+
+	// ⑥ 弹窗是长窗口：用**最新** data 重新定位 + 重算块
+	const content = view.data;
+	const lines = content.split('\n');
+	let anchor = line;
+	if (lines[anchor] !== originalLine) {
+		anchor = lines.indexOf(originalLine);
+		if (anchor < 0) {
+			new Notice(t('notice.iotoTaskView.commitConflict'));
+			await view.reloadFromVault();
+			view.renderNote(view.data);
+			return;
+		}
+	}
+
+	const items = parseChecklistItems(content, { includeEmpty: true });
+	const plan = buildTaskDuplicatePlan(content, items, anchor, {
+		includeContinuation,
+	});
+	if (!plan) {
+		new Notice(t('notice.iotoTaskView.commitConflict'));
+		await view.reloadFromVault();
+		view.renderNote(view.data);
+		return;
+	}
+
+	// ⑦ 一次原子区间重写（块 = 原块 + 副本）
+	const outcome = await commitBlockRange(view.app, file, {
+		startLine: plan.start,
+		endLine: plan.end,
+		originalLines: plan.originalLines,
+		nextText: plan.nextLines.join('\n'),
+	});
+	// 🔴 红线：data / lastLoadedText 必须同步
+	view.applyOutcome(outcome);
+
+	if (outcome.status === 'conflict') {
+		await view.reloadFromVault();
+		view.renderNote(view.data);
+		return;
+	}
+	if (outcome.status !== 'ok') {
+		return; // unchanged：理论不可达（副本必然改变文本），防御性短路
+	}
+
+	// ⑧ 结构性变更 → 整树重建 → 选中副本并滚入视野（不进编辑）
+	view.selectedLine = plan.duplicateLine;
+	view.renderNote(view.data, { animateRecentSwap: true });
+	view.applySelection(plan.duplicateLine);
+	new Notice(t('notice.iotoTaskView.duplicateCreated'));
+}
+
+/** 命令入口（`itc-duplicate-task`）：从 `selectedLine` 取行号，与 pin 家族同构。 */
+export async function duplicateSelectedTask(
+	view: TaskViewHost,
+): Promise<void> {
+	const line = view.selectedLine;
+	if (!canDuplicateTask(view) || line === null) {
+		return;
+	}
+	await duplicateTask(view, line);
 }
 
 /* ------------------------------------------------------------------ *

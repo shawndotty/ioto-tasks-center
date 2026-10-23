@@ -539,6 +539,12 @@ const zhCN = {
 	'modal.batchNameAffix.suffix': '后缀',
 	'modal.batchNameAffix.suffixDesc': '添加到任务名称后面的内容。',
 	'modal.batchNameAffix.suffixPlaceholder': '例如：-笔记',
+	'modal.duplicateTask.title': '创建任务副本',
+	'modal.duplicateTask.desc':
+		'该任务带有续写区（{0} 行）。副本要一并复制吗？',
+	'modal.duplicateTask.cancel': '取消',
+	'modal.duplicateTask.taskOnly': '仅复制任务',
+	'modal.duplicateTask.withContinuation': '连同续写区',
 	'modal.batchConfirm.title': '确认批量创建',
 	'modal.batchConfirm.summary':
 		'模板：{0} | 前缀：{1} | 后缀：{2} | 项目：{3}',
@@ -597,6 +603,7 @@ const zhCN = {
 	'command.swapWithPrevTask': '与上一个同级任务互换',
 	'command.swapWithNextTask': '与下一个同级任务互换',
 	'command.toggleTaskPin': '固定 / 取消固定当前任务（选中卡）',
+	'command.duplicateTask': '创建当前任务的副本（选中卡）',
 	'command.searchTaskView': '在任务视图中搜索',
 	'command.exportTaskViewImage': '导出任务视图为图片',
 	'command.copyTaskViewImage': '复制任务视图图片到剪贴板',
@@ -696,6 +703,7 @@ const zhCN = {
 	'view.iotoTaskView.contextMenu.unpinTask': '取消固定',
 	'view.iotoTaskView.contextMenu.repeatTask': '标记为重复任务',
 	'view.iotoTaskView.contextMenu.unrepeatTask': '取消重复',
+	'view.iotoTaskView.contextMenu.duplicateTask': '创建任务副本',
 	'view.iotoTaskView.deleteConfirm.confirm': '确认删除',
 	'view.iotoTaskView.deleteConfirm.cancel': '取消',
 	'view.iotoTaskView.deleteConfirm.aria': '删除确认',
@@ -704,6 +712,7 @@ const zhCN = {
 	'notice.iotoTaskView.swapNoNext': '已经是同级任务中的最后一条',
 	'notice.iotoTaskView.pinAdded': '已固定：最近任务视图下始终保留。',
 	'notice.iotoTaskView.pinRemoved': '已取消固定。',
+	'notice.iotoTaskView.duplicateCreated': '已创建任务副本，并选中新副本。',
 	'notice.iotoTaskView.repeatAdded':
 		'已标记为重复任务：每次运行都执行，成功后不落勾。',
 	'notice.iotoTaskView.repeatRemoved': '已取消重复标记。',
