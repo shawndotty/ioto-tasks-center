@@ -38,17 +38,7 @@ export function renderProjectsPane(
 	projectSettingsButtonEl.addEventListener('click', (event) => {
 		view.showProjectPresentationMenu(event);
 	});
-	const addProjectButtonEl = actionsEl.createEl('button', {
-		cls: 'ioto-tasks-center__icon-button',
-		text: '+',
-	});
-	addProjectButtonEl.type = 'button';
-	addProjectButtonEl.disabled = !view.canCreateProject();
-	addProjectButtonEl.ariaLabel = view.getAddProjectButtonLabel();
-	addProjectButtonEl.title = view.getAddProjectButtonLabel();
-	addProjectButtonEl.addEventListener('click', () => {
-		void view.handleCreateProject();
-	});
+	createAddProjectButton(view, actionsEl);
 
 	const helperText = view.isProjectsLoading
 		? `正在扫描 ${tasksRootPath} 根目录...`
@@ -267,6 +257,31 @@ export function renderProjectsPane(
 	}
 
 	restoreProjectListScrollTop(listEl, view.projectListScrollTop);
+}
+
+/**
+ * 宽屏项目面板标题栏与窄屏紧凑工具栏共用的「添加项目」按钮
+ *（[[Plan-20261024-062346]]）。
+ *
+ * 文案与禁用态直接取视图方法，四态（就绪 / 加载中 / 创建中 / 根目录缺失）
+ * 与宽屏逐字同源；两处入口共用本函数，避免「改了宽屏忘了窄屏」。
+ */
+export function createAddProjectButton(
+	view: IOTOTasksCenterView,
+	container: HTMLElement,
+): HTMLButtonElement {
+	const buttonEl = container.createEl('button', {
+		cls: 'ioto-tasks-center__icon-button ioto-tasks-center__add-project-button',
+	});
+	buttonEl.type = 'button';
+	buttonEl.disabled = !view.canCreateProject();
+	buttonEl.ariaLabel = view.getAddProjectButtonLabel();
+	buttonEl.title = view.getAddProjectButtonLabel();
+	setIcon(buttonEl, 'folder-plus');
+	buttonEl.addEventListener('click', () => {
+		void view.handleCreateProject();
+	});
+	return buttonEl;
 }
 
 /**

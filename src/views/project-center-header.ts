@@ -139,7 +139,7 @@ export function buildProjectCenterHeader(
 		'projectCenter.action.createProject',
 	);
 	createProjectButtonEl.title = t('projectCenter.action.createProject');
-	setIcon(createProjectButtonEl, 'plus');
+	setIcon(createProjectButtonEl, 'folder-plus');
 	createProjectButtonEl.addEventListener('click', () => {
 		void handleCreateProjectAction(ctx);
 	});

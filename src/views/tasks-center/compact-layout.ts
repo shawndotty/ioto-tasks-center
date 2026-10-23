@@ -4,6 +4,7 @@ import type { IOTOTasksCenterView } from '../iotoTasksCenterView';
 import { collectVisibleCategoryOptions } from '../project-list-group';
 import { t } from '../../lang/helpter';
 import { findSelectedProjectEntry } from './helpers';
+import { createAddProjectButton } from './projects-pane-renderer';
 import {
 	COMPACT_LAYOUT_BREAKPOINT,
 	NARROW_LAYOUT_BREAKPOINT,
@@ -74,6 +75,7 @@ export function renderCompactProjectSwitcher(
 		cls: 'ioto-tasks-center__compact-toolbar',
 	});
 
+	createAddProjectButton(view, toolbarEl);
 	renderCompactCategoryFilterButton(view, toolbarEl);
 
 	const buttonLabel = getProjectSwitcherLabel(view);
