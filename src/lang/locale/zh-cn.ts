@@ -115,6 +115,7 @@ const zhCN = {
 	'view.projectSwitcher.default': '切换项目',
 	'view.projectSwitcher.current': '当前项目：{0}',
 	'view.projectSwitcher.currentSuffix': '{0}（当前）',
+	'view.projectSwitcher.actions': '项目操作',
 	'view.projectCategoryFilter.all': '全部分类',
 	'view.projectCategoryFilter.label': '按分类筛选',
 	'view.projectCategoryFilter.labelShort': '分类',

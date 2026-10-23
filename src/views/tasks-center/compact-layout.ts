@@ -3,6 +3,7 @@ import { Menu, Platform, setIcon } from 'obsidian';
 import type { IOTOTasksCenterView } from '../iotoTasksCenterView';
 import { collectVisibleCategoryOptions } from '../project-list-group';
 import { t } from '../../lang/helpter';
+import { findSelectedProjectEntry } from './helpers';
 import {
 	COMPACT_LAYOUT_BREAKPOINT,
 	NARROW_LAYOUT_BREAKPOINT,
@@ -87,6 +88,8 @@ export function renderCompactProjectSwitcher(
 	projectSwitcherEl.addEventListener('click', (event: MouseEvent) => {
 		void showProjectSwitcherMenu(view, event);
 	});
+
+	renderCompactProjectActionsButton(view, toolbarEl);
 }
 
 /**
@@ -111,6 +114,45 @@ function renderCompactCategoryFilterButton(
 	setIcon(filterButtonEl, 'filter');
 	filterButtonEl.addEventListener('click', (event: MouseEvent) => {
 		void showProjectCategoryFilterMenu(view, event);
+	});
+}
+
+/**
+ * 窄屏项目操作入口：`⋮` → 与桌面右键完全同一份 `showProjectContextMenu`。
+ *
+ * 窄屏下项目面板整块隐藏，右键入口随载体消失，这里只补一个触发点，
+ * 菜单内容/禁用逻辑/文案全部复用，不在紧凑布局另建精简菜单。
+ */
+function renderCompactProjectActionsButton(
+	view: IOTOTasksCenterView,
+	toolbarEl: HTMLElement,
+): void {
+	// 渲染期捕获：`project` 必须与按钮此刻显示的项目同源。
+	// 切换项目会走 loadTasks → render，按钮整体重建，不会过期。
+	const project = findSelectedProjectEntry(view.projects, view.selectedProject);
+	const label = t('view.projectSwitcher.actions');
+	const actionsEl = toolbarEl.createEl('button', {
+		cls: 'ioto-tasks-center__icon-button ioto-tasks-center__project-actions-button',
+	});
+	actionsEl.type = 'button';
+	actionsEl.disabled = project === null || view.isProjectsLoading;
+	actionsEl.ariaLabel = label;
+	actionsEl.title = label;
+	actionsEl.setAttribute('aria-haspopup', 'menu');
+	setIcon(actionsEl, 'more-vertical');
+	// 移动端：先掐断 pointerdown，避免宿主把这次点按当成拖拽/选中的开始
+	//（与行尾「⋯」同款）。
+	actionsEl.addEventListener('pointerdown', (event: PointerEvent) => {
+		event.stopPropagation();
+	});
+	actionsEl.addEventListener('click', (event: MouseEvent) => {
+		if (!project) {
+			return;
+		}
+
+		event.preventDefault();
+		event.stopPropagation();
+		view.showProjectContextMenu(event, project);
 	});
 }
 

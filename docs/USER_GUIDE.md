@@ -121,6 +121,7 @@ Version `2.1.1` focuses on task-list workflow improvements:
   - Completed
   - All
 - In compact layouts (mobile or a narrow pane), the filter tabs collapse into a dropdown switcher that shows the active filter and opens a menu with all filters and their counts
+- In compact layouts a "⋮" button sits to the right of the project switcher and runs the same actions as the desktop right-click menu (edit project spec / archive / batch create tasks)
 - Centered search overlay with a dimmed backdrop, plus focus, clear, and keyboard support
 - Task sorting:
   - created time

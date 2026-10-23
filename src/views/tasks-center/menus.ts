@@ -41,6 +41,21 @@ import {
 //     卸载、行尾「⋯」卡死。
 const MENU_ACTION_DEFER_DELAY_MS = 50;
 
+/** 关闭菜单 + 执行动作，整体延后到本次点按结束之后（成因见常量上方注释）。 */
+function runAfterMenuCloses(menu: Menu, run: () => void): void {
+	window.setTimeout(() => {
+		if (typeof menu.hide === 'function') {
+			menu.hide();
+		}
+		// 兜底：移动端 Obsidian 的 Menu.hide() 有时不会把浮层从 DOM 中移除。
+		const el = (menu as unknown as { containerEl?: HTMLElement }).containerEl;
+		if (el && el.isShown()) {
+			el.detach();
+		}
+		run();
+	}, MENU_ACTION_DEFER_DELAY_MS);
+}
+
 export function showProjectContextMenu(
 	view: IOTOTasksCenterView,
 	event: MouseEvent,
@@ -66,7 +81,9 @@ export function showProjectContextMenu(
 					: t('view.projectMenu.archive'),
 			)
 			.onClick(() => {
-				void view.setProjectHidden(project.name, !isArchived);
+				runAfterMenuCloses(menu, () => {
+					void view.setProjectHidden(project.name, !isArchived);
+				});
 			}),
 	);
 
@@ -76,9 +93,17 @@ export function showProjectContextMenu(
 			item
 				.setTitle(t('view.projectMenu.batchCreateTasks'))
 				.onClick(() => {
-					void view
-						.selectProject(project.name)
-						.then(() => view.triggerBatchCreateFromTemplate());
+					runAfterMenuCloses(menu, () => {
+						// 已是当前项目就跳过切换：`selectProject` 会把列表滚回顶部，
+						// 而窄屏下目标项目本来就是当前项目。
+						const ensureSelected =
+							project.name === view.selectedProject
+								? Promise.resolve()
+								: view.selectProject(project.name);
+						void ensureSelected.then(() =>
+							view.triggerBatchCreateFromTemplate(),
+						);
+					});
 				}),
 		);
 	}
@@ -340,25 +365,10 @@ export function showTaskPriorityMenu(
 			? enabledTypes
 			: getTaskCreationOptions().map((option) => option.key);
 
-	// 菜单项点击后，先让本次点按完整结束，再关闭菜单并执行真正的 vault 写入。
-	// 关键：不能在点击回调里同步关闭菜单——移动端移除浮层会让点按"穿透"到下方「⋯」
-	// 按钮，导致菜单以旧状态被重新打开（设置已生效但菜单不消失、显示旧状态）。
-	// 延后关闭既避免穿透，也保证 vault 写入时菜单已不在，行元素重渲染不会卡住浮层。
-	const runMenuAction = (run: () => void): void => {
-		window.setTimeout(() => {
-			if (typeof menu.hide === 'function') {
-				menu.hide();
-			}
-			// 兜底：移动端 Obsidian 的 Menu.hide() 有时不会把浮层从 DOM 中移除，
-			// 这里显式 detach 容器，确保菜单一定消失。
-			const el = (menu as unknown as { containerEl?: HTMLElement })
-				.containerEl;
-			if (el && el.isShown()) {
-				el.detach();
-			}
-			run();
-		}, MENU_ACTION_DEFER_DELAY_MS);
-	};
+	// 菜单项点击后，先让本次点按完整结束，再关闭菜单并执行真正的 vault 写入
+	//（实现与成因见模块级 `runAfterMenuCloses`）。
+	const runMenuAction = (run: () => void): void =>
+		runAfterMenuCloses(menu, run);
 
 	menu.addItem((item) =>
 		item

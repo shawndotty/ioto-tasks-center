@@ -115,6 +115,7 @@ const zhTW = {
 	'view.projectSwitcher.default': '切換專案',
 	'view.projectSwitcher.current': '目前專案：{0}',
 	'view.projectSwitcher.currentSuffix': '{0}（目前）',
+	'view.projectSwitcher.actions': '專案操作',
 	'view.projectCategoryFilter.all': '全部分類',
 	'view.projectCategoryFilter.label': '依分類篩選',
 	'view.projectCategoryFilter.labelShort': '分類',

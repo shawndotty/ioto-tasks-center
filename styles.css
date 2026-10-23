@@ -425,6 +425,11 @@
 	padding: 0px 8px 0;
 }
 
+/* 工具栏图标按钮固定尺寸，不参与伸缩（切换按钮 flex: 1 1 auto 吃满剩余宽度）。 */
+.ioto-tasks-center__compact-toolbar .ioto-tasks-center__icon-button {
+	flex: 0 0 auto;
+}
+
 .ioto-tasks-center__project-switcher,
 .ioto-tasks-center__task-filter-switcher {
 	appearance: none;

@@ -126,6 +126,7 @@ const en = {
 	'view.projectSwitcher.default': 'Switch project',
 	'view.projectSwitcher.current': 'Current project: {0}',
 	'view.projectSwitcher.currentSuffix': '{0} (current)',
+	'view.projectSwitcher.actions': 'Project actions',
 	'view.projectCategoryFilter.all': 'All categories',
 	'view.projectCategoryFilter.label': 'Filter by category',
 	'view.projectCategoryFilter.labelShort': 'Category',
