@@ -12,6 +12,7 @@ import {
 	isEntryTemplateValid,
 	type TaskEntryTemplate,
 } from '../tasks-center/task-entry-template';
+import { bindListMarkdownEditing } from './list-edit-textarea';
 
 /**
  * 编辑弹窗的三种打开方式：新建 / 编辑 / 复制。
@@ -115,6 +116,7 @@ export class EntryTemplateEditModal extends Modal {
 			textArea.setPlaceholder(
 				t('settings.entryTemplates.editModal.contentPlaceholder'),
 			);
+			bindListMarkdownEditing(textArea.inputEl, '- [ ] ');
 			textArea.onChange((value) => {
 				this.content = value;
 			});

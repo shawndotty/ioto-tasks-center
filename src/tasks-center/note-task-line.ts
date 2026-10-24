@@ -37,14 +37,22 @@ export interface TaskLineParts {
 const TASK_LINE_PARTS_PATTERN =
 	/^([ \t]*)((?:[-*+]|\d+\.)[ \t]+)\[([ xX])\]([ \t]*)([\s\S]*)$/;
 
+/**
+ * 一级缩进占的空白宽度（列数）。
+ *
+ * 任务行、批量模板解析、模板编辑器三处共用这一个口径，避免「Tab 一次算几格」
+ * 在各处漂移（[[Plan-20261025-061424]] §五）。
+ */
+export const INDENT_UNIT = 2;
+
 /** 缩进宽度换算：每 2 空格或 1 个 Tab 记 1 级（与解析层一致）。 */
 export function indentLevelOf(indent: string): number {
 	let width = 0;
 	for (const char of indent) {
-		width += char === '\t' ? 2 : 1;
+		width += char === '\t' ? INDENT_UNIT : 1;
 	}
 
-	return Math.floor(width / 2);
+	return Math.floor(width / INDENT_UNIT);
 }
 
 /** 一行的缩进层级（0 基）：每 2 空格或 1 个 Tab 记 1 级。 */
@@ -53,8 +61,9 @@ export function computeIndentLevel(line: string): number {
 	return indentLevelOf(leadingWhitespace);
 }
 
-function indentStringForLevel(level: number): string {
-	return '  '.repeat(Math.max(0, level));
+/** 层级 → 缩进字符串（每级 `INDENT_UNIT` 个空格）。 */
+export function indentStringForLevel(level: number): string {
+	return ' '.repeat(INDENT_UNIT * Math.max(0, level));
 }
 
 /** 把一行任务拆成可无损重组的各段；不是任务行时返回 `null`。 */

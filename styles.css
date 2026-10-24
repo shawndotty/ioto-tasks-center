@@ -2396,6 +2396,10 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	width: 100%;
 	min-height: 220px;
 	resize: vertical;
+	/* 等宽是让缩进「看得见」的前提：比例字体下 2 空格与 4 空格几乎无差别 */
+	font-family: var(--font-monospace);
+	line-height: 1.5;
+	tab-size: 2;
 }
 
 .ioto-tasks-center__batch-template-option {

@@ -1,4 +1,5 @@
 import { buildTaskFileName, normalizeCustomTaskName } from './task-creation';
+import { INDENT_UNIT } from './note-task-line';
 import type { TaskCreationType } from './task-template-config';
 
 // 批量模板支持的任务类型（排除 date，因 date 文件名不接受 customName）
@@ -42,7 +43,7 @@ export const DEFAULT_BATCH_TEMPLATE_CONFIG: BatchTemplateConfig = {
 };
 
 const LIST_ITEM_PATTERN = /^(\s*)-\s+(.+?)\s*$/;
-const DEFAULT_INDENT_UNIT = 2;
+const DEFAULT_INDENT_UNIT = INDENT_UNIT;
 
 export function createBatchTemplateId(): string {
 	try {
@@ -108,11 +109,17 @@ export function parseBatchList(content: string): BatchTaskItem[] {
 	return items;
 }
 
+/**
+ * 缩进宽度换算：1 个 Tab 按 `INDENT_UNIT` 列算，与任务行（`indentLevelOf`）同口径。
+ *
+ * 改口径前 Tab 记 4 列，导致「Tab 缩进」与「2 空格缩进」在解析层差一个层级，
+ * 而编辑器插入的正是 2 空格（[[Plan-20261025-061424]] §五）。
+ */
 function computeRawIndent(indent: string): number {
 	let spaces = 0;
 	for (const ch of indent) {
 		if (ch === '\t') {
-			spaces += 4;
+			spaces += INDENT_UNIT;
 		} else {
 			spaces += 1;
 		}

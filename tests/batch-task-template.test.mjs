@@ -75,8 +75,8 @@ test('parseBatchList 解析多级嵌套', () => {
 	assert.equal(items[4].parentIndex, null);
 });
 
-test('parseBatchList 支持 tab 与空格混用', () => {
-	const content = '- 父\n\t- 子（tab 缩进）\n    - 子（空格缩进）';
+test('parseBatchList tab 与 2 空格视为同一级', () => {
+	const content = '- 父\n\t- 子（tab 缩进）\n  - 子（2 空格缩进）';
 	const items = parseBatchList(content);
 	assert.equal(items.length, 3);
 	assert.equal(items[0].level, 0);
@@ -84,6 +84,41 @@ test('parseBatchList 支持 tab 与空格混用', () => {
 	assert.equal(items[1].parentIndex, 0);
 	assert.equal(items[2].level, 1);
 	assert.equal(items[2].parentIndex, 0);
+});
+
+test('parseBatchList tab 与 4 空格混用时 4 空格为两级', () => {
+	// 口径统一后：Tab = 2 列（1 级），4 空格 = 4 列（2 级）；
+	// 单位推导仍取首个非零缩进（2），因此混用模板会「凭空多一级」，属预期变化。
+	const content = '- 父\n\t- 子（tab 缩进）\n    - 子（空格缩进）';
+	const items = parseBatchList(content);
+	assert.equal(items.length, 3);
+	assert.equal(items[0].level, 0);
+	assert.equal(items[1].level, 1);
+	assert.equal(items[1].parentIndex, 0);
+	assert.equal(items[2].level, 2);
+	assert.equal(items[2].parentIndex, 1);
+});
+
+test('parseBatchList 纯 4 空格模板仍按每级 4 解析', () => {
+	const content = '- L0\n    - L1\n        - L2';
+	const items = parseBatchList(content);
+	assert.deepEqual(
+		items.map((item) => item.level),
+		[0, 1, 2],
+	);
+	assert.deepEqual(
+		items.map((item) => item.parentIndex),
+		[null, 0, 1],
+	);
+});
+
+test('parseBatchList 纯 Tab 模板仍按每级 1 个 Tab 解析', () => {
+	const content = '- L0\n\t- L1\n\t\t- L2';
+	const items = parseBatchList(content);
+	assert.deepEqual(
+		items.map((item) => item.level),
+		[0, 1, 2],
+	);
 });
 
 test('parseBatchList 忽略空行与非列表行', () => {

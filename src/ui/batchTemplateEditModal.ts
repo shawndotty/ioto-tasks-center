@@ -21,6 +21,7 @@ import {
 	type BatchTaskType,
 } from '../tasks-center/batch-task-template';
 import type { TemplateEditMode } from './entryTemplateEditModal';
+import { bindListMarkdownEditing } from './list-edit-textarea';
 
 function getBatchTaskTypeLabel(taskType: BatchTaskType): string {
 	switch (taskType) {
@@ -44,6 +45,7 @@ export class BatchTemplateEditModal extends Modal {
 	private listContent = '';
 	private projects: string[] = [];
 	private levelTypesContainerEl: HTMLElement | null = null;
+	private lastDisplayLevelCount = -1;
 	private resolvePromise: ((value: BatchTaskTemplate | null) => void) | null =
 		null;
 	private isResolved = false;
@@ -129,6 +131,7 @@ export class BatchTemplateEditModal extends Modal {
 			textArea.setPlaceholder(
 				t('settings.batchTemplates.editModal.contentPlaceholder'),
 			);
+			bindListMarkdownEditing(textArea.inputEl, '- ');
 			textArea.onChange((value) => {
 				this.listContent = value;
 				this.renderLevelTypeSettings();
@@ -159,7 +162,6 @@ export class BatchTemplateEditModal extends Modal {
 		if (!containerEl) {
 			return;
 		}
-		containerEl.empty();
 
 		const items = parseBatchList(this.listContent);
 		const maxLevel = resolveMaxLevel(items);
@@ -167,6 +169,14 @@ export class BatchTemplateEditModal extends Modal {
 			Math.max(maxLevel + 1, 1),
 			MAX_LEVEL_TASK_TYPES,
 		);
+
+		// 逐键重建会把下拉销毁重建（编辑时下拉被打断、焦点丢失），
+		// 只有「层级数量」变化才需要重排；取值仍以 levelTaskTypes 为准。
+		if (displayLevelCount === this.lastDisplayLevelCount) {
+			return;
+		}
+		this.lastDisplayLevelCount = displayLevelCount;
+		containerEl.empty();
 
 		// 确保数组长度足够
 		while (this.levelTaskTypes.length < displayLevelCount) {
