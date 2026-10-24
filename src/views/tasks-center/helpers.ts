@@ -1,3 +1,5 @@
+import type { MenuItem } from 'obsidian';
+
 import { t } from '../../lang/helpter';
 import type { ProjectFolderEntry } from '../../tasks-center/types';
 import type { TaskCreationType } from '../../tasks-center/task-template-config';
@@ -96,4 +98,21 @@ export function findSelectedProjectEntry(
 	}
 
 	return projects.find((project) => project.name === selectedProject) ?? null;
+}
+
+/**
+ * 菜单「当前项」修饰类：styles.css 用它把图标（对勾）排到「标题 + 计数」之后。
+ * 任务筛选菜单与分类筛选菜单共用，故不带 task-filter 前缀。
+ */
+export const ACTIVE_MENU_ITEM_CLASS = 'ioto-tasks-center__menu-item--active';
+
+/**
+ * 给菜单当前项打标记：只加类，不碰图标、不碰点击逻辑。
+ *
+ * 图标由调用方自己产生（任务筛选菜单 `setIcon('check')`、分类筛选菜单
+ * `setChecked(true)`），本函数只负责让 CSS 把它排到行尾；`MenuItem.dom`
+ * 属非官方 API，本仓已在 `src/typings/obsidian-ex.d.ts` 显式声明。
+ */
+export function markActiveMenuItem(item: MenuItem): void {
+	item.dom.addClass(ACTIVE_MENU_ITEM_CLASS);
 }

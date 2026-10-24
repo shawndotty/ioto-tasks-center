@@ -483,6 +483,17 @@
 	padding: 0 12px;
 }
 
+/* 菜单当前项（任务筛选 / 分类筛选）：把对勾从标题左侧移到「标题（计数）」之后，
+   同时消除当前行文字比其他行右移一格的错位。
+   Obsidian 默认样式里 .menu-item 是 flex 容器，order 可把图标排到标题之后；
+   margin-inline-start: auto 让标题不撑满时图标仍贴行尾，跨行形成一条右侧选中列。
+   主题若把 .menu-item 改成非 flex，本条静默失效 → 图标回到左侧（即改动前的样子）。 */
+.ioto-tasks-center__menu-item--active .menu-item-icon {
+	order: 1;
+	margin-inline-start: auto;
+	margin-inline-end: 0;
+}
+
 .ioto-tasks-center__tabs-bar {
 	display: flex;
 	align-items: flex-start;

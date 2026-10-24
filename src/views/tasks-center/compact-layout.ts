@@ -3,7 +3,7 @@ import { Menu, Platform, setIcon } from 'obsidian';
 import type { IOTOTasksCenterView } from '../iotoTasksCenterView';
 import { collectVisibleCategoryOptions } from '../project-list-group';
 import { t } from '../../lang/helpter';
-import { findSelectedProjectEntry } from './helpers';
+import { findSelectedProjectEntry, markActiveMenuItem } from './helpers';
 import { createAddProjectButton } from './projects-pane-renderer';
 import {
 	COMPACT_LAYOUT_BREAKPOINT,
@@ -235,14 +235,18 @@ async function showProjectCategoryFilterMenu(
 ): Promise<void> {
 	const menu = new Menu();
 	const addItem = (title: string, value: string | null): void => {
-		menu.addItem((item) =>
-			item
-				.setTitle(title)
-				.setChecked(view.projectCategoryFilter === value)
+		const isActive = view.projectCategoryFilter === value;
+		menu.addItem((item) => {
+			item.setTitle(title)
+				.setChecked(isActive)
 				.onClick(() => {
 					void view.setProjectCategoryFilter(value);
-				}),
-		);
+				});
+			// 保留 setChecked（它同时维护选中态），只额外打类，让 CSS 把勾排到行尾。
+			if (isActive) {
+				markActiveMenuItem(item);
+			}
+		});
 	};
 
 	addItem(t('view.projectCategoryFilter.all'), null);

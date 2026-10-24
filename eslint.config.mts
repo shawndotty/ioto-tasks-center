@@ -15,6 +15,7 @@ export default tseslint.config(
 		'scripts/**',
 		'versions.json',
 		'main.js',
+		'**/main.js',
 		'package.json',
 		'package-lock.json',
 		'tsconfig.json',

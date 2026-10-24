@@ -2,6 +2,7 @@ import { Menu, setIcon } from 'obsidian';
 
 import type { IOTOTasksCenterView } from '../iotoTasksCenterView';
 import { t } from '../../lang/helpter';
+import { markActiveMenuItem } from './helpers';
 
 export function renderTaskTabs(
 	view: IOTOTasksCenterView,
@@ -104,6 +105,9 @@ function showTaskFilterSwitcherMenu(
 			);
 			if (isActive) {
 				item.setIcon('check');
+				// 默认图标是 .menu-item 的首个子节点（标题左侧）；打标后由 styles.css
+				// 用 order 把勾排到「任务名（任务数）」之后。
+				markActiveMenuItem(item);
 			}
 			item.onClick(() => {
 				if (isActive) {
