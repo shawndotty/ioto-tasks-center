@@ -455,7 +455,7 @@ export function toggleSelectedFromScope(view: TaskViewHost): void {
 	void view.toggleTask(line, cardEl);
 }
 
-/** 暴露给 select-mode scope 的宿主；由 `resolveModEnterHost` 按 active leaf 取用。 */
+/** 暴露给 select-mode scope 的宿主；由 `IOTOTaskView` 构造函数取用并挂到 `View.scope`，只有 activeLeaf 才参与分发。 */
 export function modEnterHost(view: TaskViewHost): ModEnterHost {
 	return {
 		canToggleSelected: () => canToggleSelectedFromScope(view),

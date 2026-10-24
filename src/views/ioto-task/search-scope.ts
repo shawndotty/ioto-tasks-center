@@ -7,17 +7,28 @@
  * keydown **capture** 监听挂在了 `window` 上，`Mod+F` 是核心默认热键，事件在那里
  * 就被 `preventDefault` 吞掉，降不到视图元素。唯一能在核心分发内部抢先的入口是
  * `Scope`：回调返回 `false` 表示「已处理」，核心自动 `preventDefault` 并抑制自己的
- * `Mod+F`；返回 `undefined` 则原样放行。
+ * `Mod+F`；返回 `undefined` 则沿 parent 上溯，最终由核心处理。
+ *
+ * ## 挂在哪：`View.scope`（唯一合法落点）
+ *
+ * 核心 Workspace 的 scope 是 DeferredScope：每次 keydown 现取
+ * `activeLeaf.view.scope`，取不到才回落 root。因此把 Mod+F 挂在视图自己的 scope 上，
+ * 天然只在「本视图是 activeLeaf」时参与分发，笔记里照常走核心 `editor:open-search`。
+ *
+ * 🔴 禁止 `app.keymap.pushScope(...)` 常驻：`pushScope` 把当前栈顶塞进 `prevScopes`，
+ * 而 `Scope.handleKey` 只沿 parent 上溯、从不看 `prevScopes`；且它命中「具体键位」后
+ * 若回调返回 `undefined` 会**直接 return**（既不执行、也不 preventDefault），
+ * 于是核心热键被静默吞掉（[[Research-20261024-181347]] §2.2 / §2.3）。
  *
  * `Mod` 由核心翻译成各平台主修饰键（macOS → Command，其它 → Ctrl），无需平台分支。
  *
  * 本模块**不 import obsidian 运行时**（`Scope` 由调用方注入），可直接 jiti 单测；
- * scope 的创建 / 压栈 / 卸载在 `main.ts`（生命周期归插件）。
+ * scope 的创建与赋值在 `IOTOTaskView` 构造函数（`this.scope = scope`）。
  */
 
 /** 视图侧需要提供的能力：判定 + 执行。 */
 export interface SearchHost {
-	/** 当前是否应由本视图接管这次 Mod+F（active 视图 + 非编辑态） */
+	/** 当前是否应由本视图接管这次 Mod+F（非编辑态） */
 	canRevealSearch(): boolean;
 	/** 显示搜索条并聚焦输入框 */
 	revealSearch(): void;
@@ -41,8 +52,9 @@ export const SEARCH_HOTKEY_KEY = 'f';
  * - 命中（本视图可接管）→ 唤出搜索条并返回 `false`（抑制核心的 `Mod+F`）；
  * - 未命中 → 返回 `undefined`（原样放行）。
  *
- * 🔴 宿主必须**每次按键时重新解析**：视图实例后来才创建，且同类型可能有多个 leaf
- * 同时打开，注册时捕获实例会指向错误的视图。
+ * 🔴 宿主必须**每次按键时重新解析**：宿主对象每次按键重建（`() => view.searchHost()`），
+ * 避免视图重建后拿到过期引用；同时同类型可能有多个 leaf 同时打开，注册时捕获实例
+ * 会指向错误的视图。
  */
 export function createSearchHandler(
 	resolveHost: () => SearchHost | null,

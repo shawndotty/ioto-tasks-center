@@ -26,8 +26,8 @@
  */
 
 import {
+	Scope,
 	TextFileView,
-	type App,
 	type HoverPopover,
 	type TFile,
 	type ViewStateResult,
@@ -58,8 +58,14 @@ import type {
 	TaskNoteFilters,
 	TaskNoteLinks,
 } from './ioto-task/render-note-types';
-import type { ModEnterHost } from './ioto-task/select-mode-scope';
-import type { SearchHost } from './ioto-task/search-scope';
+import {
+	registerModEnterHandler,
+	type ModEnterHost,
+} from './ioto-task/select-mode-scope';
+import {
+	registerSearchHandler,
+	type SearchHost,
+} from './ioto-task/search-scope';
 import { IOTO_TASK_VIEW_TYPE } from './ioto-task/item-control-bridge';
 import {
 	AUTOSAVE_INTERVAL_MS,
@@ -481,6 +487,20 @@ export class IOTOTaskView extends TextFileView {
 		this.deleteButtonOnDesktopProvider = deleteButtonOnDesktopProvider;
 		this.mobileSectionActionsVisibleProvider =
 			mobileSectionActionsVisibleProvider;
+
+		// 视图级热键：Mod+F（任务搜索）/ Mod+Enter（切换选中卡完成态）。
+		//
+		// 核心 Workspace 的 scope 是 DeferredScope —— 每次 keydown 现取
+		// `activeLeaf.view.scope`（没有才回落 root），因此挂在这里的键天然只在
+		// 「本视图是 activeLeaf」时参与分发，笔记里照常走核心 `editor:open-search`。
+		//
+		// 🔴 绝不能改回 `app.keymap.pushScope(...)` 常驻：那会把 DeferredScope
+		// 埋进 prevScopes，并让 `Scope.handleKey` 对「命中具体键位但回调 return
+		// undefined」直接返回，导致核心热键被静默吞掉（[[Research-20261024-181347]] §2.2 / §2.3）。
+		const scope = new Scope(this.app.scope);
+		registerSearchHandler(scope, () => this.searchHost());
+		registerModEnterHandler(scope, () => this.modEnterHost());
+		this.scope = scope;
 	}
 
 	getViewType(): string {
@@ -923,24 +943,3 @@ import {
 	applySearchQuery as applySearchQueryFn,
 	canRevealSearchFromScope as canRevealSearchFromScopeFn,
 } from './ioto-task/task-view-search';
-
-/**
- * 解析「当前 active 的 IOTOTask 视图」的 Mod+Enter 宿主；active view 不是本类型时
- * 返回 `null`（scope 据此放行给核心）。
- *
- * 供 `main.ts` 注册的 select-mode scope 每次按键调用：多个 IOTOTask leaf 同时打开
- * 时，只有 active 的那个会接管，避免误改另一个 leaf 里选中的卡片。
- */
-export function resolveModEnterHost(app: App): ModEnterHost | null {
-	const view = app.workspace.getActiveViewOfType(IOTOTaskView);
-	return view ? view.modEnterHost() : null;
-}
-
-/**
- * 解析「当前 active 的 IOTOTask 视图」的 Ctrl/Cmd+F 搜索宿主；active view 不是本类型
- * 时返回 `null`（scope 据此放行给核心，避免吞掉别的视图的 `Cmd+F`）。
- */
-export function resolveSearchHost(app: App): SearchHost | null {
-	const view = app.workspace.getActiveViewOfType(IOTOTaskView);
-	return view ? view.searchHost() : null;
-}

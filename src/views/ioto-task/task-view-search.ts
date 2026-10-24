@@ -198,7 +198,7 @@ export function resetSearchState(view: TaskViewHost): void {
 
 /**
  * 能否由 scope 接管 Mod+F：非编辑态（保留内嵌编辑器的 Cmd+F 查找）。
- * 非 active 视图由 `resolveSearchHost` 先挡掉（返回 `null` → 放行）。
+ * 非 active 视图由核心 DeferredScope 先挡掉（只有 activeLeaf 的 `view.scope` 参与分发）。
  */
 export function canRevealSearchFromScope(view: TaskViewHost): boolean {
 	return !hasLiveEditor(view.editingKind);

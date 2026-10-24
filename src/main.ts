@@ -3,7 +3,6 @@ import {
 	Notice,
 	Platform,
 	Plugin,
-	Scope,
 	type Workspace,
 	type WorkspaceWindow,
 } from 'obsidian';
@@ -76,8 +75,6 @@ import {
 import {
 	IOTO_TASK_VIEW_TYPE,
 	IOTOTaskView,
-	resolveModEnterHost,
-	resolveSearchHost,
 } from './views/iotoTaskView';
 import { probeEmbeddedEditorSupport } from './views/ioto-task/embedded-editor';
 import {
@@ -87,8 +84,6 @@ import {
 	resolveAppId,
 } from './views/ioto-task/task-view-fold-store';
 import { installItemControlBridge } from './views/ioto-task/item-control-bridge';
-import { registerModEnterHandler } from './views/ioto-task/select-mode-scope';
-import { registerSearchHandler } from './views/ioto-task/search-scope';
 import {
 	IOTO_TASK_VIEW_HOVER_SOURCE_ID,
 	IOTO_TASKS_CENTER_TASK_HOVER_SOURCE_ID,
@@ -256,23 +251,6 @@ export default class IOTOTasksCenter extends Plugin {
 					() => this.settings.mobileSectionActionsVisible,
 				),
 		);
-
-		// IOTOTask 选中态 Mod+Enter（macOS Command / 其它平台 Ctrl）切换完成态。
-		// 核心 Keymap 在 window 上的捕获监听会抢先吃掉这个组合，DOM 层收不到，
-		// 因此只能走 Scope（见 select-mode-scope.ts 顶部注释）。
-		const selectModeScope = new Scope(this.app.scope);
-		registerModEnterHandler(selectModeScope, () =>
-			resolveModEnterHost(this.app),
-		);
-		this.app.keymap.pushScope(selectModeScope);
-		this.register(() => this.app.keymap.popScope(selectModeScope));
-
-		// IOTOTask 视图 Ctrl/Cmd+F 唤出关键词搜索条。核心 Keymap 在 window 捕获阶段
-		// 先吃带修饰键的按键，DOM 收不到，只能走 Scope（见 search-scope.ts）。
-		const searchScope = new Scope(this.app.scope);
-		registerSearchHandler(searchScope, () => resolveSearchHost(this.app));
-		this.app.keymap.pushScope(searchScope);
-		this.register(() => this.app.keymap.popScope(searchScope));
 
 		this.addCommand({
 			id: 'itc-open-as-ioto-task',

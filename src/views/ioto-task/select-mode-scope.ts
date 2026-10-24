@@ -15,22 +15,28 @@
  * 把卡片监听改成 capture **也无效**：同一元素同一阶段按注册顺序 FIFO，
  * 核心永远在前；`stopImmediatePropagation` 同理拦不住已先执行的监听器。
  *
- * ## 为什么用 Scope
+ * ## 挂在哪：`View.scope`（唯一合法落点）
  *
- * 唯一能在核心分发**内部**抢先的入口是 `Scope`：核心处理按键时会先询问当前
- * scope，回调返回 `false` 表示「已处理」，核心自动 `preventDefault` 并抑制它
- * 自己的 Mod+Enter；返回 `undefined` 则原样放行。
+ * 核心 Workspace 的 scope 是 DeferredScope：每次 keydown 现取
+ * `activeLeaf.view.scope`，取不到才回落 root。因此把 Mod+Enter 挂在视图自己的 scope 上，
+ * 天然只在「本视图是 activeLeaf」时参与分发：多个 IOTOTask leaf 同时打开时只有 active
+ * 的那个接管，也不会吞掉笔记里的 `Cmd+Enter`。
+ *
+ * 🔴 禁止 `app.keymap.pushScope(...)` 常驻：`pushScope` 把当前栈顶塞进 `prevScopes`，
+ * 而 `Scope.handleKey` 只沿 parent 上溯、从不看 `prevScopes`；且它命中「具体键位」后
+ * 若回调返回 `undefined` 会**直接 return**（既不执行、也不 preventDefault），
+ * 于是核心热键被静默吞掉（[[Research-20261024-181347]] §2.2 / §2.3）。
  *
  * `Mod` 由核心翻译成各平台的主修饰键（macOS → Command，其它 → Ctrl），
  * 因此这里不需要写 `Platform.isMacOS` 分支，Windows 与 macOS 语义一次到位。
  *
  * 本模块**不 import obsidian 运行时**（`Scope` 由调用方注入），可直接 jiti 单测；
- * scope 的创建 / 压栈 / 卸载在 `main.ts`（生命周期归插件）。
+ * scope 的创建与赋值在 `IOTOTaskView` 构造函数（`this.scope = scope`）。
  */
 
 /** 视图侧需要提供的能力：判定 + 执行。 */
 export interface ModEnterHost {
-	/** 当前是否应由本视图接管这次 Mod+Enter（active 视图 + 有选中卡 + 非编辑态） */
+	/** 当前是否应由本视图接管这次 Mod+Enter（有选中卡 + 非编辑态） */
 	canToggleSelected(): boolean;
 	/** 切换选中卡的完成态 */
 	toggleSelected(): void;
@@ -54,8 +60,9 @@ export const SELECT_MODE_HOTKEY_KEY = 'Enter';
  * - 命中（本视图可接管）→ 执行切换并返回 `false`（抑制核心的 Mod+Enter）；
  * - 未命中 → 返回 `undefined`（原样放行）。
  *
- * 🔴 宿主必须**每次按键时重新解析**：视图实例是后来才创建的，且同一类型可能有
- * 多个 leaf 同时打开，注册时捕获实例会指向错误的视图。
+ * 🔴 宿主必须**每次按键时重新解析**：宿主对象每次按键重建（`() => view.modEnterHost()`），
+ * 避免视图重建后拿到过期引用；同时同类型可能有多个 leaf 同时打开，注册时捕获实例
+ * 会指向错误的视图。
  */
 export function createModEnterHandler(
 	resolveHost: () => ModEnterHost | null,
