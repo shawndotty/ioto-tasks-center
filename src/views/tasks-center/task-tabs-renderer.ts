@@ -54,6 +54,19 @@ export function renderTaskTabs(
 	const settingsContainerEl = tabBarEl.createDiv({
 		cls: 'ioto-tasks-center__tabs-settings',
 	});
+	if (!view.isBatchEditMode) {
+		const batchEditButtonEl = settingsContainerEl.createEl('button', {
+			cls: 'ioto-tasks-center__tab-batch-edit-button',
+		});
+		batchEditButtonEl.type = 'button';
+		batchEditButtonEl.ariaLabel = t('view.enterBatchEditMode');
+		batchEditButtonEl.title = t('view.enterBatchEditMode');
+		setIcon(batchEditButtonEl, 'check-square');
+		batchEditButtonEl.addEventListener('click', () => {
+			view.toggleBatchEditMode();
+		});
+	}
+
 	const settingsButtonEl = settingsContainerEl.createEl('button', {
 		cls: 'ioto-tasks-center__tab-settings-button',
 	});

@@ -123,6 +123,7 @@ const zhCN = {
 	'view.projectCategoryFilter.emptyDesc': '请选择其他分类，或切回「全部分类」。',
 	'view.taskFilterSwitcher.current': '当前筛选：{0}（{1}）',
 	'view.taskFilterSwitcher.menuItem': '{0}（{1}）',
+	'view.enterBatchEditMode': '开启批量编辑模式',
 	'view.taskListSettings': '任务列表呈现设置',
 	'view.description.noneSelected': '当前未选中任何项目',
 	'view.description.currentProject':

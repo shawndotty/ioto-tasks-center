@@ -360,6 +360,7 @@
    覆盖：搜索、眼睛折叠开关、添加任务（图标态）、列表排序设置。 */
 .ioto-tasks-center__icon-button,
 .ioto-tasks-center__add-task-button--icon,
+.ioto-tasks-center__tab-batch-edit-button,
 .ioto-tasks-center__tab-settings-button {
 	appearance: none;
 	display: inline-flex;
@@ -385,6 +386,7 @@
 
 .ioto-tasks-center__icon-button:hover:not(:disabled),
 .ioto-tasks-center__add-task-button--icon:hover:not(:disabled),
+.ioto-tasks-center__tab-batch-edit-button:hover,
 .ioto-tasks-center__tab-settings-button:hover {
 	background: var(--background-modifier-hover);
 	color: var(--text-normal);
@@ -398,6 +400,7 @@
 
 .ioto-tasks-center__icon-button svg,
 .ioto-tasks-center__add-task-button--icon svg,
+.ioto-tasks-center__tab-batch-edit-button svg,
 .ioto-tasks-center__tab-settings-button svg {
 	width: 16px;
 	height: 16px;
@@ -405,6 +408,7 @@
 
 .is-phone .ioto-tasks-center__icon-button,
 .is-phone .ioto-tasks-center__add-task-button--icon,
+.is-phone .ioto-tasks-center__tab-batch-edit-button,
 .is-phone .ioto-tasks-center__tab-settings-button {
 	width: 36px;
 	height: 36px;
@@ -412,6 +416,7 @@
 
 .is-phone .ioto-tasks-center__icon-button svg,
 .is-phone .ioto-tasks-center__add-task-button--icon svg,
+.is-phone .ioto-tasks-center__tab-batch-edit-button svg,
 .is-phone .ioto-tasks-center__tab-settings-button svg {
 	width: 18px;
 	height: 18px;
@@ -515,12 +520,25 @@
 }
 
 .ioto-tasks-center__tabs-settings {
+	display: flex;
+	align-items: center;
+	gap: 4px;
 	flex: 0 0 auto;
 }
 
+button:not(.clickable-icon).ioto-tasks-center__tab-batch-edit-button,
 button:not(.clickable-icon).ioto-tasks-center__tab-settings-button {
+	width: 34px;
+	height: 34px;
+	padding: 0;
 	background: transparent;
 	box-shadow: none;
+}
+
+.is-phone button:not(.clickable-icon).ioto-tasks-center__tab-batch-edit-button,
+.is-phone button:not(.clickable-icon).ioto-tasks-center__tab-settings-button {
+	width: 36px;
+	height: 36px;
 }
 
 .ioto-tasks-center__tab {

@@ -123,6 +123,7 @@ const zhTW = {
 	'view.projectCategoryFilter.emptyDesc': '請選擇其他分類，或切回「全部分類」。',
 	'view.taskFilterSwitcher.current': '目前篩選：{0}（{1}）',
 	'view.taskFilterSwitcher.menuItem': '{0}（{1}）',
+	'view.enterBatchEditMode': '開啟批次編輯模式',
 	'view.taskListSettings': '任務列表呈現設定',
 	'view.description.noneSelected': '目前未選中任何專案',
 	'view.description.currentProject':
