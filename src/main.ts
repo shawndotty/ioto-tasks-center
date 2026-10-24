@@ -563,6 +563,24 @@ export default class IOTOTasksCenter extends Plugin {
 				return true;
 			},
 		});
+		// 批量折叠 / 展开当前任务笔记的全部 Section（[[Plan-20261024-065930]]）。
+		// 二态一条命令；无 Section 时 `checkCallback` 返回 false → 命令从面板隐藏。
+		this.addCommand({
+			id: 'itc-toggle-all-section-folds',
+			name: t('command.toggleAllSectionFolds'),
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(
+					IOTOTaskView,
+				);
+				if (!view?.canToggleAllSectionFolds()) {
+					return false;
+				}
+				if (!checking) {
+					void view.toggleAllSectionFolds();
+				}
+				return true;
+			},
+		});
 		// 导出任务视图为图片（[[Plan-20261006-102142]] §2.4）。两条命令共用同一套门控与
 		// 视图实现，区别只在最后「落盘附件」还是「写系统剪贴板」。
 		this.addCommand({

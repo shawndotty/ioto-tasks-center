@@ -115,7 +115,11 @@ import {
 	hydrateContinuationFolds,
 	toggleAllContinuationFolds as toggleAllContinuationFoldsFn,
 } from './ioto-task/task-view-continuation-fold';
-import { hydrateSectionFolds } from './ioto-task/task-view-section-fold';
+import {
+	hasSectionFolds,
+	hydrateSectionFolds,
+	toggleAllSectionFolds as toggleAllSectionFoldsFn,
+} from './ioto-task/task-view-section-fold';
 import {
 	applyZoomDom,
 	enterZoom,
@@ -687,6 +691,12 @@ export class IOTOTaskView extends TextFileView {
 	canToggleAllContinuationFolds(): boolean { return hasContinuationFolds(this); }
 	/** 二态切换全文件全部续写区；`false` = 无续写区（正常路径下门禁已挡）。 */
 	toggleAllContinuationFolds(): boolean { return toggleAllContinuationFoldsFn(this); }
+	/** 当前笔记是否有任何可折叠 Section（命令门禁用）。空集 → 命令从面板隐藏。 */
+	canToggleAllSectionFolds(): boolean { return hasSectionFolds(this); }
+	/** 二态切换全文件全部 Section；`false` = 无 Section（正常路径下门禁已挡）。 */
+	toggleAllSectionFolds(): Promise<boolean> {
+		return toggleAllSectionFoldsFn(this);
+	}
 	/** 取走 `setState` 暂存的叶子级折叠键（一次性迁移；见 `pendingLeafFolds`）。 */
 	takePendingLeafFolds(): {
 		path: string;

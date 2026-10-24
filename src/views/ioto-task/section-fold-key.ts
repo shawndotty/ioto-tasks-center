@@ -10,8 +10,11 @@
  * `level > 0` 画折叠头）⇒ 集合很小、标题基本唯一。真重名时「同名节共享折叠态」，
  * 是 fail-open（一起折 / 一起展），不会折错节。
  *
- * 零 import（连 `obsidian` 类型都不用）：jiti 可直导单测，不需要桩。
+ * 唯一 import 是纯解析 barrel（`note-structure`：纯字符串 / 零 DOM / 零 obsidian），
+ * 本模块仍零 obsidian / 零 DOM，jiti 可直导单测，不需要桩。
  */
+
+import { collectRootSections, parseSections } from '../../tasks-center/note-structure';
 
 /** 键计算所需的最小结构面（`NoteSection` 结构性满足，便于单测造假数据）。 */
 export interface SectionFoldSeed {
@@ -122,4 +125,24 @@ export function intersectSectionFoldKeys(
 		kept.push(next);
 	}
 	return kept;
+}
+
+/**
+ * 全文件**可折叠** Section 的键（[[Plan-20261024-065930]] S1）。
+ *
+ * 口径 = 渲染层真正画折叠头的集合：`renderTaskNote` 只对 roots 调 `renderSection`，
+ * 而 `renderSection` 只给 `level > 0` 建折叠头 ⇒ 这里必须
+ * ① 先 `collectRootSections`（嵌套标题归父块，不是独立可折叠节）；
+ * ② 再筛 `level > 0`（引导区没有折叠头，进集合就再也展不开）。
+ *
+ * 不去重：同名同层的两个节共享折叠态（既有 fail-open 语义，见本文件头 🔴），
+ * 保留重复便于单测断言「N 个可折叠节」。
+ */
+export function collectSectionFoldKeys(content: string): string[] {
+	if (content.length === 0) {
+		return [];
+	}
+	return collectRootSections(parseSections(content))
+		.filter((section) => section.level > 0)
+		.map((section) => sectionFoldKey(section.level, section.title));
 }

@@ -8,6 +8,7 @@
  */
 
 import { collectRootSections, parseSections } from '../../tasks-center/note-structure';
+import { collectSectionFoldKeys } from './section-fold-key';
 import {
 	createFoldStorage,
 	resolveSectionFolds,
@@ -63,4 +64,55 @@ export function persistSectionFolds(view: TaskViewHost): void {
 		return;
 	}
 	saveSectionFolds(storage, path, [...view.collapsedSections]);
+}
+
+/** 当前文件是否有任何可折叠 Section（命令门禁用；只读 `view.data`，不扫 DOM）。 */
+export function hasSectionFolds(view: TaskViewHost): boolean {
+	return collectSectionFoldKeys(view.data ?? '').length > 0;
+}
+
+/**
+ * 二态切换**全文件**全部 Section（[[Plan-20261024-065930]] S2）。
+ *
+ * - 作用域取 `view.data`：折叠节 / 被过滤的节 / 「只看本节」外的节都要进集合，
+ *   否则重新展开时它们仍是旧的折叠态。
+ * - 二态判据：全部已折叠 → 展开，否则折叠；空集短路返回 `false`。
+ * - 集合**全量重建**（D4）：Section 键 hydrate 时已由 `intersectSectionFoldKeys`
+ *   剪掉死键，`clear()` 不承担丢态风险。
+ * - 必然整树重建（D5）：折叠节不渲染 body，展开只能重渲染。
+ *
+ * @returns 是否真的改了（`false` = 该笔记没有任何可折叠 Section）
+ */
+export async function toggleAllSectionFolds(
+	view: TaskViewHost,
+): Promise<boolean> {
+	// ① 先落盘在册编辑器（同 markAllTasksDone / duplicateTask 口径）：
+	//    下面必然 renderNote，未提交的卡片 / 续行 / 节正文 / 节标题会被直接销毁。
+	await view.flushInlineEdits();
+	// ② 文件级操作与「只看本节」冲突：先退聚焦（同 appendTaskBlock），
+	//    否则「全部折叠」会留下一个只有标题的空白节。
+	if (view.sectionZoomLine !== null) {
+		view.exitSectionZoom();
+	}
+	// ③ 键必须在 flush 之后算：提交可能改了标题 / 行内容。
+	const keys = collectSectionFoldKeys(view.data ?? '');
+	if (keys.length === 0) {
+		return false;
+	}
+	const collapse = !keys.every((key) => view.collapsedSections.has(key));
+	view.collapsedSections.clear();
+	if (collapse) {
+		for (const key of keys) {
+			view.collapsedSections.add(key);
+		}
+	}
+	persistSectionFolds(view); // 循环外只调一次
+	// ④ 折叠方向回顶：折叠后旧 scrollTop 必然超过新 scrollHeight，
+	//    不显式归零会被浏览器贴到底部（只剩最后几个标题）。
+	if (collapse) {
+		view.renderNote(view.data, { resetScroll: true });
+	} else {
+		view.renderNote(view.data); // 展开：内容向下长，既有锚点恢复有效
+	}
+	return true;
 }

@@ -664,6 +664,7 @@ const en = {
 	'command.searchTaskView': 'Search in task view',
 	'command.toggleAllContinuationFolds':
 		'Collapse / expand all continuations',
+	'command.toggleAllSectionFolds': 'Collapse / expand all sections',
 	'command.exportTaskViewImage': 'Export task view as image',
 	'command.copyTaskViewImage': 'Copy task view image to clipboard',
 	'command.toggleMobileSectionActions':
