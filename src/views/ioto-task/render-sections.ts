@@ -278,6 +278,38 @@ function renderSectionHeader(options: {
 			text: section.title,
 		},
 	);
+	// 主任务区标记（[[Plan-20261024-072014]] §4.3）：紧贴标题之后，排在「编辑本节标题」
+	// **左侧**（Johnny 2026-10-24 要求换位，见 [[Report-20261024-072601]] §六）——
+	// 未标记时它只有 `opacity: 0` 仍占位，若排在改名图标右侧，标记后浮现的小旗会被
+	// 那个隐形按钮顶开 8 + 图标宽 + 8 ≈ 36px，与标题之间出现一段莫名其妙的空隙。
+	// 缺省 = 不渲染（只读态天然没有这个入口，与 insertOutgoingLink 同约定）。
+	if (editing.enabled && editing.togglePrimarySection) {
+		const isPrimary = (editing.primarySectionLine ?? null) === section.startLine;
+		const primaryLabel = t(
+			isPrimary
+				? 'view.iotoTaskView.sectionPrimaryUnmark'
+				: 'view.iotoTaskView.sectionPrimaryMark',
+		);
+		const primaryBtn = headerEl.createEl('button', {
+			cls:
+				'ioto-task-view__section-primary-btn' +
+				(isPrimary ? ' is-primary-section' : ''),
+			attr: {
+				type: 'button',
+				'aria-pressed': isPrimary ? 'true' : 'false',
+				'aria-label': primaryLabel,
+				title: primaryLabel,
+			},
+		});
+		// 不用 pin：`#ioto/pin` 已占用该语义（条目 pin）。
+		setIcon(primaryBtn, 'flag');
+		primaryBtn.addEventListener('click', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			editing.togglePrimarySection?.(section.startLine);
+		});
+	}
+
 	// 标题独立编辑（[[Plan-20261019-122509]] §3.7）：双击标题、或点右缘输入框图标
 	// （图标与「编辑本节内容」的铅笔刻意区分，避免同形不同义，[[Discuss-20261019-125340]]）。
 	// 只监听 `dblclick`，不在 `mousedown` 阶段 preventDefault——否则第二次 click
@@ -311,34 +343,7 @@ function renderSectionHeader(options: {
 		});
 	}
 
-	// 主任务区标记（[[Plan-20261024-072014]] §4.3）：紧跟「编辑本节标题」之后。
-	// 缺省 = 不渲染（只读态天然没有这个入口，与 insertOutgoingLink 同约定）。
-	if (editing.enabled && editing.togglePrimarySection) {
-		const isPrimary = (editing.primarySectionLine ?? null) === section.startLine;
-		const primaryLabel = t(
-			isPrimary
-				? 'view.iotoTaskView.sectionPrimaryUnmark'
-				: 'view.iotoTaskView.sectionPrimaryMark',
-		);
-		const primaryBtn = headerEl.createEl('button', {
-			cls:
-				'ioto-task-view__section-primary-btn' +
-				(isPrimary ? ' is-primary-section' : ''),
-			attr: {
-				type: 'button',
-				'aria-pressed': isPrimary ? 'true' : 'false',
-				'aria-label': primaryLabel,
-				title: primaryLabel,
-			},
-		});
-		// 不用 pin：`#ioto/pin` 已占用该语义（条目 pin）。
-		setIcon(primaryBtn, 'flag');
-		primaryBtn.addEventListener('click', (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			editing.togglePrimarySection?.(section.startLine);
-		});
-	}
+	// 主任务区标记按钮已上移到标题之后（最靠近标题的位置），见上方同段注释。
 
 	const actionsEl = headerEl.createDiv({
 		cls: 'ioto-task-view__section-actions',
