@@ -137,7 +137,8 @@ function resolveProjects(input: unknown): string[] {
 
 /**
  * 合法模板：`name` 非空、正文至少含一条任务行、**首个非空行必须是任务行**
- * （否则插入的「首行」不是卡片行，落点与光标语义都无处安放）。
+ * （否则插入的「首行」不是卡片行，落点与光标语义都无处安放），
+ * 且**至少一条任务行有正文或控制项**（`- [ ] ` 这样的空壳会在插入后变成空卡片）。
  */
 export function isEntryTemplateValid(template: TaskEntryTemplate): boolean {
 	if (!template.name.trim()) {
@@ -146,6 +147,7 @@ export function isEntryTemplateValid(template: TaskEntryTemplate): boolean {
 
 	const lines = template.content.split(/\r?\n/);
 	let firstTaskSeen = false;
+	let hasContent = false;
 	for (const line of lines) {
 		if (line.trim().length === 0) {
 			continue;
@@ -157,8 +159,13 @@ export function isEntryTemplateValid(template: TaskEntryTemplate): boolean {
 			}
 			firstTaskSeen = true;
 		}
+		// 正文或控制项至少有一项：`- [ ] ` 纯标记不算内容，
+		// 但 `- [ ] #ioto/star`（body 被剥空、controls 非空）仍算
+		if (parts && (parts.body.length > 0 || parts.controls.length > 0)) {
+			hasContent = true;
+		}
 	}
-	return firstTaskSeen;
+	return firstTaskSeen && hasContent;
 }
 
 export function areEntryTemplateConfigsEqual(

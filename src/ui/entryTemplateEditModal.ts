@@ -7,12 +7,20 @@ import {
 	TextAreaComponent,
 } from 'obsidian';
 import { t } from '../lang/helpter';
+import type { ListMarker } from '../tasks-center/list-edit-ops';
 import {
 	createEntryTemplateId,
 	isEntryTemplateValid,
 	type TaskEntryTemplate,
 } from '../tasks-center/task-entry-template';
 import { bindListMarkdownEditing } from './list-edit-textarea';
+import {
+	focusTextAreaAtEnd,
+	resolveCreateSeedContent,
+} from './template-create-seed';
+
+/** 内容区的列表标记：编辑接管与新建预填共用，避免两处各写一份。 */
+const CONTENT_MARKER: ListMarker = '- [ ] ';
 
 /**
  * 编辑弹窗的三种打开方式：新建 / 编辑 / 复制。
@@ -116,7 +124,19 @@ export class EntryTemplateEditModal extends Modal {
 			textArea.setPlaceholder(
 				t('settings.entryTemplates.editModal.contentPlaceholder'),
 			);
-			bindListMarkdownEditing(textArea.inputEl, '- [ ] ');
+			bindListMarkdownEditing(textArea.inputEl, CONTENT_MARKER);
+			const seed = resolveCreateSeedContent(
+				this.mode,
+				this.content,
+				CONTENT_MARKER,
+			);
+			if (seed !== null) {
+				// `setValue` 不保证触发 onChange，状态必须自己同步，
+				// 否则「确认」时校验读到的是空内容
+				this.content = seed;
+				textArea.setValue(seed);
+				focusTextAreaAtEnd(textArea.inputEl, seed.length);
+			}
 			textArea.onChange((value) => {
 				this.content = value;
 			});

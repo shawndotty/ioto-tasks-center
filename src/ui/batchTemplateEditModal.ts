@@ -20,8 +20,16 @@ import {
 	type BatchTaskTemplate,
 	type BatchTaskType,
 } from '../tasks-center/batch-task-template';
+import type { ListMarker } from '../tasks-center/list-edit-ops';
 import type { TemplateEditMode } from './entryTemplateEditModal';
 import { bindListMarkdownEditing } from './list-edit-textarea';
+import {
+	focusTextAreaAtEnd,
+	resolveCreateSeedContent,
+} from './template-create-seed';
+
+/** 内容区的列表标记：编辑接管与新建预填共用，避免两处各写一份。 */
+const CONTENT_MARKER: ListMarker = '- ';
 
 function getBatchTaskTypeLabel(taskType: BatchTaskType): string {
 	switch (taskType) {
@@ -131,7 +139,19 @@ export class BatchTemplateEditModal extends Modal {
 			textArea.setPlaceholder(
 				t('settings.batchTemplates.editModal.contentPlaceholder'),
 			);
-			bindListMarkdownEditing(textArea.inputEl, '- ');
+			bindListMarkdownEditing(textArea.inputEl, CONTENT_MARKER);
+			const seed = resolveCreateSeedContent(
+				this.mode,
+				this.listContent,
+				CONTENT_MARKER,
+			);
+			if (seed !== null) {
+				// `setValue` 不保证触发 onChange，状态必须自己同步，
+				// 否则「确认」时校验读到的是空内容
+				this.listContent = seed;
+				textArea.setValue(seed);
+				focusTextAreaAtEnd(textArea.inputEl, seed.length);
+			}
 			textArea.onChange((value) => {
 				this.listContent = value;
 				this.renderLevelTypeSettings();

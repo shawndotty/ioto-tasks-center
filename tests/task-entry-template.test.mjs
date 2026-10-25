@@ -257,6 +257,55 @@ test('isEntryTemplateValid：名称与首行任务行双重校验', () => {
 	);
 });
 
+test('isEntryTemplateValid：纯标记（新建预填后没写正文）不合法', () => {
+	// [[Plan-20261025-080904]] §3.4：`- [ ] ` 会被解析成「正文为空的任务行」，
+	// 若不收紧，预填后一个字都不写也能保存，插入后就是一张空卡片。
+	assert.equal(
+		isEntryTemplateValid({ id: '1', name: 'a', content: '- [ ] ', projects: [] }),
+		false,
+	);
+	assert.equal(
+		isEntryTemplateValid({
+			id: '1',
+			name: 'a',
+			content: '- [ ] \n  续行',
+			projects: [],
+		}),
+		false,
+	);
+	assert.equal(
+		isEntryTemplateValid({
+			id: '1',
+			name: 'a',
+			content: '- [ ] \n- [ ] ',
+			projects: [],
+		}),
+		false,
+	);
+});
+
+test('isEntryTemplateValid：只有控制项也算有内容', () => {
+	assert.equal(
+		isEntryTemplateValid({
+			id: '1',
+			name: 'a',
+			content: '- [ ] #ioto/star',
+			projects: [],
+		}),
+		true,
+	);
+	// 多行里有一条带正文即可
+	assert.equal(
+		isEntryTemplateValid({
+			id: '1',
+			name: 'a',
+			content: '- [ ] \n  - [ ] 子任务',
+			projects: [],
+		}),
+		true,
+	);
+});
+
 test('areEntryTemplateConfigsEqual：忽略项目顺序', () => {
 	const base = {
 		enabled: true,
