@@ -23,7 +23,8 @@ import {
 	IOTOTasksCenterView,
 } from './views/iotoTasksCenterView';
 import { IOTO_PROJECT_CENTER_VIEW_TYPE } from './views/iotoProjectCenterView';
-import { IOTO_TASK_VIEW_TYPE, IOTOTaskView } from './views/iotoTaskView';
+import { IOTOTaskView } from './views/iotoTaskView';
+import { setLeafToTaskView } from './views/ioto-task/task-file-link-open';
 
 /**
  * 「切换 Markdown / 任务视图」命令的方向判据（[[Discuss-20261008-214919]] 方案 A）。
@@ -61,11 +62,7 @@ export async function openFileAsIOTOTask(
 	}
 
 	const leaf = targetLeaf ?? resolveInPlaceLeaf(app, file);
-	await leaf.setViewState({
-		type: IOTO_TASK_VIEW_TYPE,
-		active: true,
-		state: { file: file.path },
-	});
+	await setLeafToTaskView(leaf, file.path);
 }
 
 /**

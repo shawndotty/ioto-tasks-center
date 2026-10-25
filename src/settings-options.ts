@@ -2,6 +2,7 @@ import { t } from './lang/helpter';
 import type {
 	ProjectListGroupMode,
 	ProjectListSortMode,
+	TaskFileLinkViewMode,
 	TaskLinkBadgeBackgroundMode,
 	TaskListGroupMode,
 	TaskListSortMode,
@@ -61,6 +62,22 @@ export function isTaskSearchEntryMode(
 	value: string,
 ): value is TaskSearchEntryMode {
 	return value === 'inline' || value === 'modal';
+}
+
+export function isTaskFileLinkViewMode(
+	value: string,
+): value is TaskFileLinkViewMode {
+	return value === 'inherit' || value === 'markdown';
+}
+
+export function getTaskFileLinkViewOptions(): Record<
+	TaskFileLinkViewMode,
+	string
+> {
+	return {
+		inherit: t('settings.taskFileLinkView.inherit'),
+		markdown: t('settings.taskFileLinkView.markdown'),
+	};
 }
 
 export function isTaskViewExportWidthMode(

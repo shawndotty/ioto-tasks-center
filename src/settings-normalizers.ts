@@ -6,6 +6,7 @@ import {
 	EXPORT_IMAGE_FIXED_WIDTH_MIN,
 	type ProjectListGroupMode,
 	type ProjectListSortMode,
+	type TaskFileLinkViewMode,
 	type TaskLinkBadgeBackgroundMode,
 	type TaskSearchEntryMode,
 	type TaskViewAppearanceStyle,
@@ -14,6 +15,7 @@ import {
 import {
 	isProjectListGroupMode,
 	isProjectListSortMode,
+	isTaskFileLinkViewMode,
 	isTaskLinkBadgeBackgroundMode,
 	isTaskViewAppearanceStyle,
 	isTaskViewExportWidthMode,
@@ -85,6 +87,15 @@ export function normalizeTaskViewAppearanceStyle(
 	return typeof value === 'string' && isTaskViewAppearanceStyle(value)
 		? value
 		: 'glass';
+}
+
+/** 任务视图内链接打开方式：非 `'markdown'` / `'inherit'` 一律回落 `'inherit'`。 */
+export function normalizeTaskFileLinkView(
+	value: unknown,
+): TaskFileLinkViewMode {
+	return typeof value === 'string' && isTaskFileLinkViewMode(value)
+		? value
+		: 'inherit';
 }
 
 export function normalizeConfiguredTasksRootPath(path: string): string {

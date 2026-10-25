@@ -11,10 +11,11 @@
  * `IOTOTaskView` 结构性满足该接口，barrel 侧传 `this` 即可，无需 `implements`。
  */
 
-import type { App, Component, HoverPopover, TFile } from 'obsidian';
+import type { App, Component, HoverPopover, TFile, WorkspaceLeaf } from 'obsidian';
 import type { EditorView } from '@codemirror/view';
 
 import type {
+	TaskFileLinkViewMode,
 	TaskViewAppearanceStyle,
 	TaskViewExportOptions,
 } from '../../settings';
@@ -36,6 +37,11 @@ export interface TaskViewHost extends Component {
 	readonly app: App;
 	readonly file: TFile | null;
 	readonly contentEl: HTMLElement;
+	/**
+	 * 本视图所在的叶子。子模块里「就地换文件」必须用它，
+	 * 不能用 `workspace.getLeaf(false)`（后者跳过 pin 住的叶子，落点会跑偏）。
+	 */
+	readonly leaf: WorkspaceLeaf;
 	/** 子模块读写（写盘后同步），保持可变。 */
 	data: string;
 	getDisplayText(): string;
@@ -49,6 +55,14 @@ export interface TaskViewHost extends Component {
 	readonly deleteButtonOnDesktopProvider: () => boolean;
 	/** 手机端是否显示 Section 标题栏图标（[[Plan-20261019-202817]] §3.5）。 */
 	readonly mobileSectionActionsVisibleProvider: () => boolean;
+	/**
+	 * 任务视图内链接打开方式 + 任务根目录（一次装两个值，避免给构造函数再加两个
+	 * 参数；[[Plan-20261025-103944]] §3.4）。点击瞬间现读，改设置无需重绘。
+	 */
+	readonly taskFileLinkPolicyProvider: () => {
+		mode: TaskFileLinkViewMode;
+		tasksRootPath: string;
+	};
 	readonly autosave: AutosaveScheduler;
 	readonly hoverPreviewParent: { hoverPopover: HoverPopover | null };
 

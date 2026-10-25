@@ -36,6 +36,7 @@ import {
 
 import { t } from '../lang/helpter';
 import type {
+	TaskFileLinkViewMode,
 	TaskViewAppearanceStyle,
 	TaskViewExportOptions,
 } from '../settings';
@@ -422,6 +423,11 @@ export class IOTOTaskView extends TextFileView {
 	readonly deleteButtonOnDesktopProvider: () => boolean;
 	/** 手机端是否显示 Section 标题栏图标（[[Plan-20261019-202817]] §3.5）。 */
 	readonly mobileSectionActionsVisibleProvider: () => boolean;
+	/** 视图内链接打开方式 + 任务根目录（[[Plan-20261025-103944]] §3.4）。 */
+	readonly taskFileLinkPolicyProvider: () => {
+		mode: TaskFileLinkViewMode;
+		tasksRootPath: string;
+	};
 	/**
 	 * 导出重入锁（[[Plan-20261006-102142]] §三.6）：克隆几百张卡 + 内联样式可能耗时数秒，
 	 * 期间禁止重复触发（工具栏连点 / 命令面板重入）。
@@ -476,6 +482,10 @@ export class IOTOTaskView extends TextFileView {
 		entryTemplateProvider: () => EntryTemplateConfig,
 		deleteButtonOnDesktopProvider: () => boolean,
 		mobileSectionActionsVisibleProvider: () => boolean,
+		taskFileLinkPolicyProvider: () => {
+			mode: TaskFileLinkViewMode;
+			tasksRootPath: string;
+		},
 	) {
 		super(leaf);
 		this.allowNoFile = false;
@@ -487,6 +497,7 @@ export class IOTOTaskView extends TextFileView {
 		this.deleteButtonOnDesktopProvider = deleteButtonOnDesktopProvider;
 		this.mobileSectionActionsVisibleProvider =
 			mobileSectionActionsVisibleProvider;
+		this.taskFileLinkPolicyProvider = taskFileLinkPolicyProvider;
 
 		// 视图级热键：Mod+F（任务搜索）/ Mod+Enter（切换选中卡完成态）。
 		//

@@ -344,6 +344,11 @@ const zhCN = {
 		'在任务中心打开任务笔记时，默认使用IOTO任务视图',
 	'settings.useIOTOTaskViewAsDefault.desc':
 		'关闭后，从任务中心打开任务笔记将显示为普通 Markdown；命令与右键菜单不受此开关影响。',
+	'settings.taskFileLinkView.name': '任务视图内打开任务文件链接的方式',
+	'settings.taskFileLinkView.desc':
+		'在 IOTO 任务视图中点击指向其他任务笔记的链接时，用任务视图打开（默认）还是切到 Markdown。带「#标题 / #^块」锚点的链接、指向非任务笔记的链接、内联编辑器里的链接与悬停预览里的链接始终用 Markdown 打开。与上一条不同，此设置只影响任务视图内部的链接。',
+	'settings.taskFileLinkView.inherit': 'IOTO 任务视图',
+	'settings.taskFileLinkView.markdown': 'Markdown',
 	'settings.showViewToggleButton.name': '显示视图切换悬浮按钮',
 	'settings.showViewToggleButton.desc':
 		'在任务笔记与 IOTO 任务视图的右下角显示切换按钮；关闭后立即隐藏，命令面板中的「切换 Markdown 与 IOTO 任务视图」仍可用。',

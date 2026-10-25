@@ -3,15 +3,17 @@ import { DEFAULT_EXPORT_SCALE } from '../../export';
 import { t } from '../../lang/helpter';
 import { DEFAULT_SETTINGS, DEFAULT_EXPORT_IMAGE_FIXED_WIDTH } from '../../settings-types';
 import {
+	getTaskFileLinkViewOptions,
 	getTaskViewAppearanceStyleOptions,
 	getTaskViewExportWidthModeOptions,
+	isTaskFileLinkViewMode,
 	isTaskViewAppearanceStyle,
 	isTaskViewExportWidthMode,
 } from '../../settings-options';
 import type IOTOTasksCenter from '../../main';
 
 /**
- * 「任务视图」标签页：视图行为（4）/ 外观（1）/ 导出图片（5）。
+ * 「任务视图」标签页：视图行为（5）/ 外观（1）/ 导出图片（5）。
  *
  * 导出图片改设置**无需**即时刷视图，下一次导出时才读取（provider 惰性求值）。
  */
@@ -42,6 +44,28 @@ function renderViewBehaviorSection(
 					await plugin.updateUseIOTOTaskViewAsDefault(value);
 				}),
 		);
+
+	new Setting(containerEl)
+		.setName(t('settings.taskFileLinkView.name'))
+		.setDesc(t('settings.taskFileLinkView.desc'))
+		.addDropdown((dropdown) => {
+			const taskFileLinkViewOptions = getTaskFileLinkViewOptions();
+			for (const [value, label] of Object.entries(
+				taskFileLinkViewOptions,
+			)) {
+				dropdown.addOption(value, label);
+			}
+
+			dropdown
+				.setValue(plugin.settings.taskFileLinkView)
+				.onChange(async (value) => {
+					if (!isTaskFileLinkViewMode(value)) {
+						return;
+					}
+
+					await plugin.updateTaskFileLinkView(value);
+				});
+		});
 
 	new Setting(containerEl)
 		.setName(t('settings.showViewToggleButton.name'))

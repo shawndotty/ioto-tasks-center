@@ -14,6 +14,7 @@ import {
 	type IOTOTasksCenterSettings,
 	type ProjectListGroupMode,
 	type ProjectListSortMode,
+	type TaskFileLinkViewMode,
 	type TaskLinkBadgeBackgroundMode,
 	type TaskListGroupMode,
 	type TaskListSortMode,
@@ -266,6 +267,24 @@ export async function updateUseIOTOTaskViewAsDefault(
 	host.settings.useIOTOTaskViewAsDefault = value;
 	await host.saveSettings();
 	host.applySettingsToOpenViews();
+}
+
+/**
+ * 任务视图内链接打开方式（[[Plan-20261025-103944]] §3.5）。
+ *
+ * 刻意**不**调 `applySettingsToOpenViews()`：该值由视图在点击瞬间经 provider 现读，
+ * 重绘只会打断阅读、丢掉滚动位置（§5 坑 12）。
+ */
+export async function updateTaskFileLinkView(
+	host: SettingsUpdaterHost,
+	value: TaskFileLinkViewMode,
+): Promise<void> {
+	if (host.settings.taskFileLinkView === value) {
+		return;
+	}
+
+	host.settings.taskFileLinkView = value;
+	await host.saveSettings();
 }
 
 export async function updateShowTaskViewDeleteButtonOnDesktop(

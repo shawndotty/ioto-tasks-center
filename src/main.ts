@@ -30,6 +30,7 @@ import {
 	type IOTOTasksCenterSettings,
 	type ProjectListGroupMode,
 	type ProjectListSortMode,
+	type TaskFileLinkViewMode,
 	type TaskLinkBadgeBackgroundMode,
 	type TaskListGroupMode,
 	type TaskListSortMode,
@@ -50,6 +51,7 @@ import {
 	normalizeProjectListGroupMode,
 	normalizeProjectListSortMode,
 	normalizeRecentTaskCount,
+	normalizeTaskFileLinkView,
 	normalizeTaskLinkBadgeBackgroundMode,
 	normalizeTaskSearchEntryMode,
 } from './settings';
@@ -121,6 +123,7 @@ import {
 	updateShowTaskSubtaskCount,
 	updateShowTaskViewDeleteButtonOnDesktop,
 	updateShowViewToggleButton,
+	updateTaskFileLinkView,
 	updateTaskLinkBadgeBackgroundMode,
 	updateTaskListSortMode,
 	updateTaskListGroupMode,
@@ -249,6 +252,10 @@ export default class IOTOTasksCenter extends Plugin {
 					() => this.settings.entryTemplateConfig,
 					() => this.settings.showTaskViewDeleteButtonOnDesktop,
 					() => this.settings.mobileSectionActionsVisible,
+					() => ({
+						mode: this.settings.taskFileLinkView,
+						tasksRootPath: this.settings.tasksRootPath,
+					}),
 				),
 		);
 
@@ -783,6 +790,9 @@ export default class IOTOTasksCenter extends Plugin {
 		this.settings.taskSearchEntryMode = normalizeTaskSearchEntryMode(
 			loadedData?.taskSearchEntryMode,
 		);
+		this.settings.taskFileLinkView = normalizeTaskFileLinkView(
+			loadedData?.taskFileLinkView,
+		);
 		this.settings.recentTaskCount = normalizeRecentTaskCount(
 			this.settings.recentTaskCount,
 		);
@@ -876,6 +886,10 @@ export default class IOTOTasksCenter extends Plugin {
 
 	async updateUseIOTOTaskViewAsDefault(value: boolean): Promise<void> {
 		await updateUseIOTOTaskViewAsDefault(this, value);
+	}
+
+	async updateTaskFileLinkView(value: TaskFileLinkViewMode): Promise<void> {
+		await updateTaskFileLinkView(this, value);
 	}
 
 	async updateRecentTaskCount(value: unknown): Promise<void> {

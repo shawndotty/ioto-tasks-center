@@ -366,6 +366,12 @@ const en = {
 		'Open task notes from Task Center in the IOTO Task View by default',
 	'settings.useIOTOTaskViewAsDefault.desc':
 		'When off, opening task notes from Task Center falls back to plain Markdown. The command and context-menu entries are unaffected.',
+	'settings.taskFileLinkView.name':
+		'Open task-file links inside the IOTO Task View',
+	'settings.taskFileLinkView.desc':
+		'When a card in the IOTO Task View links to another task note, open it in this same view instead of switching to Markdown. Links with a heading or block anchor, links to non-task notes, links inside the inline editor, and links in hover previews always open in Markdown. Unlike the option above, this only affects links clicked inside the IOTO Task View.',
+	'settings.taskFileLinkView.inherit': 'IOTO Task View',
+	'settings.taskFileLinkView.markdown': 'Markdown',
 	'settings.showViewToggleButton.name': 'Show floating view toggle',
 	'settings.showViewToggleButton.desc':
 		'Show a toggle in the bottom-right corner of task notes and the IOTO task view. Turning it off hides it immediately; the command palette toggle command stays available.',

@@ -1,3 +1,5 @@
+import { parseLinktext } from 'obsidian';
+
 import {
 	captureCardSnapshots,
 	prepareSwapTransition,
@@ -34,6 +36,10 @@ import {
 	restoreSectionZoom,
 } from './task-view-section-zoom';
 import { persistSectionFolds } from './task-view-section-fold';
+import {
+	setLeafToTaskView,
+	shouldOpenTaskFileInTaskView,
+} from './task-file-link-open';
 
 /**
  * 视图级渲染主入口：重建列表容器，保留常驻外壳，处理动画 / 选中回填 / 命令就绪补偿。
@@ -463,16 +469,50 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
  *
  * 渲染层只产 HTML，点击与 hover 是视图自己的职责
  * （[[Research-20261004-001616]] §四）。
+ *
+ * 任务笔记之间的互跳默认留在任务视图里（[[Plan-20261025-103944]] §二）：
+ * 否则点一下就把当前卡片树换成 Markdown，等于把用户赶出了任务视图。
  */
 export function buildLinkController(view: TaskViewHost): TaskNoteLinks {
 	return {
 		open: (linktext, newLeaf) => {
 			const sourcePath = view.file?.path ?? '';
 			void (async () => {
-				// 编辑态点**别的卡片**的链接：mousedown 的 blur 已提交过一次，
-				// 这里是幂等兜底；成功后只 `refreshCard`，不整树重建，
-				// 被点的 `<a>` 仍在 DOM 上，本次点击照常派发。
-				await view.commitEdit();
+				// 原地换视图会 onUnloadFile 掉本视图（含放大态编辑器）：
+				// 两条落盘通路都走一遍才不丢未提交文字。`commitEdit()` 只覆盖卡片
+				// 正文编辑，续行 / Section / Section 标题 / 放大态都不管，故不用它
+				// （`task-view-routing.ts:120-121` 的切换路径同款）。
+				await view.flushInlineEdits();
+				await view.flushZoomEdit();
+
+				const policy = view.taskFileLinkPolicyProvider();
+				// 🔴 必须先把 subpath 切掉再解析：整串丢给
+				// `getFirstLinkpathDest` 时带 `#标题` 的链接会返回 null。
+				const { path, subpath } = parseLinktext(linktext);
+				const target = view.app.metadataCache.getFirstLinkpathDest(
+					path,
+					sourcePath,
+				);
+				if (
+					target !== null &&
+					shouldOpenTaskFileInTaskView({
+						mode: policy.mode,
+						subpath,
+						target,
+						tasksRootPath: policy.tasksRootPath,
+					})
+				) {
+					// 普通点击必须是宿主自己那一片叶子：`getLeaf(false)` 走
+					// `getUnpinnedLeaf()`，叶子被 pin 时会落到另一片。
+					const leaf = newLeaf
+						? view.app.workspace.getLeaf(newLeaf)
+						: view.leaf;
+					await setLeafToTaskView(leaf, target.path);
+					return;
+				}
+
+				// 其余一律原样交还核心：带锚点的、非任务笔记、未解析（核心会
+				// 自动建文件）以及 `markdown` 设置，行为与改动前完全一致。
 				await view.app.workspace.openLinkText(
 					linktext,
 					sourcePath,

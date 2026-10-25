@@ -69,6 +69,16 @@ export type TaskViewAppearanceStyle =
 	| 'card'
 	| 'morandi';
 
+/**
+ * 任务视图内部点击任务笔记链接时用哪个视图打开（[[Plan-20261025-103944]] §二）：
+ * - `inherit`：沿用任务视图（默认）——同一片叶子就地换成目标任务笔记的任务视图；
+ * - `markdown`：回到旧行为——交给核心按 Markdown 打开。
+ *
+ * 只作用于任务视图**内部**的链接（卡片正文 / 续行 / Section markdown）；
+ * 带锚点的链接、指向非任务笔记的链接、内嵌编辑器与悬停预览里的链接始终走 Markdown。
+ */
+export type TaskFileLinkViewMode = 'inherit' | 'markdown';
+
 /** 任务视图导出图片的宽度口径：跟随视图宽度（默认）或固定像素。 */
 export type TaskViewExportWidthMode = 'view' | 'fixed';
 
@@ -125,6 +135,12 @@ export interface IOTOTasksCenterSettings {
 	 * 仅门控「任务中心预览面板点开任务笔记」这一条自动路径；命令与右键菜单不受限。
 	 */
 	useIOTOTaskViewAsDefault: boolean;
+	/**
+	 * 任务视图内部点击任务笔记链接时用哪个视图打开（默认 `inherit` = 任务视图）。
+	 * 与上一条不同：`useIOTOTaskViewAsDefault` 管的是「任务中心点开任务笔记」这条
+	 * 跨视图路径，本项只管「任务视图内部的链接往哪开」（[[Plan-20261025-103944]] §5 坑 7）。
+	 */
+	taskFileLinkView: TaskFileLinkViewMode;
 	/** IOTOTask 视图外观风格（glass / modern / simple / card）。 */
 	appearanceStyle: TaskViewAppearanceStyle;
 	/** Task View「显示最近任务」保留的顶级任务数。 */
@@ -186,6 +202,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	entryTemplateConfig: { ...DEFAULT_ENTRY_TEMPLATE_CONFIG },
 	taskSearchEntryMode: 'inline',
 	useIOTOTaskViewAsDefault: true,
+	taskFileLinkView: 'inherit',
 	appearanceStyle: 'glass',
 	recentTaskCount: 3,
 	exportImageWidthMode: 'view',
