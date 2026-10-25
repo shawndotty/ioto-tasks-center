@@ -1694,10 +1694,29 @@ button:not(.clickable-icon).ioto-tasks-center__status-checklist-popover-item {
 	width: 100%;
 }
 
-/* 模板变量弹窗：核心 .setting-item 是 align-items: flex-start，
-   变量名会顶在行首而与较高的输入框不共中线 → 行内改为垂直居中 */
+/* 模板变量弹窗：
+   1) 核心 .setting-item 是 align-items: flex-start，变量名会顶在行首而与较高的输入框不共中线 → 行内改为垂直居中；
+   2) 核心 .setting-item-info / .setting-item-control 都是 flex: 1 1 auto，两者按内容宽度分摊一行
+      → 变量名越长，后面的输入框越窄。改成两列 grid（标签 2fr / 控件 3fr），所有行的输入框等宽。 */
 .ioto-tasks-center__entry-template-vars-modal .setting-item {
+	display: grid;
+	grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+	column-gap: var(--size-4-4);
 	align-items: center;
+}
+
+/* 列间距改由 column-gap 提供，清掉核心给首列加的 margin-inline-end，避免多算 16px */
+.ioto-tasks-center__entry-template-vars-modal .setting-item > *:first-child {
+	margin-inline-end: 0;
+}
+
+/* 让 one_very_long_variable_name_example 这类无空格名换行，而不是被 .setting-item-name 的 overflow: hidden 裁掉 */
+.ioto-tasks-center__entry-template-vars-modal .setting-item-info {
+	overflow-wrap: anywhere;
+}
+
+.ioto-tasks-center__entry-template-vars-modal .setting-item-control {
+	min-width: 0;
 }
 
 .ioto-tasks-center__modal-field {
