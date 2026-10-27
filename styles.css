@@ -883,6 +883,11 @@ button:not(.clickable-icon).ioto-tasks-center__tab-settings-button {
 
 .ioto-tasks-center__project-list {
 	gap: 10px;
+
+	/* 窄栏缩进退让的宿主：以列表自身宽度为判据，不能用 @media（窗口宽度 ≠ 侧栏宽度）。
+	   列表内无绝对定位子元素，containment 安全。 */
+	container-type: inline-size;
+	container-name: ioto-projects;
 }
 
 .ioto-tasks-center__task-list {
@@ -897,6 +902,8 @@ button:not(.clickable-icon).ioto-tasks-center__tab-settings-button {
 	margin-bottom: 12px;
 }
 
+/* 这条 (0,2,1) 会恒压过 (0,2,0) 的 hover，所以下面的 hover 必须写到 (0,2,2)。
+   不透明是 sticky 的硬要求，不要改成 transparent。 */
 button:not(.clickable-icon).ioto-tasks-center__task-group-header {
 	background: var(--background-secondary);
 	/* box-shadow: none; */
@@ -931,11 +938,11 @@ button:not(.clickable-icon).ioto-tasks-center__task-group-header {
 		color 120ms ease;
 }
 
-.ioto-tasks-center__task-group-header:hover {
+button:not(.clickable-icon).ioto-tasks-center__task-group-header:hover {
 	background: color-mix(
 		in srgb,
-		var(--background-primary) 82%,
-		var(--background-modifier-hover)
+		var(--interactive-accent) 14%,
+		var(--background-secondary)
 	);
 	color: var(--text-normal);
 }
@@ -992,21 +999,20 @@ button:not(.clickable-icon).ioto-tasks-center__task-group-header {
 	margin-bottom: 12px;
 }
 
-.ioto-tasks-center__project-group-header {
+/* 必须带 button:not(.clickable-icon) 前缀：核心 `button:not(.clickable-icon)` 是 (0,1,1)，
+   不带前缀的 (0,1,0) 会被静默压掉，背景/圆角都落不下来。
+   border-radius: 0 也要显式写：8px 来自核心 button 基线。 */
+button:not(.clickable-icon).ioto-tasks-center__project-group-header {
 	display: flex;
 	align-items: center;
 	gap: 8px;
 	width: 100%;
 	padding: 10px 14px 8px;
-	background: color-mix(
-		in srgb,
-		var(--background-primary) 88%,
-		var(--background-secondary)
-	);
+	background: transparent;
+	border: 0;
 	border-bottom: 1px solid var(--background-modifier-border);
-	border-left: none;
-	border-right: none;
-	border-top: none;
+	border-radius: 0;
+	box-shadow: none;
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
 	font-weight: 700;
@@ -1018,13 +1024,23 @@ button:not(.clickable-icon).ioto-tasks-center__task-group-header {
 		color 120ms ease;
 }
 
-.ioto-tasks-center__project-group-header:hover {
+button:not(.clickable-icon).ioto-tasks-center__project-group-header:hover {
 	background: color-mix(
 		in srgb,
-		var(--background-primary) 82%,
-		var(--background-modifier-hover)
+		var(--interactive-accent) 16%,
+		transparent
 	);
 	color: var(--text-normal);
+}
+
+.ioto-tasks-center__project-group-header:hover
+	.ioto-tasks-center__project-group-header-icon {
+	color: var(--interactive-accent);
+}
+
+.ioto-tasks-center__project-group-header:hover
+	.ioto-tasks-center__project-group-header-count {
+	opacity: 1;
 }
 
 .ioto-tasks-center__project-group-header:focus-visible {
@@ -1040,7 +1056,9 @@ button:not(.clickable-icon).ioto-tasks-center__task-group-header {
 	width: 16px;
 	height: 16px;
 	color: var(--text-faint);
-	transition: transform 120ms ease;
+	transition:
+		transform 120ms ease,
+		color 120ms ease;
 }
 
 .ioto-tasks-center__project-group.is-expanded
@@ -1058,7 +1076,11 @@ button:not(.clickable-icon).ioto-tasks-center__task-group-header {
 
 .ioto-tasks-center__project-group-header-count {
 	flex: 0 0 auto;
-	color: var(--text-faint);
+
+	/* 不用 --text-faint：本主题 faint 比 muted 更亮，会把计数顶到标题之上。
+	   改为继承标题色 + 降透明度，hover 时由上面的 :hover 规则拉回 1。 */
+	color: inherit;
+	opacity: 0.72;
 	font-variant-numeric: tabular-nums;
 }
 
@@ -1069,21 +1091,33 @@ button:not(.clickable-icon).ioto-tasks-center__task-group-header {
 	padding-top: 0;
 }
 
+/* `+` 是关键：未分组模式没有 header，不能出现轨道缩进。 */
 .ioto-tasks-center__project-group-header
 	+ .ioto-tasks-center__project-group-body {
+	margin-left: 8px;
+	padding-left: 12px;
 	padding-top: 10px;
+	border-left: 1px solid var(--background-modifier-border);
+}
+
+@container ioto-projects (max-width: 180px) {
+	.ioto-tasks-center__project-group-header
+		+ .ioto-tasks-center__project-group-body {
+		margin-left: 4px;
+		padding-left: 8px;
+	}
 }
 
 .ioto-tasks-center__project-group-body.is-hidden {
 	display: none;
 }
 
-.ioto-tasks-center__project-group.is-collapsed
-	.ioto-tasks-center__project-group-header {
-	border-bottom-color: transparent;
-}
+/* 折叠后正文 display: none，标题的下边线就是该分组的唯一视觉锚点，必须保留。
+   不要恢复 .is-collapsed 下 border-bottom-color: transparent。 */
 
-.ioto-tasks-center__project-item {
+/* 同 project-group-header：带前缀才压得过核心 button 的 (0,1,1)，
+   否则常态停在 rgb(49,50,68)，与透明的分组标签拉不开反差。 */
+button:not(.clickable-icon).ioto-tasks-center__project-item {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -1119,19 +1153,22 @@ button:not(.clickable-icon).ioto-tasks-center__project-count {
 	height: 18px;
 	padding: 0 4px;
 	border-radius: 999px;
-	background: var(--background-primary-alt);
+
+	/* 与卡片底（--background-secondary）解耦：用正文色的低透明度色作为浅色 chip，
+	   深浅主题都跟着文字色走，不依赖 --background-primary-alt（很多主题把它映射成 secondary）。 */
+	background: color-mix(in srgb, var(--text-normal) 8%, transparent);
 	color: inherit;
 	font-size: var(--font-ui-smaller);
 	line-height: 1.4;
 	box-shadow: none;
 }
 
-.ioto-tasks-center__project-item:hover {
+button:not(.clickable-icon).ioto-tasks-center__project-item:hover {
 	border-color: var(--interactive-accent);
 	background: var(--background-modifier-hover);
 }
 
-.ioto-tasks-center__project-item.is-selected {
+button:not(.clickable-icon).ioto-tasks-center__project-item.is-selected {
 	border-color: var(--interactive-accent);
 	background: color-mix(
 		in srgb,
