@@ -422,6 +422,27 @@
 	height: 18px;
 }
 
+/* 平板（iPad / Android 平板）图标消失的硬修复（[[Research-20261027-143349]]）。
+   核心 app.css 有一条平板专属基线：`.is-tablet button:not(.clickable-icon)`
+   { padding: 4px 20px }，特异性 (0,2,1)；下面这些「定宽 icon-only 按钮」的
+   `padding: 0` 只有 (0,1,0)，平板上一律被它压过 → 34px 宽按钮的 padding 合计
+   40px，内容盒被压成 0，svg 宽度算出 0：**只剩背景，图标不见**。
+   手机没有这条基线（`.is-phone` 无对应规则），所以手机上复现不出来。
+   (0,2,1) 与核心打平、按加载顺序已能压过（同 `__tab-settings-button`），这里
+   再加 `.is-tablet` 抬到 (0,3,1) 做成不依赖顺序的确定结果。
+   ⚠️ 新增定宽图标按钮时若忘了 `padding: 0` 的提权，平板同样会复现。 */
+.is-tablet button:not(.clickable-icon).ioto-tasks-center__icon-button,
+.is-tablet button:not(.clickable-icon).ioto-tasks-center__add-task-button--icon,
+.is-tablet button:not(.clickable-icon).ioto-tasks-center__task-search-hint-clear,
+.is-tablet button:not(.clickable-icon).ioto-tasks-center__task-search-clear-button,
+.is-tablet
+	button:not(.clickable-icon).ioto-project-center__search-clear-button,
+.is-tablet button:not(.clickable-icon).ioto-task-view__card-action-btn,
+.is-tablet button:not(.clickable-icon).ioto-task-view__card-checkbox,
+.is-tablet button:not(.clickable-icon).ioto-view-toggle {
+	padding: 0;
+}
+
 .ioto-tasks-center__compact-toolbar {
 	display: flex;
 	align-items: center;
