@@ -996,7 +996,7 @@ button:not(.clickable-icon).ioto-tasks-center__task-group-header:hover {
 .ioto-tasks-center__project-group {
 	display: flex;
 	flex-direction: column;
-	margin-bottom: 12px;
+	/* margin-bottom: 12px; */
 }
 
 /* 必须带 button:not(.clickable-icon) 前缀：核心 `button:not(.clickable-icon)` 是 (0,1,1)，
