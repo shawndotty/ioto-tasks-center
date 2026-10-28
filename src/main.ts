@@ -90,7 +90,7 @@ import {
 	IOTO_TASK_VIEW_HOVER_SOURCE_ID,
 	IOTO_TASKS_CENTER_TASK_HOVER_SOURCE_ID,
 } from './views/task-hover-preview';
-import { ShortcutHelpModal } from './ui/shortcutHelpModal';
+import { openShortcutHelpModal } from './ui/shortcutHelpModal';
 // 设置更新实现（update* 薄封装转发，保持插件 public 方法语义不变）
 import {
 	resolveExportOptions,
@@ -123,6 +123,7 @@ import {
 	updateShowProjectNameInTaskList,
 	updateShowTaskSubtaskCount,
 	updateShowTaskViewDeleteButtonOnDesktop,
+	updateShowTaskViewShortcutHelpButton,
 	updateShowViewToggleButton,
 	updateTaskFileLinkView,
 	updateTaskLinkBadgeBackgroundMode,
@@ -619,10 +620,7 @@ export default class IOTOTasksCenter extends Plugin {
 				}
 
 				if (!checking) {
-					new ShortcutHelpModal(this.app, {
-						isMac: Platform.isMacOS,
-						isMobile: Platform.isMobile,
-					}).open();
+					openShortcutHelpModal(this.app);
 				}
 
 				return true;
@@ -837,6 +835,9 @@ export default class IOTOTasksCenter extends Plugin {
 		// Task View 桌面端删除按钮：非 true 一律回落 false（默认关闭）
 		this.settings.showTaskViewDeleteButtonOnDesktop =
 			this.settings.showTaskViewDeleteButtonOnDesktop === true;
+		// 快捷键帮助按钮：只有显式 false 才关闭（老 data.json 缺键 → 默认显示）
+		this.settings.showTaskViewShortcutHelpButton =
+			this.settings.showTaskViewShortcutHelpButton !== false;
 		// 移动端 Section 图标：非 true 一律回落 false（默认极简，[[Plan-20261019-202817]] §3.3）
 		this.settings.mobileSectionActionsVisible =
 			this.settings.mobileSectionActionsVisible === true;
@@ -930,6 +931,12 @@ export default class IOTOTasksCenter extends Plugin {
 		await updateShowViewToggleButton(this, value);
 		// rAF 在其它窗口（popout）获得焦点时会被暂停，开关必须当场生效，
 		// 因此这里再同步扫一遍；关闭路径会连带清掉登记表里的 popout 按钮。
+		syncFloatingToggles(this.getViewToggleHost());
+	}
+
+	async updateShowTaskViewShortcutHelpButton(value: boolean): Promise<void> {
+		await updateShowTaskViewShortcutHelpButton(this, value);
+		// 同 updateShowViewToggleButton：rAF 在未获焦窗口会被暂停，开关当场扫一遍。
 		syncFloatingToggles(this.getViewToggleHost());
 	}
 
@@ -1096,6 +1103,8 @@ export default class IOTOTasksCenter extends Plugin {
 			app: this.app,
 			getTasksRootPath: () => this.settings.tasksRootPath,
 			isViewToggleVisible: () => this.settings.showViewToggleButton,
+			isShortcutHelpEnabled: () =>
+				this.settings.showTaskViewShortcutHelpButton,
 			onToggle: (leaf) => {
 				void toggleTaskViewForLeaf(
 					this.app,

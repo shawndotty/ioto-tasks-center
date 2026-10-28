@@ -318,6 +318,23 @@ export async function updateShowViewToggleButton(
 	host.applySettingsToOpenViews();
 }
 
+/**
+ * 快捷键帮助按钮的显示开关（[[Research-20261028-133749]] §4.4）。
+ * 与 `updateShowViewToggleButton` 同口径：按钮常驻 DOM，必须广播到已开视图。
+ */
+export async function updateShowTaskViewShortcutHelpButton(
+	host: SettingsUpdaterHost,
+	value: boolean,
+): Promise<void> {
+	if (host.settings.showTaskViewShortcutHelpButton === value) {
+		return;
+	}
+
+	host.settings.showTaskViewShortcutHelpButton = value;
+	await host.saveSettings();
+	host.applySettingsToOpenViews();
+}
+
 // 导出设置改动**不**即时刷视图（下一次导出才读 provider），故不带 applySettingsToOpenViews。
 export async function updateExportImageWidthMode(
 	host: SettingsUpdaterHost,

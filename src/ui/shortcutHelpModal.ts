@@ -1,12 +1,12 @@
 /**
  * 任务视图键位帮助面板（[[Plan-20261028-110920]]）。
  *
- * 只做渲染：清单与文案全部来自 `task-view-shortcut-spec.ts` 与 locale，
- * 平台判定由调用方传入（`main.ts` 用 `Platform` 取值），本文件不 import `Platform`，
- * 便于真机自检时手工构造 options。
+ * 只做渲染：清单与文案全部来自 `task-view-shortcut-spec.ts` 与 locale。
+ * 渲染类本身仍不判定平台（options 由调用方传入），平台取值收敛在
+ * `openShortcutHelpModal()` 一处，避免命令与悬浮按钮各拼一份。
  */
 
-import { Modal } from 'obsidian';
+import { Modal, Platform, type App } from 'obsidian';
 
 import { t } from '../lang/helpter';
 import {
@@ -18,6 +18,17 @@ import {
 export interface ShortcutHelpModalOptions {
 	isMac: boolean;
 	isMobile: boolean;
+}
+
+/**
+ * 唯一的打开入口：命令面板与悬浮帮助按钮共用，平台参数只在这里拼一次
+ * （[[Research-20261028-133749]] §2.2）。
+ */
+export function openShortcutHelpModal(app: App): void {
+	new ShortcutHelpModal(app, {
+		isMac: Platform.isMacOS,
+		isMobile: Platform.isMobile,
+	}).open();
 }
 
 export class ShortcutHelpModal extends Modal {

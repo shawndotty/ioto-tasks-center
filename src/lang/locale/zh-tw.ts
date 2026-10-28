@@ -353,6 +353,9 @@ const zhTW = {
 	'settings.showViewToggleButton.name': '顯示檢視切換懸浮按鈕',
 	'settings.showViewToggleButton.desc':
 		'在任務筆記與 IOTO 任務檢視的右下角顯示切換按鈕；關閉後立即隱藏，命令面板中的「切換 Markdown 與 IOTO 任務檢視」仍可用。',
+	'settings.showTaskViewShortcutHelpButton.name': '顯示任務檢視快速鍵說明按鈕',
+	'settings.showTaskViewShortcutHelpButton.desc':
+		'在桌面端 IOTO 任務檢視左下角顯示問號按鈕，點擊查看內建快速鍵；關閉後立即隱藏，命令面板中的「顯示任務檢視快速鍵」仍可用。',
 	'settings.appearanceStyle.name': 'IOTOTask 視圖外觀',
 	'settings.appearanceStyle.desc':
 		'選擇 IOTOTask 視圖的視覺風格：玻璃（深色 Aurora 漸變 + 玻璃擬態，預設）、現代（無邊框分層 + 大圓角 + 柔和投影，克制耐看）、簡潔（白卡 + 淺灰表頭帶 + 髮絲分隔線 + 藥丸按鈕）、卡片（經典扁平卡片）或莫蘭迪（自帶低飽和暖色板 + 寬行高，對乾眼 / 散光更友好的無障礙外觀）。',
@@ -755,6 +758,7 @@ const zhTW = {
 	// 任務檢視鍵位說明面板（[[Plan-20261028-110920]]）
 	'shortcutHelp.title': '任務檢視快速鍵',
 	'shortcutHelp.intro': '以下快速鍵在 IOTO 任務檢視中生效。',
+	'shortcutHelp.button': '檢視任務檢視快速鍵',
 	'shortcutHelp.footnoteMobile': '行動端需要外接鍵盤。',
 	'shortcutHelp.key.anyOther': '任意其它鍵',
 	'shortcutHelp.group.view': '檢視',

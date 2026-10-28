@@ -163,6 +163,12 @@ export interface IOTOTasksCenterSettings {
 	 */
 	showViewToggleButton: boolean;
 	/**
+	 * 是否在桌面端任务视图左下角显示快捷键帮助按钮（默认 true）。
+	 * 与 `showViewToggleButton` 相互独立；只控制悬浮按钮，不影响同名命令
+	 * （[[Research-20261028-133749]]）。
+	 */
+	showTaskViewShortcutHelpButton: boolean;
+	/**
 	 * 手机端是否显示 Section 标题栏的操作图标（默认 false = 只留折叠箭头）。
 	 * 只影响 `.is-phone`；桌面 / 平板行为不变。由手机专属命令切换
 	 * （[[Plan-20261019-202817]] §3.2）。
@@ -212,6 +218,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	exportImageWithFooter: false,
 	showTaskViewDeleteButtonOnDesktop: false,
 	showViewToggleButton: true,
+	showTaskViewShortcutHelpButton: true,
 	mobileSectionActionsVisible: false,
 };
 

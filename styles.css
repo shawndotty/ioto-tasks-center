@@ -439,7 +439,8 @@
 	button:not(.clickable-icon).ioto-project-center__search-clear-button,
 .is-tablet button:not(.clickable-icon).ioto-task-view__card-action-btn,
 .is-tablet button:not(.clickable-icon).ioto-task-view__card-checkbox,
-.is-tablet button:not(.clickable-icon).ioto-view-toggle {
+.is-tablet button:not(.clickable-icon).ioto-view-toggle,
+.is-tablet button:not(.clickable-icon).ioto-shortcut-help-btn {
 	padding: 0;
 }
 
@@ -5904,16 +5905,17 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 }
 
 /* ============================================================
-   视图切换悬浮按钮（[[Plan-20261019-190001]] §3.10）
-   挂在 view.containerEl（.workspace-leaf-content）右下角：
-   容器本身 position: relative + overflow: hidden，按钮不随正文滚动、不越出窗格。
-   设置开关 showViewToggleButton 在 DOM 层增删；视图过矮则由 data-collapsed 收起。
+   角落悬浮按钮（[[Plan-20261019-190001]] §3.10、[[Research-20261028-133749]]）
+   右 = 视图切换，左 = 快捷键帮助。外观声明写在一起：改一处两个一起变，
+   不会出现「一个按钮圆角 4px、另一个 6px」的漂移。
+   挂在 view.containerEl（.workspace-leaf-content）上：容器本身
+   position: relative + overflow: hidden，按钮不随正文滚动、不越出窗格。
+   设置开关在 DOM 层增删；视图过矮则由 data-collapsed 收起（两类同进同退）。
    ============================================================ */
-.ioto-view-toggle {
+.ioto-view-toggle,
+.ioto-shortcut-help-btn {
 	position: absolute;
-	inset-inline-end: 14px;
 	bottom: 35px;
-	right: 32px;
 	z-index: 15;
 	display: inline-flex;
 	align-items: center;
@@ -5933,19 +5935,33 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 	transition: opacity 120ms ease, color 120ms ease, background-color 120ms ease;
 }
 
-.ioto-view-toggle:hover {
+/* 定位：切换按钮贴右下（沿用既有的 right 覆盖 inset-inline-end），
+   帮助按钮贴左下，与右侧按钮成镜像。 */
+.ioto-view-toggle {
+	inset-inline-end: 14px;
+	right: 32px;
+}
+
+.ioto-shortcut-help-btn {
+	inset-inline-start: 32px;
+}
+
+.ioto-view-toggle:hover,
+.ioto-shortcut-help-btn:hover {
 	opacity: 1;
 	color: var(--text-muted);
 	background: var(--background-modifier-hover);
 }
 
-.ioto-view-toggle:focus-visible {
+.ioto-view-toggle:focus-visible,
+.ioto-shortcut-help-btn:focus-visible {
 	opacity: 1;
 	outline: 2px solid var(--interactive-accent);
 	outline-offset: 1px;
 }
 
-.ioto-view-toggle svg {
+.ioto-view-toggle svg,
+.ioto-shortcut-help-btn svg {
 	width: 16px;
 	height: 16px;
 }
@@ -5962,8 +5978,10 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 	opacity: 0.6;
 }
 
-/* 高度闸门（[[Research-20261020-111403]] §4.2）：视图过矮时收起，键盘态不再压住右侧按钮。
-   属性选择器压过上面的 display: inline-flex；display: none 同时把它移出 Tab 序。 */
-.ioto-view-toggle[data-collapsed='true'] {
+/* 高度闸门（[[Research-20261020-111403]] §4.2）：视图过矮时收起，键盘态不再压住按钮。
+   属性选择器压过上面的 display: inline-flex；display: none 同时把它移出 Tab 序。
+   帮助按钮共用同一阈值，避免矮窗格里「切换按钮没了、帮助按钮还浮着」。 */
+.ioto-view-toggle[data-collapsed='true'],
+.ioto-shortcut-help-btn[data-collapsed='true'] {
 	display: none;
 }

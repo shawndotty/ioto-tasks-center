@@ -20,6 +20,22 @@ export function isViewTooShortForToggle(height: number): boolean {
 	return height < TOGGLE_MIN_VIEW_HEIGHT;
 }
 
+/**
+ * 快捷键帮助按钮的存在判据（[[Research-20261028-133749]] §4.2）。
+ *
+ * 只在「桌面 + 设置开启 + 当前叶子确实是任务视图（方向 to-markdown）」时出现：
+ * 帮助 modal 列的是任务视图内的键位，别的视图里挂着会点出一份无关的清单。
+ */
+export function isShortcutHelpButtonVisible(input: {
+	enabled: boolean;
+	isMobile: boolean;
+	direction: ToggleDirection | null;
+}): boolean {
+	return (
+		input.enabled && !input.isMobile && input.direction === 'to-markdown'
+	);
+}
+
 export interface ToggleDescriptor {
 	direction: ToggleDirection;
 	icon: 'file-text' | 'list-todo';

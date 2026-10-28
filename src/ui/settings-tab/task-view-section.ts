@@ -79,6 +79,17 @@ function renderViewBehaviorSection(
 		);
 
 	new Setting(containerEl)
+		.setName(t('settings.showTaskViewShortcutHelpButton.name'))
+		.setDesc(t('settings.showTaskViewShortcutHelpButton.desc'))
+		.addToggle((toggle) =>
+			toggle
+				.setValue(plugin.settings.showTaskViewShortcutHelpButton)
+				.onChange(async (value) => {
+					await plugin.updateShowTaskViewShortcutHelpButton(value);
+				}),
+		);
+
+	new Setting(containerEl)
 		.setName(t('settings.recentTaskCount.name'))
 		.setDesc(t('settings.recentTaskCount.desc'))
 		.addText((text) =>

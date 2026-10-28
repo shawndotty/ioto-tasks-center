@@ -352,6 +352,9 @@ const zhCN = {
 	'settings.showViewToggleButton.name': '显示视图切换悬浮按钮',
 	'settings.showViewToggleButton.desc':
 		'在任务笔记与 IOTO 任务视图的右下角显示切换按钮；关闭后立即隐藏，命令面板中的「切换 Markdown 与 IOTO 任务视图」仍可用。',
+	'settings.showTaskViewShortcutHelpButton.name': '显示任务视图快捷键帮助按钮',
+	'settings.showTaskViewShortcutHelpButton.desc':
+		'在桌面端 IOTO 任务视图左下角显示问号按钮，点击查看内置快捷键；关闭后立即隐藏，命令面板中的「显示任务视图快捷键」仍可用。',
 	'settings.appearanceStyle.name': 'IOTOTask 视图外观',
 	'settings.appearanceStyle.desc':
 		'选择 IOTOTask 视图的视觉风格：玻璃（深色 Aurora 渐变 + 玻璃拟态，默认）、现代（无边框分层 + 大圆角 + 柔和投影，克制耐看）、简洁（白卡 + 浅灰表头带 + 发丝分隔线 + 药丸按钮）、卡片（经典扁平卡片）或莫兰迪（自带低饱和暖色板 + 宽行高，对干眼 / 散光更友好的无障碍外观）。',
@@ -754,6 +757,7 @@ const zhCN = {
 	// 任务视图键位帮助面板（[[Plan-20261028-110920]]）
 	'shortcutHelp.title': '任务视图快捷键',
 	'shortcutHelp.intro': '以下快捷键在 IOTO 任务视图中生效。',
+	'shortcutHelp.button': '查看任务视图快捷键',
 	'shortcutHelp.footnoteMobile': '移动端需要外接键盘。',
 	'shortcutHelp.key.anyOther': '任意其它键',
 	'shortcutHelp.group.view': '视图',

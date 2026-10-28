@@ -375,6 +375,10 @@ const en = {
 	'settings.showViewToggleButton.name': 'Show floating view toggle',
 	'settings.showViewToggleButton.desc':
 		'Show a toggle in the bottom-right corner of task notes and the IOTO task view. Turning it off hides it immediately; the command palette toggle command stays available.',
+	'settings.showTaskViewShortcutHelpButton.name':
+		'Show shortcut help button in task view',
+	'settings.showTaskViewShortcutHelpButton.desc':
+		'Show a question-mark button in the bottom-left corner of the IOTO task view on desktop. Click it to open the built-in task view shortcuts; the command palette command stays available either way.',
 	'settings.appearanceStyle.name': 'IOTOTask view appearance',
 	'settings.appearanceStyle.desc':
 		'Choose the visual style of the IOTOTask view: Glass (dark aurora + glassmorphism, default), Modern (borderless layered surfaces with large radii and soft shadows), Simple (white surface + tinted header band + hairline separators + pill buttons), Card (classic flat cards), or Morandi (built-in low-saturation warm palette + generous line height, an accessibility-first look easier on dry eyes / astigmatism).',
@@ -830,6 +834,7 @@ const en = {
 	// 任务视图键位帮助面板（[[Plan-20261028-110920]]）
 	'shortcutHelp.title': 'Task view shortcuts',
 	'shortcutHelp.intro': 'These keys work inside the IOTO task view.',
+	'shortcutHelp.button': 'View task view shortcuts',
 	'shortcutHelp.footnoteMobile': 'A hardware keyboard is required on mobile.',
 	'shortcutHelp.key.anyOther': 'Any other key',
 	'shortcutHelp.group.view': 'In the view',
