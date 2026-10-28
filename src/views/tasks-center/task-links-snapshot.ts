@@ -22,10 +22,12 @@ import {
 import { mapWithConcurrency } from '../../tasks-center/async';
 import {
 	buildTaskLinksIndex,
+	collectOtherOutlinkPaths,
 	resolveTaskParentPaths,
 	toTaskLinkEntry,
 } from '../../tasks-center/task-links-index';
 import { groupTaskOutlinksByRootPaths } from '../../tasks-center/task-outlink-counts';
+import { isTaskNoteFile } from '../../tasks-center/task-note-menu';
 import { sortTasksForPresentation } from '../task-list-presentation';
 
 /**
@@ -68,17 +70,21 @@ export async function buildTaskLinksSnapshot(
 		.filter((task): task is TaskFileEntry => Boolean(task))
 		.map((task) => toTaskLinkEntry(task, options.showProjectNameInTaskList));
 
+	const subtaskEntries = (index.childrenByParentPath.get(taskPath) ?? []).map(
+		(task) => toTaskLinkEntry(task, options.showProjectNameInTaskList),
+	);
+
 	return {
 		taskPath,
 		taskTitle: toTaskLinkEntry(selfTask, options.showProjectNameInTaskList)
 			.title,
 		parents,
 		sections: {
-			subtask: (index.childrenByParentPath.get(taskPath) ?? []).map(
-				(task) =>
-					toTaskLinkEntry(task, options.showProjectNameInTaskList),
-			),
-			...buildOutlinkSections(app, taskPath, roots),
+			subtask: subtaskEntries,
+			...buildOutlinkSections(app, taskPath, roots, {
+				taskPath,
+				subtaskPaths: subtaskEntries.map((entry) => entry.path),
+			}),
 		},
 		missingRoots: collectMissingRoots(app, roots),
 	};
@@ -132,20 +138,29 @@ function buildOutlinkSections(
 	app: App,
 	taskPath: string,
 	roots: TaskLinksRoots,
-): Pick<TaskLinksSnapshot['sections'], 'input' | 'output' | 'outcome'> {
-	const targets = groupTaskOutlinksByRootPaths(
-		app.metadataCache.resolvedLinks?.[taskPath],
+	excluded: { taskPath: string; subtaskPaths: readonly string[] },
+): Omit<TaskLinksSnapshot['sections'], 'subtask'> {
+	const resolvedLinks = app.metadataCache.resolvedLinks?.[taskPath];
+	const targets = groupTaskOutlinksByRootPaths(resolvedLinks, roots);
+	const otherPaths = collectOtherOutlinkPaths(
+		Object.keys(resolvedLinks ?? {}),
 		roots,
+		[excluded.taskPath, ...excluded.subtaskPaths],
 	);
 
 	return {
-		input: toOutlinkEntries(app, targets.input),
-		output: toOutlinkEntries(app, targets.output),
-		outcome: toOutlinkEntries(app, targets.outcome),
+		input: toOutlinkEntries(app, targets.input, roots.tasksRootPath),
+		output: toOutlinkEntries(app, targets.output, roots.tasksRootPath),
+		outcome: toOutlinkEntries(app, targets.outcome, roots.tasksRootPath),
+		other: toOutlinkEntries(app, otherPaths, roots.tasksRootPath),
 	};
 }
 
-function toOutlinkEntries(app: App, paths: readonly string[]): TaskLinkEntry[] {
+function toOutlinkEntries(
+	app: App,
+	paths: readonly string[],
+	tasksRootPath: string,
+): TaskLinkEntry[] {
 	const entries: TaskLinkEntry[] = [];
 	for (const path of paths) {
 		const file = app.vault.getAbstractFileByPath(path);
@@ -157,6 +172,7 @@ function toOutlinkEntries(app: App, paths: readonly string[]): TaskLinkEntry[] {
 			path: file.path,
 			title: file.basename,
 			subPath: file.path.replace(/\.md$/i, ''),
+			kind: isTaskNoteFile(file, tasksRootPath) ? 'task' : 'note',
 		});
 	}
 

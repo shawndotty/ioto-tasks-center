@@ -13,9 +13,11 @@ import type {
 	TaskFileEntry,
 	TaskLinkCategory,
 	TaskLinkEntry,
+	TaskLinksRoots,
 	TaskLinksSnapshot,
 } from './types';
 import { resolveTaskDisplayTitle } from './task-display-title';
+import { isPathInsideRoot } from './task-path';
 
 /**
  * 父任务候选解析器：`title` 已归一化（无 `|` / `#`），`sourcePath` 是任务本身路径。
@@ -36,6 +38,7 @@ export const TASK_LINK_CATEGORIES: readonly TaskLinkCategory[] = [
 	'input',
 	'output',
 	'outcome',
+	'other',
 ];
 
 function getDirname(path: string): string {
@@ -180,7 +183,39 @@ export function toTaskLinkEntry(
 		path: task.path,
 		title: resolveTaskDisplayTitle(task, showProjectNameInTaskList),
 		subPath: task.path.replace(/\.md$/i, ''),
+		kind: 'task',
 	};
+}
+
+/**
+ * 「其他」= 出链 − 三个根（输入/输出/成果）− 排除集（自身 + 子任务）。
+ *
+ * 父任务**不排除**：它是 frontmatter 产生的真实出链，单开规则会造成不对称
+ * （[[Research-20261029-054453]] 判定 1）。
+ */
+export function collectOtherOutlinkPaths(
+	outlinkPaths: readonly string[],
+	roots: TaskLinksRoots,
+	excludedPaths: Iterable<string>,
+): string[] {
+	const excluded = new Set(excludedPaths);
+	const seen = new Set<string>();
+	const others: string[] = [];
+	for (const path of outlinkPaths) {
+		if (excluded.has(path) || seen.has(path)) {
+			continue;
+		}
+		if (
+			isPathInsideRoot(path, roots.inputRootPath) ||
+			isPathInsideRoot(path, roots.outputRootPath) ||
+			isPathInsideRoot(path, roots.outcomeRootPath)
+		) {
+			continue;
+		}
+		seen.add(path);
+		others.push(path);
+	}
+	return others.sort(comparePaths);
 }
 
 export interface TaskLinksFilterResult {
@@ -203,12 +238,14 @@ export function filterTaskLinks(
 		input: [],
 		output: [],
 		outcome: [],
+		other: [],
 	} as Record<TaskLinkCategory, TaskLinkEntry[]>;
 	const counts = {
 		subtask: 0,
 		input: 0,
 		output: 0,
 		outcome: 0,
+		other: 0,
 	} as Record<TaskLinkCategory, number>;
 
 	for (const category of TASK_LINK_CATEGORIES) {

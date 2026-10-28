@@ -119,8 +119,16 @@ export interface TaskFileListResult {
 	tasks: TaskFileEntry[];
 }
 
-/** 任务链接浏览窗口的四个分类（[[Plan-20261028-154638]] §3.1）。 */
-export type TaskLinkCategory = 'subtask' | 'input' | 'output' | 'outcome';
+/** 任务链接浏览窗口的分类（tab 顺序见 `TASK_LINK_CATEGORIES`）。 */
+export type TaskLinkCategory =
+	| 'subtask'
+	| 'input'
+	| 'output'
+	| 'outcome'
+	| 'other';
+
+/** 条目的打开语义：任务笔记走任务视图，其余走普通文件。 */
+export type TaskLinkEntryKind = 'task' | 'note';
 
 export interface TaskLinkEntry {
 	path: string;
@@ -128,6 +136,8 @@ export interface TaskLinkEntry {
 	title: string;
 	/** 次级行：vault 相对路径（已去 `.md`），用于同名消歧。 */
 	subPath: string;
+	/** 打开语义由快照判定，列表不再按分类猜（第 5 个分类必然猜错）。 */
+	kind: TaskLinkEntryKind;
 }
 
 export interface TaskLinksRoots {

@@ -2794,10 +2794,16 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
    的底色），因此任何主题下观感都与 Obsidian 一致。
    🔴 本插件渲染容器不带 `.markdown-rendered` 类，核心那条规则不会自动命中，
    必须**自带类名 + 自带样式**。 */
-.ioto-task-view__search-hit {
+.ioto-task-view__search-hit,
+.ioto-tasks-center__task-links-hit {
 	color: var(--text-normal);
 	background-color: var(--text-highlight-bg);
 	border-radius: 2px;
+}
+
+/* 当前定位命中（`↑` / `↓` 落点）：预览没有卡片可选，只能靠自己打的类名加重。 */
+.ioto-tasks-center__task-links-hit.is-current {
+	background-color: var(--text-selection);
 }
 
 /* 当前定位卡（`上一个` / `下一个` 落点）的命中加重，对齐核心「当前匹配」观感：
@@ -6086,6 +6092,36 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 	border-inline-start: 1px solid var(--background-modifier-border);
 }
 
+/* 命中定位细条：夹在预览头与正文之间，右对齐、无独立边框（否则与头部底边叠双线）。
+   节点常驻，只靠 `.is-hidden` 切换显隐 → 正文不会随每次输入上下跳。 */
+.ioto-tasks-center__task-links-preview-hits {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 4px;
+	padding-bottom: 6px;
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}
+
+.ioto-tasks-center__task-links-preview-hits.is-hidden {
+	display: none;
+}
+
+.ioto-tasks-center__task-links-preview-hits button.clickable-icon {
+	width: 24px;
+	height: 24px;
+	padding: 0;
+}
+
+.is-phone
+	.ioto-tasks-center__task-links-preview-hits
+	button.clickable-icon {
+	width: 32px;
+	height: 32px;
+}
+
 /* 预览正文：核心的排版四项挂在 .markdown-preview-view 上，
    裸 .markdown-rendered 会退回 --font-ui-medium + 界面字体，所以必须自己补。 */
 .ioto-tasks-center__task-links-preview-body {
@@ -6099,6 +6135,22 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 	overflow-wrap: break-word;
 	user-select: text;
 	-webkit-user-select: text;
+}
+
+/* 弹窗不提供「编辑块」：核心给每个嵌入都塞了 .embed-actions */
+.ioto-tasks-center__task-links-preview-body .embed-actions {
+	display: none;
+}
+
+/* 未识别的类型降级成「图标 + 文件名」卡片，可点的语义是「打开文件」 */
+.ioto-tasks-center__task-links-preview-body .file-embed {
+	cursor: pointer;
+}
+
+/* 小图别贴左 */
+.ioto-tasks-center__task-links-preview-body .image-embed {
+	display: flex;
+	justify-content: center;
 }
 
 .ioto-tasks-center__task-links-preview-header {

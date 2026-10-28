@@ -6,7 +6,7 @@ import {
 	parseSections,
 	splitTaskLine,
 } from '../../tasks-center/note-structure';
-import { applySearchHighlight } from './search-highlight';
+import { applySearchHighlight } from '../../tasks-center/search-highlight';
 import { normalizeQuery } from './task-query-filter';
 import { commitTaskText } from './commit-task-line';
 import { mountEmbeddedEditor } from './embedded-editor';

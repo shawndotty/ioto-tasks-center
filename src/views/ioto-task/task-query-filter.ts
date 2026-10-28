@@ -9,7 +9,7 @@
  * 「空态判定」与「逐卡 skip」都调 `isCardVisible`，避免两处各写一遍导致漂移。
  */
 
-import { findMatchRanges } from './search-highlight';
+import { findMatchRanges } from '../../tasks-center/search-highlight';
 
 /** 归一化查询：去首尾空白 + 小写。空串 / 纯空白 = 不过滤。 */
 export function normalizeQuery(raw: string): string {

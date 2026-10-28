@@ -6,8 +6,8 @@ import { createJiti } from 'jiti';
 // 纯函数零 obsidian / 零 DOM，可 jiti 直接导入单测（`applySearchHighlight` 只在
 // 函数体内触碰 DOM，导入本模块不触发）。
 const jiti = createJiti(import.meta.url, { moduleCache: false });
-const { findMatchRanges, splitByQuery } = await jiti.import(
-	'../src/views/ioto-task/search-highlight.ts',
+const { findMatchRanges, splitByQuery, stepHitIndex } = await jiti.import(
+	'../src/tasks-center/search-highlight.ts',
 );
 
 test('findMatchRanges：大小写不敏感', () => {
@@ -85,4 +85,29 @@ test('splitByQuery：命中段 / 非命中段交替且标记正确', () => {
 test('splitByQuery：空查询 → 整段普通文本；空文本 → []', () => {
 	assert.deepEqual(splitByQuery('abc', ''), [{ text: 'abc', hit: false }]);
 	assert.deepEqual(splitByQuery('', ''), []);
+});
+
+// 命中索引步进（[[Plan-20261028-221530]] §三 S3）：「上一个 / 下一个」共用一套环绕规则。
+test('stepHitIndex：无命中 → -1', () => {
+	assert.equal(stepHitIndex(-1, 0, 1), -1);
+	assert.equal(stepHitIndex(-1, 0, -1), -1);
+	assert.equal(stepHitIndex(0, 0, 1), -1);
+});
+
+test('stepHitIndex：未定位时按方向落到首/末', () => {
+	assert.equal(stepHitIndex(-1, 7, 1), 0);
+	assert.equal(stepHitIndex(-1, 7, -1), 6);
+});
+
+test('stepHitIndex：末位 +1 回 0，首位 -1 回末（环绕）', () => {
+	assert.equal(stepHitIndex(6, 7, 1), 0);
+	assert.equal(stepHitIndex(0, 7, -1), 6);
+	assert.equal(stepHitIndex(3, 7, 1), 4);
+	assert.equal(stepHitIndex(3, 7, -1), 2);
+});
+
+test('stepHitIndex：delta=0 原地；单条命中恒为 0', () => {
+	assert.equal(stepHitIndex(2, 7, 0), 2);
+	assert.equal(stepHitIndex(0, 1, 1), 0);
+	assert.equal(stepHitIndex(0, 1, -1), 0);
 });

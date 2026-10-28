@@ -1,5 +1,6 @@
 /**
- * Task View 搜索命中关键词高亮（[[Discuss-20261006-183552]] §四）。
+ * 搜索命中高亮的纯逻辑 + DOM 应用层：Task View 卡片与任务链接弹窗预览共用
+ * （[[Discuss-20261006-183552]] §四、[[Plan-20261028-221530]] §三 S1）。
  *
  * 纯函数层只做「**区间计算 + 切段**」，零 `obsidian` / 零 DOM，照
  * `task-query-filter.ts` / `recent-task-filter.ts` 的范式组织，可被 jiti 直接导入单测。
@@ -9,8 +10,12 @@
  * （[[Discuss-20261006-183552]] §五.9）。
  *
  * DOM 应用层（`applySearchHighlight`）作用于 `MarkdownRenderer` 的**渲染产物**，
- * 把命中文本节点包成 `<span class="ioto-task-view__search-hit">`；绝不在 markdown
- * 源码字符串上插标记（会撕坏 `[[链接]]` / `**强调**` / 内联字段）。
+ * 把命中文本节点包成 `<span class="{hitClass}">`；绝不在 markdown 源码字符串上
+ * 插标记（会撕坏 `[[链接]]` / `**强调**` / 内联字段）。
+ *
+ * 命中 span 的**类名由调用方决定**（默认 `SEARCH_HIT_CLASS`，即 Task View 口径）：
+ * 同一个容器里可能同时存在两套高亮，染色 / 重扫 / 计数必须传同一个类名，
+ * 否则重扫会残留旧 span、计数也会把别人的命中算进来。
  */
 
 /** 命中区间 `[start, end)`：0 基、左闭右开、作用于**原始文本**。 */
@@ -90,9 +95,11 @@ export function splitByQuery(
  * 展开 `root` 内所有旧的命中 span（把每个 span 换回等价文本节点，再合并相邻文本）。
  * 保证 `applySearchHighlight` **幂等**：就地重绘路径（`refreshCard`）不 unwrap 会
  * 叠加嵌套 span、越点越深（[[Discuss-20261006-183552]] §五.3）。
+ *
+ * 🔴 必须收**同一个** `hitClass`：只清自己那一套，别顺手把容器里别的高亮拆掉。
  */
-function unwrapSearchHighlight(root: HTMLElement): void {
-	const hits = root.querySelectorAll<HTMLElement>(`.${SEARCH_HIT_CLASS}`);
+function unwrapSearchHighlight(root: HTMLElement, hitClass: string): void {
+	const hits = root.querySelectorAll<HTMLElement>(`.${hitClass}`);
 	for (const hit of Array.from(hits)) {
 		const parent = hit.parentNode;
 		if (!parent) {
@@ -108,20 +115,22 @@ function unwrapSearchHighlight(root: HTMLElement): void {
 
 /**
  * 把 `root`（`MarkdownRenderer` 的渲染产物容器）里所有文本节点按关键词包成
- * `<span class="ioto-task-view__search-hit">`。
+ * `<span class="{hitClass}">`。
  *
  * - 幂等：先 unwrap 旧命中，再重新切。
  * - 空查询 = 只 unwrap、不包裹（清空搜索无残留）。
- * - **不**触碰 `code` / `pre`（Q5 默认照常高亮）；只跳过 `script` / `style` 这类
- *   不应改写的节点。编辑器容器调用方不传（只对 `.card-text` / `__md` 跑）。
+ * - **不**触碰 `code` / `pre`（Q5 默认照常高亮）；跳过 `script` / `style`，
+ *   以及 `svg` / `mjx-container` / `.math` —— 公式与图表由后处理器接管，
+ *   切碎它们的文本节点会把渲染结果拆坏（[[Plan-20261028-221530]] §三 S1）。
  * - 核心 `MarkdownRenderer.render` 的基础 DOM 是**同步** append 的，故渲染后**同步**
- *   调用即可命中；返回的 Promise 只等数学 / mermaid 等后处理器（v1 不覆盖）。
+ *   调用即可命中；返回的 Promise 只等数学 / mermaid 等后处理器。
  */
 export function applySearchHighlight(
 	root: HTMLElement,
 	normalizedQuery: string,
+	hitClass: string = SEARCH_HIT_CLASS,
 ): void {
-	unwrapSearchHighlight(root);
+	unwrapSearchHighlight(root, hitClass);
 	if (normalizedQuery.length === 0) {
 		return;
 	}
@@ -140,7 +149,10 @@ export function applySearchHighlight(
 
 	for (const textNode of textNodes) {
 		const parent = textNode.parentElement;
-		if (!parent || parent.closest('script, style')) {
+		if (
+			!parent ||
+			parent.closest('script, style, svg, mjx-container, .math')
+		) {
 			continue;
 		}
 		const parts = splitByQuery(textNode.data, normalizedQuery);
@@ -152,7 +164,7 @@ export function applySearchHighlight(
 		for (const part of parts) {
 			if (part.hit) {
 				const span = doc.createElement('span');
-				span.className = SEARCH_HIT_CLASS;
+				span.className = hitClass;
 				span.textContent = part.text;
 				fragment.appendChild(span);
 			} else {
@@ -161,4 +173,38 @@ export function applySearchHighlight(
 		}
 		textNode.replaceWith(fragment);
 	}
+}
+
+/**
+ * 收集容器内全部命中 span（文档顺序）。
+ *
+ * 顺序即「下一个」的行走顺序：`querySelectorAll` 天然返回文档序，**不要再排序** ——
+ * 排序会打乱同一行内的先后（[[Plan-20261028-221530]] §三 S1）。
+ */
+export function collectSearchHits(
+	root: HTMLElement,
+	hitClass: string = SEARCH_HIT_CLASS,
+): HTMLElement[] {
+	return Array.from(root.querySelectorAll<HTMLElement>(`.${hitClass}`));
+}
+
+/**
+ * 命中索引步进（纯函数，供「上一个 / 下一个」共用）：
+ *
+ * - `total <= 0` → `-1`（没有可落脚的位置）；
+ * - `current < 0`（尚未定位）→ 正向落 `0`、反向落 `total - 1`；
+ * - 其余按 `±1` **环绕**，负数取模要拉回正区间。
+ */
+export function stepHitIndex(
+	current: number,
+	total: number,
+	delta: number,
+): number {
+	if (total <= 0) {
+		return -1;
+	}
+	if (current < 0) {
+		return delta >= 0 ? 0 : total - 1;
+	}
+	return (((current + delta) % total) + total) % total;
 }

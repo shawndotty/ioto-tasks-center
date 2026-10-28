@@ -17,7 +17,7 @@ import {
 	parseChecklistItemsInRange,
 	parseSections,
 } from '../../tasks-center/note-structure';
-import { findMatchRanges } from './search-highlight';
+import { findMatchRanges } from '../../tasks-center/search-highlight';
 
 /** 折叠态类名（挂在 `.card-continuation` 上；导出摘的就是它）。 */
 export const CONTINUATION_COLLAPSED_CLASS = 'is-continuation-collapsed';

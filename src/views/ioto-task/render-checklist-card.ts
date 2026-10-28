@@ -29,7 +29,7 @@ import {
 	isCardVisible,
 	type CardVisibilityContext,
 } from './task-query-filter';
-import { applySearchHighlight } from './search-highlight';
+import { applySearchHighlight } from '../../tasks-center/search-highlight';
 import {
 	CONTINUATION_COLLAPSED_CLASS,
 	CONTINUATION_SUMMARY_CLASS,

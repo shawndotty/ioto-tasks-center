@@ -21,6 +21,11 @@ import { t, type TranslationKey } from '../lang/helpter';
 import { mapWithConcurrency } from '../tasks-center/async';
 import { stripFrontmatter } from '../tasks-center/markdown-body';
 import {
+	applySearchHighlight,
+	collectSearchHits,
+	stepHitIndex,
+} from '../tasks-center/search-highlight';
+import {
 	TASK_LINK_CATEGORIES,
 	filterTaskLinks,
 	type TaskLinksFilterResult,
@@ -28,17 +33,34 @@ import {
 import type {
 	TaskLinkCategory,
 	TaskLinkEntry,
+	TaskLinkEntryKind,
 	TaskLinksSnapshot,
 } from '../tasks-center/types';
 
+/** 唯一判据：能当正文渲染的只有 Markdown。非 md 一律走嵌入分支。 */
+function isMarkdownPath(app: App, path: string): boolean {
+	const file = app.vault.getAbstractFileByPath(path);
+	return file instanceof TFile && file.extension.toLowerCase() === 'md';
+}
+
 /** 正文预读并发：列表通常只有个位数到几十条，8 足够且不打满磁盘。 */
 const BODY_READ_CONCURRENCY = 8;
+
+/**
+ * 预览正文的命中 span 类名（与 Task View 的 `ioto-task-view__search-hit` 分开）：
+ * 两个容器可能同时存在，类名分开才能各自 unwrap / 计数，互不拆台。
+ */
+const TASK_LINKS_HIT_CLASS = 'ioto-tasks-center__task-links-hit';
+
+/** 当前定位命中的加重类（对应 `--text-selection`）。 */
+const HIT_CURRENT_CLASS = 'is-current';
 
 const TAB_LABEL_KEYS: Record<TaskLinkCategory, TranslationKey> = {
 	subtask: 'taskLinks.tabs.subtask',
 	input: 'taskLinks.tabs.input',
 	output: 'taskLinks.tabs.output',
 	outcome: 'taskLinks.tabs.outcome',
+	other: 'taskLinks.tabs.other',
 };
 
 const EMPTY_KEYS: Record<TaskLinkCategory, TranslationKey> = {
@@ -46,9 +68,10 @@ const EMPTY_KEYS: Record<TaskLinkCategory, TranslationKey> = {
 	input: 'taskLinks.empty.input',
 	output: 'taskLinks.empty.output',
 	outcome: 'taskLinks.empty.outcome',
+	other: 'taskLinks.empty.other',
 };
 
-export type TaskLinkEntryKind = 'task' | 'note';
+export type { TaskLinkEntryKind } from '../tasks-center/types';
 
 export interface TaskLinksModalOptions {
 	snapshot: Promise<TaskLinksSnapshot>;
@@ -96,6 +119,18 @@ export class TaskLinksModal extends Modal {
 	private previewTitleEl: HTMLElement | null = null;
 	private previewPathEl: HTMLElement | null = null;
 	private previewBodyEl: HTMLElement | null = null;
+	/** 「查看笔记 / 打开文件」按钮：文案随预览的是 md 还是附件切换。 */
+	private previewOpenEl: HTMLButtonElement | null = null;
+	/** 当前预览是「附件嵌入」而不是渲染出的正文（决定 `.file-embed` 的点击要不要接管）。 */
+	private previewIsEmbed = false;
+	/** 预览正文的命中集合：只由 `refreshPreviewHits` 一次算出，染色与计数共用。 */
+	private hitEls: HTMLElement[] = [];
+	private hitIndex = -1;
+	private activeHitEl: HTMLElement | null = null;
+	private hitBarEl: HTMLElement | null = null;
+	private hitCountEl: HTMLElement | null = null;
+	private hitPrevEl: HTMLButtonElement | null = null;
+	private hitNextEl: HTMLButtonElement | null = null;
 
 	constructor(app: App, options: TaskLinksModalOptions) {
 		super(app);
@@ -134,8 +169,17 @@ export class TaskLinksModal extends Modal {
 		this.previewTitleEl = null;
 		this.previewPathEl = null;
 		this.previewBodyEl = null;
+		this.previewOpenEl = null;
 		this.previewSourcePath = '';
+		this.previewIsEmbed = false;
 		this.query = '';
+		this.hitEls = [];
+		this.hitIndex = -1;
+		this.activeHitEl = null;
+		this.hitBarEl = null;
+		this.hitCountEl = null;
+		this.hitPrevEl = null;
+		this.hitNextEl = null;
 	}
 
 	/**
@@ -206,6 +250,10 @@ export class TaskLinksModal extends Modal {
 					return;
 				}
 
+				if (!isMarkdownPath(this.app, path)) {
+					return; // 🔴 二进制不预读：cachedRead 对 pdf 会返回 6.9MB 乱码且不报错
+				}
+
 				try {
 					bodies.set(path, await this.app.vault.cachedRead(file));
 				} catch {
@@ -225,6 +273,12 @@ export class TaskLinksModal extends Modal {
 
 		const file = this.app.vault.getAbstractFileByPath(path);
 		if (!(file instanceof TFile)) {
+			return null;
+		}
+
+		// 同 readBodies 的白名单：二进制绝不进 `bodies`（`renderPreview` 已在
+		// 此之前把非 md 分流到嵌入分支，这里是第二道保险）。
+		if (!isMarkdownPath(this.app, path)) {
 			return null;
 		}
 
@@ -325,6 +379,21 @@ export class TaskLinksModal extends Modal {
 		searchEl.addEventListener('input', () => {
 			this.applyQuery(searchEl.value);
 		});
+		// Enter / Shift+Enter 走「下一个 / 上一个匹配」：与列表条目的 Enter（打开）
+		// 不冲突，因为只在预览已开时接管（[[Plan-20261028-221530]] §三 S3）。
+		searchEl.addEventListener('keydown', (event) => {
+			if (event.isComposing) {
+				return; // IME 组字中的 Enter 是选词，不是跳转
+			}
+			if (event.key !== 'Enter') {
+				return;
+			}
+			if (this.previewStack.length === 0) {
+				return; // 列表态不替用户选第一条
+			}
+			event.preventDefault();
+			this.stepHit(event.shiftKey ? -1 : 1);
+		});
 
 		this.listEl = this.listColEl.createDiv({
 			cls: 'ioto-tasks-center__task-links-list',
@@ -376,12 +445,38 @@ export class TaskLinksModal extends Modal {
 			text: t('taskLinks.preview.openNote'),
 			attr: { type: 'button' },
 		});
+		this.previewOpenEl = openEl;
 		openEl.addEventListener('click', () => {
 			const top = this.previewStack[this.previewStack.length - 1];
 			if (top) {
 				this.openEntry(top.entry, top.kind);
 			}
 		});
+
+		// 定位细条：常驻 DOM、只在「有查询 + 预览开」时显示，避免正文随输入跳动。
+		const hitsEl = this.previewEl.createDiv({
+			cls: 'ioto-tasks-center__task-links-preview-hits is-hidden',
+		});
+		this.hitPrevEl = createHitButton(
+			hitsEl,
+			'chevron-up',
+			t('taskLinks.preview.matchPrev'),
+			() => {
+				this.stepHit(-1);
+			},
+		);
+		this.hitNextEl = createHitButton(
+			hitsEl,
+			'chevron-down',
+			t('taskLinks.preview.matchNext'),
+			() => {
+				this.stepHit(1);
+			},
+		);
+		this.hitCountEl = hitsEl.createSpan({
+			cls: 'ioto-tasks-center__task-links-hit-count',
+		});
+		this.hitBarEl = hitsEl;
 
 		this.previewBodyEl = this.previewEl.createDiv({
 			cls: 'ioto-tasks-center__task-links-preview-body markdown-rendered',
@@ -396,6 +491,8 @@ export class TaskLinksModal extends Modal {
 		}
 		this.updateTabs();
 		this.renderList();
+		// 预览已开时查询变化 = 就地重扫正文，并跳到新查询的第一处命中。
+		this.refreshPreviewHits({ resetIndex: true, locate: true });
 	}
 
 	private updateTabs(): void {
@@ -454,8 +551,6 @@ export class TaskLinksModal extends Modal {
 			return;
 		}
 
-		const kind: TaskLinkEntryKind =
-			category === 'subtask' ? 'task' : 'note';
 		// 整表重建：高亮只在重建时按记忆决定，不存在节点复用 → 不会有残留。
 		const selectedPath = this.selectedByCategory.get(category);
 		for (const entry of entries) {
@@ -476,10 +571,10 @@ export class TaskLinksModal extends Modal {
 			});
 			itemEl.addEventListener('click', (event) => {
 				if (Keymap.isModEvent(event)) {
-					this.openEntry(entry, kind);
+					this.openEntry(entry, entry.kind);
 					return;
 				}
-				this.previewFromList(entry, kind);
+				this.previewFromList(entry, entry.kind);
 			});
 			itemEl.addEventListener('keydown', (event) => {
 				if (event.key !== 'Enter') {
@@ -487,7 +582,7 @@ export class TaskLinksModal extends Modal {
 				}
 				// 挡掉按钮把 Enter 合成 click（那会走单选预览）。
 				event.preventDefault();
-				this.openEntry(entry, kind);
+				this.openEntry(entry, entry.kind);
 			});
 		}
 	}
@@ -541,6 +636,9 @@ export class TaskLinksModal extends Modal {
 		this.disposePreviewComponent();
 		this.previewBodyEl?.empty();
 		this.previewSourcePath = '';
+		this.previewIsEmbed = false;
+		// 命中集合随正文一起作废（细条按 previewStack 为空自动隐藏）。
+		this.resetPreviewHits();
 		// 高亮随整表重建一并消失。
 		this.renderList();
 	}
@@ -564,10 +662,26 @@ export class TaskLinksModal extends Modal {
 		this.previewSourcePath = top.entry.path;
 		this.previewTitleEl?.setText(top.entry.title);
 		this.previewPathEl?.setText(top.entry.subPath);
+		this.previewOpenEl?.setText(
+			t(
+				isMarkdownPath(this.app, top.entry.path)
+					? 'taskLinks.preview.openNote'
+					: 'taskLinks.preview.openFile',
+			),
+		);
+
+		// 非 md：整件事交给核心 embedRegistry，必须在 `cached` 判断之前分流，
+		// 否则会先落「正在加载…」再落乱码。
+		if (!isMarkdownPath(this.app, top.entry.path)) {
+			this.paintEmbedPreview(top, component);
+			return;
+		}
 
 		const cached = this.bodies.get(top.entry.path);
 		if (cached === undefined) {
 			bodyEl.empty();
+			// 加载态没有正文：计数必须归零，否则上一篇的 N 会挂在新页上。
+			this.resetPreviewHits();
 			bodyEl.createDiv({
 				cls: 'ioto-tasks-center__task-links-empty',
 				text: t('taskLinks.state.loading'),
@@ -605,11 +719,13 @@ export class TaskLinksModal extends Modal {
 		bodyEl.empty();
 		// 先归零再渲染：MarkdownRenderer 的基础 DOM 同步 append，异步补齐的图片只撑高。
 		bodyEl.scrollTop = 0;
+		this.previewIsEmbed = false;
 		if (raw === null) {
 			bodyEl.createDiv({
 				cls: 'ioto-tasks-center__task-links-empty',
 				text: t('taskLinks.preview.missing'),
 			});
+			this.resetPreviewHits();
 			return;
 		}
 
@@ -620,6 +736,157 @@ export class TaskLinksModal extends Modal {
 			this.previewSourcePath,
 			component,
 		);
+		// 🔴 同步阶段立即染色：核心的基础 DOM 已经 append 完毕；塞进 `.then` 会等
+		// 数学 / mermaid 后处理器，那时再切文本反而会踩坏渲染结果。
+		this.refreshPreviewHits({ resetIndex: true, locate: true });
+	}
+
+	/**
+	 * 非 md 预览：整件事交给核心 embedRegistry 分派（pdf / 图片 / 音视频 / canvas /
+	 * 未知类型降级），插件不写类型分支。`sourcePath` 传条目自身路径，让核心按相对
+	 * 路径解析这个全路径嵌入串。
+	 */
+	private paintEmbedPreview(frame: PreviewFrame, component: Component): void {
+		const bodyEl = this.previewBodyEl;
+		if (!bodyEl) {
+			return;
+		}
+
+		this.previewIsEmbed = true;
+		bodyEl.empty();
+		bodyEl.scrollTop = 0;
+		// 细条按「有查询」才显示；嵌入分支没有可染色的文本，必须显式归零否则挂 0/0。
+		this.resetPreviewHits();
+		void MarkdownRenderer.render(
+			this.app,
+			`![[${frame.entry.path}]]`,
+			bodyEl,
+			frame.entry.path,
+			component,
+		);
+	}
+
+	// ---------------------------------------------------------------
+	// 预览命中高亮与定位（[[Plan-20261028-221530]] §三 S2 / S3）
+	// ---------------------------------------------------------------
+
+	/** 与 `filterTaskLinks` 的判据逐字一致——注意不是 `toLocaleLowerCase`。 */
+	private normalizedQuery(): string {
+		return this.query.trim().toLowerCase();
+	}
+
+	/** 重扫的唯一入口：染色 → 收集合 → 定 index → 刷细条 → 按需定位。 */
+	private refreshPreviewHits(options: {
+		resetIndex: boolean;
+		locate: boolean;
+	}): void {
+		const body = this.previewBodyEl;
+		const query = this.normalizedQuery();
+		// `previewIsEmbed` 一并拦：pdf 的文本层是真文本，扫进去会染色 pdf.js 自己的
+		// DOM 并让细条挂出 `N/176`（[[Report-20261029-060022]] 验收 6）。
+		if (!body || this.previewStack.length === 0 || this.previewIsEmbed) {
+			this.resetPreviewHits();
+			return;
+		}
+
+		applySearchHighlight(body, query, TASK_LINKS_HIT_CLASS);
+		this.activeHitEl?.classList.remove(HIT_CURRENT_CLASS);
+		this.activeHitEl = null;
+		// 计数只取这一个数组：再跑一遍正则就会出现「计数与画面不一致」。
+		this.hitEls = query ? collectSearchHits(body, TASK_LINKS_HIT_CLASS) : [];
+		if (options.resetIndex) {
+			this.hitIndex = this.hitEls.length > 0 ? 0 : -1;
+		}
+		if (this.hitIndex >= this.hitEls.length) {
+			this.hitIndex = this.hitEls.length > 0 ? this.hitEls.length - 1 : -1;
+		}
+		this.syncActiveHit();
+		this.refreshHitBar();
+		if (options.locate && this.hitIndex >= 0) {
+			const hit = this.hitEls[this.hitIndex];
+			if (hit) {
+				this.scrollHitIntoView(hit);
+			}
+		}
+	}
+
+	private resetPreviewHits(): void {
+		this.activeHitEl?.classList.remove(HIT_CURRENT_CLASS);
+		this.activeHitEl = null;
+		this.hitEls = [];
+		this.hitIndex = -1;
+		this.refreshHitBar();
+	}
+
+	/** 细条：有预览且有查询才出现；计数/禁用态一律从 `hitEls` 推。 */
+	private refreshHitBar(): void {
+		const barEl = this.hitBarEl;
+		if (!barEl) {
+			return;
+		}
+
+		const visible =
+			this.previewStack.length > 0 &&
+			!this.previewIsEmbed &&
+			this.normalizedQuery() !== '';
+		barEl.toggleClass('is-hidden', !visible);
+
+		const total = this.hitEls.length;
+		const position = this.hitIndex >= 0 ? this.hitIndex + 1 : 0;
+		const args = [String(position), String(total)];
+		this.hitCountEl?.setText(t('taskLinks.preview.matchCount', args));
+		this.hitCountEl?.setAttribute(
+			'aria-label',
+			t('taskLinks.preview.matchCountLabel', args),
+		);
+		const disabled = total === 0;
+		if (this.hitPrevEl) {
+			this.hitPrevEl.disabled = disabled;
+		}
+		if (this.hitNextEl) {
+			this.hitNextEl.disabled = disabled;
+		}
+	}
+
+	/** 只换 `is-current`：不做 querySelectorAll 全表改类名。 */
+	private stepHit(delta: number): void {
+		const next = stepHitIndex(this.hitIndex, this.hitEls.length, delta);
+		if (next < 0 || next === this.hitIndex) {
+			return;
+		}
+		this.hitIndex = next;
+		this.syncActiveHit();
+		this.refreshHitBar();
+		const hit = this.hitEls[next];
+		if (hit) {
+			this.scrollHitIntoView(hit);
+		}
+	}
+
+	/** 只摘旧节点 / 加新节点两个动作。 */
+	private syncActiveHit(): void {
+		this.activeHitEl?.classList.remove(HIT_CURRENT_CLASS);
+		const next =
+			this.hitIndex >= 0 ? (this.hitEls[this.hitIndex] ?? null) : null;
+		next?.classList.add(HIT_CURRENT_CLASS);
+		this.activeHitEl = next;
+	}
+
+	/**
+	 * 手算 `scrollTop`：命中垂直居中，滚动只发生在 `preview-body` 上
+	 * （`scrollIntoView` 会连带滚 `.modal` / 整页，实测把标题栏顶走）。
+	 */
+	private scrollHitIntoView(hit: HTMLElement): void {
+		const body = this.previewBodyEl;
+		if (!body) {
+			return;
+		}
+		const bodyRect = body.getBoundingClientRect();
+		const hitRect = hit.getBoundingClientRect();
+		const delta =
+			hitRect.top - bodyRect.top - (body.clientHeight - hitRect.height) / 2;
+		const max = Math.max(0, body.scrollHeight - body.clientHeight);
+		body.scrollTop = Math.max(0, Math.min(max, body.scrollTop + delta));
 	}
 
 	/**
@@ -646,7 +913,7 @@ export class TaskLinksModal extends Modal {
 					// 解析不到（多为尚未创建的新笔记）→ 不动作，也不会误开标签页。
 					return;
 				}
-				const entry = this.toEntry(resolved.path);
+				const entry = this.toEntry(resolved.path, resolved.kind);
 				if (!entry) {
 					return;
 				}
@@ -662,10 +929,40 @@ export class TaskLinksModal extends Modal {
 				this.options.openExternalLink?.(href);
 			}
 		});
+
+		/**
+		 * 未知类型（zip/docx…）由核心降级成 .file-embed（图标+文件名），它自己的点击
+		 * 走 openLinkText → 文件会开在弹窗背后的标签页。核心的监听挂在卡片/内层节点上，
+		 * 冒泡阶段拦不住，只能用捕获阶段抢先。
+		 */
+		rootEl.addEventListener(
+			'click',
+			(event) => {
+				if (!this.previewIsEmbed) {
+					return; // 只在「预览的就是这个附件」时才接管，正文里嵌别的附件不拦
+				}
+				const target =
+					event.target instanceof HTMLElement ? event.target : null;
+				if (!target?.closest('.file-embed')) {
+					return;
+				}
+				const top = this.previewStack[this.previewStack.length - 1];
+				if (!top) {
+					return;
+				}
+				event.preventDefault();
+				event.stopPropagation();
+				this.openEntry(top.entry, top.kind);
+			},
+			{ capture: true },
+		);
 	}
 
 	/** 解析结果 → 条目：优先复用快照里现成的一条（标题口径一致），否则就地造。 */
-	private toEntry(path: string): TaskLinkEntry | null {
+	private toEntry(
+		path: string,
+		kind: TaskLinkEntryKind,
+	): TaskLinkEntry | null {
 		const snapshot = this.snapshot;
 		if (!snapshot) {
 			return null;
@@ -692,6 +989,7 @@ export class TaskLinksModal extends Modal {
 			path: file.path,
 			title: file.basename,
 			subPath: file.path.replace(/\.md$/i, ''),
+			kind,
 		};
 	}
 
@@ -700,6 +998,35 @@ export class TaskLinksModal extends Modal {
 		this.close();
 		this.options.onOpenEntry(entry, kind);
 	}
+}
+
+/**
+ * 命中定位图标按钮：与 Task View 搜索条同口径（`clickable-icon` + `setIcon` +
+ * `aria-label`）。用 `clickable-icon` 还能豁免核心 `.is-tablet button:not(.clickable-icon)`
+ * 的 padding 覆盖，否则定宽按钮会被撑成胶囊。
+ *
+ * 只是本文件内的私有小工厂：`ui/` 不依赖 `views/`，所以不 import Task View 那个。
+ */
+function createHitButton(
+	parentEl: HTMLElement,
+	icon: string,
+	label: string,
+	onClick: () => void,
+): HTMLButtonElement {
+	const btn = parentEl.createEl('button', {
+		cls: 'clickable-icon',
+		attr: {
+			type: 'button',
+			'aria-label': label,
+			title: label,
+		},
+	});
+	setIcon(btn, icon);
+	btn.addEventListener('click', (event) => {
+		event.preventDefault();
+		onClick();
+	});
+	return btn;
 }
 
 function collectEntryPaths(snapshot: TaskLinksSnapshot): string[] {

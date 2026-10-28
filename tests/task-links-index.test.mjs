@@ -5,10 +5,18 @@ import { createJiti } from 'jiti';
 const jiti = createJiti(import.meta.url, { moduleCache: false });
 const {
 	buildTaskLinksIndex,
+	collectOtherOutlinkPaths,
 	filterTaskLinks,
 	resolveTaskParentPaths,
 	toTaskLinkEntry,
 } = await jiti.import('../src/tasks-center/task-links-index.ts');
+
+const ROOTS = {
+	tasksRootPath: '3-任务',
+	inputRootPath: '1-输入',
+	outputRootPath: '2-输出',
+	outcomeRootPath: '4-成果',
+};
 
 function createTask(title, options = {}) {
 	return {
@@ -31,6 +39,66 @@ function createTask(title, options = {}) {
 		content: '',
 	};
 }
+
+test('其他链接：三个根下的路径全部排除', () => {
+	assert.deepEqual(
+		collectOtherOutlinkPaths(
+			[
+				'1-输入/2026-01-01 素材.md',
+				'2-输出/如何做.md',
+				'4-成果/Report-1.md',
+				'1-输入/子目录/图.png',
+			],
+			ROOTS,
+			[],
+		),
+		[],
+	);
+});
+
+test('其他链接：同名前缀根目录不算命中', () => {
+	assert.deepEqual(
+		collectOtherOutlinkPaths(['1-输入法/z.md'], ROOTS, []),
+		['1-输入法/z.md'],
+	);
+});
+
+test('其他链接：排除集（自身 + 子任务）不进结果', () => {
+	assert.deepEqual(
+		collectOtherOutlinkPaths(
+			[
+				'3-任务/项目/子任务.md',
+				'3-任务/项目/本任务.md',
+				'0-辅助/附件/a.pdf',
+			],
+			ROOTS,
+			['3-任务/项目/子任务.md', '3-任务/项目/本任务.md'],
+		),
+		['0-辅助/附件/a.pdf'],
+	);
+});
+
+test('其他链接：父任务不排除（frontmatter 出链是真实链接）', () => {
+	assert.deepEqual(
+		collectOtherOutlinkPaths(
+			['3-任务/IOTO Task Center/IOTO Task Center-计划-V277.md'],
+			ROOTS,
+			['3-任务/IOTO Task Center/任务链接浏览窗口.md'],
+		),
+		['3-任务/IOTO Task Center/IOTO Task Center-计划-V277.md'],
+	);
+});
+
+test('其他链接：重复输入去重且按数字序排序', () => {
+	assert.deepEqual(
+		collectOtherOutlinkPaths(
+			['0-辅助/10.md', '0-辅助/2.md', '0-辅助/10.md', '0-辅助/1.md'],
+			ROOTS,
+			[],
+		),
+		['0-辅助/1.md', '0-辅助/2.md', '0-辅助/10.md'],
+	);
+});
 
 test('子任务按传入顺序进入 childrenByParentPath，父任务不在自己的子列表里', () => {
 	const parent = createTask('父任务');
@@ -155,6 +223,7 @@ test('搜索过滤：标题命中 / 正文命中 / 大小写不敏感 / 中文�
 		input: 1,
 		output: 0,
 		outcome: 0,
+		other: 0,
 	});
 
 	const byChinese = filterTaskLinks(snapshot, '贝塔', bodies);
@@ -183,6 +252,7 @@ test('搜索过滤：空词返回全量且计数等于长度，无命中返回�
 		input: 0,
 		output: 1,
 		outcome: 0,
+		other: 0,
 	});
 
 	const noHit = filterTaskLinks(snapshot, 'zzz', new Map());
@@ -192,5 +262,6 @@ test('搜索过滤：空词返回全量且计数等于长度，无命中返回�
 		input: 0,
 		output: 0,
 		outcome: 0,
+		other: 0,
 	});
 });
