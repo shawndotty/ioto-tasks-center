@@ -118,3 +118,32 @@ export interface TaskFileListResult {
 	projectPath: string;
 	tasks: TaskFileEntry[];
 }
+
+/** 任务链接浏览窗口的四个分类（[[Plan-20261028-154638]] §3.1）。 */
+export type TaskLinkCategory = 'subtask' | 'input' | 'output' | 'outcome';
+
+export interface TaskLinkEntry {
+	path: string;
+	/** 主标题：与任务列表 / outlink popover 同一展示口径。 */
+	title: string;
+	/** 次级行：vault 相对路径（已去 `.md`），用于同名消歧。 */
+	subPath: string;
+}
+
+export interface TaskLinksRoots {
+	tasksRootPath: string;
+	inputRootPath: string;
+	outputRootPath: string;
+	outcomeRootPath: string;
+}
+
+export interface TaskLinksSnapshot {
+	taskPath: string;
+	taskTitle: string;
+	/** UpTask 是数组，故父级可为多个；空数组 = 不渲染该行。 */
+	parents: TaskLinkEntry[];
+	/** 未经过搜索过滤的完整列表。 */
+	sections: Record<TaskLinkCategory, TaskLinkEntry[]>;
+	/** 分类 → 在 vault 中找不到的根目录路径（第三种空态判据）。 */
+	missingRoots: Partial<Record<TaskLinkCategory, string>>;
+}

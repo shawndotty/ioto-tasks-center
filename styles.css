@@ -6009,3 +6009,112 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 .ioto-shortcut-help-btn[data-collapsed='true'] {
 	display: none;
 }
+
+/* ============================================================
+   任务链接浏览窗口（[[Plan-20261028-154638]] §3.7）
+   宽度 = min(80vw, 1100px)：80vw 就是核心 --dialog-max-width，
+   min() 结果必然 ≤ 它，不会被反卡；1100px 只是避免宽屏一行太长。
+   ============================================================ */
+.ioto-tasks-center__task-links-modal {
+	width: min(80vw, 1100px);
+	max-width: 80vw;
+	overflow: hidden; /* 核心 .modal 自己 overflow:auto，滚动权交给列表 */
+}
+
+/* 核心 .is-phone 已把 --dialog-width 设为 100vw；这里写死 80vw 会比核心默认更窄。 */
+.is-phone .ioto-tasks-center__task-links-modal {
+	width: 100vw;
+	max-width: var(--dialog-max-width);
+}
+
+.ioto-tasks-center__task-links-modal .modal-content {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.ioto-tasks-center__task-links-parent {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	margin: 0 0 10px;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+/* 核心 button:not(.clickable-icon) 的底色 (0,1,1) 会盖掉 (0,1,0) 的插件规则
+   → 选择器必须带上 button:not(.clickable-icon) 才会生效。 */
+button:not(.clickable-icon).ioto-tasks-center__task-links-parent-item {
+	padding: 2px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 999px;
+	background: var(--background-secondary);
+	box-shadow: none;
+	color: var(--text-normal);
+	font-size: var(--font-ui-smaller);
+	line-height: 1.4;
+}
+
+.ioto-tasks-center__task-links-tabs {
+	margin-bottom: 8px;
+}
+
+.ioto-tasks-center__task-links-search {
+	width: 100%;
+	margin-bottom: 8px;
+}
+
+.ioto-tasks-center__task-links-list {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	padding-inline-end: 4px; /* 滚动条不压内容 */
+}
+
+button:not(.clickable-icon).ioto-tasks-center__task-links-item {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	width: 100%;
+	height: auto;
+	padding: 6px 10px;
+	border-radius: 6px;
+	background: transparent;
+	box-shadow: none;
+	text-align: start;
+	white-space: normal;
+	/* 核心给 .modal 里的 button 设了 justify-content/align-items: center，
+	   不改回来会把两行文字整体居中（且次级路径的省略号失效）。 */
+	align-items: stretch;
+	justify-content: flex-start;
+}
+
+button:not(.clickable-icon).ioto-tasks-center__task-links-item:hover {
+	background: var(--background-modifier-hover);
+}
+
+.ioto-tasks-center__task-links-item-title {
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+}
+
+.ioto-tasks-center__task-links-item-path {
+	overflow: hidden;
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ioto-tasks-center__task-links-empty {
+	padding: 12px 10px;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+/* 计数 0 与「有链接」在视觉上分开：0 用弱色，不抢注意力。 */
+.ioto-tasks-center__task-links-tab.is-empty .ioto-tasks-center__tab-count {
+	color: var(--text-faint);
+}

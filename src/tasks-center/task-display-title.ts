@@ -6,6 +6,8 @@
  * （它仍表示真实文件名，被 UpTask 赋值、拖拽去重与搜索索引依赖）。
  */
 
+import type { TaskFileEntry } from './types';
+
 /** 任务文件所在的项目文件夹名：`3-任务/<Project>/<file>.md` → `<Project>`。 */
 export function getTaskProjectNameFromPath(taskPath: string): string {
 	const segments = taskPath.split('/');
@@ -33,4 +35,23 @@ export function stripProjectNamePrefix(
 
 	const rest = title.slice(marker.length).trimStart();
 	return rest.length > 0 ? rest : title;
+}
+
+/**
+ * 任务列表实际展示的标题（视图与链接面板共用，[[Plan-20261028-154638]] §4.4）。
+ * 抽成纯函数是为了让面板与列表用同一份口径，不复制 `stripProjectNamePrefix`
+ * 的调用条件。
+ */
+export function resolveTaskDisplayTitle(
+	task: Pick<TaskFileEntry, 'title' | 'path'>,
+	showProjectNameInTaskList: boolean,
+): string {
+	if (showProjectNameInTaskList) {
+		return task.title;
+	}
+
+	return stripProjectNamePrefix(
+		task.title,
+		getTaskProjectNameFromPath(task.path),
+	);
 }

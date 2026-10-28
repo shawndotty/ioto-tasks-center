@@ -353,11 +353,13 @@ export function getStarredFromContent(content: string): boolean {
 function normalizeUpTaskTitle(value: string): string {
 	const trimmedValue = value.trim();
 	const wikilinkMatch = trimmedValue.match(/^\[\[([\s\S]*?)\]\]$/);
-	const normalizedValue = wikilinkMatch
-		? (wikilinkMatch[1] ?? '').trim()
-		: trimmedValue;
-
-	return normalizedValue;
+	const inner = wikilinkMatch ? (wikilinkMatch[1] ?? '').trim() : trimmedValue;
+	// Obsidian 的 wiki 链接语法：`|` 之后是别名、`#` 之后是子路径，二者都不属于
+	// 被链接文件的标题。整串留着会让 UpTask 永远匹配不到任何任务（静默失败，
+	// 表现为「父任务行整行消失」）。[[Plan-20261028-154638]] §3.2
+	const withoutAlias = inner.split('|')[0] ?? '';
+	const withoutSubpath = withoutAlias.split('#')[0] ?? '';
+	return withoutSubpath.trim();
 }
 
 function extractUpTaskFrontmatterValueFromLines(

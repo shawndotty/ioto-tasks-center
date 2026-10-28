@@ -91,6 +91,10 @@ import {
 	IOTO_TASKS_CENTER_TASK_HOVER_SOURCE_ID,
 } from './views/task-hover-preview';
 import { openShortcutHelpModal } from './ui/shortcutHelpModal';
+import {
+	openTaskLinksFromSettings,
+	openTaskLinksFromView,
+} from './views/tasks-center/task-links-entry';
 // 设置更新实现（update* 薄封装转发，保持插件 public 方法语义不变）
 import {
 	resolveExportOptions,
@@ -347,6 +351,52 @@ export default class IOTOTasksCenter extends Plugin {
 
 				if (!checking) {
 					void this.toggleMobileSectionActions();
+				}
+
+				return true;
+			},
+		});
+		// 任务链接浏览窗口（[[Plan-20261028-154638]] §3.8）：低频 → 命令面板，不占工具栏。
+		// 判据用 getActiveFile + isTaskNoteFile，不用 getActiveViewOfType(MarkdownView)：
+		// 任务笔记可能以 IOTOTask 视图打开，那样命令会整体失效。
+		this.addCommand({
+			id: 'itc-show-task-links',
+			name: t('command.showTaskLinks'),
+			checkCallback: (checking) => {
+				const file = this.app.workspace.getActiveFile();
+				if (
+					!file ||
+					!isTaskNoteFile(file, this.settings.tasksRootPath)
+				) {
+					return false;
+				}
+
+				if (!checking) {
+					openTaskLinksFromSettings(
+						this.app,
+						this.settings,
+						file.path,
+					);
+				}
+
+				return true;
+			},
+		});
+		// 任务中心路径：认 openedTaskPath（最后一次在本项目打开的任务），
+		// 不认 getActiveTaskPath()——后者会被预览叶当前文件改写。
+		this.addCommand({
+			id: 'itc-show-task-center-task-links',
+			name: t('command.showTaskCenterTaskLinks'),
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(
+					IOTOTasksCenterView,
+				);
+				if (!view || !view.openedTaskPath) {
+					return false;
+				}
+
+				if (!checking) {
+					openTaskLinksFromView(view, view.openedTaskPath);
 				}
 
 				return true;

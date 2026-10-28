@@ -13,6 +13,7 @@ import type { TaskListTimeFilter } from '../../settings';
 import { TaskNameModal } from '../../ui/taskNameModal';
 import { batchAssignUpTask, batchSetPriority } from './batch-edit-operations';
 import { removeDraggedTaskParent } from './drag-controller';
+import { openTaskLinksFromView } from './task-links-entry';
 import {
 	getProjectListGroupModeOptions,
 	getProjectListSortModeOptions,
@@ -387,6 +388,16 @@ export function showTaskPriorityMenu(
 					void view.updateTaskStarred(task);
 				});
 			}),
+	);
+	menu.addSeparator();
+
+	// 查看类入口独立成段，放在「添加子任务」之前，远离重命名/删除这组破坏性操作；
+	// 只读操作不加图标（macOS 原生菜单会丢图标，见下方 rename 的同款理由）；
+	// 必须走 runMenuAction：菜单浮层还开着时 open() 会把 Modal 压在菜单下面。
+	menu.addItem((item) =>
+		item.setTitle(t('view.taskMenu.showTaskLinks')).onClick(() => {
+			runMenuAction(() => openTaskLinksFromView(view, task.path));
+		}),
 	);
 	menu.addSeparator();
 
