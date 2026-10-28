@@ -834,6 +834,9 @@ const en = {
 	// 任务视图键位帮助面板（[[Plan-20261028-110920]]）
 	'shortcutHelp.title': 'Task view shortcuts',
 	'shortcutHelp.intro': 'These keys work inside the IOTO task view.',
+	'shortcutHelp.current': 'Current',
+	'shortcutHelp.introState':
+		'The highlighted group is the state you were in when you opened this panel.',
 	'shortcutHelp.button': 'View task view shortcuts',
 	'shortcutHelp.footnoteMobile': 'A hardware keyboard is required on mobile.',
 	'shortcutHelp.key.anyOther': 'Any other key',

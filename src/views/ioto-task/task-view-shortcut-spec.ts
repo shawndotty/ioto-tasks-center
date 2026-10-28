@@ -44,9 +44,22 @@ export interface ShortcutEntry {
 	allowDuplicateChord?: boolean;
 }
 
+/**
+ * 分组 id：与 `task-view-shortcut-state.ts` 的「当前组」映射同源。
+ * 🔴 新增分组必须同时改本类型 + `resolveCurrentShortcutGroupId`（编译期会提醒）。
+ */
+export type ShortcutGroupId =
+	| 'view'
+	| 'select'
+	| 'deleteConfirm'
+	| 'editTitle'
+	| 'continuation'
+	| 'search'
+	| 'section';
+
 export interface ShortcutGroup {
-	/** 'view' | 'select' | …（测试与将来「高亮当前组」共用）。 */
-	id: string;
+	/** 'view' | 'select' | …（测试、`is-current` 高亮、映射函数共用同一个联合类型）。 */
+	id: ShortcutGroupId;
 	titleKey: TranslationKey;
 	whenKey: TranslationKey;
 	entries: ShortcutEntry[];

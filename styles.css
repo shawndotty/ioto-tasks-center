@@ -1912,6 +1912,30 @@ button:not(.clickable-icon).ioto-tasks-center__status-checklist-popover-item {
 	margin-bottom: 0;
 }
 
+/* 「当前组」高亮（[[Plan-20261028-142008]]）：只加背景与内阴影强调条，
+   不改 padding / border 宽度 → 不会让高亮组比邻居多缩进一格。 */
+.ioto-tasks-center__shortcut-help-group.is-current {
+	padding: 8px 10px;
+	border-radius: 4px;
+	background: var(--background-modifier-hover);
+	box-shadow: inset 3px 0 0 var(--interactive-accent);
+}
+
+.ioto-tasks-center__shortcut-help-group.is-current h3 {
+	color: var(--text-accent);
+}
+
+.ioto-tasks-center__shortcut-help-current {
+	margin-inline-start: 6px;
+	padding: 0 6px;
+	border-radius: 8px;
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	font-size: var(--font-ui-smaller);
+	font-weight: 600;
+	vertical-align: middle;
+}
+
 .ioto-tasks-center__shortcut-help-group h3 {
 	margin: 0 0 2px;
 	font-size: var(--font-ui-small);

@@ -620,7 +620,7 @@ export default class IOTOTasksCenter extends Plugin {
 				}
 
 				if (!checking) {
-					openShortcutHelpModal(this.app);
+					openShortcutHelpModal(this.app, view);
 				}
 
 				return true;

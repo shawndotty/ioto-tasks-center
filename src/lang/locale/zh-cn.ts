@@ -757,6 +757,8 @@ const zhCN = {
 	// 任务视图键位帮助面板（[[Plan-20261028-110920]]）
 	'shortcutHelp.title': '任务视图快捷键',
 	'shortcutHelp.intro': '以下快捷键在 IOTO 任务视图中生效。',
+	'shortcutHelp.current': '当前',
+	'shortcutHelp.introState': '高亮的是你打开面板时所处的状态。',
 	'shortcutHelp.button': '查看任务视图快捷键',
 	'shortcutHelp.footnoteMobile': '移动端需要外接键盘。',
 	'shortcutHelp.key.anyOther': '任意其它键',

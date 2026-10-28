@@ -10,24 +10,45 @@ import { Modal, Platform, type App } from 'obsidian';
 
 import { t } from '../lang/helpter';
 import {
+	captureShortcutState,
+	resolveCurrentShortcutGroupId,
+	type ShortcutStateSource,
+} from '../views/ioto-task/task-view-shortcut-state';
+import {
 	SHORTCUT_GROUPS,
 	formatShortcut,
 	type ShortcutEntry,
+	type ShortcutGroupId,
 } from '../views/ioto-task/task-view-shortcut-spec';
 
 export interface ShortcutHelpModalOptions {
 	isMac: boolean;
 	isMobile: boolean;
+	/** 打开瞬间命中的分组；`null` = 无视图上下文，不标任何组。 */
+	currentGroupId: ShortcutGroupId | null;
 }
 
 /**
  * 唯一的打开入口：命令面板与悬浮帮助按钮共用，平台参数只在这里拼一次
  * （[[Research-20261028-133749]] §2.2）。
+ *
+ * 🔴 状态快照必须在这里同步取（`open()` 之前）：核心 `Modal` 一打开就夺焦，
+ *    编辑态/搜索态随即消失，进 `onOpen` 再读永远读不到
+ *    （[[Plan-20261028-142008]] §2.3）。`source` 省略 = 无视图上下文。
  */
-export function openShortcutHelpModal(app: App): void {
+export function openShortcutHelpModal(
+	app: App,
+	source?: ShortcutStateSource,
+): void {
+	const currentGroupId = source
+		? resolveCurrentShortcutGroupId(
+				captureShortcutState(source, activeDocument),
+			)
+		: null;
 	new ShortcutHelpModal(app, {
 		isMac: Platform.isMacOS,
 		isMobile: Platform.isMobile,
+		currentGroupId,
 	}).open();
 }
 
@@ -48,14 +69,36 @@ export class ShortcutHelpModal extends Modal {
 		});
 		introEl.addClass('ioto-tasks-center__modal-desc');
 
+		// 有快照时把语义写在用户眼前：高亮的是「打开面板时」的状态，不是实时的
+		// （面板打开后编辑态/搜索态已结束，见 `openShortcutHelpModal` 头注）。
+		if (this.options.currentGroupId !== null) {
+			const stateEl = this.contentEl.createEl('p', {
+				text: t('shortcutHelp.introState'),
+			});
+			stateEl.addClass('ioto-tasks-center__modal-desc');
+		}
+
 		const bodyEl = this.contentEl.createDiv({
 			cls: 'ioto-tasks-center__shortcut-help-body',
 		});
+		let currentEl: HTMLElement | null = null;
 		for (const group of SHORTCUT_GROUPS) {
+			const isCurrent = group.id === this.options.currentGroupId;
 			const groupEl = bodyEl.createEl('section', {
 				cls: 'ioto-tasks-center__shortcut-help-group',
 			});
-			groupEl.createEl('h3', { text: t(group.titleKey) });
+			if (isCurrent) {
+				groupEl.addClass('is-current');
+				currentEl = groupEl;
+			}
+			const titleEl = groupEl.createEl('h3');
+			titleEl.createSpan({ text: t(group.titleKey) });
+			if (isCurrent) {
+				titleEl.createSpan({
+					cls: 'ioto-tasks-center__shortcut-help-current',
+					text: t('shortcutHelp.current'),
+				});
+			}
 			groupEl.createEl('p', {
 				cls: 'ioto-tasks-center__shortcut-help-when',
 				text: t(group.whenKey),
@@ -63,6 +106,17 @@ export class ShortcutHelpModal extends Modal {
 			for (const entry of group.entries) {
 				this.renderEntry(groupEl, entry);
 			}
+		}
+
+		// 高亮组可能在折叠线以下（`section` 是最后一组）：滚进视野。
+		// 不能同步滚：onOpen 时未必已完成布局，故等一帧。
+		if (currentEl) {
+			const targetEl: HTMLElement = currentEl;
+			window.requestAnimationFrame(() => {
+				if (targetEl.isConnected) {
+					targetEl.scrollIntoView({ block: 'nearest' });
+				}
+			});
 		}
 
 		if (this.options.isMobile) {

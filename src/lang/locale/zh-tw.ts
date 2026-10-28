@@ -758,6 +758,8 @@ const zhTW = {
 	// 任務檢視鍵位說明面板（[[Plan-20261028-110920]]）
 	'shortcutHelp.title': '任務檢視快速鍵',
 	'shortcutHelp.intro': '以下快速鍵在 IOTO 任務檢視中生效。',
+	'shortcutHelp.current': '當前',
+	'shortcutHelp.introState': '高亮的是你開啟面板時所處的狀態。',
 	'shortcutHelp.button': '檢視任務檢視快速鍵',
 	'shortcutHelp.footnoteMobile': '行動端需要外接鍵盤。',
 	'shortcutHelp.key.anyOther': '任意其它鍵',

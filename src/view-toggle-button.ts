@@ -24,6 +24,7 @@ import {
 import { t } from './lang/helpter';
 import { resolveTaskViewToggleDirection } from './task-view-routing';
 import { openShortcutHelpModal } from './ui/shortcutHelpModal';
+import { IOTOTaskView } from './views/iotoTaskView';
 import {
 	describeToggle,
 	isShortcutHelpButtonVisible,
@@ -124,7 +125,7 @@ export function syncFloatingToggles(
 				helpEl.remove();
 			}
 		} else if (!helpEl) {
-			createShortcutHelpButton(host, container);
+			createShortcutHelpButton(host, leaf, container);
 		}
 
 		// 两类按钮都没有时退订该容器（原「无方向就 unwatch」搬到这里）。
@@ -195,6 +196,7 @@ function createToggleButton(
 /** 左下角的快捷键帮助按钮：图标固定，只需创建时定一次。 */
 function createShortcutHelpButton(
 	host: FloatingToggleHost,
+	leaf: WorkspaceLeaf,
 	container: HTMLElement,
 ): HTMLButtonElement {
 	const label = t('shortcutHelp.button');
@@ -213,7 +215,12 @@ function createShortcutHelpButton(
 	btn.addEventListener('click', (event) => {
 		event.preventDefault();
 		event.stopPropagation();
-		openShortcutHelpModal(host.app);
+		// 传视图：按钮路径是唯一能拿到「编辑态/搜索态」的入口（命令面板已夺焦）。
+		const view = leaf.view;
+		openShortcutHelpModal(
+			host.app,
+			view instanceof IOTOTaskView ? view : undefined,
+		);
 	});
 
 	watchContainer(container);
