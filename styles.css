@@ -6063,6 +6063,13 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 	flex: 0 0 320px;
 }
 
+/* 信息块（任务名 + 父级药丸）在左栏内部，不占 contentEl 的整行高度：
+   右侧预览因此能从 body 顶端开始，与左侧信息区顶部对齐
+   （[[Report-20261028-200214]]）。窄栏里不能被挤压。 */
+.ioto-tasks-center__task-links-info {
+	flex: 0 0 auto;
+}
+
 /* 列表态整块不渲染（不做「请选择一个链接」的空态文案）。 */
 .ioto-tasks-center__task-links-preview {
 	display: none;
@@ -6132,10 +6139,30 @@ button:not(.clickable-icon).ioto-tasks-center__task-links-preview-open {
 	font-size: var(--font-ui-smaller);
 }
 
-/* 手机：换页而不是两栏（同一套 DOM）。 */
+/* 手机：换页而不是两栏（同一套 DOM）。信息块留在上方当标题，
+   只让标签 / 搜索 / 列表让位给预览。 */
+.is-phone
+	.ioto-tasks-center__task-links-modal.is-split
+	.ioto-tasks-center__task-links-body {
+	flex-direction: column;
+}
+
 .is-phone
 	.ioto-tasks-center__task-links-modal.is-split
 	.ioto-tasks-center__task-links-list-col {
+	flex: 0 0 auto;
+	min-height: auto;
+}
+
+.is-phone
+	.ioto-tasks-center__task-links-modal.is-split
+	.ioto-tasks-center__task-links-tabs,
+.is-phone
+	.ioto-tasks-center__task-links-modal.is-split
+	.ioto-tasks-center__task-links-search,
+.is-phone
+	.ioto-tasks-center__task-links-modal.is-split
+	.ioto-tasks-center__task-links-list {
 	display: none;
 }
 

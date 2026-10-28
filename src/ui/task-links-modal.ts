@@ -252,13 +252,25 @@ export class TaskLinksModal extends Modal {
 		}
 
 		this.contentEl.empty();
-		this.contentEl.createDiv({
+		this.bodyEl = this.contentEl.createDiv({
+			cls: 'ioto-tasks-center__task-links-body',
+		});
+		this.listColEl = this.bodyEl.createDiv({
+			cls: 'ioto-tasks-center__task-links-list-col',
+		});
+
+		// 任务信息块放在**左栏内部**而不是 contentEl 顶层：两栏共用同一个起点，
+		// 右侧预览才能和左侧信息区顶部严格对齐（[[Report-20261028-200214]]）。
+		const infoEl = this.listColEl.createDiv({
+			cls: 'ioto-tasks-center__task-links-info',
+		});
+		infoEl.createDiv({
 			cls: 'ioto-tasks-center__modal-desc',
 			text: t('taskLinks.subject', [snapshot.taskTitle]),
 		});
 
 		if (snapshot.parents.length > 0) {
-			const parentRowEl = this.contentEl.createDiv({
+			const parentRowEl = infoEl.createDiv({
 				cls: 'ioto-tasks-center__task-links-parent',
 			});
 			parentRowEl.createSpan({
@@ -277,13 +289,6 @@ export class TaskLinksModal extends Modal {
 				});
 			}
 		}
-
-		this.bodyEl = this.contentEl.createDiv({
-			cls: 'ioto-tasks-center__task-links-body',
-		});
-		this.listColEl = this.bodyEl.createDiv({
-			cls: 'ioto-tasks-center__task-links-list-col',
-		});
 
 		const tabsEl = this.listColEl.createDiv({
 			cls: 'ioto-tasks-center__tabs ioto-tasks-center__task-links-tabs',
