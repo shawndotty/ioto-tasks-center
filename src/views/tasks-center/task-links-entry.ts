@@ -6,7 +6,13 @@
  * 没视图退到标签页（无锚点就不该凭空分栏）。
  */
 
-import { FileView, TFile, type App, type WorkspaceLeaf } from 'obsidian';
+import {
+	FileView,
+	TFile,
+	parseLinktext,
+	type App,
+	type WorkspaceLeaf,
+} from 'obsidian';
 
 import type { IOTOTasksCenterView } from '../iotoTasksCenterView';
 import type {
@@ -15,7 +21,12 @@ import type {
 } from '../../settings-types';
 import type { TaskLinksRoots } from '../../tasks-center/types';
 import { isTaskNoteFile } from '../../tasks-center/task-note-menu';
-import { TaskLinksModal, type TaskLinkEntryKind } from '../../ui/task-links-modal';
+import {
+	TaskLinksModal,
+	type TaskLinkEntryKind,
+	type TaskLinksModalOptions,
+} from '../../ui/task-links-modal';
+import { toExternalOpenUrl } from '../ioto-task/external-link-url';
 import { setLeafToTaskView } from '../ioto-task/task-file-link-open';
 import { buildTaskLinksSnapshot } from './task-links-snapshot';
 
@@ -99,7 +110,37 @@ function openTaskLinksWindow(context: TaskLinksLaunchContext): void {
 
 			void openLinkedFileInTab(context, entry.path, kind);
 		},
+		...createPreviewLinkHooks(context),
 	}).open();
+}
+
+/** 预览内链接的两条通路：解析 → 面板内换页；外链 → 系统路由。 */
+function createPreviewLinkHooks(
+	context: TaskLinksLaunchContext,
+): Pick<TaskLinksModalOptions, 'resolvePreviewLink' | 'openExternalLink'> {
+	return {
+		resolvePreviewLink: (linktext, sourcePath) => {
+			// 必须先剥 `#子路径`：整串交给 getFirstLinkpathDest 会返回 null。
+			const { path } = parseLinktext(linktext);
+			const file = context.app.metadataCache.getFirstLinkpathDest(
+				path,
+				sourcePath,
+			);
+			if (!file) {
+				return null;
+			}
+
+			return {
+				path: file.path,
+				kind: isTaskNoteFile(file, context.roots.tasksRootPath)
+					? 'task'
+					: 'note',
+			};
+		},
+		openExternalLink: (href) => {
+			window.open(toExternalOpenUrl(href));
+		},
+	};
 }
 
 async function openLinkedFileInTab(

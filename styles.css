@@ -6011,20 +6011,28 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 }
 
 /* ============================================================
-   任务链接浏览窗口（[[Plan-20261028-154638]] §3.7）
-   宽度 = min(80vw, 1100px)：80vw 就是核心 --dialog-max-width，
-   min() 结果必然 ≤ 它，不会被反卡；1100px 只是避免宽屏一行太长。
+   任务链接浏览窗口（[[Plan-20261028-154638]] §3.7、
+   [[Plan-20261028-190721]] §3.7）
+   宽度两态：列表态 min(480px, 80vw) → 展开态 min(80vw, 1100px)。
+   80vw 就是核心 --dialog-max-width，min() 结果必然 ≤ 它，不会被反卡；
+   1100px 只是避免宽屏一行太长。改宽度会由核心的 flex 居中自动重新居中。
    ============================================================ */
 .ioto-tasks-center__task-links-modal {
-	width: min(80vw, 1100px);
+	width: min(480px, 80vw);
 	max-width: 80vw;
 	overflow: hidden; /* 核心 .modal 自己 overflow:auto，滚动权交给列表 */
+	transition: width 140ms ease;
+}
+
+.ioto-tasks-center__task-links-modal.is-split {
+	width: min(80vw, 1100px);
 }
 
 /* 核心 .is-phone 已把 --dialog-width 设为 100vw；这里写死 80vw 会比核心默认更窄。 */
 .is-phone .ioto-tasks-center__task-links-modal {
 	width: 100vw;
 	max-width: var(--dialog-max-width);
+	transition: none;
 }
 
 .ioto-tasks-center__task-links-modal .modal-content {
@@ -6032,6 +6040,110 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 	flex-direction: column;
 	min-height: 0;
 	overflow: hidden;
+}
+
+/* 两栏：三层都写 min-height:0，否则滚动权会跑回 .modal。 */
+.ioto-tasks-center__task-links-body {
+	display: flex;
+	flex: 1 1 auto;
+	gap: 12px;
+	min-height: 0;
+}
+
+.ioto-tasks-center__task-links-list-col {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+}
+
+.ioto-tasks-center__task-links-modal.is-split
+	.ioto-tasks-center__task-links-list-col {
+	flex: 0 0 320px;
+}
+
+/* 列表态整块不渲染（不做「请选择一个链接」的空态文案）。 */
+.ioto-tasks-center__task-links-preview {
+	display: none;
+}
+
+.ioto-tasks-center__task-links-modal.is-split
+	.ioto-tasks-center__task-links-preview {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+	padding-inline-start: 12px;
+	border-inline-start: 1px solid var(--background-modifier-border);
+}
+
+/* 预览正文：核心的排版四项挂在 .markdown-preview-view 上，
+   裸 .markdown-rendered 会退回 --font-ui-medium + 界面字体，所以必须自己补。 */
+.ioto-tasks-center__task-links-preview-body {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	color: var(--text-normal);
+	font-family: var(--font-text);
+	font-size: var(--font-text-size);
+	line-height: var(--line-height-normal);
+	overflow-wrap: break-word;
+	user-select: text;
+	-webkit-user-select: text;
+}
+
+.ioto-tasks-center__task-links-preview-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding-bottom: 6px;
+	margin-bottom: 6px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.ioto-tasks-center__task-links-preview-meta {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.ioto-tasks-center__task-links-preview-title {
+	overflow: hidden;
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ioto-tasks-center__task-links-preview-path {
+	overflow: hidden;
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* 核心 button:not(.clickable-icon) 的底色 (0,1,1) 会盖掉插件规则，
+   所以选择器必须带 button:not(.clickable-icon) 才生效。 */
+button:not(.clickable-icon).ioto-tasks-center__task-links-preview-open {
+	padding: 2px 8px;
+	box-shadow: none;
+	font-size: var(--font-ui-smaller);
+}
+
+/* 手机：换页而不是两栏（同一套 DOM）。 */
+.is-phone
+	.ioto-tasks-center__task-links-modal.is-split
+	.ioto-tasks-center__task-links-list-col {
+	display: none;
+}
+
+.is-phone
+	.ioto-tasks-center__task-links-modal.is-split
+	.ioto-tasks-center__task-links-preview {
+	padding-inline-start: 0;
+	border-inline-start: none;
 }
 
 .ioto-tasks-center__task-links-parent {
@@ -6093,6 +6205,12 @@ button:not(.clickable-icon).ioto-tasks-center__task-links-item {
 
 button:not(.clickable-icon).ioto-tasks-center__task-links-item:hover {
 	background: var(--background-modifier-hover);
+}
+
+/* 选中态：左侧 2px 强调条 + hover 底色；列表整表重建，所以不会有残留。 */
+button:not(.clickable-icon).ioto-tasks-center__task-links-item.is-active {
+	background: var(--background-modifier-hover);
+	box-shadow: inset 2px 0 0 var(--interactive-accent);
 }
 
 .ioto-tasks-center__task-links-item-title {
