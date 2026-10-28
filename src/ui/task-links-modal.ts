@@ -55,6 +55,31 @@ const TASK_LINKS_HIT_CLASS = 'ioto-tasks-center__task-links-hit';
 /** 当前定位命中的加重类（对应 `--text-selection`）。 */
 const HIT_CURRENT_CLASS = 'is-current';
 
+/** pdf 预览态的 bodyEl 状态类（CSS 靠它把 .pdf-embed 撑满）。 */
+const PDF_EMBED_STATE_CLASS = 'is-pdf-embed';
+
+/** 核心嵌入组件的最小形状（`embedRegistry` 无 d.ts，只声明用到的那几项）。 */
+interface CoreEmbed extends Component {
+	loadFile(): void;
+}
+
+/** 核心嵌入工厂的入参：`displayMode: false` 才会走连续滚动而不是单页快照。 */
+interface CoreEmbedContext {
+	app: App;
+	containerEl: HTMLElement;
+	linktext: string;
+	sourcePath: string;
+	displayMode: boolean;
+	showInline: boolean;
+	depth: number;
+}
+
+type CoreEmbedCreator = (
+	context: CoreEmbedContext,
+	file: TFile,
+	subpath: string,
+) => CoreEmbed | null;
+
 const TAB_LABEL_KEYS: Record<TaskLinkCategory, TranslationKey> = {
 	subtask: 'taskLinks.tabs.subtask',
 	input: 'taskLinks.tabs.input',
@@ -123,6 +148,8 @@ export class TaskLinksModal extends Modal {
 	private previewOpenEl: HTMLButtonElement | null = null;
 	/** 当前预览是「附件嵌入」而不是渲染出的正文（决定 `.file-embed` 的点击要不要接管）。 */
 	private previewIsEmbed = false;
+	/** 盯着 `.pdf-embed` 内联高度的观察器：核心缩放 / 窗口变化时会重算页高。 */
+	private pdfHeightObserver: MutationObserver | null = null;
 	/** 预览正文的命中集合：只由 `refreshPreviewHits` 一次算出，染色与计数共用。 */
 	private hitEls: HTMLElement[] = [];
 	private hitIndex = -1;
@@ -635,6 +662,7 @@ export class TaskLinksModal extends Modal {
 		this.modalEl.removeClass('is-split');
 		this.disposePreviewComponent();
 		this.previewBodyEl?.empty();
+		this.clearPdfEmbedState(this.previewBodyEl);
 		this.previewSourcePath = '';
 		this.previewIsEmbed = false;
 		// 命中集合随正文一起作废（细条按 previewStack 为空自动隐藏）。
@@ -697,6 +725,8 @@ export class TaskLinksModal extends Modal {
 
 	/** 卸载当前预览的宿主管子（连同它带起的嵌入子组件一起回收）。 */
 	private disposePreviewComponent(): void {
+		// 页高观察器挂在上一个宿主管子上，跟它一起作废。
+		this.disposePdfHeightObserver();
 		if (!this.previewComponent) {
 			return;
 		}
@@ -717,6 +747,9 @@ export class TaskLinksModal extends Modal {
 		}
 
 		bodyEl.empty();
+		// pdf 切回 md：`empty()` 不清类名与内联高度，残留会让 pdf 的撑满规则与
+		// 「一页高」基准继续挂在正文上。
+		this.clearPdfEmbedState(bodyEl);
 		// 先归零再渲染：MarkdownRenderer 的基础 DOM 同步 append，异步补齐的图片只撑高。
 		bodyEl.scrollTop = 0;
 		this.previewIsEmbed = false;
@@ -754,9 +787,17 @@ export class TaskLinksModal extends Modal {
 
 		this.previewIsEmbed = true;
 		bodyEl.empty();
+		this.clearPdfEmbedState(bodyEl);
 		bodyEl.scrollTop = 0;
 		// 细条按「有查询」才显示；嵌入分支没有可染色的文本，必须显式归零否则挂 0/0。
 		this.resetPreviewHits();
+
+		// pdf 单独一支：核心的 MarkdownRenderer 会给内嵌传 displayMode: true，
+		// 那条路是「单页快照」——页面滚不动（[[Plan-20261029-061938]] §三）。
+		if (this.paintPdfPreview(frame, component)) {
+			return;
+		}
+
 		void MarkdownRenderer.render(
 			this.app,
 			`![[${frame.entry.path}]]`,
@@ -764,6 +805,121 @@ export class TaskLinksModal extends Modal {
 			frame.entry.path,
 			component,
 		);
+	}
+
+	/**
+	 * pdf：向核心 embedRegistry 要同一个 creator，但把 `displayMode` 压成 false，
+	 * 拿到普通 pdf.js 视图（`.pdf-viewer-container` 内部连续滚动）。
+	 * 返回 false = 没接住（非 pdf / creator 取不到 / 抛错），调用方回落到整篇嵌入。
+	 */
+	private paintPdfPreview(frame: PreviewFrame, component: Component): boolean {
+		const bodyEl = this.previewBodyEl;
+		if (!bodyEl) {
+			return false;
+		}
+
+		const file = this.app.vault.getAbstractFileByPath(frame.entry.path);
+		if (!(file instanceof TFile) || file.extension.toLowerCase() !== 'pdf') {
+			return false;
+		}
+
+		// `embedRegistry` 不在公共 d.ts；与本插件 embedded-editor.ts 同一口径取内部 API。
+		// 这里只声明用到的那一小块形状，避免把整个 app 退化成 any。
+		const registry = (
+			this.app as unknown as {
+				embedRegistry?: {
+					getEmbedCreator?: (target: TFile) => CoreEmbedCreator | undefined;
+				};
+			}
+		).embedRegistry;
+		const creator = registry?.getEmbedCreator?.(file);
+		if (typeof creator !== 'function') {
+			return false;
+		}
+
+		try {
+			// 宿主必须是自己建的 div：MarkdownRenderer 会把嵌入包进 <p>，
+			// `<p>` 的上下 margin 会让预览体多出几十 px 外层滚动。
+			const hostEl = bodyEl.createDiv();
+			const embed = creator(
+				{
+					app: this.app,
+					containerEl: hostEl,
+					linktext: frame.entry.path,
+					sourcePath: frame.entry.path,
+					displayMode: false,
+					showInline: false,
+					depth: 1,
+				},
+				file,
+				'',
+			);
+			if (!embed) {
+				hostEl.remove();
+				return false;
+			}
+
+			component.addChild(embed);
+			void embed.loadFile();
+			bodyEl.addClass(PDF_EMBED_STATE_CLASS);
+			this.syncPdfBodyHeight(hostEl, bodyEl);
+			return true;
+		} catch (error) {
+			console.error('[IOTO Task Center] pdf 嵌入失败，回落整篇嵌入', error);
+			bodyEl.empty();
+			this.clearPdfEmbedState(bodyEl);
+			return false;
+		}
+	}
+
+	/**
+	 * 把「一页高」交给预览体当高度基准（[[Report-20261029-063733]]）。
+	 *
+	 * 一页高只能问核心：`displayMode: false` 的 pdf 嵌入会把 pdf.js 按当前宽度算出
+	 * 的「页高 + 工具栏」写进自己的内联 `height`（宿主 div 就是 `.pdf-embed`）。
+	 * 把这个值写到预览体上之后，预览体的 flex-basis = 一页高：
+	 * - 屏幕够高 → 弹窗长到一页高，整页可见；
+	 * - 屏幕不够高 → `.modal` 的 `max-height` 兜底，预览体被 flex 收缩到可用高度。
+	 *
+	 * 之前的写法只靠 `.pdf-embed { height: 100% }`，预览体没有高度基准，整列高度被
+	 * 左栏（链接列表）的行数决定，pdf 只剩两百多 px。
+	 *
+	 * 页高会随缩放 / 窗口宽度变，所以跟着内联样式同步，不缓存成常量。
+	 */
+	private syncPdfBodyHeight(hostEl: HTMLElement, bodyEl: HTMLElement): void {
+		const sync = (): void => {
+			const pageHeight = Number.parseFloat(hostEl.style.height);
+			// 核心还没算出页高：留给下一次 style 变更回调。
+			if (!Number.isFinite(pageHeight) || pageHeight <= 0) {
+				return;
+			}
+			bodyEl.style.height = `${pageHeight}px`;
+		};
+
+		sync();
+		this.disposePdfHeightObserver();
+		const observer = new MutationObserver(sync);
+		observer.observe(hostEl, {
+			attributes: true,
+			attributeFilter: ['style'],
+		});
+		this.pdfHeightObserver = observer;
+	}
+
+	/** pdf 态的两项副作用（状态类 + 预览体高度基准）总是一起收，漏一个就会带回旧高度。 */
+	private clearPdfEmbedState(bodyEl: HTMLElement | null): void {
+		this.disposePdfHeightObserver();
+		if (!bodyEl) {
+			return;
+		}
+
+		bodyEl.removeClass(PDF_EMBED_STATE_CLASS);
+		bodyEl.style.height = '';
+	}
+
+	private disposePdfHeightObserver(): void {
+		this.pdfHeightObserver?.disconnect();
+		this.pdfHeightObserver = null;
 	}
 
 	// ---------------------------------------------------------------

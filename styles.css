@@ -6137,6 +6137,15 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 	-webkit-user-select: text;
 }
 
+/* pdf 预览：`.pdf-embed` 跟着预览体走 —— 工具栏固定、pdf.js 自己滚，外层不再出滚动条。
+   预览体的高度基准由 JS 写成「一页高」（核心把页高算在 `.pdf-embed` 的内联 height 上，
+   见 `syncPdfBodyHeight`）：屏幕够高就是一整页，不够高由 `.modal` 的 max-height
+   收缩到可用高度。别把这条换成 `height: auto`——那样预览体没有高度基准，
+   整列高度会被左栏列表的行数决定，pdf 只剩两百多 px。 */
+.ioto-tasks-center__task-links-preview-body.is-pdf-embed > .pdf-embed {
+	height: 100% !important;
+}
+
 /* 弹窗不提供「编辑块」：核心给每个嵌入都塞了 .embed-actions */
 .ioto-tasks-center__task-links-preview-body .embed-actions {
 	display: none;
