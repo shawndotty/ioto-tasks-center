@@ -265,6 +265,7 @@ export async function beginNewContinuationEdit(
  * - 普通列表行 → 放行核心（原生补 marker / 序号 / 空项退出）；
  * - 其余行 → 光标处裸换行（原语义，含 Shift+Enter）。
  */
+// 键位清单：task-view-shortcut-spec.ts
 export function onContinuationEnter(view: TaskViewHost, cm: EditorView): boolean {
 	const { from, to } = cm.state.selection.main;
 	const line = cm.state.doc.lineAt(from).text;

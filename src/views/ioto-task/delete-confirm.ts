@@ -42,6 +42,7 @@ export type DeleteConfirmKeyAction =
  * @param repeat `KeyboardEvent.repeat`（长按连发）
  * @param opts `Shift` / 主修饰键（Cmd 或 Ctrl）/ `Alt` 的按下状态
  */
+// 键位清单：task-view-shortcut-spec.ts
 export function resolveDeleteConfirmKey(
 	pending: boolean,
 	key: string,

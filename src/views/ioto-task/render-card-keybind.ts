@@ -34,6 +34,7 @@ export function attachCardKeydownHandler(
 	item: NoteChecklistItem,
 	editing: TaskNoteEditing,
 ): void {
+	// 键位清单：task-view-shortcut-spec.ts
 	cardEl.addEventListener('keydown', (event) => {
 		// IME 组字中一律放行，否则中文候选确认会误触发删除
 		if (event.isComposing) {

@@ -90,6 +90,7 @@ import {
 	IOTO_TASK_VIEW_HOVER_SOURCE_ID,
 	IOTO_TASKS_CENTER_TASK_HOVER_SOURCE_ID,
 } from './views/task-hover-preview';
+import { ShortcutHelpModal } from './ui/shortcutHelpModal';
 // 设置更新实现（update* 薄封装转发，保持插件 public 方法语义不变）
 import {
 	resolveExportOptions,
@@ -599,6 +600,29 @@ export default class IOTOTasksCenter extends Plugin {
 
 				if (!checking) {
 					void view.copyImageToClipboard();
+				}
+
+				return true;
+			},
+		});
+		// 键位帮助面板（[[Plan-20261028-110920]]）：低频 → 只留命令，不占工具栏按钮位；
+		// 门控与 itc-add-task 同构：非本视图时为 false（避免「列的是别处才生效的键」）。
+		this.addCommand({
+			id: 'itc-show-task-view-shortcuts',
+			name: t('command.showTaskViewShortcuts'),
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(
+					IOTOTaskView,
+				);
+				if (!view) {
+					return false;
+				}
+
+				if (!checking) {
+					new ShortcutHelpModal(this.app, {
+						isMac: Platform.isMacOS,
+						isMobile: Platform.isMobile,
+					}).open();
 				}
 
 				return true;

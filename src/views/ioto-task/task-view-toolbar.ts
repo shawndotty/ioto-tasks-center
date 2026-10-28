@@ -137,6 +137,7 @@ export function buildToolbar(view: TaskViewHost): void {
 
 	const input = view.searchInputEl;
 	input.addEventListener('input', () => view.onSearchInput());
+	// 键位清单：task-view-shortcut-spec.ts
 	input.addEventListener('keydown', (event) => {
 		if (event.isComposing) {
 			return; // IME 组字放行

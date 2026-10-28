@@ -519,6 +519,7 @@ export async function mountEmbeddedEditor(
 				return;
 			}
 
+			// 键位清单：task-view-shortcut-spec.ts
 			switch (event.key) {
 				case 'Enter':
 					// Mod+Enter：优先交给宿主（标题编辑器插 `<br>`，不产生裸换行）。

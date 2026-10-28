@@ -1889,6 +1889,108 @@ button:not(.clickable-icon).ioto-tasks-center__status-checklist-popover-item {
 	font-size: var(--font-ui-small);
 }
 
+/* ============================================================
+   任务视图键位帮助面板（[[Plan-20261028-110920]]）
+   用 kbd 胶囊而不是按钮：核心 `button:not(.clickable-icon)` 的底色会盖掉插件样式。
+   ============================================================ */
+.ioto-tasks-center__shortcut-help-modal {
+	max-width: 640px;
+}
+
+.ioto-tasks-center__shortcut-help-body {
+	max-height: min(70vh, 640px);
+	overflow-y: auto;
+	padding-inline-end: 4px; /* 滚动条不压内容 */
+}
+
+.ioto-tasks-center__shortcut-help-group {
+	margin-bottom: 18px;
+}
+
+.ioto-tasks-center__shortcut-help-group:last-child {
+	margin-bottom: 0;
+}
+
+.ioto-tasks-center__shortcut-help-group h3 {
+	margin: 0 0 2px;
+	font-size: var(--font-ui-small);
+	font-weight: 700;
+	color: var(--text-normal);
+}
+
+.ioto-tasks-center__shortcut-help-when {
+	margin: 0 0 6px;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.ioto-tasks-center__shortcut-help-row {
+	display: grid;
+	grid-template-columns: 132px minmax(0, 1fr);
+	gap: 10px;
+	align-items: baseline;
+	padding: 3px 0;
+}
+
+.ioto-tasks-center__shortcut-help-keys {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	align-items: center;
+}
+
+.ioto-tasks-center__shortcut-help-key {
+	display: inline-block;
+	min-width: 20px;
+	padding: 1px 6px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background: var(--background-modifier-hover);
+	box-shadow: none;
+	color: var(--text-normal);
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	line-height: 1.5;
+	text-align: center;
+}
+
+.ioto-tasks-center__shortcut-help-plus {
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}
+
+/* 「任意其它键」等无法用键帽表达的行：纯文本，不画胶囊边界 */
+.ioto-tasks-center__shortcut-help-keytext {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.ioto-tasks-center__shortcut-help-desc {
+	min-width: 0;
+}
+
+.ioto-tasks-center__shortcut-help-note {
+	margin-top: 1px;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.ioto-tasks-center__shortcut-help-footnote {
+	margin-top: 14px;
+	padding-top: 8px;
+	border-top: 1px solid var(--background-modifier-border);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+/* 窄屏（手机 / 侧栏极窄）：键帽行独立成行，避免 132px 键列把描述挤成一字一行 */
+@media (max-width: 480px) {
+	.ioto-tasks-center__shortcut-help-row {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 2px;
+	}
+}
+
 .ioto-tasks-center__state.is-loading {
 	border-style: solid;
 }

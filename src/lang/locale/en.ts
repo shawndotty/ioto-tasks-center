@@ -674,6 +674,7 @@ const en = {
 	'command.toggleAllSectionFolds': 'Collapse / expand all sections',
 	'command.exportTaskViewImage': 'Export task view as image',
 	'command.copyTaskViewImage': 'Copy task view image to clipboard',
+	'command.showTaskViewShortcuts': 'Show task view keyboard shortcuts',
 	'command.toggleMobileSectionActions':
 		'Show / hide mobile section header icons',
 	'command.togglePrimaryTaskSection':
@@ -826,6 +827,76 @@ const en = {
 		'Image height was capped at the canvas size limit; the export may be cut off.',
 	'notice.openAsIOTOTaskNoFile': 'No task file is open.',
 	'notice.openAsIOTOTaskNotTaskNote': 'This file is not a task note.',
+	// 任务视图键位帮助面板（[[Plan-20261028-110920]]）
+	'shortcutHelp.title': 'Task view shortcuts',
+	'shortcutHelp.intro': 'These keys work inside the IOTO task view.',
+	'shortcutHelp.footnoteMobile': 'A hardware keyboard is required on mobile.',
+	'shortcutHelp.key.anyOther': 'Any other key',
+	'shortcutHelp.group.view': 'In the view',
+	'shortcutHelp.when.view': 'Focus is in the task view and you are not editing',
+	'shortcutHelp.group.select': 'Card selected',
+	'shortcutHelp.when.select': 'A card is selected (not editing, not zoomed)',
+	'shortcutHelp.group.deleteConfirm': 'Delete confirmation',
+	'shortcutHelp.when.deleteConfirm': 'The delete overlay is showing on a card',
+	'shortcutHelp.group.editTitle': 'Editing a card title',
+	'shortcutHelp.when.editTitle':
+		'The card editor has focus and no suggestion popup is open',
+	'shortcutHelp.group.continuation': 'Editing a continuation',
+	'shortcutHelp.when.continuation': 'The continuation editor has focus',
+	'shortcutHelp.group.search': 'View search box',
+	'shortcutHelp.when.search': 'The search input has focus',
+	'shortcutHelp.group.section': 'Sections and dragging',
+	'shortcutHelp.when.section':
+		'Editing a section, or dragging a card / section',
+	'shortcutHelp.action.view.search': 'Search tasks',
+	'shortcutHelp.action.select.enter': 'Edit this task',
+	'shortcutHelp.action.select.shiftEnter': 'Insert a sibling task below',
+	'shortcutHelp.action.select.arrows': 'Select the previous / next card',
+	'shortcutHelp.action.select.jumpEdges': 'Jump to the first / last card',
+	'shortcutHelp.action.select.indent': 'Indent / outdent the task',
+	'shortcutHelp.action.select.toggleDone': 'Toggle done',
+	'shortcutHelp.action.select.requestDelete': 'Ask before deleting',
+	'shortcutHelp.action.select.exitSectionZoom': 'Leave "only this section"',
+	'shortcutHelp.action.delete.confirm': 'Confirm deletion',
+	'shortcutHelp.action.delete.confirmAgain': 'Press again to confirm',
+	'shortcutHelp.action.delete.cancel': 'Cancel',
+	'shortcutHelp.action.delete.fallthrough': 'Cancel, then run the key as usual',
+	'shortcutHelp.action.editTitle.enter': 'Split the task at the cursor',
+	'shortcutHelp.action.editTitle.shiftEnter': 'Edit the continuation',
+	'shortcutHelp.action.editTitle.modEnter':
+		'Soft line break in the title (`<br>`)',
+	'shortcutHelp.action.editTitle.indent': 'Indent / outdent the whole line',
+	'shortcutHelp.action.editTitle.backspaceEmpty':
+		'Delete the task (when empty)',
+	'shortcutHelp.action.editTitle.esc': 'Save and return to selection',
+	'shortcutHelp.action.continuation.enter': 'New line',
+	'shortcutHelp.action.continuation.tab': 'Indent (handled by the editor)',
+	'shortcutHelp.action.continuation.backspaceEmpty':
+		'Delete the continuation (when empty)',
+	'shortcutHelp.action.continuation.esc': 'Save and return to the card',
+	'shortcutHelp.action.search.enter': 'Next / previous match',
+	'shortcutHelp.action.search.esc': 'Close the search box',
+	'shortcutHelp.action.section.enter': 'New line in the section body',
+	'shortcutHelp.action.section.tab': 'Indent in the section body',
+	'shortcutHelp.action.section.esc': 'Save and leave the editor',
+	'shortcutHelp.action.section.titleEnter': 'Save and leave the title editor',
+	'shortcutHelp.action.section.dragEsc': 'Cancel the drag and restore',
+	'shortcutHelp.note.view.searchEditing': 'Not taken over while editing a card',
+	'shortcutHelp.note.select.toggleDone': 'Works without focusing the card',
+	'shortcutHelp.note.select.toggleDonePending':
+		'Disabled while confirming a delete',
+	'shortcutHelp.note.select.requestDelete':
+		'Nothing is deleted until you confirm',
+	'shortcutHelp.note.select.zoom': 'Card keys are off in zoomed view',
+	'shortcutHelp.note.select.escZoomOnly':
+		'Only while "only this section" is active',
+	'shortcutHelp.note.editTitle.zoom':
+		'In zoomed view, Esc saves but stays editing',
+	'shortcutHelp.note.editTitle.suggestion':
+		'All pass through while a suggestion popup is open',
+	'shortcutHelp.note.section.titleVsBody':
+		'Enter: body = new line, title = save and leave',
+	'shortcutHelp.note.section.tabBodyOnly': 'Tab is passed through in the body only',
 } as const;
 
 export default en;
