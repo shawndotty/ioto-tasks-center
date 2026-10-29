@@ -6032,6 +6032,9 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 
 .ioto-tasks-center__task-links-modal.is-split {
 	width: min(80vw, 1100px);
+	/* 锁高：窗框不再由预览内容决定（[[Plan-20261029-104900]] §2.2）。
+	   列表态保持 auto —— 那时预览列 display:none，高度只该由列表决定。 */
+	height: var(--dialog-max-height);
 }
 
 /* 核心 .is-phone 已把 --dialog-width 设为 100vw；这里写死 80vw 会比核心默认更窄。 */
