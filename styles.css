@@ -6257,8 +6257,38 @@ button:not(.clickable-icon).ioto-tasks-center__task-links-parent-item {
 	line-height: 1.4;
 }
 
+/* 五个标签在 320px 左栏里必须单行（[[Research-20261029-101207]]）。
+   现状：13px + padding 6·12 + gap 8 的自然宽度 435px，分栏左栏只有 320px
+   → 折成两行（高 30 → 68）。这里同时做两件事：
+   ① 度量压到 --font-ui-smaller 一档（自然宽度 435 → 290）；
+   ② nowrap + 可收缩，让剩余溢出被压缩吸收，而不是换行。 */
 .ioto-tasks-center__task-links-tabs {
+	flex-wrap: nowrap;
+	gap: 4px;
 	margin-bottom: 8px;
+}
+
+.ioto-tasks-center__task-links-tabs .ioto-tasks-center__tab {
+	flex: 0 1 auto;
+	min-width: 0;
+	gap: 3px;
+	padding: 3px 6px;
+	font-size: var(--font-ui-smaller);
+	overflow: hidden;
+}
+
+/* 计数 pill 的 min-width:18px 是这条链上最贵的一项：5 个标签白占 90px。
+   收到 0 之后 pill 只包住数字本身。 */
+.ioto-tasks-center__task-links-tabs .ioto-tasks-center__tab-count {
+	min-width: 0;
+	padding: 0 3px;
+	font-size: var(--font-ui-smaller);
+}
+
+/* 最后一道保险：真到极窄（如以后把左栏再收窄），宁可省略也不折行。 */
+.ioto-tasks-center__task-links-tabs .ioto-tasks-center__tab-label {
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 /* 搜索行：输入框 + 5 个定宽图标按钮（[[Plan-20261029-083909]] §三 S4）。
