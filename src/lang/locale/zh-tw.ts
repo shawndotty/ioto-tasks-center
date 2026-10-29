@@ -243,6 +243,8 @@ const zhTW = {
 	'taskLinks.search.placeholder': '搜尋標題或正文',
 	'taskLinks.search.titleOnly': '僅標題',
 	'taskLinks.search.bodyOnly': '僅內容',
+	'taskLinks.search.titleOnlyHint': '僅標題（再次點擊還原標題+正文）',
+	'taskLinks.search.bodyOnlyHint': '僅內容（再次點擊還原標題+正文）',
 	'taskLinks.search.caseSensitive': '區分大小寫',
 	'taskLinks.search.wholeWord': '全詞匹配',
 	'taskLinks.search.wholeWordHint': '全詞匹配（中文按子串處理）',

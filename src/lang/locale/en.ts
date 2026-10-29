@@ -263,6 +263,10 @@ const en = {
 	'taskLinks.search.placeholder': 'Search title or body',
 	'taskLinks.search.titleOnly': 'Title only',
 	'taskLinks.search.bodyOnly': 'Body only',
+	'taskLinks.search.titleOnlyHint':
+		'Title only (click again to restore title + body)',
+	'taskLinks.search.bodyOnlyHint':
+		'Body only (click again to restore title + body)',
 	'taskLinks.search.caseSensitive': 'Match case',
 	'taskLinks.search.wholeWord': 'Whole word',
 	'taskLinks.search.wholeWordHint':

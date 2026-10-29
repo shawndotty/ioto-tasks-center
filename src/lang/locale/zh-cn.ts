@@ -243,6 +243,8 @@ const zhCN = {
 	'taskLinks.search.placeholder': '搜索标题或正文',
 	'taskLinks.search.titleOnly': '仅标题',
 	'taskLinks.search.bodyOnly': '仅内容',
+	'taskLinks.search.titleOnlyHint': '仅标题（再次点击恢复标题+正文）',
+	'taskLinks.search.bodyOnlyHint': '仅内容（再次点击恢复标题+正文）',
 	'taskLinks.search.caseSensitive': '区分大小写',
 	'taskLinks.search.wholeWord': '全词匹配',
 	'taskLinks.search.wholeWordHint': '全词匹配（中文按子串处理）',

@@ -6293,6 +6293,32 @@ button:not(.clickable-icon).ioto-tasks-center__task-links-parent-item {
 	height: 32px;
 }
 
+/* 开关的按下态（[[Plan-20261029-085214]]）：核心 app.css 里 `aria-pressed` 出现 0 次，
+   插件里唯一的按下态规则挂在 .ioto-task-view__toggle 上，搜索行吃不到 —— 所以
+   状态一直是对的（syncSearchButtons 会写 aria-pressed），缺的只是视觉。
+   属性选择器必须写 `="true"`：按钮建出来就带 aria-pressed="false"。 */
+.ioto-tasks-center__task-links-search-row button.clickable-icon {
+	transition:
+		background-color 120ms ease,
+		color 120ms ease;
+}
+
+/* 实心 accent：要的是扫一眼就知道开没开。特指度 (0,3,1) 必须压过核心
+   .clickable-icon:hover 的 (0,2,0)，否则鼠标一移上去按下态就被 hover 灰底盖掉。 */
+.ioto-tasks-center__task-links-search-row
+	button.clickable-icon[aria-pressed='true'] {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	--icon-opacity: 1; /* 核心给 svg 默认 0.85，压在 accent 上会发灰 */
+}
+
+/* 按下 + 悬停：保持 accent，只加一圈内高光（与 .ioto-task-view__toggle 同口径）。 */
+.ioto-tasks-center__task-links-search-row
+	button.clickable-icon[aria-pressed='true']:hover {
+	box-shadow: inset 0 0 0 1px
+		color-mix(in srgb, var(--text-on-accent) 40%, transparent);
+}
+
 .ioto-tasks-center__task-links-list {
 	flex: 1 1 auto;
 	min-height: 0;

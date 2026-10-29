@@ -466,7 +466,9 @@ export class TaskLinksModal extends Modal {
 			searchRowEl,
 			'title',
 			'heading-1',
-			t('taskLinks.search.titleOnly'),
+			// 再点一次会回到「标题+正文」，而按下态不亮时不存在范围按钮可参考 →
+			// tooltip 必须说清这层语义（[[Plan-20261029-085214]] §七.2）。
+			t('taskLinks.search.titleOnlyHint'),
 			() => {
 				this.setSearchOptions({
 					searchScope: this.searchScope === 'title' ? 'both' : 'title',
@@ -477,7 +479,7 @@ export class TaskLinksModal extends Modal {
 			searchRowEl,
 			'body',
 			'text',
-			t('taskLinks.search.bodyOnly'),
+			t('taskLinks.search.bodyOnlyHint'),
 			() => {
 				this.setSearchOptions({
 					searchScope: this.searchScope === 'body' ? 'both' : 'body',
