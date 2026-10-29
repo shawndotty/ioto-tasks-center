@@ -16,6 +16,7 @@ import type {
 	TaskLinksRoots,
 	TaskLinksSnapshot,
 } from './types';
+import { findMatchRanges, type MatchOptions } from './search-highlight';
 import { resolveTaskDisplayTitle } from './task-display-title';
 import { isPathInsideRoot } from './task-path';
 
@@ -223,16 +224,27 @@ export interface TaskLinksFilterResult {
 	counts: Record<TaskLinkCategory, number>;
 }
 
+/** 搜索范围：标题 / 正文 / 两者（默认，= 今天的语义）。 */
+export type TaskLinksSearchScope = 'both' | 'title' | 'body';
+
+export interface TaskLinksSearchOptions extends MatchOptions {
+	/** 默认 `'both'`。 */
+	scope?: TaskLinksSearchScope;
+}
+
 /**
  * 全局搜索过滤（对所有分类同时生效，[[Discuss-20261028-153402]] §3.3）。
- * 空词 = 原样返回；命中 = 标题或正文**大小写不敏感**子串。
+ * 空词 = 原样返回；命中判据**只有** `findMatchRanges` 一处实现
+ * （[[Plan-20261029-083909]] §一 不变量 2），范围 / 大小写 / 全词都由 options 决定。
  */
 export function filterTaskLinks(
 	snapshot: Pick<TaskLinksSnapshot, 'sections'>,
 	query: string,
 	bodies: ReadonlyMap<string, string>,
+	options: TaskLinksSearchOptions = {},
 ): TaskLinksFilterResult {
-	const normalizedQuery = query.trim().toLowerCase();
+	// 不做大小写归一：大小写交给 `findMatchRanges` 的 `i` 标志，先小写会让 index 错位。
+	const trimmed = query.trim();
 	const sections = {
 		subtask: [],
 		input: [],
@@ -250,9 +262,9 @@ export function filterTaskLinks(
 
 	for (const category of TASK_LINK_CATEGORIES) {
 		const entries = snapshot.sections[category] ?? [];
-		const matched = normalizedQuery
+		const matched = trimmed
 			? entries.filter((entry) =>
-					matchesTaskLink(entry, normalizedQuery, bodies),
+					matchesTaskLink(entry, trimmed, bodies, options),
 				)
 			: entries;
 		sections[category] = matched;
@@ -264,13 +276,78 @@ export function filterTaskLinks(
 
 function matchesTaskLink(
 	entry: TaskLinkEntry,
-	normalizedQuery: string,
+	query: string,
 	bodies: ReadonlyMap<string, string>,
+	options: TaskLinksSearchOptions,
 ): boolean {
-	if (entry.title.toLowerCase().includes(normalizedQuery)) {
+	const scope = options.scope ?? 'both';
+	if (scope !== 'body' && findMatchRanges(entry.title, query, options).length > 0) {
 		return true;
 	}
+	if (scope !== 'title') {
+		const body = bodies.get(entry.path);
+		if (body && findMatchRanges(body, query, options).length > 0) {
+			return true;
+		}
+	}
+	return false;
+}
 
-	const body = bodies.get(entry.path);
-	return body ? body.toLowerCase().includes(normalizedQuery) : false;
+/** 会被「放宽」的收窄维度（顺序即空态里的展示顺序）。 */
+export type TaskLinkRelaxation = 'scope' | 'caseSensitive' | 'wholeWord';
+
+export interface TaskLinkRelaxHint {
+	relax: TaskLinkRelaxation;
+	/** 放宽这一项后该分类会有的命中条数（恒 `> 0`）。 */
+	count: number;
+}
+
+/** 单个维度的「归默认」补丁。 */
+function relaxPatch(relax: TaskLinkRelaxation): TaskLinksSearchOptions {
+	switch (relax) {
+		case 'scope':
+			return { scope: 'both' };
+		case 'caseSensitive':
+			return { caseSensitive: false };
+		case 'wholeWord':
+			return { wholeWord: false };
+	}
+}
+
+/**
+ * 空态归因（[[Plan-20261029-083909]] §三 S2）：对每个**当前生效的**收窄项单独放宽
+ * 一次，返回能把该分类命中数抬到 `> 0` 的那些。
+ *
+ * 三个维度都是单调超集（放宽只会变多），所以「0 → N>0」可以确定性归因；
+ * 至多 3 次过滤，且只应在「有词且当前分类 0 条」时调用。
+ */
+export function findRelaxHints(
+	snapshot: Pick<TaskLinksSnapshot, 'sections'>,
+	query: string,
+	bodies: ReadonlyMap<string, string>,
+	options: TaskLinksSearchOptions,
+	category: TaskLinkCategory,
+): TaskLinkRelaxHint[] {
+	const active: TaskLinkRelaxation[] = [];
+	if ((options.scope ?? 'both') !== 'both') {
+		active.push('scope');
+	}
+	if (options.caseSensitive) {
+		active.push('caseSensitive');
+	}
+	if (options.wholeWord) {
+		active.push('wholeWord');
+	}
+
+	const hints: TaskLinkRelaxHint[] = [];
+	for (const relax of active) {
+		const relaxed = { ...options, ...relaxPatch(relax) };
+		const count = filterTaskLinks(snapshot, query, bodies, relaxed).counts[
+			category
+		];
+		if (count > 0) {
+			hints.push({ relax, count });
+		}
+	}
+	return hints;
 }

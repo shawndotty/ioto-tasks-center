@@ -33,30 +33,59 @@ export interface QueryPart {
 	hit: boolean;
 }
 
+/**
+ * 匹配选项（[[Plan-20261029-083909]] §三 S1）。两项**全可选且默认值 = 今天的语义**，
+ * 因此 Task View 的既有调用点一行不用改。
+ */
+export interface MatchOptions {
+	/** 默认 `false`（= 今天的 `gi`）。只作用于正则的 `i` 标志，不做任何大小写转换。 */
+	caseSensitive?: boolean;
+	/** 默认 `false`（= 今天的纯子串）。中文 / `c++` 这类查询天然退化为子串。 */
+	wholeWord?: boolean;
+}
+
 /** 转义正则元字符（查询里可能含 `.` `(` `)` `+` 等，须按字面处理）。 */
 function escapeRegExp(value: string): string {
 	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/** 「词字符」与 `\b` 的 `\w` 同集：中文 / 标点都不是，故中文查询天然退化为子串。 */
+const WORD_CHAR = /[A-Za-z0-9_]/;
+
+/** `undefined`（越界）视为非词字符 → 串首 / 串尾的边界自然成立。 */
+function isWordChar(ch: string | undefined): boolean {
+	return ch !== undefined && WORD_CHAR.test(ch);
+}
+
 /**
- * 在 `text` 中找出 `normalizedQuery` 的全部**不重叠**字面命中区间。
- * 大小写不敏感；查询按字面（非正则）处理；空查询 / 空文本 → `[]`。
+ * 在 `text` 中找出 `query` 的全部**不重叠**字面命中区间。
+ * 默认大小写不敏感；查询按字面（非正则）处理；空查询 / 空文本 → `[]`。
  *
- * 🔴 用 `RegExp(…, 'gi')` 在**原串**上取 index——不要先小写再取 index：个别 locale
- * 的小写会改变长度（如 `İ`），那样切原串会错位（[[Discuss-20261006-183552]] §五.2）。
+ * 🔴 用 `RegExp(…, 'g' | 'gi')` 在**原串**上取 index——不要先小写再取 index：个别
+ * locale 的小写会改变长度（如 `İ`），那样切原串会错位（[[Discuss-20261006-183552]] §五.2）。
+ * 大小写只通过正则的 `i` 标志控制，绝不做大小写转换。
+ *
+ * 🔴 全词匹配**不用 `\b`**：`/\b笔记\b/.test('笔记') === false`、
+ * `/\bc\+\+\b/.test('c++ 手册') === false` —— 中文与标点结尾的查询会静默归零。
+ * 改用「命中区间左右邻字符都不是词字符」的后置过滤（[[Plan-20261029-083909]] §五.1）。
  */
 export function findMatchRanges(
 	text: string,
-	normalizedQuery: string,
+	query: string,
+	options: MatchOptions = {},
 ): MatchRange[] {
-	if (normalizedQuery.length === 0 || text.length === 0) {
+	if (query.length === 0 || text.length === 0) {
 		return [];
 	}
-	const re = new RegExp(escapeRegExp(normalizedQuery), 'gi');
+	const re = new RegExp(escapeRegExp(query), options.caseSensitive ? 'g' : 'gi');
 	const ranges: MatchRange[] = [];
 	for (const match of text.matchAll(re)) {
 		const start = match.index ?? 0;
-		ranges.push({ start, end: start + (match[0] ?? '').length });
+		const end = start + (match[0] ?? '').length;
+		if (options.wholeWord && (isWordChar(text[start - 1]) || isWordChar(text[end]))) {
+			continue;
+		}
+		ranges.push({ start, end });
 	}
 	return ranges;
 }
@@ -67,12 +96,13 @@ export function findMatchRanges(
  */
 export function splitByQuery(
 	text: string,
-	normalizedQuery: string,
+	query: string,
+	options: MatchOptions = {},
 ): QueryPart[] {
 	if (text.length === 0) {
 		return [];
 	}
-	const ranges = findMatchRanges(text, normalizedQuery);
+	const ranges = findMatchRanges(text, query, options);
 	if (ranges.length === 0) {
 		return [{ text, hit: false }];
 	}
@@ -127,11 +157,12 @@ function unwrapSearchHighlight(root: HTMLElement, hitClass: string): void {
  */
 export function applySearchHighlight(
 	root: HTMLElement,
-	normalizedQuery: string,
+	query: string,
 	hitClass: string = SEARCH_HIT_CLASS,
+	options: MatchOptions = {},
 ): void {
 	unwrapSearchHighlight(root, hitClass);
-	if (normalizedQuery.length === 0) {
+	if (query.length === 0) {
 		return;
 	}
 
@@ -155,7 +186,7 @@ export function applySearchHighlight(
 		) {
 			continue;
 		}
-		const parts = splitByQuery(textNode.data, normalizedQuery);
+		const parts = splitByQuery(textNode.data, query, options);
 		if (!parts.some((part) => part.hit)) {
 			continue; // 全段无命中 → 不改动
 		}

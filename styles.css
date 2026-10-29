@@ -6220,7 +6220,7 @@ button:not(.clickable-icon).ioto-tasks-center__task-links-preview-open {
 	.ioto-tasks-center__task-links-tabs,
 .is-phone
 	.ioto-tasks-center__task-links-modal.is-split
-	.ioto-tasks-center__task-links-search,
+	.ioto-tasks-center__task-links-search-row,
 .is-phone
 	.ioto-tasks-center__task-links-modal.is-split
 	.ioto-tasks-center__task-links-list {
@@ -6261,9 +6261,36 @@ button:not(.clickable-icon).ioto-tasks-center__task-links-parent-item {
 	margin-bottom: 8px;
 }
 
-.ioto-tasks-center__task-links-search {
-	width: 100%;
+/* 搜索行：输入框 + 5 个定宽图标按钮（[[Plan-20261029-083909]] §三 S4）。
+   左栏 320px − 5 × 24px − 4 × 2px gap = 192px 留给输入框，不换行、不挤压。 */
+.ioto-tasks-center__task-links-search-row {
+	display: flex;
+	align-items: center;
+	gap: 2px;
 	margin-bottom: 8px;
+}
+
+/* 原本 width:100% 撑满整栏，现在是 flex 子项；margin 交给 row。 */
+.ioto-tasks-center__task-links-search {
+	flex: 1 1 auto;
+	min-width: 0;
+	margin-bottom: 0;
+}
+
+/* 🔴 不写 flex:0 0 auto 会被输入框压扁；定宽后不能再吃 padding。
+   用 clickable-icon 同时豁免核心 `.is-tablet button:not(.clickable-icon)` 的 padding。 */
+.ioto-tasks-center__task-links-search-row button.clickable-icon {
+	flex: 0 0 auto;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+}
+
+.is-phone
+	.ioto-tasks-center__task-links-search-row
+	button.clickable-icon {
+	width: 32px;
+	height: 32px;
 }
 
 .ioto-tasks-center__task-links-list {
@@ -6318,6 +6345,25 @@ button:not(.clickable-icon).ioto-tasks-center__task-links-item.is-active {
 	padding: 12px 10px;
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
+}
+
+/* 空态归因：一行「已收窄：…」+ 若干条可点的放宽提示（点击只放宽那一个维度）。 */
+.ioto-tasks-center__task-links-empty-narrowed {
+	margin-top: 6px;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+/* 刻意不带 clickable-icon：这里是文本按钮，不需要定宽图标那套。 */
+button:not(.clickable-icon).ioto-tasks-center__task-links-empty-relax {
+	margin-top: 4px;
+	padding: 0;
+	border: none;
+	background: none;
+	box-shadow: none;
+	color: var(--text-accent);
+	font-size: var(--font-ui-smaller);
+	cursor: pointer;
 }
 
 /* 计数 0 与「有链接」在视觉上分开：0 用弱色，不抢注意力。 */

@@ -261,6 +261,13 @@ const en = {
 	'taskLinks.subject': 'Task: {0}',
 	'taskLinks.parent.label': 'Parent',
 	'taskLinks.search.placeholder': 'Search title or body',
+	'taskLinks.search.titleOnly': 'Title only',
+	'taskLinks.search.bodyOnly': 'Body only',
+	'taskLinks.search.caseSensitive': 'Match case',
+	'taskLinks.search.wholeWord': 'Whole word',
+	'taskLinks.search.wholeWordHint':
+		'Whole word match (Chinese matches as substring)',
+	'taskLinks.search.reset': 'Reset search options',
 	'taskLinks.tabs.subtask': 'Subtasks',
 	'taskLinks.tabs.input': 'Inputs',
 	'taskLinks.tabs.output': 'Outputs',
@@ -272,6 +279,8 @@ const en = {
 	'taskLinks.empty.outcome': 'No linked outcome notes',
 	'taskLinks.empty.other': 'No other links',
 	'taskLinks.emptySearch': 'No notes match the current search',
+	'taskLinks.empty.narrowed': 'Narrowed: {0}',
+	'taskLinks.empty.relaxHint': 'Turn off “{0}” to see {1} results',
 	'taskLinks.state.rootMissing':
 		'Root folder “{0}” was not found in this vault.',
 	'taskLinks.state.loading': 'Loading…',

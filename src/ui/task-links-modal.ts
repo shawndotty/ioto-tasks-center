@@ -28,7 +28,11 @@ import {
 import {
 	TASK_LINK_CATEGORIES,
 	filterTaskLinks,
+	findRelaxHints,
+	type TaskLinkRelaxation,
 	type TaskLinksFilterResult,
+	type TaskLinksSearchOptions,
+	type TaskLinksSearchScope,
 } from '../tasks-center/task-links-index';
 import type {
 	TaskLinkCategory,
@@ -96,6 +100,22 @@ const EMPTY_KEYS: Record<TaskLinkCategory, TranslationKey> = {
 	other: 'taskLinks.empty.other',
 };
 
+/** 搜索行里的 5 个按钮（4 个开关 + 重置），只创建一次、之后只刷属性。 */
+type SearchToggleKey = 'title' | 'body' | 'case' | 'word' | 'reset';
+
+/** 开关变更的补丁：字段名用弹窗自己的状态名（私有字段不在 `keyof` 里，不能用 Pick）。 */
+interface SearchPatch {
+	searchScope?: TaskLinksSearchScope;
+	caseSensitive?: boolean;
+	wholeWord?: boolean;
+}
+
+/** 会被收窄的三个维度 → 文案 key（空态「已收窄」与「放宽提示」共用）。 */
+const SCOPE_LABEL_KEYS: Record<'title' | 'body', TranslationKey> = {
+	title: 'taskLinks.search.titleOnly',
+	body: 'taskLinks.search.bodyOnly',
+};
+
 export type { TaskLinkEntryKind } from '../tasks-center/types';
 
 export interface TaskLinksModalOptions {
@@ -121,11 +141,20 @@ export class TaskLinksModal extends Modal {
 	private snapshot: TaskLinksSnapshot | null = null;
 	private bodies = new Map<string, string>();
 	private query = '';
+	/** 搜索范围 / 大小写 / 全词：三项默认值 = 今天的语义，开窗即回默认。 */
+	private searchScope: TaskLinksSearchScope = 'both';
+	private caseSensitive = false;
+	private wholeWord = false;
 	private activeCategory: TaskLinkCategory = 'subtask';
 	private filterResult: TaskLinksFilterResult | null = null;
 	/** 重绘只换列表与计数，输入框节点保持复用 → 打字不会丢焦点。 */
 	private readonly tabButtons = new Map<
 		TaskLinkCategory,
+		HTMLButtonElement
+	>();
+	/** 开关按钮同样只建一次，之后只刷 `aria-pressed` / `disabled`。 */
+	private readonly searchButtons = new Map<
+		SearchToggleKey,
 		HTMLButtonElement
 	>();
 	private listEl: HTMLElement | null = null;
@@ -185,6 +214,7 @@ export class TaskLinksModal extends Modal {
 		this.filterResult = null;
 		this.bodies.clear();
 		this.tabButtons.clear();
+		this.searchButtons.clear();
 		this.previewStack = [];
 		this.previewToken += 1;
 		this.selectedByCategory.clear();
@@ -200,6 +230,11 @@ export class TaskLinksModal extends Modal {
 		this.previewSourcePath = '';
 		this.previewIsEmbed = false;
 		this.query = '';
+		// 每次开窗回默认（不做跨窗口记忆：要记就得进 settings，会把「重置」语义
+		// 污染成「改全局配置」，[[Plan-20261029-083909]] §六）。
+		this.searchScope = 'both';
+		this.caseSensitive = false;
+		this.wholeWord = false;
 		this.hitEls = [];
 		this.hitIndex = -1;
 		this.activeHitEl = null;
@@ -395,7 +430,12 @@ export class TaskLinksModal extends Modal {
 			this.tabButtons.set(category, tabEl);
 		}
 
-		const searchEl = this.listColEl.createEl('input', {
+		// 搜索行：输入框 + 4 个开关 + 重置。按钮只在这里创建一次，重绘只换列表，
+		// 否则每次输入都会重建节点（tooltip 闪、焦点丢）。
+		const searchRowEl = this.listColEl.createDiv({
+			cls: 'ioto-tasks-center__task-links-search-row',
+		});
+		const searchEl = searchRowEl.createEl('input', {
 			cls: 'ioto-tasks-center__task-links-search',
 			attr: {
 				type: 'search',
@@ -421,6 +461,63 @@ export class TaskLinksModal extends Modal {
 			event.preventDefault();
 			this.stepHit(event.shiftKey ? -1 : 1);
 		});
+
+		this.createSearchButton(
+			searchRowEl,
+			'title',
+			'heading-1',
+			t('taskLinks.search.titleOnly'),
+			() => {
+				this.setSearchOptions({
+					searchScope: this.searchScope === 'title' ? 'both' : 'title',
+				});
+			},
+		);
+		this.createSearchButton(
+			searchRowEl,
+			'body',
+			'text',
+			t('taskLinks.search.bodyOnly'),
+			() => {
+				this.setSearchOptions({
+					searchScope: this.searchScope === 'body' ? 'both' : 'body',
+				});
+			},
+		);
+		this.createSearchButton(
+			searchRowEl,
+			'case',
+			'case-sensitive',
+			t('taskLinks.search.caseSensitive'),
+			() => {
+				this.setSearchOptions({ caseSensitive: !this.caseSensitive });
+			},
+		);
+		this.createSearchButton(
+			searchRowEl,
+			'word',
+			'whole-word',
+			// 中文会退化成子串，这条口径必须能被 hover 到 → 标签用带注解的那条。
+			t('taskLinks.search.wholeWordHint'),
+			() => {
+				this.setSearchOptions({ wholeWord: !this.wholeWord });
+			},
+		);
+		this.createSearchButton(
+			searchRowEl,
+			'reset',
+			'rotate-ccw',
+			t('taskLinks.search.reset'),
+			() => {
+				// 只归位开关，不清词（清词 ≠ 重置条件）。
+				this.setSearchOptions({
+					searchScope: 'both',
+					caseSensitive: false,
+					wholeWord: false,
+				});
+			},
+		);
+		this.syncSearchButtons();
 
 		this.listEl = this.listColEl.createDiv({
 			cls: 'ioto-tasks-center__task-links-list',
@@ -511,6 +608,116 @@ export class TaskLinksModal extends Modal {
 		this.attachPreviewLinkDelegate(this.previewBodyEl);
 	}
 
+	/** 列表过滤 / 预览染色共用同一个词口径（只 trim，不做大小写归一）。 */
+	private searchQuery(): string {
+		return this.query.trim();
+	}
+
+	/** **唯一**的选项取值来源：过滤与预览染色都从这里取，避免两套判据漂移。 */
+	private searchOptions(): TaskLinksSearchOptions {
+		return {
+			scope: this.searchScope,
+			caseSensitive: this.caseSensitive,
+			wholeWord: this.wholeWord,
+		};
+	}
+
+	/** 开关变更的唯一漏斗：刷按钮态 + 走 `applyQuery`（tab 计数 / 列表 / 预览重扫一次到位）。 */
+	private setSearchOptions(patch: SearchPatch): void {
+		if (patch.searchScope !== undefined) {
+			this.searchScope = patch.searchScope;
+		}
+		if (patch.caseSensitive !== undefined) {
+			this.caseSensitive = patch.caseSensitive;
+		}
+		if (patch.wholeWord !== undefined) {
+			this.wholeWord = patch.wholeWord;
+		}
+		this.syncSearchButtons();
+		this.applyQuery(this.query);
+	}
+
+	/** 按下态用 `aria-pressed`（本插件既有 toggle 口径），不新造 `is-on` 类。 */
+	private syncSearchButtons(): void {
+		const scope = this.searchScope;
+		this.searchButtons
+			.get('title')
+			?.setAttribute('aria-pressed', String(scope === 'title'));
+		this.searchButtons
+			.get('body')
+			?.setAttribute('aria-pressed', String(scope === 'body'));
+		this.searchButtons
+			.get('case')
+			?.setAttribute('aria-pressed', String(this.caseSensitive));
+		this.searchButtons
+			.get('word')
+			?.setAttribute('aria-pressed', String(this.wholeWord));
+		const reset = this.searchButtons.get('reset');
+		if (reset) {
+			reset.disabled =
+				scope === 'both' && !this.caseSensitive && !this.wholeWord;
+		}
+	}
+
+	/**
+	 * 搜索行里的图标按钮：`clickable-icon` + `setIcon` + `aria-label`（与命中细条同口径，
+	 * 还能豁免核心 `.is-tablet button:not(.clickable-icon)` 的 padding 覆盖）。
+	 * 不用 `createHitButton`：那个会自带 `title`（与 aria-label 双份气泡）且语义是「立即跳转」。
+	 */
+	private createSearchButton(
+		parentEl: HTMLElement,
+		key: SearchToggleKey,
+		icon: string,
+		label: string,
+		onClick: () => void,
+	): void {
+		const btn = parentEl.createEl('button', {
+			cls: 'clickable-icon',
+			attr: { type: 'button', 'aria-label': label },
+		});
+		setIcon(btn, icon);
+		// 🔴 点击会抢走输入框焦点：mousedown 先挡默认行为，click 里再兜底回焦，
+		// 否则用户每切一次开关都得点回输入框才能继续打字。
+		btn.addEventListener('mousedown', (event) => {
+			event.preventDefault();
+		});
+		btn.addEventListener('click', (event) => {
+			event.preventDefault();
+			onClick();
+			this.searchInputEl?.focus();
+		});
+		this.searchButtons.set(key, btn);
+	}
+
+	/** 当前「收窄项」文案，顺序：范围 → 大小写 → 全词（与归因展示顺序一致）。 */
+	private narrowedLabels(): string[] {
+		const labels: string[] = [];
+		if (this.searchScope !== 'both') {
+			labels.push(t(SCOPE_LABEL_KEYS[this.searchScope]));
+		}
+		if (this.caseSensitive) {
+			labels.push(t('taskLinks.search.caseSensitive'));
+		}
+		if (this.wholeWord) {
+			labels.push(t('taskLinks.search.wholeWord'));
+		}
+		return labels;
+	}
+
+	/** 归因提示里的维度名：与「已收窄」共用同一套文案 key。 */
+	private relaxLabel(relax: TaskLinkRelaxation): string {
+		if (relax === 'scope') {
+			return t(
+				SCOPE_LABEL_KEYS[this.searchScope === 'body' ? 'body' : 'title'],
+			);
+		}
+		return t(
+			relax === 'caseSensitive'
+				? 'taskLinks.search.caseSensitive'
+				: 'taskLinks.search.wholeWord',
+		);
+	}
+
 	private applyQuery(value: string): void {
 		this.query = value;
 		if (this.searchInputEl && this.searchInputEl.value !== value) {
@@ -528,7 +735,12 @@ export class TaskLinksModal extends Modal {
 			return;
 		}
 
-		this.filterResult = filterTaskLinks(snapshot, this.query, this.bodies);
+		this.filterResult = filterTaskLinks(
+			snapshot,
+			this.query,
+			this.bodies,
+			this.searchOptions(),
+		);
 		for (const category of TASK_LINK_CATEGORIES) {
 			const tabEl = this.tabButtons.get(category);
 			if (!tabEl) {
@@ -569,12 +781,17 @@ export class TaskLinksModal extends Modal {
 
 		const entries = this.filterResult?.sections[category] ?? [];
 		if (entries.length === 0) {
+			const query = this.searchQuery();
 			listEl.createDiv({
 				cls: 'ioto-tasks-center__task-links-empty',
-				text: this.query.trim()
+				text: query
 					? t('taskLinks.emptySearch')
 					: t(EMPTY_KEYS[category]),
 			});
+			// 归因只在 0 条 + 有词时算（非空态一次都不算，否则每次输入多跑 3 次过滤）。
+			if (query) {
+				this.renderEmptyAttribution(listEl, category);
+			}
 			return;
 		}
 
@@ -610,6 +827,52 @@ export class TaskLinksModal extends Modal {
 				// 挡掉按钮把 Enter 合成 click（那会走单选预览）。
 				event.preventDefault();
 				this.openEntry(entry, entry.kind);
+			});
+		}
+	}
+
+	/**
+	 * 空态归因（[[Plan-20261029-083909]] §三 S3.3）：
+	 * 「已收窄：A · B」+ 「关闭「A」后有 N 条结果」（可点即只放宽该维度）。
+	 * 点击后走 `setSearchOptions` → `applyQuery` → 列表重建，按钮节点随之销毁，天然不残留。
+	 */
+	private renderEmptyAttribution(
+		listEl: HTMLElement,
+		category: TaskLinkCategory,
+	): void {
+		const snapshot = this.snapshot;
+		if (!snapshot) {
+			return;
+		}
+
+		const narrowed = this.narrowedLabels();
+		if (narrowed.length > 0) {
+			listEl.createDiv({
+				cls: 'ioto-tasks-center__task-links-empty-narrowed',
+				text: t('taskLinks.empty.narrowed', [narrowed.join(' · ')]),
+			});
+		}
+
+		const hints = findRelaxHints(
+			snapshot,
+			this.query,
+			this.bodies,
+			this.searchOptions(),
+			category,
+		);
+		for (const hint of hints) {
+			const label = this.relaxLabel(hint.relax);
+			const btn = listEl.createEl('button', {
+				cls: 'ioto-tasks-center__task-links-empty-relax',
+				text: t('taskLinks.empty.relaxHint', [
+					label,
+					String(hint.count),
+				]),
+				attr: { type: 'button' },
+			});
+			btn.addEventListener('click', () => {
+				this.setSearchOptions(relaxPatchOf(hint.relax));
+				this.searchInputEl?.focus();
 			});
 		}
 	}
@@ -926,26 +1189,27 @@ export class TaskLinksModal extends Modal {
 	// 预览命中高亮与定位（[[Plan-20261028-221530]] §三 S2 / S3）
 	// ---------------------------------------------------------------
 
-	/** 与 `filterTaskLinks` 的判据逐字一致——注意不是 `toLocaleLowerCase`。 */
-	private normalizedQuery(): string {
-		return this.query.trim().toLowerCase();
-	}
-
 	/** 重扫的唯一入口：染色 → 收集合 → 定 index → 刷细条 → 按需定位。 */
 	private refreshPreviewHits(options: {
 		resetIndex: boolean;
 		locate: boolean;
 	}): void {
 		const body = this.previewBodyEl;
-		const query = this.normalizedQuery();
+		const query = this.searchQuery();
 		// `previewIsEmbed` 一并拦：pdf 的文本层是真文本，扫进去会染色 pdf.js 自己的
 		// DOM 并让细条挂出 `N/176`（[[Report-20261029-060022]] 验收 6）。
-		if (!body || this.previewStack.length === 0 || this.previewIsEmbed) {
+		// 「仅标题」同理：只按标题过滤时正文不存在语义上的命中，染色会自相矛盾。
+		if (
+			!body ||
+			this.previewStack.length === 0 ||
+			this.previewIsEmbed ||
+			this.searchScope === 'title'
+		) {
 			this.resetPreviewHits();
 			return;
 		}
 
-		applySearchHighlight(body, query, TASK_LINKS_HIT_CLASS);
+		applySearchHighlight(body, query, TASK_LINKS_HIT_CLASS, this.searchOptions());
 		this.activeHitEl?.classList.remove(HIT_CURRENT_CLASS);
 		this.activeHitEl = null;
 		// 计数只取这一个数组：再跑一遍正则就会出现「计数与画面不一致」。
@@ -984,7 +1248,8 @@ export class TaskLinksModal extends Modal {
 		const visible =
 			this.previewStack.length > 0 &&
 			!this.previewIsEmbed &&
-			this.normalizedQuery() !== '';
+			this.searchScope !== 'title' &&
+			this.searchQuery() !== '';
 		barEl.toggleClass('is-hidden', !visible);
 
 		const total = this.hitEls.length;
@@ -1183,6 +1448,17 @@ function createHitButton(
 		onClick();
 	});
 	return btn;
+}
+
+/** 单个收窄维度的「归默认」补丁（空态归因的放宽按钮用）。 */
+function relaxPatchOf(relax: TaskLinkRelaxation): SearchPatch {
+	if (relax === 'scope') {
+		return { searchScope: 'both' };
+	}
+	if (relax === 'caseSensitive') {
+		return { caseSensitive: false };
+	}
+	return { wholeWord: false };
 }
 
 function collectEntryPaths(snapshot: TaskLinksSnapshot): string[] {

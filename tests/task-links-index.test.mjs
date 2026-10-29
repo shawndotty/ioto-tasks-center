@@ -7,6 +7,7 @@ const {
 	buildTaskLinksIndex,
 	collectOtherOutlinkPaths,
 	filterTaskLinks,
+	findRelaxHints,
 	resolveTaskParentPaths,
 	toTaskLinkEntry,
 } = await jiti.import('../src/tasks-center/task-links-index.ts');
@@ -230,6 +231,183 @@ test('搜索过滤：标题命中 / 正文命中 / 大小写不敏感 / 中文�
 	assert.deepEqual(
 		byChinese.sections.input.map((entry) => entry.path),
 		[beta.path],
+	);
+});
+
+// 搜索范围 / 大小写 / 全词（[[Plan-20261029-083909]] §三 S2 / §四 S6）。
+// 三个维度全是可选参数，默认值必须与旧语义逐条相同。
+function createSearchFixture() {
+	// 标题命中：Alpha 任务 / 正文命中：贝塔任务 / 都不命中：Gamma 任务
+	const alpha = createTask('Alpha 任务');
+	const beta = createTask('贝塔任务');
+	const gamma = createTask('Gamma 任务');
+	const foobar = createTask('Foobar 说明');
+	return {
+		alpha,
+		beta,
+		gamma,
+		foobar,
+		snapshot: {
+			sections: {
+				subtask: [alpha, foobar],
+				input: [beta],
+				output: [gamma],
+				outcome: [],
+			},
+		},
+		bodies: new Map([[beta.path, '正文里提到了 ALPHA 这个关键词']]),
+	};
+}
+
+test('搜索范围：scope=title 只看标题，正文命中被排除', () => {
+	const { alpha, beta, snapshot, bodies } = createSearchFixture();
+	const result = filterTaskLinks(snapshot, 'alpha', bodies, {
+		scope: 'title',
+	});
+	assert.deepEqual(
+		result.sections.subtask.map((entry) => entry.path),
+		[alpha.path],
+	);
+	assert.deepEqual(result.sections.input, []);
+	assert.equal(result.counts.input, 0);
+});
+
+test('搜索范围：scope=body 只看正文，标题命中被排除', () => {
+	const { alpha, beta, snapshot, bodies } = createSearchFixture();
+	const result = filterTaskLinks(snapshot, 'alpha', bodies, {
+		scope: 'body',
+	});
+	assert.deepEqual(result.sections.subtask, []);
+	assert.deepEqual(
+		result.sections.input.map((entry) => entry.path),
+		[beta.path],
+	);
+});
+
+test('搜索范围：不传 options 与 scope=both 结果逐条相同（默认等价）', () => {
+	const { snapshot, bodies } = createSearchFixture();
+	const fallback = filterTaskLinks(snapshot, 'alpha', bodies);
+	const explicit = filterTaskLinks(snapshot, 'alpha', bodies, {
+		scope: 'both',
+		// 另外两项显式写默认值，确认「默认 = 旧语义」不是靠参数缺省碰巧成立
+		caseSensitive: false,
+		wholeWord: false,
+	});
+	assert.deepEqual(explicit.counts, fallback.counts);
+	for (const category of ['subtask', 'input', 'output', 'outcome', 'other']) {
+		assert.deepEqual(
+			explicit.sections[category].map((entry) => entry.path),
+			fallback.sections[category].map((entry) => entry.path),
+			category,
+		);
+	}
+});
+
+test('大小写：caseSensitive=true 时 Alpha 与 alpha 区分', () => {
+	const { snapshot, bodies } = createSearchFixture();
+	assert.equal(filterTaskLinks(snapshot, 'alpha', bodies).counts.subtask, 1);
+	assert.equal(
+		filterTaskLinks(snapshot, 'alpha', bodies, { caseSensitive: true }).counts
+			.subtask,
+		0,
+	);
+	assert.equal(
+		filterTaskLinks(snapshot, 'Alpha', bodies, { caseSensitive: true }).counts
+			.subtask,
+		1,
+	);
+});
+
+test('全词：标题 Foobar 对 foo 不再命中', () => {
+	const { snapshot, bodies } = createSearchFixture();
+	assert.equal(filterTaskLinks(snapshot, 'foo', bodies).counts.subtask, 1);
+	assert.equal(
+		filterTaskLinks(snapshot, 'foo', bodies, { wholeWord: true }).counts.subtask,
+		0,
+	);
+	// 中文在全词下仍按子串处理（不是 \b 语义）
+	const chinese = createTask('卡片笔记-2026');
+	assert.equal(
+		filterTaskLinks(
+			{ sections: { subtask: [chinese], input: [], output: [], outcome: [] } },
+			'笔记',
+			new Map(),
+			{ wholeWord: true },
+		).counts.subtask,
+		1,
+	);
+});
+
+test('空态归因：单开关生效 → 恰好 1 条 hint 且 count 正确', () => {
+	const { snapshot, bodies } = createSearchFixture();
+	const hints = findRelaxHints(
+		snapshot,
+		'alpha',
+		bodies,
+		{ scope: 'body' },
+		'subtask',
+	);
+	assert.deepEqual(hints, [{ relax: 'scope', count: 1 }]);
+});
+
+test('空态归因：全默认 → []', () => {
+	const { snapshot, bodies } = createSearchFixture();
+	assert.deepEqual(
+		findRelaxHints(snapshot, 'alpha', bodies, {}, 'subtask'),
+		[],
+	);
+});
+
+test('空态归因：两个开关同时生效 → 各自能归因', () => {
+	// 标题 `Alpha` 大写、正文 `alpha` 小写；区分大小写 + 仅标题 → 0 条，
+	// 放宽「范围」（正文小写命中）或「大小写」（标题大写命中）都能回到 1 条。
+	const titled = createTask('Alpha 笔记');
+	const bodyOnly = createTask('无关任务');
+	const snapshot = {
+		sections: {
+			subtask: [titled, bodyOnly],
+			input: [],
+			output: [],
+			outcome: [],
+		},
+	};
+	const bodies = new Map([[bodyOnly.path, '这里是 alpha 的正文']]);
+
+	assert.equal(
+		filterTaskLinks(snapshot, 'alpha', bodies, {
+			scope: 'title',
+			caseSensitive: true,
+		}).counts.subtask,
+		0,
+	);
+
+	assert.deepEqual(
+		findRelaxHints(
+			snapshot,
+			'alpha',
+			bodies,
+			{ scope: 'title', caseSensitive: true },
+			'subtask',
+		),
+		[
+			{ relax: 'scope', count: 1 },
+			{ relax: 'caseSensitive', count: 1 },
+		],
+	);
+});
+
+test('空态归因：放宽后仍 0 条的维度不进 hint', () => {
+	const { snapshot, bodies } = createSearchFixture();
+	// `Gamma 任务` 只在 output；subtask 里搜一个不存在的词 → 三个维度都放宽也 0 条
+	assert.deepEqual(
+		findRelaxHints(
+			snapshot,
+			'Gamma',
+			bodies,
+			{ scope: 'title', caseSensitive: true, wholeWord: true },
+			'subtask',
+		),
+		[],
 	);
 });
 
