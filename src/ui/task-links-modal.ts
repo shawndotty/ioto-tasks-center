@@ -42,6 +42,10 @@ import type {
 	TaskLinkEntryKind,
 	TaskLinksSnapshot,
 } from '../tasks-center/types';
+import {
+	TaskLinksFilterPopover,
+	type TaskLinksFilterState,
+} from './task-links-filter-popover';
 
 /** 唯一判据：能当正文渲染的只有 Markdown。非 md 一律走嵌入分支。 */
 function isMarkdownPath(app: App, path: string): boolean {
@@ -102,9 +106,6 @@ const EMPTY_KEYS: Record<TaskLinkCategory, TranslationKey> = {
 	other: 'taskLinks.empty.other',
 };
 
-/** 搜索行里的 5 个按钮（4 个开关 + 重置），只创建一次、之后只刷属性。 */
-type SearchToggleKey = 'title' | 'body' | 'case' | 'word' | 'reset';
-
 /** 开关变更的补丁：字段名用弹窗自己的状态名（私有字段不在 `keyof` 里，不能用 Pick）。 */
 interface SearchPatch {
 	searchScope?: TaskLinksSearchScope;
@@ -154,11 +155,10 @@ export class TaskLinksModal extends Modal {
 		TaskLinkCategory,
 		HTMLButtonElement
 	>();
-	/** 开关按钮同样只建一次，之后只刷 `aria-pressed` / `disabled`。 */
-	private readonly searchButtons = new Map<
-		SearchToggleKey,
-		HTMLButtonElement
-	>();
+	/** 「筛选」入口与收窄圆点：开关藏进浮层后，这两个是唯一的状态出口。 */
+	private filterButtonEl: HTMLButtonElement | null = null;
+	private narrowDotEl: HTMLElement | null = null;
+	private filterPopover: TaskLinksFilterPopover | null = null;
 	private listEl: HTMLElement | null = null;
 	private searchInputEl: HTMLInputElement | null = null;
 	/** 预览栈：空 = 列表态（窄），非空 = 展开态（两栏 / 手机换页）。 */
@@ -214,13 +214,17 @@ export class TaskLinksModal extends Modal {
 
 	onClose(): void {
 		this.isActive = false;
+		// 浮层是挂在左栏里的 DOM + document 监听：不先销毁就会跟着残留。
+		this.filterPopover?.destroy();
+		this.filterPopover = null;
+		this.filterButtonEl = null;
+		this.narrowDotEl = null;
 		this.disposePreviewComponent();
 		this.contentEl.empty();
 		this.snapshot = null;
 		this.filterResult = null;
 		this.bodies.clear();
 		this.tabButtons.clear();
-		this.searchButtons.clear();
 		this.previewStack = [];
 		this.previewToken += 1;
 		this.selectedByCategory.clear();
@@ -253,7 +257,10 @@ export class TaskLinksModal extends Modal {
 	}
 
 	/**
-	 * 三段式 Esc：有搜索词只清词 → 有预览收起预览 → 都没有才关窗。
+	 * 四段式 Esc：浮层 → 搜索词 → 预览 → 关窗。
+	 *
+	 * 浮层是「浮在窗口上的临时层」，比清词更浅，必须先关它；焦点回按钮，
+	 * 键盘用户不丢位置。
 	 *
 	 * 必须覆盖 `onEscapeKey`：核心 Modal 在构造时把 `this.onEscapeKey.bind(this)`
 	 * 注册进自己的 scope，而 scope 的处理器由**全局** keymap 在捕获阶段触发，
@@ -262,6 +269,10 @@ export class TaskLinksModal extends Modal {
 	 */
 	onEscapeKey(event: KeyboardEvent): void {
 		event.preventDefault();
+		if (this.filterPopover?.isOpen()) {
+			this.filterPopover.close({ restoreFocus: true });
+			return;
+		}
 		if (this.query) {
 			this.applyQuery('');
 			this.searchInputEl?.focus();
@@ -375,6 +386,10 @@ export class TaskLinksModal extends Modal {
 			return;
 		}
 
+		// 窗口身份 = 任务名（[[Plan-20261029-143027]] §4.1）：功能名留在命令面板，
+		// 窗内不再重复。快照拿不到任务名时回退占位，空标题比功能名更难读。
+		this.setTitle(snapshot.taskTitle || t('taskLinks.title'));
+
 		this.contentEl.empty();
 		this.bodyEl = this.contentEl.createDiv({
 			cls: 'ioto-tasks-center__task-links-body',
@@ -383,17 +398,13 @@ export class TaskLinksModal extends Modal {
 			cls: 'ioto-tasks-center__task-links-list-col',
 		});
 
-		// 任务信息块放在**左栏内部**而不是 contentEl 顶层：两栏共用同一个起点，
-		// 右侧预览才能和左侧信息区顶部严格对齐（[[Report-20261028-200214]]）。
-		const infoEl = this.listColEl.createDiv({
-			cls: 'ioto-tasks-center__task-links-info',
-		});
-		infoEl.createDiv({
-			cls: 'ioto-tasks-center__modal-desc',
-			text: t('taskLinks.subject', [snapshot.taskTitle]),
-		});
-
+		// 任务信息块（只剩父级）放在**左栏内部**而不是 contentEl 顶层：两栏共用同一个
+		// 起点，右侧预览才能和左侧信息区顶部严格对齐（[[Report-20261028-200214]]）。
+		// 无父级时整块不建，否则 12px 边距会白占一行。
 		if (snapshot.parents.length > 0) {
+			const infoEl = this.listColEl.createDiv({
+				cls: 'ioto-tasks-center__task-links-info',
+			});
 			const parentRowEl = infoEl.createDiv({
 				cls: 'ioto-tasks-center__task-links-parent',
 			});
@@ -477,64 +488,31 @@ export class TaskLinksModal extends Modal {
 			this.stepHit(event.shiftKey ? -1 : 1);
 		});
 
-		this.createSearchButton(
-			searchRowEl,
-			'title',
-			'heading-1',
-			// 再点一次会回到「标题+正文」，而按下态不亮时不存在范围按钮可参考 →
-			// tooltip 必须说清这层语义（[[Plan-20261029-085214]] §七.2）。
-			t('taskLinks.search.titleOnlyHint'),
-			() => {
-				this.setSearchOptions({
-					searchScope: this.searchScope === 'title' ? 'both' : 'title',
-				});
+		// 收窄点：开关藏进浮层之后，「仍看得见状态」的第二道提示（第一道 = 入口
+		// 按下态）。只在有收窄时显示，`syncFilterIndicators` 一处写两处信号。
+		this.narrowDotEl = searchRowEl.createSpan({
+			cls: 'ioto-tasks-center__task-links-narrow-dot is-hidden',
+			attr: { 'aria-hidden': 'true' },
+		});
+
+		this.filterButtonEl = searchRowEl.createEl('button', {
+			cls: 'clickable-icon ioto-tasks-center__task-links-filter',
+			attr: {
+				type: 'button',
+				'aria-label': t('taskLinks.filter.label'),
+				'aria-expanded': 'false',
 			},
-		);
-		this.createSearchButton(
-			searchRowEl,
-			'body',
-			'text',
-			t('taskLinks.search.bodyOnlyHint'),
-			() => {
-				this.setSearchOptions({
-					searchScope: this.searchScope === 'body' ? 'both' : 'body',
-				});
-			},
-		);
-		this.createSearchButton(
-			searchRowEl,
-			'case',
-			'case-sensitive',
-			t('taskLinks.search.caseSensitive'),
-			() => {
-				this.setSearchOptions({ caseSensitive: !this.caseSensitive });
-			},
-		);
-		this.createSearchButton(
-			searchRowEl,
-			'word',
-			'whole-word',
-			// 中文会退化成子串，这条口径必须能被 hover 到 → 标签用带注解的那条。
-			t('taskLinks.search.wholeWordHint'),
-			() => {
-				this.setSearchOptions({ wholeWord: !this.wholeWord });
-			},
-		);
-		this.createSearchButton(
-			searchRowEl,
-			'reset',
-			'rotate-ccw',
-			t('taskLinks.search.reset'),
-			() => {
-				// 只归位开关，不清词（清词 ≠ 重置条件）。
-				this.setSearchOptions({
-					searchScope: 'both',
-					caseSensitive: false,
-					wholeWord: false,
-				});
-			},
-		);
-		this.syncSearchButtons();
+		});
+		// 与任务中心设置入口同图标（插件内已用 3 处）。
+		setIcon(this.filterButtonEl, 'sliders-horizontal');
+		this.filterButtonEl.addEventListener('mousedown', (event) => {
+			event.preventDefault(); // 不抢走输入框焦点（与列表条目同一手法）
+		});
+		this.filterButtonEl.addEventListener('click', (event) => {
+			event.preventDefault();
+			this.toggleFilterPopover();
+		});
+		this.syncFilterIndicators();
 
 		this.listEl = this.listColEl.createDiv({
 			cls: 'ioto-tasks-center__task-links-list',
@@ -639,7 +617,16 @@ export class TaskLinksModal extends Modal {
 		};
 	}
 
-	/** 开关变更的唯一漏斗：刷按钮态 + 走 `applyQuery`（tab 计数 / 列表 / 预览重扫一次到位）。 */
+	/** 当前收窄状态的只读快照：浮层初值与 `sync` 都从这里取，避免两套判据。 */
+	private filterState(): TaskLinksFilterState {
+		return {
+			scope: this.searchScope,
+			caseSensitive: this.caseSensitive,
+			wholeWord: this.wholeWord,
+		};
+	}
+
+	/** 开关变更的唯一漏斗：刷指示器 + 走 `applyQuery`（tab 计数 / 列表 / 预览重扫一次到位）。 */
 	private setSearchOptions(patch: SearchPatch): void {
 		if (patch.searchScope !== undefined) {
 			this.searchScope = patch.searchScope;
@@ -650,60 +637,77 @@ export class TaskLinksModal extends Modal {
 		if (patch.wholeWord !== undefined) {
 			this.wholeWord = patch.wholeWord;
 		}
-		this.syncSearchButtons();
+		this.syncFilterIndicators();
 		this.applyQuery(this.query);
 	}
 
-	/** 按下态用 `aria-pressed`（本插件既有 toggle 口径），不新造 `is-on` 类。 */
-	private syncSearchButtons(): void {
-		const scope = this.searchScope;
-		this.searchButtons
-			.get('title')
-			?.setAttribute('aria-pressed', String(scope === 'title'));
-		this.searchButtons
-			.get('body')
-			?.setAttribute('aria-pressed', String(scope === 'body'));
-		this.searchButtons
-			.get('case')
-			?.setAttribute('aria-pressed', String(this.caseSensitive));
-		this.searchButtons
-			.get('word')
-			?.setAttribute('aria-pressed', String(this.wholeWord));
-		const reset = this.searchButtons.get('reset');
-		if (reset) {
-			reset.disabled =
-				scope === 'both' && !this.caseSensitive && !this.wholeWord;
-		}
+	/**
+	 * 收窄的两个可见信号（[[Plan-20261029-143027]] §4.6）：
+	 * 入口按钮的按下态（复用实心 accent 规则）+ 输入框右侧的 accent 点。
+	 * 只做其中一个都会重演「点了没状态」，所以两处都由这里一处写。
+	 */
+	private syncFilterIndicators(): void {
+		const narrowed = this.narrowedLabels().length > 0;
+		this.filterButtonEl?.setAttribute('aria-pressed', String(narrowed));
+		this.filterButtonEl?.setAttribute(
+			'aria-label',
+			narrowed ? t('taskLinks.filter.active') : t('taskLinks.filter.label'),
+		);
+		this.filterButtonEl?.setAttribute(
+			'aria-expanded',
+			String(this.filterPopover?.isOpen() ?? false),
+		);
+		this.narrowDotEl?.toggleClass('is-hidden', !narrowed);
+		this.filterPopover?.sync(this.filterState());
 	}
 
-	/**
-	 * 搜索行里的图标按钮：`clickable-icon` + `setIcon` + `aria-label`（与命中细条同口径，
-	 * 还能豁免核心 `.is-tablet button:not(.clickable-icon)` 的 padding 覆盖）。
-	 * 不用 `createHitButton`：那个会自带 `title`（与 aria-label 双份气泡）且语义是「立即跳转」。
-	 */
-	private createSearchButton(
-		parentEl: HTMLElement,
-		key: SearchToggleKey,
-		icon: string,
-		label: string,
-		onClick: () => void,
-	): void {
-		const btn = parentEl.createEl('button', {
-			cls: 'clickable-icon',
-			attr: { type: 'button', 'aria-label': label },
+	/** 「筛选」入口：开 / 关浮层。关的时候不自动回焦（用户可能是点外面关的）。 */
+	private toggleFilterPopover(): void {
+		if (this.filterPopover?.isOpen()) {
+			this.filterPopover.close();
+			return;
+		}
+
+		const containerEl = this.listColEl;
+		const buttonEl = this.filterButtonEl;
+		if (!containerEl || !buttonEl) {
+			return;
+		}
+
+		// 传宿主元素自己的 document：弹窗可能开在 popout 窗口里（与本插件其它浮层同口径）。
+		const popover =
+			this.filterPopover ??
+			new TaskLinksFilterPopover(this.contentEl.ownerDocument);
+		popover.open({
+			anchorEl: buttonEl,
+			containerEl,
+			beforeEl: this.listEl,
+			state: this.filterState(),
+			onPatch: (patch) => {
+				// 浮层内点击不抢焦点，改完直接把光标还给输入框（可直接继续打字）。
+				this.setSearchOptions({
+					searchScope: patch.scope,
+					caseSensitive: patch.caseSensitive,
+					wholeWord: patch.wholeWord,
+				});
+				this.searchInputEl?.focus();
+			},
+			onReset: () => {
+				// 只归位开关，不清词（清词 ≠ 重置条件）；收尾动作顺手收起浮层。
+				this.setSearchOptions({
+					searchScope: 'both',
+					caseSensitive: false,
+					wholeWord: false,
+				});
+				popover.close();
+				this.searchInputEl?.focus();
+			},
+			onClose: () => {
+				this.syncFilterIndicators();
+			},
 		});
-		setIcon(btn, icon);
-		// 🔴 点击会抢走输入框焦点：mousedown 先挡默认行为，click 里再兜底回焦，
-		// 否则用户每切一次开关都得点回输入框才能继续打字。
-		btn.addEventListener('mousedown', (event) => {
-			event.preventDefault();
-		});
-		btn.addEventListener('click', (event) => {
-			event.preventDefault();
-			onClick();
-			this.searchInputEl?.focus();
-		});
-		this.searchButtons.set(key, btn);
+		this.filterPopover = popover;
+		this.syncFilterIndicators();
 	}
 
 	/** 当前「收窄项」文案，顺序：范围 → 大小写 → 全词（与归因展示顺序一致）。 */

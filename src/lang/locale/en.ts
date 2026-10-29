@@ -258,20 +258,17 @@ const en = {
 	'task.subtasks.popover.title': 'Subtasks',
 	'task.subtasks.popover.empty': 'No subtasks.',
 	'taskLinks.title': 'Related links',
-	'taskLinks.subject': 'Task: {0}',
 	'taskLinks.parent.label': 'Parent',
 	'taskLinks.search.placeholder': 'Search title or body',
 	'taskLinks.search.titleOnly': 'Title only',
 	'taskLinks.search.bodyOnly': 'Body only',
-	'taskLinks.search.titleOnlyHint':
-		'Title only (click again to restore title + body)',
-	'taskLinks.search.bodyOnlyHint':
-		'Body only (click again to restore title + body)',
 	'taskLinks.search.caseSensitive': 'Match case',
 	'taskLinks.search.wholeWord': 'Whole word',
 	'taskLinks.search.wholeWordHint':
 		'Whole word match (Chinese matches as substring)',
-	'taskLinks.search.reset': 'Reset search options',
+	'taskLinks.filter.label': 'Filter',
+	'taskLinks.filter.active': 'Filter (narrowed)',
+	'taskLinks.filter.reset': 'Reset filter',
 	'taskLinks.tabs.subtask': 'Subtasks',
 	'taskLinks.tabs.input': 'Inputs',
 	'taskLinks.tabs.output': 'Outputs',

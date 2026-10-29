@@ -6037,6 +6037,17 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 	height: var(--dialog-max-height);
 }
 
+/* 核心桌面端 .modal-title 只给字号/字重/居中，没有 overflow 处理，长任务名会把
+   关闭按钮顶走；手机端核心已自带省略，这条在手机上被同款声明覆盖也无害。 */
+.ioto-tasks-center__task-links-modal .modal-title {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	padding-inline-end: 4px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
 /* 核心 .is-phone 已把 --dialog-width 设为 100vw；这里写死 80vw 会比核心默认更窄。 */
 .is-phone .ioto-tasks-center__task-links-modal {
 	width: 100vw;
@@ -6237,14 +6248,22 @@ button:not(.clickable-icon).ioto-tasks-center__task-links-preview-open {
 	border-inline-start: none;
 }
 
+/* 12 = 「信息块 → 工具区」的分档（[[Plan-20261029-143027]] §五）。 */
 .ioto-tasks-center__task-links-parent {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
 	gap: 6px;
-	margin: 0 0 10px;
+	margin: 0 0 12px;
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
+}
+
+/* 分隔符由 CSS 生成：标点不该跟着翻译走。 */
+.ioto-tasks-center__task-links-parent-label::after {
+	content: '·';
+	margin-inline-start: 4px;
+	color: var(--text-faint);
 }
 
 /* 核心 button:not(.clickable-icon) 的底色 (0,1,1) 会盖掉 (0,1,0) 的插件规则
@@ -6260,36 +6279,59 @@ button:not(.clickable-icon).ioto-tasks-center__task-links-parent-item {
 	line-height: 1.4;
 }
 
-/* 五个标签在 320px 左栏里必须单行（[[Research-20261029-101207]]）。
-   现状：13px + padding 6·12 + gap 8 的自然宽度 435px，分栏左栏只有 320px
-   → 折成两行（高 30 → 68）。这里同时做两件事：
-   ① 度量压到 --font-ui-smaller 一档（自然宽度 435 → 290）；
-   ② nowrap + 可收缩，让剩余溢出被压缩吸收，而不是换行。 */
+/* 三档视觉重量（[[Plan-20261029-143027]] §4.3）：tab 是「目录」，不是按钮。
+   基础 .ioto-tasks-center__tab 是任务中心共用的胶囊（:566-617），这里只在本窗口
+   作用域内改写形状，绝不改基础规则。
+   五个标签在 320px 左栏里必须单行（[[Research-20261029-101207]]）：nowrap + 可收缩，
+   剩余溢出被省略号吸收，而不是折行。
+   🔴 选择器必须带 button:not(.clickable-icon)：平板态核心有
+   `.is-tablet button:not(.clickable-icon){padding:4px 20px}`（特指度 0,2,1），
+   只用两个类（0,2,0）压不过它 —— 实测 tab 高 30 → 44、整行溢出 6px。 */
 .ioto-tasks-center__task-links-tabs {
 	flex-wrap: nowrap;
-	gap: 4px;
+	justify-content: flex-start; /* 不再 space-between 拉满 → 左边缘有公共列线 */
+	gap: 12px;
 	margin-bottom: 8px;
-	justify-content: space-between;
 }
 
-.ioto-tasks-center__task-links-tabs .ioto-tasks-center__tab {
-	flex: 0 1 auto;
+.ioto-tasks-center__task-links-tabs
+	button:not(.clickable-icon).ioto-tasks-center__tab {
+	flex: 0 0 auto;
+	justify-content: flex-start;
 	min-width: 0;
 	gap: 3px;
-	padding: 3px 16px;
+	padding: 4px 4px 6px;
+	border: none;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: inset 0 -2px 0 transparent;
 	font-size: var(--font-ui-smaller);
+	font-weight: 500; /* 统一 500：切 tab 时不会因为字重变化而抖动宽度 */
 	overflow: hidden;
 }
 
-.ioto-tasks-center__task-links-modal.is-split .ioto-tasks-center__task-links-tabs .ioto-tasks-center__tab {
-	padding: 3px 6px;
+.ioto-tasks-center__task-links-tabs
+	button:not(.clickable-icon).ioto-tasks-center__tab:hover {
+	border-color: transparent;
+	background: transparent;
+	box-shadow: inset 0 -2px 0 var(--background-modifier-border);
+	color: var(--text-normal);
 }
 
-/* 计数 pill 的 min-width:18px 是这条链上最贵的一项：5 个标签白占 90px。
-   收到 0 之后 pill 只包住数字本身。 */
+.ioto-tasks-center__task-links-tabs
+	button:not(.clickable-icon).ioto-tasks-center__tab.is-active {
+	border-color: transparent;
+	background: transparent;
+	box-shadow: inset 0 -2px 0 var(--interactive-accent);
+	color: var(--text-normal);
+}
+
+/* 计数只留淡字：去掉 pill 底色与内边距，0 的淡化沿用文件末尾 :is-empty 规则。 */
 .ioto-tasks-center__task-links-tabs .ioto-tasks-center__tab-count {
 	min-width: 0;
-	padding: 0 3px;
+	padding: 0;
+	border-radius: 0;
+	background: transparent;
 	font-size: var(--font-ui-smaller);
 }
 
@@ -6299,12 +6341,12 @@ button:not(.clickable-icon).ioto-tasks-center__task-links-parent-item {
 	text-overflow: ellipsis;
 }
 
-/* 搜索行：输入框 + 5 个定宽图标按钮（[[Plan-20261029-083909]] §三 S4）。
-   左栏 320px − 5 × 24px − 4 × 2px gap = 192px 留给输入框，不换行、不挤压。 */
+/* 搜索行：输入框 + 收窄点 + 一个「筛选」入口（[[Plan-20261029-143027]] §4.4）。
+   左栏 320px − 24px 按钮 − 4px 点 − 2 × 6px gap ≈ 280px 留给输入框，不换行、不挤压。 */
 .ioto-tasks-center__task-links-search-row {
 	display: flex;
 	align-items: center;
-	gap: 2px;
+	gap: 6px;
 	margin-bottom: 8px;
 }
 
@@ -6313,6 +6355,19 @@ button:not(.clickable-icon).ioto-tasks-center__task-links-parent-item {
 	flex: 1 1 auto;
 	min-width: 0;
 	margin-bottom: 0;
+}
+
+/* 收窄点：开关藏进浮层后，「仍看得见状态」的第二道信号（第一道 = 入口按下态）。 */
+.ioto-tasks-center__task-links-narrow-dot {
+	flex: 0 0 auto;
+	width: 4px;
+	height: 4px;
+	border-radius: 50%;
+	background: var(--interactive-accent);
+}
+
+.ioto-tasks-center__task-links-narrow-dot.is-hidden {
+	display: none;
 }
 
 /* 🔴 不写 flex:0 0 auto 会被输入框压扁；定宽后不能再吃 padding。
@@ -6440,4 +6495,119 @@ button:not(.clickable-icon).ioto-tasks-center__task-links-empty-relax {
 /* 计数 0 与「有链接」在视觉上分开：0 用弱色，不抢注意力。 */
 .ioto-tasks-center__task-links-tab.is-empty .ioto-tasks-center__tab-count {
 	color: var(--text-faint);
+}
+
+/* ============================================================
+   「筛选」浮层（[[Plan-20261029-143027]] §4.5 / §4.7）
+   DOM 挂在左栏里（Tab 顺序），定位用 fixed + 视口坐标（left/top 由 JS 写）：
+   列表态窗口高度随内容变化，栏内的 absolute 会被 .modal-content 的 overflow 裁掉。
+   ============================================================ */
+.ioto-tasks-center__task-links-filter-popover {
+	position: fixed;
+	z-index: 12;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 180px;
+	padding: 6px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: var(--background-primary);
+	box-shadow: var(--shadow-s);
+}
+
+/* 🔴 核心 button:not(.clickable-icon) 的底色 (0,1,1) 会盖掉插件的 (0,1,0)，
+   行是普通按钮 → 选择器必须带上 button:not(.clickable-icon)。 */
+button:not(.clickable-icon).ioto-tasks-center__task-links-filter-row {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 6px;
+	width: 100%;
+	min-height: 28px;
+	padding: 4px 8px;
+	border: none;
+	border-radius: 4px;
+	background: transparent;
+	box-shadow: none;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	line-height: 1.4;
+	text-align: start;
+	white-space: normal;
+}
+
+button:not(.clickable-icon).ioto-tasks-center__task-links-filter-row:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+/* 激活行：文字提到正文色，左侧 `check` 亮起（不做实心 accent 行，
+   浮层里 4 个实心块会重演「胶囊套胶囊」的重量问题）。 */
+button:not(.clickable-icon).ioto-tasks-center__task-links-filter-row[aria-pressed='true'] {
+	color: var(--text-normal);
+}
+
+button:not(.clickable-icon).ioto-tasks-center__task-links-filter-row:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+/* 图标位固定 14px 且始终占位：不占位会让文字在开关时左右跳。 */
+.ioto-tasks-center__task-links-filter-check,
+.ioto-tasks-center__task-links-filter-icon {
+	display: inline-flex;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	width: 14px;
+	height: 14px;
+}
+
+.ioto-tasks-center__task-links-filter-check {
+	opacity: 0;
+	color: var(--interactive-accent);
+}
+
+.ioto-tasks-center__task-links-filter-icon {
+	color: var(--text-faint);
+}
+
+button[aria-pressed='true']
+	.ioto-tasks-center__task-links-filter-check {
+	opacity: 1;
+}
+
+.ioto-tasks-center__task-links-filter-check svg,
+.ioto-tasks-center__task-links-filter-icon svg {
+	width: 14px;
+	height: 14px;
+}
+
+.ioto-tasks-center__task-links-filter-label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ioto-tasks-center__task-links-filter-sep {
+	height: 1px;
+	margin: 4px 2px;
+	background: var(--background-modifier-border);
+}
+
+/* 手机：底部弹层（JS 不写 left/top，只加 is-sheet）。 */
+.ioto-tasks-center__task-links-filter-popover.is-sheet {
+	left: 0;
+	right: 0;
+	top: auto;
+	bottom: 0;
+	min-width: 0;
+	border-radius: 12px 12px 0 0;
+	padding: 8px 10px max(8px, env(safe-area-inset-bottom, 0px));
+}
+
+.ioto-tasks-center__task-links-filter-popover.is-sheet
+	.ioto-tasks-center__task-links-filter-row {
+	min-height: 44px; /* 触屏命中高度 */
 }
