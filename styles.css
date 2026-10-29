@@ -2789,27 +2789,39 @@ button:not(.clickable-icon).ioto-project-center__icon-button {
 	height: 14px;
 }
 
-/* 搜索命中高亮（[[Discuss-20261006-183552]] §四.4）：对齐核心搜索侧栏
-   `.search-result-file-matched-text`，取同一个 `--text-highlight-bg`（就是 `==高亮==`
-   的底色），因此任何主题下观感都与 Obsidian 一致。
-   🔴 本插件渲染容器不带 `.markdown-rendered` 类，核心那条规则不会自动命中，
-   必须**自带类名 + 自带样式**。 */
+/* 搜索命中高亮：**不读任何主题变量**。
+   旧实现取 `--text-highlight-bg`（`==高亮==` 的底色）与 `--text-selection`（选区色），
+   前提是「观感与 Obsidian 一致」；但主题可以把它压到 20%~25% 不透明度：实测 Catppuccin
+   下命中与纸面的 ΔE 只有 10.8 / 14.4、对比 1.45:1 / 1.74:1，等于看不见，且两档之间
+   ΔE 6.8 —— 「上一处 / 下一处」跳完看不出落点变了（[[Research-20261029-221657]] §二）。
+   改为插件自有的实心暖底 + 主动给深色字：深色主题下底/字对比 10.66:1 / 10.7:1，
+   浅色纸面下黄色无论多实心亮度对比都上不去（#ffd54f 对白底仅 1.30:1），
+   所以必须留 1px 内描边来定边界，观感接近马克笔。
+   🔴 不要改回主题变量：这是可读性缺陷，不是配色偏好。
+   🔴 两个类名必须留在同一条规则里：Task View 卡片与任务链接弹窗各自一套，
+      容器可能同时存在，拆开就会出现两处观感分裂。 */
 .ioto-task-view__search-hit,
 .ioto-tasks-center__task-links-hit {
-	color: var(--text-normal);
-	background-color: var(--text-highlight-bg);
-	border-radius: 2px;
+	color: #241a00;
+	background-color: #ffd54f;
+	border-radius: 3px;
+	box-shadow: inset 0 0 0 1px rgb(178 106 0 / 35%);
 }
 
-/* 当前定位命中（`↑` / `↓` 落点）：预览没有卡片可选，只能靠自己打的类名加重。 */
+/* 当前定位命中（`↑` / `↓` 落点）：同色相加深一档 + 2px 内描边，两档 ΔE 12.5。
+   内描边而非外描边：不侵占相邻字距、不改变行高。（旧值取 --text-selection，
+   表达的是「选中」而非「查找」，且与普通命中只差 1.20:1。） */
 .ioto-tasks-center__task-links-hit.is-current {
-	background-color: var(--text-selection);
+	color: #1b1200;
+	background-color: #ff9f1a;
+	box-shadow: inset 0 0 0 2px #b35100;
 }
 
-/* 当前定位卡（`上一个` / `下一个` 落点）的命中加重，对齐核心「当前匹配」观感：
-   `highlightMatch` 已给目标卡加 `.is-selected`，一条后代选择器即够，零 JS。 */
+/* 当前定位卡（`上一个` / `下一个` 落点）的命中：`highlightMatch` 已给目标卡加
+   `.is-selected`，一条后代选择器即够，零 JS。旧值取 --text-selection（蓝），
+   新配色下会在琥珀之间插一块蓝，破坏一致性 —— 改成同色系加深。 */
 .ioto-task-view__card.is-selected .ioto-task-view__search-hit {
-	background-color: var(--text-selection);
+	background-color: #ff9f1a;
 }
 
 .ioto-task-view__body {
