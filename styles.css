@@ -6266,15 +6266,20 @@ button:not(.clickable-icon).ioto-tasks-center__task-links-parent-item {
 	flex-wrap: nowrap;
 	gap: 4px;
 	margin-bottom: 8px;
+	justify-content: space-between;
 }
 
 .ioto-tasks-center__task-links-tabs .ioto-tasks-center__tab {
 	flex: 0 1 auto;
 	min-width: 0;
 	gap: 3px;
-	padding: 3px 6px;
+	padding: 3px 16px;
 	font-size: var(--font-ui-smaller);
 	overflow: hidden;
+}
+
+.ioto-tasks-center__task-links-modal.is-split .ioto-tasks-center__task-links-tabs .ioto-tasks-center__tab {
+	padding: 3px 6px;
 }
 
 /* 计数 pill 的 min-width:18px 是这条链上最贵的一项：5 个标签白占 90px。
