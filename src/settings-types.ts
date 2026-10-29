@@ -23,6 +23,8 @@ import {
 export type ProjectListSortMode =
 	| 'incomplete-count'
 	| 'incomplete-count-asc'
+	| 'activity'
+	| 'activity-asc'
 	| 'name'
 	| 'name-desc';
 export type ProjectListGroupMode = 'none' | 'category';

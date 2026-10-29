@@ -4,7 +4,10 @@ import type { IOTOTasksCenterView } from '../iotoTasksCenterView';
 import { collectVisibleCategoryOptions } from '../project-list-group';
 import { t } from '../../lang/helpter';
 import { findSelectedProjectEntry, markActiveMenuItem } from './helpers';
-import { createAddProjectButton } from './projects-pane-renderer';
+import {
+	createAddProjectButton,
+	createProjectPresentationButton,
+} from './projects-pane-renderer';
 import {
 	COMPACT_LAYOUT_BREAKPOINT,
 	NARROW_LAYOUT_BREAKPOINT,
@@ -76,6 +79,8 @@ export function renderCompactProjectSwitcher(
 	});
 
 	createAddProjectButton(view, toolbarEl);
+	// 排序/分组入口（[[Plan-20261030-063112]]）：与正常模式同一份菜单。
+	createProjectPresentationButton(view, toolbarEl);
 	renderCompactCategoryFilterButton(view, toolbarEl);
 
 	const buttonLabel = getProjectSwitcherLabel(view);

@@ -211,6 +211,8 @@ const zhCN = {
 	'task.sort.projectName': '按项目名称',
 	'project.sort.incompleteCountDesc': '按未完成任务数量（从多到少）',
 	'project.sort.incompleteCountAsc': '按未完成任务数量（从少到多）',
+	'project.sort.activityDesc': '按活跃度（最近更新在前）',
+	'project.sort.activityAsc': '按活跃度（最久未更新在前）',
 	'project.sort.projectNameAsc': '按项目名称（从 A 到 Z）',
 	'project.sort.projectNameDesc': '按项目名称（从 Z 到 A）',
 	'task.sort.createdDesc': '创建时间（从新到旧）',

@@ -9,6 +9,7 @@ const PROJECT_NAME_COLLATOR = new Intl.Collator(undefined, {
 export function sortProjectEntries(
 	projects: ProjectFolderEntry[],
 	incompleteCounts: ReadonlyMap<string, number>,
+	activityMtimes: ReadonlyMap<string, number>,
 	sortMode: ProjectListSortMode,
 ): ProjectFolderEntry[] {
 	return [...projects].sort((left, right) => {
@@ -23,6 +24,19 @@ export function sortProjectEntries(
 				sortMode === 'incomplete-count' ? difference : -difference;
 			if (countDifference !== 0) {
 				return countDifference;
+			}
+		}
+
+		if (sortMode === 'activity' || sortMode === 'activity-asc') {
+			// 活跃度 = 项目下任务文件的 max(mtime)；无任务文件（Map 无条目）视为 0，
+			// 在 `activity` 下降序排最后、`activity-asc` 下排最前。
+			const difference =
+				(activityMtimes.get(right.name) ?? 0) -
+				(activityMtimes.get(left.name) ?? 0);
+			const mtimeDifference =
+				sortMode === 'activity' ? difference : -difference;
+			if (mtimeDifference !== 0) {
+				return mtimeDifference;
 			}
 		}
 

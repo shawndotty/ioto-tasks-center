@@ -211,6 +211,8 @@ const zhTW = {
 	'task.sort.projectName': '按專案名稱',
 	'project.sort.incompleteCountDesc': '按未完成任務數量（從多到少）',
 	'project.sort.incompleteCountAsc': '按未完成任務數量（從少到多）',
+	'project.sort.activityDesc': '按活躍度（最近更新在前）',
+	'project.sort.activityAsc': '按活躍度（最久未更新在前）',
 	'project.sort.projectNameAsc': '按專案名稱（從 A 到 Z）',
 	'project.sort.projectNameDesc': '按專案名稱（從 Z 到 A）',
 	'task.sort.createdDesc': '建立時間（從新到舊）',

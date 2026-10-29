@@ -20,6 +20,8 @@ export function getProjectListSortModeOptions(): Record<
 	return {
 		'incomplete-count': t('project.sort.incompleteCountDesc'),
 		'incomplete-count-asc': t('project.sort.incompleteCountAsc'),
+		activity: t('project.sort.activityDesc'),
+		'activity-asc': t('project.sort.activityAsc'),
 		name: t('project.sort.projectNameAsc'),
 		'name-desc': t('project.sort.projectNameDesc'),
 	};
@@ -142,6 +144,8 @@ export function isProjectListSortMode(
 	return (
 		value === 'incomplete-count' ||
 		value === 'incomplete-count-asc' ||
+		value === 'activity' ||
+		value === 'activity-asc' ||
 		value === 'name' ||
 		value === 'name-desc'
 	);

@@ -201,6 +201,8 @@ export const IOTO_TASKS_CENTER_VIEW_TYPE = 'IOTOTasksCenter';
 export class IOTOTasksCenterView extends ItemView {
 	projects: ProjectFolderEntry[] = [];
 	projectIncompleteCounts = new Map<string, number>();
+	/** 项目活跃度（项目下任务文件的 max mtime，毫秒）；无任务文件时缺省为 0。 */
+	projectActivityMtime = new Map<string, number>();
 	projectCategoryByName = new Map<string, string>();
 	/**
 	 * 会话级分类筛选：`null` = 全部分类，`''` = 未分类，其余为分类名。

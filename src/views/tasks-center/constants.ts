@@ -46,6 +46,8 @@ export interface IOTOTasksCenterViewState {
 export const PROJECT_LIST_SORT_MODE_ORDER: ProjectListSortMode[] = [
 	'incomplete-count',
 	'incomplete-count-asc',
+	'activity',
+	'activity-asc',
 	'name',
 	'name-desc',
 ];

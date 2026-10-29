@@ -46,10 +46,10 @@ export async function loadProjects(
 		result.projects,
 		view.getHiddenProjectNames(),
 	);
-	view.projectIncompleteCounts = await buildProjectIncompleteCounts(
-		view,
-		result.projects,
-	);
+	const { incompleteCounts, activityMtimes } =
+		await buildProjectIncompleteCounts(view, result.projects);
+	view.projectIncompleteCounts = incompleteCounts;
+	view.projectActivityMtime = activityMtimes;
 	applyProjectSorting(view);
 	view.projectCategoryByName = buildProjectCategoryByName(
 		view,
@@ -178,15 +178,19 @@ export function getCachedTaskPath(
 }
 
 /**
- * 项目未完成任务数。
+ * 项目未完成任务数与活跃度（任务文件 max mtime）。
  *
- * 只需要每个任务文件的状态，因此走 `includeContent: false` 的轻量通道：
+ * 只需要每个任务文件的状态与 mtime，因此走 `includeContent: false` 的轻量通道：
  * 不读正文、不驻留内存；配合 mtime 级解析缓存，第二次起的刷新对未变动文件零 IO。
+ * 活跃度在同一趟循环里顺手维护，零额外 IO；无任务文件的项目活跃度为 0。
  */
 export async function buildProjectIncompleteCounts(
 	view: IOTOTasksCenterView,
 	projects: ProjectFolderEntry[],
-): Promise<Map<string, number>> {
+): Promise<{
+	incompleteCounts: Map<string, number>;
+	activityMtimes: Map<string, number>;
+}> {
 	const tasksRootPath = view.getTasksRootPath();
 	const entries = await mapWithConcurrency(
 		projects,
@@ -199,16 +203,25 @@ export async function buildProjectIncompleteCounts(
 				{ includeContent: false },
 			);
 			let incompleteCount = 0;
+			let maxMtime = 0;
 			for (const task of result.tasks) {
 				if (isIncompleteTaskStatus(task.status.key)) {
 					incompleteCount += 1;
 				}
+				if (task.mtime > maxMtime) {
+					maxMtime = task.mtime;
+				}
 			}
-			return [project.name, incompleteCount] as const;
+			return [project.name, incompleteCount, maxMtime] as const;
 		},
 	);
 
-	return new Map(entries);
+	return {
+		incompleteCounts: new Map(entries.map(([name, count]) => [name, count])),
+		activityMtimes: new Map(
+			entries.map(([name, , mtime]) => [name, mtime]),
+		),
+	};
 }
 
 /** 只重算指定项目的未完成角标，不触碰任务列表（用于非当前项目的定向刷新）。 */
@@ -224,9 +237,13 @@ export async function refreshProjectIncompleteCounts(
 		return;
 	}
 
-	const counts = await buildProjectIncompleteCounts(view, scopedProjects);
-	for (const [projectName, count] of counts) {
+	const { incompleteCounts, activityMtimes } =
+		await buildProjectIncompleteCounts(view, scopedProjects);
+	for (const [projectName, count] of incompleteCounts) {
 		view.projectIncompleteCounts.set(projectName, count);
+	}
+	for (const [projectName, mtime] of activityMtimes) {
+		view.projectActivityMtime.set(projectName, mtime);
 	}
 
 	applyProjectSorting(view);
@@ -263,6 +280,7 @@ export function applyProjectSorting(view: IOTOTasksCenterView): void {
 	view.projects = sortProjectEntries(
 		view.projects,
 		view.projectIncompleteCounts,
+		view.projectActivityMtime,
 		view.getProjectListSortMode(),
 	);
 }

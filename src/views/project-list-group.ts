@@ -100,6 +100,7 @@ export interface BuildProjectListSectionsOptions {
 export function buildProjectListSections(
 	projects: ProjectFolderEntry[],
 	incompleteCounts: ReadonlyMap<string, number>,
+	activityMtimes: ReadonlyMap<string, number>,
 	categoryByProjectName: ReadonlyMap<string, string>,
 	sortMode: ProjectListSortMode,
 	groupMode: ProjectListGroupMode,
@@ -115,6 +116,7 @@ export function buildProjectListSections(
 						: sortProjectEntries(
 								projects,
 								incompleteCounts,
+								activityMtimes,
 								sortMode,
 							),
 			},
@@ -145,6 +147,7 @@ export function buildProjectListSections(
 				projects: sortProjectEntries(
 					groupProjects,
 					incompleteCounts,
+					activityMtimes,
 					sortMode,
 				),
 			};

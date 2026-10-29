@@ -27,17 +27,7 @@ export function renderProjectsPane(
 	const actionsEl = headerEl.createDiv({
 		cls: 'ioto-tasks-center__section-actions',
 	});
-	const projectSettingsButtonEl = actionsEl.createEl('button', {
-		cls: 'ioto-tasks-center__icon-button',
-	});
-	projectSettingsButtonEl.type = 'button';
-	projectSettingsButtonEl.disabled = view.isProjectsLoading;
-	projectSettingsButtonEl.ariaLabel = t('view.projectListSettings');
-	projectSettingsButtonEl.title = t('view.projectListSettings');
-	setIcon(projectSettingsButtonEl, 'sliders-horizontal');
-	projectSettingsButtonEl.addEventListener('click', (event) => {
-		view.showProjectPresentationMenu(event);
-	});
+	createProjectPresentationButton(view, actionsEl);
 	createAddProjectButton(view, actionsEl);
 
 	const helperText = view.isProjectsLoading
@@ -115,6 +105,7 @@ export function renderProjectsPane(
 	const sections = buildProjectListSections(
 		view.getVisibleProjects(),
 		view.projectIncompleteCounts,
+		view.projectActivityMtime,
 		view.projectCategoryByName,
 		sortMode,
 		groupMode,
@@ -257,6 +248,31 @@ export function renderProjectsPane(
 	}
 
 	restoreProjectListScrollTop(listEl, view.projectListScrollTop);
+}
+
+/**
+ * 宽屏项目面板标题栏与窄屏紧凑工具栏共用的「项目列表设置」（排序/分组）按钮
+ *（[[Plan-20261030-063112]]）。
+ *
+ * 菜单本体是布局无关的 `showProjectPresentationMenu`，此处只负责触发点；
+ * 两处入口共用本函数，避免「改了宽屏忘了窄屏」。
+ */
+export function createProjectPresentationButton(
+	view: IOTOTasksCenterView,
+	container: HTMLElement,
+): HTMLButtonElement {
+	const buttonEl = container.createEl('button', {
+		cls: 'ioto-tasks-center__icon-button',
+	});
+	buttonEl.type = 'button';
+	buttonEl.disabled = view.isProjectsLoading;
+	buttonEl.ariaLabel = t('view.projectListSettings');
+	buttonEl.title = t('view.projectListSettings');
+	setIcon(buttonEl, 'sliders-horizontal');
+	buttonEl.addEventListener('click', (event) => {
+		view.showProjectPresentationMenu(event);
+	});
+	return buttonEl;
 }
 
 /**

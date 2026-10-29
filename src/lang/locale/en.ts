@@ -231,6 +231,8 @@ const en = {
 	'task.sort.projectName': 'By project name',
 	'project.sort.incompleteCountDesc': 'Incomplete (high to low)',
 	'project.sort.incompleteCountAsc': 'Incomplete (low to high)',
+	'project.sort.activityDesc': 'By activity (recently updated first)',
+	'project.sort.activityAsc': 'By activity (least recently updated first)',
 	'project.sort.projectNameAsc': 'Project name (A to Z)',
 	'project.sort.projectNameDesc': 'Project name (Z to A)',
 	'task.sort.createdDesc': 'Created time (new to old)',
