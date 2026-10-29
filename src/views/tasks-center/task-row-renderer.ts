@@ -3,6 +3,7 @@ import type { TaskFileEntry } from '../../tasks-center/types';
 import { type TaskOutlinkCategory } from '../../ui/task-outlink-popover';
 import { countTaskOutlinksByRootPaths } from '../../tasks-center/task-outlink-counts';
 import { getTaskPriorityClassName } from './helpers';
+import { resolveTaskOpenTargetFromMouse } from './task-open-target';
 import { attachTouchGesture } from './touch-gesture';
 import { t } from '../../lang/helpter';
 import { setIcon } from 'obsidian';
@@ -254,7 +255,7 @@ export function renderTaskRows(
 			return;
 		}
 		void view.openTaskFile(task, {
-			target: event.altKey ? 'current-pane-tab' : 'adjacent-preview',
+			target: resolveTaskOpenTargetFromMouse(event),
 		});
 	});
 	rowEl.addEventListener('mouseover', (event: MouseEvent) => {

@@ -95,7 +95,7 @@ function openTaskLinksWindow(context: TaskLinksLaunchContext): void {
 
 	new TaskLinksModal(context.app, {
 		snapshot,
-		onOpenEntry: (entry, kind) => {
+		onOpenEntry: (entry, kind, line) => {
 			if (context.view) {
 				const file = context.app.vault.getAbstractFileByPath(entry.path);
 				if (!(file instanceof TFile)) {
@@ -103,12 +103,12 @@ function openTaskLinksWindow(context: TaskLinksLaunchContext): void {
 				}
 
 				void (kind === 'task'
-					? context.view.openFileInPreview(file)
-					: context.view.openOutlinkFileInPreview(file));
+					? context.view.openFileInPreview(file, { line })
+					: context.view.openOutlinkFileInPreview(file, { line }));
 				return;
 			}
 
-			void openLinkedFileInTab(context, entry.path, kind);
+			void openLinkedFileInTab(context, entry.path, kind, line);
 		},
 		...createPreviewLinkHooks(context),
 	}).open();
@@ -147,6 +147,7 @@ async function openLinkedFileInTab(
 	context: TaskLinksLaunchContext,
 	path: string,
 	kind: TaskLinkEntryKind,
+	line?: number,
 ): Promise<void> {
 	const file = context.app.vault.getAbstractFileByPath(path);
 	if (!(file instanceof TFile)) {
@@ -159,12 +160,18 @@ async function openLinkedFileInTab(
 
 	if (
 		kind === 'task' &&
+		// 有精确定位诉求时 bypass 任务视图：任务视图没有编辑器，落不了光标
+		//（与核心「拒锚」原则同源，task-file-link-open.ts）。
+		line == null &&
 		context.useIOTOTaskViewAsDefault &&
 		isTaskNoteFile(file, context.roots.tasksRootPath)
 	) {
 		await setLeafToTaskView(leaf, file.path);
 	} else {
-		await leaf.openFile(file, { active: true });
+		await leaf.openFile(file, {
+			active: true,
+			eState: line != null ? { line } : undefined,
+		});
 	}
 
 	context.app.workspace.setActiveLeaf(leaf, { focus: true });

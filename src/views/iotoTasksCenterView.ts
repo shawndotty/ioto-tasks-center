@@ -818,8 +818,11 @@ export class IOTOTasksCenterView extends ItemView {
 		bindTaskStatusChecklistPopoverFn(this, badgeEl, task);
 	}
 
-	async openOutlinkFileInPreview(file: TFile): Promise<void> {
-		return openOutlinkFileInPreviewFn(this, file);
+	async openOutlinkFileInPreview(
+		file: TFile,
+		options?: { line?: number | null },
+	): Promise<void> {
+		return openOutlinkFileInPreviewFn(this, file, options);
 	}
 
 	queueOutlinkBadgeUpdate(taskPath: string): void {
@@ -1199,7 +1202,7 @@ export class IOTOTasksCenterView extends ItemView {
 
 	async openFileInPreview(
 		file: TFile,
-		options?: { cursorOffset?: number | null },
+		options?: { cursorOffset?: number | null; line?: number | null },
 	): Promise<void> {
 		return openFileInPreviewFn(this, file, options);
 	}

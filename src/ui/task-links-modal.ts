@@ -20,6 +20,7 @@ import {
 import { t, type TranslationKey } from '../lang/helpter';
 import { mapWithConcurrency } from '../tasks-center/async';
 import { stripFrontmatter } from '../tasks-center/markdown-body';
+import { resolveHitLine } from '../tasks-center/search-hit-line';
 import {
 	applySearchHighlight,
 	collectSearchHits,
@@ -130,7 +131,12 @@ export type { TaskLinkEntryKind } from '../tasks-center/types';
 
 export interface TaskLinksModalOptions {
 	snapshot: Promise<TaskLinksSnapshot>;
-	onOpenEntry: (entry: TaskLinkEntry, kind: TaskLinkEntryKind) => void;
+	/** `line` = 预览当前命中所全文行号；`undefined` = 普通打开（静默降级）。 */
+	onOpenEntry: (
+		entry: TaskLinkEntry,
+		kind: TaskLinkEntryKind,
+		line?: number,
+	) => void;
 	/** 预览内双链解析（views 层用 metadataCache + roots 判定 kind）。null = 解析不到。 */
 	resolvePreviewLink?: (
 		linktext: string,
@@ -1607,10 +1613,58 @@ export class TaskLinksModal extends Modal {
 		};
 	}
 
-	/** 先关窗再打开：Modal 是浮层，不关就会把刚点开的笔记挡在背后。 */
+	/**
+	 * 当前预览命中所全文行号（[[Plan-20261030-060126]] §三 S2）。
+	 *
+	 * 门槛（任一不满足 → `null`，全部为已验证的现有判据，与 `refreshPreviewHits`
+	 * 的拦截一致）：附件预览 / 仅标题过滤 / 正文 0 命中（标题命中进来的）/
+	 * 正文取不到。另加 `entry.path` 对齐：序号只对「正在预览的这篇」有意义。
+	 *
+	 * `options` 只取 `caseSensitive/wholeWord`——`searchOptions()` 含 `scope`，
+	 * 而 `findMatchRanges` 只认 `MatchOptions`。
+	 */
+	private resolveCurrentHitLine(entryPath: string): number | undefined {
+		if (
+			this.previewIsEmbed ||
+			this.searchScope === 'title' ||
+			this.hitIndex < 0 ||
+			this.hitEls.length === 0 ||
+			entryPath !== this.previewSourcePath
+		) {
+			return undefined;
+		}
+
+		const raw = this.bodies.get(this.previewSourcePath);
+		if (raw === undefined) {
+			return undefined;
+		}
+
+		const tokens = this.searchTokens();
+		if (tokens.length === 0) {
+			return undefined;
+		}
+
+		const { caseSensitive, wholeWord } = this.searchOptions();
+		return (
+			resolveHitLine({
+				raw,
+				tokens,
+				hitIndex: this.hitIndex,
+				options: { caseSensitive, wholeWord },
+			}) ?? undefined
+		);
+	}
+
+	/**
+	 * 先关窗再打开：Modal 是浮层，不关就会把刚点开的笔记挡在背后。
+	 *
+	 * 🔴 行号必须**在 `close()` 之前**算好——`onClose` 会清空 `bodies`/`hitIndex`，
+	 * 顺序反了永远拿到 `null`（普通打开）。
+	 */
 	private openEntry(entry: TaskLinkEntry, kind: TaskLinkEntryKind): void {
+		const line = this.resolveCurrentHitLine(entry.path);
 		this.close();
-		this.options.onOpenEntry(entry, kind);
+		this.options.onOpenEntry(entry, kind, line);
 	}
 }
 

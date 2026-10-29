@@ -27,13 +27,17 @@ export async function openTaskFile(
 	},
 ): Promise<void> {
 	const target = options?.target ?? 'adjacent-preview';
-	if (target === 'current-pane-tab') {
+	if (target === 'current-pane-tab' || target === 'right-split-tab') {
 		const file = view.app.vault.getAbstractFileByPath(task.path);
 		if (!(file instanceof TFile)) {
 			return;
 		}
 
-		await openFileInCurrentPaneTab(view, file);
+		if (target === 'current-pane-tab') {
+			await openFileInCurrentPaneTab(view, file);
+		} else {
+			await openFileInRightSplitTab(view, file);
+		}
 		return;
 	}
 
@@ -132,10 +136,15 @@ export async function openTaskFileAtChecklist(
 export async function openOutlinkFileInPreview(
 	view: IOTOTasksCenterView,
 	file: TFile,
+	options?: { line?: number | null },
 ): Promise<void> {
 	const leaf = view.ensurePreviewLeaf();
+	const line = options?.line;
 	await leaf.openFile(file, {
 		active: true,
+		// 普通笔记不强制 source 模式：`eState.line` 在 source 模式落光标、
+		// 阅读模式滚动到对应区块，两种用户偏好都吃得下。
+		eState: typeof line === 'number' ? { line } : undefined,
 	});
 	view.previewLeaf = leaf;
 }
@@ -160,7 +169,7 @@ export async function openProjectSpecByProject(
 export async function openFileInPreview(
 	view: IOTOTasksCenterView,
 	file: TFile,
-	options?: { cursorOffset?: number | null },
+	options?: { cursorOffset?: number | null; line?: number | null },
 ): Promise<void> {
 	view.openingTaskPath = file.path;
 	view.render();
@@ -170,7 +179,11 @@ export async function openFileInPreview(
 		const query = view.taskSearchQuery.trim();
 		const cursorOffset = options?.cursorOffset;
 		const hasCursorOffset = typeof cursorOffset === 'number';
-		if (query) {
+		const line = options?.line;
+		const hasLine = typeof line === 'number';
+		// 有搜索词或精确定位行时强制 markdown source：滚动 / 落光标都依赖
+		// MarkdownView 的 CodeMirror，任务视图没有编辑器。
+		if (query || hasLine) {
 			await leaf.setViewState({
 				type: 'markdown',
 				active: true,
@@ -219,6 +232,10 @@ export async function openFileInPreview(
 				file,
 				cursorOffset,
 			);
+		}
+
+		if (hasLine) {
+			await focusPreviewEditorAtLine(view, leaf, file, line);
 		}
 	} finally {
 		view.openingTaskPath = null;
@@ -294,6 +311,55 @@ async function focusPreviewEditorAtOffset(
 	}
 }
 
+/**
+ * 把预览叶子切到源码模式并把光标落到全文指定行（[[Plan-20261030-060126]] §三 S4）。
+ *
+ * `line` 是**全文 0 基行号（含 frontmatter）**——frontmatter 折算已在
+ * `search-hit-line.ts` 的 `frontmatterLineCount` 完成，这里不做任何偏移处理。
+ * 行号夹取到 `[0, lastLine]`（照 `openTaskFileAtChecklist` 先例）。
+ * 定位失败按普通打开处理（静默降级，零新增文案）。
+ */
+async function focusPreviewEditorAtLine(
+	view: IOTOTasksCenterView,
+	leaf: WorkspaceLeaf,
+	file: TFile,
+	line: number,
+): Promise<void> {
+	try {
+		let leafView: MarkdownView | null =
+			leaf.view instanceof MarkdownView ? leaf.view : null;
+		const needsSourceMode =
+			!leafView ||
+			leafView.file?.path !== file.path ||
+			leafView.getMode() !== 'source';
+		if (needsSourceMode) {
+			await leaf.setViewState({
+				type: 'markdown',
+				active: true,
+				state: {
+					file: file.path,
+					mode: 'source',
+				},
+			});
+			leafView = leaf.view instanceof MarkdownView ? leaf.view : null;
+		}
+
+		if (!leafView || leafView.file?.path !== file.path) {
+			return;
+		}
+
+		view.app.workspace.setActiveLeaf(leaf, { focus: true });
+		const editor = leafView.editor;
+		const clampedLine = Math.max(0, Math.min(line, editor.lastLine()));
+		const position = { line: clampedLine, ch: 0 };
+		editor.setCursor(position);
+		editor.scrollIntoView({ from: position, to: position }, true);
+		editor.focus();
+	} catch {
+		// 定位是增强不是承诺：失败 = 普通打开，不提示。
+	}
+}
+
 async function openFileInCurrentPaneTab(
 	view: IOTOTasksCenterView,
 	file: TFile,
@@ -304,13 +370,7 @@ async function openFileInCurrentPaneTab(
 			? null
 			: findLeafInCurrentTabGroupByFilePath(view, file.path, tabGroup);
 	if (existingLeaf) {
-		view.openedTaskPath = file.path;
-		if (view.selectedProject) {
-			view.lastOpenedTaskByProject.set(
-				view.selectedProject,
-				file.path,
-			);
-		}
+		markTaskOpened(view, file.path);
 		view.app.workspace.setActiveLeaf(existingLeaf, { focus: true });
 		return;
 	}
@@ -323,19 +383,116 @@ async function openFileInCurrentPaneTab(
 		await leaf.openFile(file, {
 			active: true,
 		});
-		view.openedTaskPath = file.path;
-		if (view.selectedProject) {
-			view.lastOpenedTaskByProject.set(
-				view.selectedProject,
-				file.path,
-			);
-		}
+		// Alt+点击以前走核心默认视图（Markdown），现在与直接点击同口径：
+		// 门控开启且是任务笔记时转成 IOTOTask 视图。
+		await convertLeafToTaskViewIfDefault(view, leaf, file);
+		markTaskOpened(view, file.path);
 
 		view.app.workspace.setActiveLeaf(leaf, { focus: true });
 	} finally {
 		view.openingTaskPath = null;
 		view.render();
 	}
+}
+
+async function openFileInRightSplitTab(
+	view: IOTOTasksCenterView,
+	file: TFile,
+): Promise<void> {
+	// 同文件已打开就只激活，不重复开分屏（方案 §6-2，Johnny 确认）。
+	const existingLeaf = findLeafShowingTaskFile(view, file.path);
+	if (existingLeaf) {
+		markTaskOpened(view, file.path);
+		view.app.workspace.setActiveLeaf(existingLeaf, { focus: true });
+		return;
+	}
+
+	view.openingTaskPath = file.path;
+	view.render();
+
+	try {
+		// 在活动叶子（即刚被点击的任务中心叶子）右侧新建标签组。
+		const leaf = view.app.workspace.getLeaf('split', 'vertical');
+		await leaf.openFile(file, {
+			active: true,
+		});
+		await convertLeafToTaskViewIfDefault(view, leaf, file);
+		markTaskOpened(view, file.path);
+
+		view.app.workspace.setActiveLeaf(leaf, { focus: true });
+	} finally {
+		view.openingTaskPath = null;
+		view.render();
+	}
+}
+
+/** 记录「该任务已打开」，供预览位状态与项目级最近打开记忆使用。 */
+function markTaskOpened(
+	view: IOTOTasksCenterView,
+	filePath: string,
+): void {
+	view.openedTaskPath = filePath;
+	if (view.selectedProject) {
+		view.lastOpenedTaskByProject.set(view.selectedProject, filePath);
+	}
+}
+
+/**
+ * 门控式 TaskView 转换：Alt+点击与右侧分屏两路共用的同一口径——
+ * 与 openFileInPreview 的直接点击分支一致，均受 useIOTOTaskViewAsDefault 门控。
+ */
+async function convertLeafToTaskViewIfDefault(
+	view: IOTOTasksCenterView,
+	leaf: WorkspaceLeaf,
+	file: TFile,
+): Promise<void> {
+	if (
+		!view.getUseIOTOTaskViewAsDefault() ||
+		!isTaskNoteFile(file, view.getTasksRootPath()) ||
+		!(leaf.view instanceof MarkdownView)
+	) {
+		return;
+	}
+
+	await leaf.setViewState({
+		type: IOTO_TASK_VIEW_TYPE,
+		active: true,
+		state: {
+			file: file.path,
+		},
+	});
+}
+
+/** 组合键打开的「已打开就激活」判据：全工作区找展示该文件的 markdown/IOTOTask 叶。 */
+function findLeafShowingTaskFile(
+	view: IOTOTasksCenterView,
+	filePath: string,
+): WorkspaceLeaf | null {
+	let matchedLeaf: WorkspaceLeaf | null = null;
+
+	view.app.workspace.iterateAllLeaves((leaf) => {
+		if (matchedLeaf || leaf === view.leaf) {
+			return;
+		}
+
+		const viewState = leaf.getViewState();
+		if (
+			viewState.type !== 'markdown' &&
+			viewState.type !== IOTO_TASK_VIEW_TYPE
+		) {
+			return;
+		}
+
+		const candidatePath = viewState.state?.file;
+		if (
+			typeof candidatePath === 'string' &&
+			candidatePath === filePath
+		) {
+			matchedLeaf = leaf;
+		}
+	});
+
+	return matchedLeaf;
 }
 
 /** Alt+点击应该去哪个 tab 组找「已打开的同文件标签」。 */

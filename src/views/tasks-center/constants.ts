@@ -155,4 +155,7 @@ export const TASK_SEARCH_ROW_SELECTOR =
 export const HEADER_TOGGLE_BUTTON_SELECTOR =
 	'.ioto-tasks-center__pane--tasks .ioto-tasks-center__header-toggle-button';
 
-export type TaskOpenTarget = 'adjacent-preview' | 'current-pane-tab';
+export type TaskOpenTarget =
+	| 'adjacent-preview'
+	| 'current-pane-tab'
+	| 'right-split-tab';
