@@ -165,6 +165,10 @@ export class TaskLinksModal extends Modal {
 	private previewStack: PreviewFrame[] = [];
 	/** 分类 → 最近一次预览的 path；只用于列表高亮，关窗即弃。 */
 	private readonly selectedByCategory = new Map<TaskLinkCategory, string>();
+	/** 本次重绘后的条目节点：回焦 + 罗文 tabindex 都按 path 查这里。 */
+	private readonly itemEls = new Map<string, HTMLButtonElement>();
+	/** 「下一次 renderList 收尾时把焦点落到这个 path」；一次消费即清空。 */
+	private listFocusRequest: string | null = null;
 	private previewComponent: Component | null = null;
 	private previewSourcePath = '';
 	/** 竞态令牌：只有最后一次 renderPreview 的结果会被画上去。 */
@@ -220,6 +224,8 @@ export class TaskLinksModal extends Modal {
 		this.previewStack = [];
 		this.previewToken += 1;
 		this.selectedByCategory.clear();
+		this.itemEls.clear();
+		this.listFocusRequest = null;
 		this.listEl = null;
 		this.searchInputEl = null;
 		this.bodyEl = null;
@@ -453,6 +459,13 @@ export class TaskLinksModal extends Modal {
 		searchEl.addEventListener('keydown', (event) => {
 			if (event.isComposing) {
 				return; // IME 组字中的 Enter 是选词，不是跳转
+			}
+			if (event.key === 'ArrowDown') {
+				// 与任务中心搜索框一致：↓ 从搜索框落进列表。只移焦点，
+				// 不改选中、不开预览 → 用户不会「按一下就已经换了笔记」。
+				event.preventDefault();
+				this.focusActiveItem();
+				return;
 			}
 			if (event.key !== 'Enter') {
 				return;
@@ -771,6 +784,10 @@ export class TaskLinksModal extends Modal {
 		}
 
 		listEl.empty();
+		// 回焦请求一次消费：早退分支（根目录缺失 / 空态）自然丢弃，不会留到下一次重绘。
+		const focusPath = this.listFocusRequest;
+		this.listFocusRequest = null;
+		this.itemEls.clear();
 		const category = this.activeCategory;
 		// 根目录不存在优先于另外两种空态：否则用户看到的是「暂无关联」，
 		// 而真实原因是路径配错了（§3.6）。
@@ -804,13 +821,21 @@ export class TaskLinksModal extends Modal {
 		// 用 filterResult 会让用户一打字路径行就出现/消失。
 		const folderView = buildTaskLinkFolderView(snapshot.sections[category] ?? []);
 		const selectedPath = this.selectedByCategory.get(category);
+		// 罗文 tabindex 的锚点：有选中 = 选中条，无选中 = 第一条（列表仍可被 Tab 到达）。
+		const rovingPath = selectedPath ?? entries[0]?.path ?? null;
 		for (const entry of entries) {
 			const itemEl = listEl.createEl('button', {
 				cls: 'ioto-tasks-center__task-links-item',
-				attr: { type: 'button', title: entry.subPath },
+				attr: {
+					type: 'button',
+					title: entry.subPath,
+					tabindex: entry.path === rovingPath ? '0' : '-1',
+				},
 			});
 			if (entry.path === selectedPath) {
 				itemEl.addClass('is-active');
+				// 选中 ≠ 焦点：给屏幕阅读器补一声「当前项」。
+				itemEl.setAttribute('aria-current', 'true');
 			}
 			itemEl.createSpan({
 				cls: 'ioto-tasks-center__task-links-item-title',
@@ -834,14 +859,111 @@ export class TaskLinksModal extends Modal {
 				this.previewFromList(entry, entry.kind);
 			});
 			itemEl.addEventListener('keydown', (event) => {
-				if (event.key !== 'Enter') {
+				if (event.isComposing) {
+					return; // 输入法组字中的方向键归 IME
+				}
+				if (event.key === 'Enter') {
+					// 挡掉按钮把 Enter 合成 click（那会走单选预览）。
+					event.preventDefault();
+					this.openEntry(entry, entry.kind);
 					return;
 				}
-				// 挡掉按钮把 Enter 合成 click（那会走单选预览）。
+				if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
+					return;
+				}
+				if (event.shiftKey || event.altKey) {
+					return; // 组合键交还系统/核心
+				}
 				event.preventDefault();
-				this.openEntry(entry, entry.kind);
+				event.stopPropagation();
+				this.stepEntry(entries, entry, event);
 			});
+			this.itemEls.set(entry.path, itemEl);
 		}
+
+		if (focusPath) {
+			this.applyPendingFocus(focusPath);
+		}
+	}
+
+	/**
+	 * ↑/↓ 的唯一入口。锚点 = 当前选中（尚无选中时 = 触发键的那条），
+	 * 到边界夹住不循环（任务卡 ↑/↓ 同语义，见 render-card-keybind.ts）。
+	 * 不复用 stepHitIndex：那是取模循环，语义不同。
+	 */
+	private stepEntry(
+		entries: readonly TaskLinkEntry[],
+		from: TaskLinkEntry,
+		event: KeyboardEvent,
+	): void {
+		if (entries.length === 0) {
+			return;
+		}
+
+		const selectedPath = this.selectedByCategory.get(this.activeCategory);
+		const anchorPath = selectedPath ?? from.path;
+		const anchor = entries.findIndex((entry) => entry.path === anchorPath);
+		if (anchor < 0) {
+			return; // 选中条已被过滤掉：不做猜测
+		}
+
+		const delta = event.key === 'ArrowDown' ? 1 : -1;
+		const jump =
+			(event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey;
+		// 尚无选中时不移动：先把焦点这条选中并预览，否则按下会跳过头一条。
+		const step = selectedPath ? delta : 0;
+		const nextIndex = jump
+			? delta > 0
+				? entries.length - 1
+				: 0
+			: Math.max(0, Math.min(entries.length - 1, anchor + step));
+		const next = entries[nextIndex];
+		if (!next) {
+			return;
+		}
+		if (next.path === selectedPath) {
+			return; // 边界：已在首/尾
+		}
+		this.previewFromList(next, next.kind); // remember 默认 true → 重绘 + 回焦
+	}
+
+	private applyPendingFocus(path: string): void {
+		const itemEl = this.itemEls.get(path);
+		if (!itemEl) {
+			return; // 被过滤 / 切 Tab 挡住：焦点交还给浏览器，不猜
+		}
+		itemEl.focus({ preventScroll: true });
+		this.scrollItemIntoView(itemEl);
+	}
+
+	/**
+	 * 手算 `listEl.scrollTop`：滚动只发生在列表上。
+	 * 不用 `scrollIntoView`——它会连带滚 `.modal` 与整页，把分栏态锁好的窗框顶走
+	 * （与 `scrollHitIntoView` 同一手法，只是容器换成列表）。
+	 */
+	private scrollItemIntoView(itemEl: HTMLElement): void {
+		const listEl = this.listEl;
+		if (!listEl) {
+			return;
+		}
+		const listRect = listEl.getBoundingClientRect();
+		const itemRect = itemEl.getBoundingClientRect();
+		if (itemRect.top >= listRect.top && itemRect.bottom <= listRect.bottom) {
+			return;
+		}
+		listEl.scrollTop +=
+			itemRect.top < listRect.top
+				? itemRect.top - listRect.top
+				: itemRect.bottom - listRect.bottom;
+	}
+
+	/** 搜索框 `↓` 落进列表：只移焦点，不改选中、不开预览。 */
+	private focusActiveItem(): void {
+		const path = this.selectedByCategory.get(this.activeCategory);
+		const itemEl =
+			(path ? this.itemEls.get(path) : undefined) ??
+			this.itemEls.values().next().value;
+		itemEl?.focus();
 	}
 
 	/**
@@ -902,6 +1024,8 @@ export class TaskLinksModal extends Modal {
 	): void {
 		if (options.remember !== false) {
 			this.selectedByCategory.set(this.activeCategory, entry.path);
+			// 与 renderList 成对：重绘会销毁被点的那颗按钮，焦点只能按 path 重建后补。
+			this.listFocusRequest = entry.path;
 			this.renderList();
 		}
 
