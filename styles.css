@@ -6151,6 +6151,34 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 	-webkit-user-select: text;
 }
 
+/* 笔记预览的「纸面」：给预览体一层比弹窗底色**离底色更远**的底 + 内边距 + 极淡描边，
+   正文才有容器边界（[[Plan-20261029-160044]]）。
+   - 12% / 8% 都是「往 --text-normal 方向混」：深色提亮、浅色压暗，不依赖任何主题的
+     --color-base-* 档位，所以两套主题一套表达式。
+   - 只挂 `is-note-preview`：pdf / 图片 / canvas 走嵌入分支（`is-embed-preview`），
+     保持满幅、无底色、无内边距（[[Discuss-20261029-154342]] §三）。
+   - 高度不写死：纸面高度 = 预览体高度（flex 决定），否则重现「点列表窗口上下跳」。 */
+.ioto-tasks-center__task-links-preview-body.is-note-preview {
+	padding: 16px 20px;
+	border: 1px solid
+		color-mix(
+			in srgb,
+			var(--text-normal) 8%,
+			var(--modal-background, var(--background-primary))
+		);
+	border-radius: var(--radius-m);
+	background-color: color-mix(
+		in srgb,
+		var(--text-normal) 4%,
+		var(--modal-background, var(--background-primary))
+	);
+}
+
+/* 手机：分栏态是整屏换页，纸面宽 = 100vw，16/20 在 390px 上白吃宽度。 */
+.is-phone .ioto-tasks-center__task-links-preview-body.is-note-preview {
+	padding: 14px 16px;
+}
+
 /* pdf 预览：`.pdf-embed` 跟着预览体走 —— 工具栏固定、pdf.js 自己滚，外层不再出滚动条。
    预览体的高度基准由 JS 写成「一页高」（核心把页高算在 `.pdf-embed` 的内联 height 上，
    见 `syncPdfBodyHeight`）：屏幕够高就是一整页，不够高由 `.modal` 的 max-height

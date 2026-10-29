@@ -68,6 +68,12 @@ const HIT_CURRENT_CLASS = 'is-current';
 /** pdf 预览态的 bodyEl 状态类（CSS 靠它把 .pdf-embed 撑满）。 */
 const PDF_EMBED_STATE_CLASS = 'is-pdf-embed';
 
+/** 预览体里装的是一篇 **Markdown 笔记**：纸面底 / 内边距 / 描边全部挂这个类。 */
+const NOTE_PREVIEW_STATE_CLASS = 'is-note-preview';
+
+/** 预览体里装的是**嵌入媒体**（pdf / 图片 / canvas / 音频）：满幅，无纸面。 */
+const EMBED_PREVIEW_STATE_CLASS = 'is-embed-preview';
+
 /** 核心嵌入组件的最小形状（`embedRegistry` 无 d.ts，只声明用到的那几项）。 */
 interface CoreEmbed extends Component {
 	loadFile(): void;
@@ -1068,7 +1074,9 @@ export class TaskLinksModal extends Modal {
 		this.previewBodyEl?.empty();
 		this.clearPdfEmbedState(this.previewBodyEl);
 		this.previewSourcePath = '';
-		this.previewIsEmbed = false;
+		// 布尔原本就在这里归零；顺手把两个状态类也摘干净（预览体此时 `display:none`，
+		// 摘类只为不让「上一轮是哪一类」漏到下一轮的第一帧）。
+		this.setPreviewKind('none');
 		// 命中集合随正文一起作废（细条按 previewStack 为空自动隐藏）。
 		this.resetPreviewHits();
 		// 高亮随整表重建一并消失。
@@ -1116,6 +1124,10 @@ export class TaskLinksModal extends Modal {
 		const cached = this.bodies.get(top.entry.path);
 		if (cached === undefined) {
 			bodyEl.empty();
+			// 上一帧若是 pdf：类名与内联一页高都还挂着，加载态会先闪一张一页高、
+			// 没有 pdf 内容的纸；这里一并清掉，与 `paintPreviewBody` 同口径。
+			this.clearPdfEmbedState(bodyEl);
+			this.setPreviewKind('note');
 			// 加载态没有正文：计数必须归零，否则上一篇的 N 会挂在新页上。
 			this.resetPreviewHits();
 			bodyEl.createDiv({
@@ -1160,7 +1172,8 @@ export class TaskLinksModal extends Modal {
 		this.clearPdfEmbedState(bodyEl);
 		// 先归零再渲染：MarkdownRenderer 的基础 DOM 同步 append，异步补齐的图片只撑高。
 		bodyEl.scrollTop = 0;
-		this.previewIsEmbed = false;
+		// 已挂载的旧内容要跟着换身份（缓存命中时 renderPreview 不经过加载态）。
+		this.setPreviewKind('note');
 		if (raw === null) {
 			bodyEl.createDiv({
 				cls: 'ioto-tasks-center__task-links-empty',
@@ -1193,7 +1206,7 @@ export class TaskLinksModal extends Modal {
 			return;
 		}
 
-		this.previewIsEmbed = true;
+		this.setPreviewKind('embed');
 		bodyEl.empty();
 		this.clearPdfEmbedState(bodyEl);
 		bodyEl.scrollTop = 0;
@@ -1328,6 +1341,21 @@ export class TaskLinksModal extends Modal {
 	private disposePdfHeightObserver(): void {
 		this.pdfHeightObserver?.disconnect();
 		this.pdfHeightObserver = null;
+	}
+
+	/**
+	 * 预览体身份（笔记 / 嵌入 / 空）的唯一写入口：逻辑布尔 `previewIsEmbed` 与 DOM
+	 * 状态类必须一起变。只加不摘是这类 bug 的老剧本 —— 见 `clearPdfEmbedState` 的注释
+	 * （pdf 状态残留会把旧高度 / 旧配色带回下一篇）。
+	 */
+	private setPreviewKind(kind: 'note' | 'embed' | 'none'): void {
+		this.previewIsEmbed = kind === 'embed';
+		const bodyEl = this.previewBodyEl;
+		if (!bodyEl) {
+			return;
+		}
+		bodyEl.toggleClass(NOTE_PREVIEW_STATE_CLASS, kind === 'note');
+		bodyEl.toggleClass(EMBED_PREVIEW_STATE_CLASS, kind === 'embed');
 	}
 
 	// ---------------------------------------------------------------
