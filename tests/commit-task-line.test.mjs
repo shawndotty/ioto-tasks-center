@@ -362,3 +362,32 @@ test('insertAfterContinuations：CRLF 文件同样落块后且写回仍是 CRLF'
 	);
 	assert.ok(app.content.includes('\r\n'));
 });
+
+test('dropFollowingLines：只吞空白行，遇到非空行立即停', async () => {
+	const app = makeApp(['# T', '- [ ] 一', '', '', '- [ ] 二'].join('\n'));
+	const outcome = await commitTaskLineAction(app, makeFile(), {
+		line: 1,
+		originalLine: '- [ ] 一',
+		transform: (raw) => [raw, '- '],
+		dropFollowingLines: 5, // 声明 5 行，实际只有 2 行空白
+	});
+
+	assert.equal(outcome.status, 'ok');
+	assert.equal(app.content, ['# T', '- [ ] 一', '- ', '- [ ] 二'].join('\n'));
+});
+
+test('dropFollowingLines：行漂移后仍不误删正文', async () => {
+	const app = makeApp(['# T', '插入行', '- [ ] 一', '', '- [ ] 二'].join('\n'));
+	const outcome = await commitTaskLineAction(app, makeFile(), {
+		line: 1, // 实际已漂到 2
+		originalLine: '- [ ] 一',
+		transform: (raw) => [raw, '- '],
+		dropFollowingLines: 1,
+	});
+
+	assert.equal(outcome.status, 'ok');
+	assert.equal(
+		app.content,
+		['# T', '插入行', '- [ ] 一', '- ', '- [ ] 二'].join('\n'),
+	);
+});

@@ -53,6 +53,12 @@ export interface CommitTaskLineOptions {
 	 * 单行返回值（纯替换 / 删除）忽略此项。
 	 */
 	insertAfterContinuations?: boolean;
+	/**
+	 * 替换型变换写完后，从「插入块末尾」起再丢弃最多 N 行，且**只吞空白行**
+	 * （遇到第一个非空行立即停 —— 行漂移时宁可少删，绝不误删正文）。
+	 * 与 `insertAfterContinuations` 不同时使用（插入会被拆到两处，行号口径不唯一）。
+	 */
+	dropFollowingLines?: number;
 }
 
 export async function commitTaskLineAction(
@@ -128,6 +134,20 @@ export async function commitTaskLineAction(
 				lines.splice(contEnd, 0, ...inserted.slice(1)); // 其余落到整块之后
 			} else {
 				lines.splice(index, 1, ...inserted);
+				const drop = options.dropFollowingLines ?? 0;
+				if (drop > 0) {
+					const tail = index + inserted.length; // 插入块之后的第一行
+					let remove = 0;
+					while (
+						remove < drop &&
+						(lines[tail + remove] ?? '').trim() === ''
+					) {
+						remove += 1;
+					}
+					if (remove > 0) {
+						lines.splice(tail, remove);
+					}
+				}
 			}
 		}
 

@@ -201,6 +201,8 @@ export async function runLineAction(
 		animateRecentSwap?: boolean;
 		/** 插入后进入编辑态时的光标偏移（模板 `%%Cursor%%`；相对行 body）。 */
 		caretOffset?: number | null;
+		/** 替换后按数吞掉紧随的空白行（主任务区收敛节尾空行池）。 */
+		dropFollowingLines?: number;
 	},
 ): Promise<void> {
 	const file = view.file;
@@ -226,6 +228,7 @@ export async function runLineAction(
 		transform,
 		swallowContinuations: options?.swallowContinuations,
 		insertAfterContinuations: options?.insertAfterContinuations,
+		dropFollowingLines: options?.dropFollowingLines,
 	});
 	// 三个行号字段整体清零（含批次 1 的 sectionEditLine）：destroy 在前、清字段在后
 	resetEditingLines(view);

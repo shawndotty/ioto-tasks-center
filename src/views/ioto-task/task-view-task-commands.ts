@@ -263,6 +263,7 @@ export async function appendTaskBlock(
 			{
 				animateRecentSwap: true,
 				caretOffset: options?.caretOffset,
+				dropFollowingLines: plan.dropFollowingLines,
 			},
 		);
 		return;
