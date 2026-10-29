@@ -6496,7 +6496,7 @@ button:not(.clickable-icon).ioto-tasks-center__task-links-item:focus-visible {
 }
 
 .ioto-tasks-center__task-links-empty {
-	padding: 12px 10px;
+	padding: 12px 8px;
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 }
