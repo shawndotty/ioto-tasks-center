@@ -4,10 +4,12 @@ import { createJiti } from 'jiti';
 
 const jiti = createJiti(import.meta.url, { moduleCache: false });
 const {
+	buildTaskLinkFolderView,
 	buildTaskLinksIndex,
 	collectOtherOutlinkPaths,
 	filterTaskLinks,
 	findRelaxHints,
+	getLeafFolderName,
 	resolveTaskParentPaths,
 	toTaskLinkEntry,
 } = await jiti.import('../src/tasks-center/task-links-index.ts');
@@ -442,4 +444,65 @@ test('搜索过滤：空词返回全量且计数等于长度，无命中返回�
 		outcome: 0,
 		other: 0,
 	});
+});
+
+// 文件夹行（[[Plan-20261029-095917]] §二 / §五 S2）。
+function entry(path) {
+	return { path, title: path.split('/').pop() ?? path, subPath: path.replace(/\.md$/i, ''), kind: 'task' };
+}
+
+test('叶子文件夹：三种路径形态', () => {
+	assert.equal(getLeafFolderName('2-输出/卡片笔记/如何做.md'), '卡片笔记');
+	// 直接位于分类根下 → 分类根名本身就是叶子（§2.3 边界 1，无需特判）
+	assert.equal(getLeafFolderName('2-输出/AI Coding.md'), '2-输出');
+	assert.equal(getLeafFolderName('crop-top.png'), '');
+});
+
+test('叶子文件夹：多级目录只取最末一段，非 md 一视同仁', () => {
+	assert.equal(
+		getLeafFolderName('4-成果/IOTO Task Center/Report/Report-1.md'),
+		'Report',
+	);
+	assert.equal(getLeafFolderName('0-辅助/附件/shape-up.pdf'), '附件');
+});
+
+test('文件夹行：同值隐藏 / 多值显示', () => {
+	const same = [
+		entry('4-成果/P/Report/Report-1.md'),
+		entry('4-成果/P/Report/Report-2.md'),
+	];
+	assert.equal(buildTaskLinkFolderView(same).show, false);
+
+	const mixed = [...same, entry('4-成果/P/Plan/Plan-1.md')];
+	const view = buildTaskLinkFolderView(mixed);
+	assert.equal(view.show, true);
+	assert.equal(view.labels.get('4-成果/P/Plan/Plan-1.md'), 'Plan');
+	assert.equal(view.labels.get('4-成果/P/Report/Report-1.md'), 'Report');
+});
+
+test('文件夹行：vault 根文件不参与去重', () => {
+	const view = buildTaskLinkFolderView([
+		entry('2-输出/卡片笔记/a.md'),
+		entry('2-输出/卡片笔记/b.md'),
+		entry('c.md'),
+	]);
+	assert.equal(view.show, false); // 非空标签只有一种 → 隐藏
+	assert.equal(view.labels.get('c.md'), '');
+});
+
+test('文件夹行：空条目集与唯一条目都不显示', () => {
+	assert.equal(buildTaskLinkFolderView([]).show, false);
+	const single = buildTaskLinkFolderView([entry('2-输出/卡片笔记/a.md')]);
+	assert.equal(single.show, false);
+	assert.equal(single.labels.get('2-输出/卡片笔记/a.md'), '卡片笔记');
+});
+
+test('文件夹行：同名笔记不同目录时显示并可消歧', () => {
+	const view = buildTaskLinkFolderView([
+		entry('4-成果/P/Report/同名.md'),
+		entry('4-成果/P/Plan/同名.md'),
+	]);
+	assert.equal(view.show, true);
+	assert.equal(view.labels.get('4-成果/P/Report/同名.md'), 'Report');
+	assert.equal(view.labels.get('4-成果/P/Plan/同名.md'), 'Plan');
 });

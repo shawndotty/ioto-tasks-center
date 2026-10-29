@@ -42,9 +42,51 @@ export const TASK_LINK_CATEGORIES: readonly TaskLinkCategory[] = [
 	'other',
 ];
 
-function getDirname(path: string): string {
+export function getDirname(path: string): string {
 	const index = path.lastIndexOf('/');
 	return index < 0 ? '' : path.slice(0, index);
+}
+
+/**
+ * 叶子文件夹名 = 目录路径的末段；文件在 vault 根时返回 `''`（无可显示信息）。
+ * 纯字符串运算，md / pdf / png / canvas 一视同仁，不需要按类型分支
+ * （[[Plan-20261029-095917]] §2.1）。
+ */
+export function getLeafFolderName(path: string): string {
+	const dir = getDirname(path);
+	if (!dir) {
+		return '';
+	}
+	const index = dir.lastIndexOf('/');
+	return index < 0 ? dir : dir.slice(index + 1);
+}
+
+export interface TaskLinkFolderView {
+	/** `false` = 该分类整行不渲染（去重后只有一种取值，信息量为 0）。 */
+	show: boolean;
+	/** path → 叶子文件夹名；`''` 表示该条目没有可显示的文件夹。 */
+	labels: Map<string, string>;
+}
+
+/**
+ * 文件夹行显隐判定（[[Plan-20261029-095917]] §二）。
+ * 调用方**必须**传未过滤的 `snapshot.sections[category]`，否则用户一打字行就跳。
+ */
+export function buildTaskLinkFolderView(
+	entries: readonly TaskLinkEntry[],
+): TaskLinkFolderView {
+	const labels = new Map<string, string>();
+	const distinct = new Set<string>();
+	for (const entry of entries) {
+		const label = getLeafFolderName(entry.path);
+		labels.set(entry.path, label);
+		if (label) {
+			// 空标签不计入去重：否则「n 条同目录 + 1 个根文件」会把整行翻成显示，
+			// 等于把本轮要消灭的重复又造回来（§2.3 边界 3）。
+			distinct.add(label);
+		}
+	}
+	return { show: distinct.size > 1, labels };
 }
 
 function comparePaths(left: string, right: string): number {

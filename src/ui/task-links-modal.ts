@@ -27,8 +27,10 @@ import {
 } from '../tasks-center/search-highlight';
 import {
 	TASK_LINK_CATEGORIES,
+	buildTaskLinkFolderView,
 	filterTaskLinks,
 	findRelaxHints,
+	getLeafFolderName,
 	type TaskLinkRelaxation,
 	type TaskLinksFilterResult,
 	type TaskLinksSearchOptions,
@@ -798,6 +800,9 @@ export class TaskLinksModal extends Modal {
 		}
 
 		// 整表重建：高亮只在重建时按记忆决定，不存在节点复用 → 不会有残留。
+		// 第二行显隐按**未过滤**的分类集判定（[[Plan-20261029-095917]] §一 不变量 2）：
+		// 用 filterResult 会让用户一打字路径行就出现/消失。
+		const folderView = buildTaskLinkFolderView(snapshot.sections[category] ?? []);
 		const selectedPath = this.selectedByCategory.get(category);
 		for (const entry of entries) {
 			const itemEl = listEl.createEl('button', {
@@ -811,10 +816,16 @@ export class TaskLinksModal extends Modal {
 				cls: 'ioto-tasks-center__task-links-item-title',
 				text: entry.title,
 			});
-			itemEl.createSpan({
-				cls: 'ioto-tasks-center__task-links-item-path',
-				text: entry.subPath,
-			});
+			// 只有叶子文件夹，且整类不止一种取值时才建节点（不建空 span，避免残留空白行高）。
+			const folder = folderView.show
+				? (folderView.labels.get(entry.path) ?? '')
+				: '';
+			if (folder) {
+				itemEl.createSpan({
+					cls: 'ioto-tasks-center__task-links-item-path',
+					text: folder,
+				});
+			}
 			itemEl.addEventListener('click', (event) => {
 				if (Keymap.isModEvent(event)) {
 					this.openEntry(entry, entry.kind);
@@ -954,7 +965,11 @@ export class TaskLinksModal extends Modal {
 
 		this.previewSourcePath = top.entry.path;
 		this.previewTitleEl?.setText(top.entry.title);
-		this.previewPathEl?.setText(top.entry.subPath);
+		// 与列表第二行同一口径（[[Plan-20261029-095917]] §3.2）；
+		// 空串会留一条空白行，必须整个收掉。
+		const folder = getLeafFolderName(top.entry.path);
+		this.previewPathEl?.setText(folder);
+		this.previewPathEl?.toggle(folder.length > 0);
 		this.previewOpenEl?.setText(
 			t(
 				isMarkdownPath(this.app, top.entry.path)
