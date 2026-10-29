@@ -446,6 +446,188 @@ test('搜索过滤：空词返回全量且计数等于长度，无命中返回�
 	});
 });
 
+// 多词 = 文档级 AND（[[Plan-20261029-230738]] §二 / §四 S7）。
+// 反例是重点：只要有一条「单词命中就留下」，这里会立刻变绿 → 说明退化成 OR 了。
+function createAndFixture() {
+	// 跨字段：标题只有 alpha，正文只有 贝塔
+	const cross = createTask('Alpha 任务', { path: '3-任务/项目A/Alpha 任务.md' });
+	// 单词各占一边：只含 alpha / 只含 贝塔
+	const onlyTitle = createTask('Alpha 独占', {
+		path: '3-任务/项目A/Alpha 独占.md',
+	});
+	const onlyBody = createTask('Gamma 说明', {
+		path: '3-任务/项目A/Gamma 说明.md',
+	});
+	const bodies = new Map([
+		[cross.path, '正文提到了贝塔'],
+		[onlyTitle.path, '这段正文什么都没有'],
+		[onlyBody.path, '这段正文有 贝塔'],
+	]);
+	return {
+		cross,
+		onlyTitle,
+		onlyBody,
+		bodies,
+		snapshot: {
+			sections: {
+				subtask: [cross, onlyTitle, onlyBody],
+				input: [],
+				output: [],
+				outcome: [],
+			},
+		},
+	};
+}
+
+test('AND：标题含一词 + 正文含另一词 → 命中（跨字段合计）', () => {
+	const { cross, bodies, snapshot } = createAndFixture();
+	const result = filterTaskLinks(snapshot, 'alpha 贝塔', bodies);
+	assert.deepEqual(
+		result.sections.subtask.map((entry) => entry.path),
+		[cross.path],
+	);
+	assert.equal(result.counts.subtask, 1);
+});
+
+test('AND：只命中一个词的条目全部消失（防退化成 OR）', () => {
+	// 两条各占一个词，谁都不满足 AND
+	const alphaOnly = createTask('Alpha 独占', {
+		path: '3-任务/项目A/Alpha 独占.md',
+	});
+	const betaOnly = createTask('贝塔 说明', {
+		path: '3-任务/项目A/贝塔 说明.md',
+	});
+	const bodies = new Map([
+		[alphaOnly.path, '正文没有任何关键词'],
+		[betaOnly.path, '正文只有 贝塔'],
+	]);
+	const snapshot = {
+		sections: { subtask: [alphaOnly, betaOnly], input: [], output: [], outcome: [] },
+	};
+
+	assert.deepEqual(filterTaskLinks(snapshot, 'alpha 贝塔', bodies).sections.subtask, []);
+	// 单词各自仍能命中 → 不是把词弄丢了，而是真的要求「都命中」
+	assert.equal(filterTaskLinks(snapshot, 'alpha', bodies).counts.subtask, 1);
+	assert.equal(filterTaskLinks(snapshot, '贝塔', bodies).counts.subtask, 1);
+});
+
+test('AND：scope 先收窄再逐词判（标题 / 正文各自算数）', () => {
+	const { bodies, snapshot } = createAndFixture();
+	assert.deepEqual(
+		filterTaskLinks(snapshot, 'alpha 贝塔', bodies, { scope: 'title' })
+			.sections.subtask,
+		[],
+		'仅标题时正文里的 贝塔 不算数',
+	);
+	assert.deepEqual(
+		filterTaskLinks(snapshot, 'alpha 贝塔', bodies, { scope: 'body' })
+			.sections.subtask,
+		[],
+		'仅正文时标题里的 alpha 不算数',
+	);
+});
+
+test('AND：caseSensitive / wholeWord 逐词生效', () => {
+	const upper = createTask('Alpha 任务', {
+		path: '3-任务/项目A/Upper.md',
+	});
+	const bodies = new Map([[upper.path, '正文写着 BETA']]);
+	const snapshot = {
+		sections: { subtask: [upper], input: [], output: [], outcome: [] },
+	};
+
+	assert.equal(
+		filterTaskLinks(snapshot, 'Alpha BETA', bodies, { caseSensitive: true })
+			.counts.subtask,
+		1,
+	);
+	assert.equal(
+		filterTaskLinks(snapshot, 'Alpha beta', bodies, { caseSensitive: true })
+			.counts.subtask,
+		0,
+	);
+	assert.equal(
+		filterTaskLinks(snapshot, 'alpha BETA', bodies, { caseSensitive: true })
+			.counts.subtask,
+		0,
+		'标题里的 Alpha 不该被小写词命中',
+	);
+
+	// 全词逐词：标题 `Foobar 说明` + 正文 `foo bar`
+	const foobar = createTask('Foobar 说明', {
+		path: '3-任务/项目A/Foobar 说明.md',
+	});
+	const wordBodies = new Map([[foobar.path, 'foo bar']]);
+	const wordSnapshot = {
+		sections: { subtask: [foobar], input: [], output: [], outcome: [] },
+	};
+	// 标题里 foobar 命中 foo、正文两个词都独立 → 两种口径都留下
+	assert.equal(
+		filterTaskLinks(wordSnapshot, 'foo bar', wordBodies).counts.subtask,
+		1,
+	);
+	assert.equal(
+		filterTaskLinks(wordSnapshot, 'foo bar', wordBodies, {
+			wholeWord: true,
+		}).counts.subtask,
+		1,
+		'正文里 foo / bar 都独立成词',
+	);
+	// 单词边界只对「卡住的那个词」生效：`foob` 是 `Foobar` 的前缀，
+	// 子串口径命中标题，全词口径下左右邻居都是词字符 → 该词整体失败。
+	assert.equal(
+		filterTaskLinks(wordSnapshot, 'foob 说明', wordBodies).counts.subtask,
+		1,
+	);
+	assert.equal(
+		filterTaskLinks(wordSnapshot, 'foob 说明', wordBodies, {
+			wholeWord: true,
+		}).counts.subtask,
+		0,
+		'全词下 foob 在所有位置都不成立 → 整条不留',
+	);
+});
+
+test('AND：全角空格与半角空格等价', () => {
+	const { bodies, snapshot } = createAndFixture();
+	assert.deepEqual(
+		filterTaskLinks(snapshot, 'alpha\u3000贝塔', bodies).counts,
+		filterTaskLinks(snapshot, 'alpha 贝塔', bodies).counts,
+	);
+	assert.deepEqual(
+		filterTaskLinks(snapshot, '  alpha  贝塔  ', bodies).counts,
+		filterTaskLinks(snapshot, 'alpha 贝塔', bodies).counts,
+	);
+});
+
+test('回归：单词查询与改动前逐条一致；标点类查询仍按字面', () => {
+	const { bodies, snapshot } = createAndFixture();
+	assert.equal(
+		filterTaskLinks(snapshot, 'alpha', bodies).counts.subtask,
+		2,
+		'Alpha 任务 + Alpha 独占',
+	);
+	assert.equal(filterTaskLinks(snapshot, '贝塔', bodies).counts.subtask, 2);
+	assert.equal(filterTaskLinks(snapshot, '   ', bodies).counts.subtask, 3);
+
+	const literal = createTask('c++ 手册', { path: '3-任务/项目A/cpp.md' });
+	const literalSnapshot = {
+		sections: { subtask: [literal], input: [], output: [], outcome: [] },
+	};
+	assert.equal(
+		filterTaskLinks(literalSnapshot, 'c++', new Map()).counts.subtask,
+		1,
+	);
+	assert.equal(
+		filterTaskLinks(literalSnapshot, 'c++ 手册', new Map()).counts.subtask,
+		1,
+	);
+	assert.equal(
+		filterTaskLinks(literalSnapshot, 'c++ zzz', new Map()).counts.subtask,
+		0,
+	);
+});
+
 // 文件夹行（[[Plan-20261029-095917]] §二 / §五 S2）。
 function entry(path) {
 	return { path, title: path.split('/').pop() ?? path, subPath: path.replace(/\.md$/i, ''), kind: 'task' };

@@ -16,7 +16,7 @@ import type {
 	TaskLinksRoots,
 	TaskLinksSnapshot,
 } from './types';
-import { findMatchRanges, type MatchOptions } from './search-highlight';
+import { findMatchRanges, tokenizeQuery, type MatchOptions } from './search-highlight';
 import { resolveTaskDisplayTitle } from './task-display-title';
 import { isPathInsideRoot } from './task-path';
 
@@ -278,6 +278,10 @@ export interface TaskLinksSearchOptions extends MatchOptions {
  * 全局搜索过滤（对所有分类同时生效，[[Discuss-20261028-153402]] §3.3）。
  * 空词 = 原样返回；命中判据**只有** `findMatchRanges` 一处实现
  * （[[Plan-20261029-083909]] §一 不变量 2），范围 / 大小写 / 全词都由 options 决定。
+ *
+ * 多词 = **文档级 AND**（[[Plan-20261029-230738]] §一 决策 1）：空格拆词只在这一层做，
+ * 每个词都要在允许范围内出现过才算命中。分词不放 `findMatchRanges` 里，Task View
+ * 那条「整串字面」的语义才不会被动到。
  */
 export function filterTaskLinks(
 	snapshot: Pick<TaskLinksSnapshot, 'sections'>,
@@ -286,7 +290,8 @@ export function filterTaskLinks(
 	options: TaskLinksSearchOptions = {},
 ): TaskLinksFilterResult {
 	// 不做大小写归一：大小写交给 `findMatchRanges` 的 `i` 标志，先小写会让 index 错位。
-	const trimmed = query.trim();
+	// 分词也只做一次：每个分类、每个条目复用同一份词表。
+	const tokens = tokenizeQuery(query);
 	const sections = {
 		subtask: [],
 		input: [],
@@ -304,11 +309,12 @@ export function filterTaskLinks(
 
 	for (const category of TASK_LINK_CATEGORIES) {
 		const entries = snapshot.sections[category] ?? [];
-		const matched = trimmed
-			? entries.filter((entry) =>
-					matchesTaskLink(entry, trimmed, bodies, options),
-				)
-			: entries;
+		const matched =
+			tokens.length > 0
+				? entries.filter((entry) =>
+						matchesTaskLink(entry, tokens, bodies, options),
+					)
+				: entries;
 		sections[category] = matched;
 		counts[category] = matched.length;
 	}
@@ -316,23 +322,35 @@ export function filterTaskLinks(
 	return { sections, counts };
 }
 
+/**
+ * 单条目判定：对每个词求「标题里有没有 / 正文里有没有」，任一维度命中即该词通过；
+ * 任一词两个维度都没有 → 立刻 `false`（短路），全部词通过 → `true`。
+ *
+ * `scope` 先收窄 haystack 再判：`title` 时正文不参与、`body` 时标题不参与
+ * —— 与单词时代的范围语义完全一致。
+ */
 function matchesTaskLink(
 	entry: TaskLinkEntry,
-	query: string,
+	tokens: readonly string[],
 	bodies: ReadonlyMap<string, string>,
 	options: TaskLinksSearchOptions,
 ): boolean {
 	const scope = options.scope ?? 'both';
-	if (scope !== 'body' && findMatchRanges(entry.title, query, options).length > 0) {
-		return true;
-	}
-	if (scope !== 'title') {
-		const body = bodies.get(entry.path);
-		if (body && findMatchRanges(body, query, options).length > 0) {
-			return true;
+	// 正文只取一次：逐词再查 Map 属于纯浪费。
+	const body = bodies.get(entry.path);
+	for (const token of tokens) {
+		const inTitle =
+			scope !== 'body' &&
+			findMatchRanges(entry.title, token, options).length > 0;
+		const inBody =
+			scope !== 'title' &&
+			body !== undefined &&
+			findMatchRanges(body, token, options).length > 0;
+		if (!inTitle && !inBody) {
+			return false;
 		}
 	}
-	return false;
+	return tokens.length > 0;
 }
 
 /** 会被「放宽」的收窄维度（顺序即空态里的展示顺序）。 */

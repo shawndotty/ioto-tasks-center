@@ -266,6 +266,8 @@ const en = {
 	'taskLinks.search.wholeWord': 'Whole word',
 	'taskLinks.search.wholeWordHint':
 		'Whole word match (Chinese matches as substring)',
+	'taskLinks.search.andHint':
+		'Separate keywords with spaces; all must match',
 	'taskLinks.filter.label': 'Filter',
 	'taskLinks.filter.active': 'Filter (narrowed)',
 	'taskLinks.filter.reset': 'Reset filter',
@@ -282,6 +284,7 @@ const en = {
 	'taskLinks.emptySearch': 'No notes match the current search',
 	'taskLinks.empty.narrowed': 'Narrowed: {0}',
 	'taskLinks.empty.relaxHint': 'Turn off “{0}” to see {1} results',
+	'taskLinks.empty.andHint': 'The {0} keywords must all match',
 	'taskLinks.state.rootMissing':
 		'Root folder “{0}” was not found in this vault.',
 	'taskLinks.state.loading': 'Loading…',

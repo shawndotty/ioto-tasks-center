@@ -6,9 +6,8 @@ import { createJiti } from 'jiti';
 // 纯函数零 obsidian / 零 DOM，可 jiti 直接导入单测（`applySearchHighlight` 只在
 // 函数体内触碰 DOM，导入本模块不触发）。
 const jiti = createJiti(import.meta.url, { moduleCache: false });
-const { findMatchRanges, splitByQuery, stepHitIndex } = await jiti.import(
-	'../src/tasks-center/search-highlight.ts',
-);
+const { findMatchRanges, splitByQuery, stepHitIndex, tokenizeQuery } =
+	await jiti.import('../src/tasks-center/search-highlight.ts');
 
 test('findMatchRanges：大小写不敏感', () => {
 	assert.deepEqual(findMatchRanges('Fix Login Bug', 'login'), [
@@ -201,3 +200,134 @@ test('stepHitIndex：delta=0 原地；单条命中恒为 0', () => {
 	assert.equal(stepHitIndex(0, 1, 1), 0);
 	assert.equal(stepHitIndex(0, 1, -1), 0);
 });
+
+// 多词口径（[[Plan-20261029-230738]] §三 S1 / §四 S6）：
+// 分词只在调用层做，共享函数的数组入参只是「都染上」，组合语义由调用方决定。
+test('tokenizeQuery：按空白拆词并折叠连续 / 首尾空格', () => {
+	assert.deepEqual(tokenizeQuery('搜索 能力'), ['搜索', '能力']);
+	assert.deepEqual(tokenizeQuery('  搜索   能力  '), ['搜索', '能力']);
+	assert.deepEqual(tokenizeQuery('a\tb\nc'), ['a', 'b', 'c']);
+});
+
+test('tokenizeQuery：全角空格 U+3000 与 NBSP 也算分隔符', () => {
+	assert.deepEqual(tokenizeQuery('搜索\u3000能力'), ['搜索', '能力']);
+	assert.deepEqual(tokenizeQuery('搜索\u00a0能力'), ['搜索', '能力']);
+	assert.deepEqual(tokenizeQuery('\ufeff搜索\ufeff能力'), ['搜索', '能力']);
+});
+
+test('tokenizeQuery：字面去重保序；纯空白 / 空串 → []', () => {
+	assert.deepEqual(tokenizeQuery('b a b a'), ['b', 'a']);
+	assert.deepEqual(tokenizeQuery(''), []);
+	assert.deepEqual(tokenizeQuery('   '), []);
+	assert.deepEqual(tokenizeQuery('\t\n'), []);
+});
+
+test('findMatchRanges：数组模式跨字段两词都返回，相接区间合并', () => {
+	// 「搜索」「能力」在 0/2 处相接 → 合并成一段；其余各自成段
+	assert.deepEqual(
+		findMatchRanges('搜索能力：搜索与能力', ['搜索', '能力']),
+		[
+			{ start: 0, end: 4 },
+			{ start: 5, end: 7 },
+			{ start: 8, end: 10 },
+		],
+	);
+});
+
+test('findMatchRanges：一词是另一词的子串时不重叠（唯一真坑）', () => {
+	// 不合并的话会切出 [0,2) + [0,4)，同一段文字被画两遍
+	assert.deepEqual(findMatchRanges('登录问题', ['登录', '登录问题']), [
+		{ start: 0, end: 4 },
+	]);
+	// 相邻两词落在同一串上也只算一段
+	assert.deepEqual(findMatchRanges('登录问题', ['登录', '问题']), [
+		{ start: 0, end: 4 },
+	]);
+});
+
+test('findMatchRanges：数组模式仍按字面，wholeWord / caseSensitive 逐词生效', () => {
+	assert.deepEqual(findMatchRanges('c++ 手册', ['c++', '手册']), [
+		{ start: 0, end: 3 },
+		{ start: 4, end: 6 },
+	]);
+	assert.deepEqual(findMatchRanges('foo bar foobar', ['foo', 'bar']), [
+		{ start: 0, end: 3 },
+		{ start: 4, end: 7 },
+		// `foobar` 里 foo[8,11) 与 bar[11,14) 相接 → 合并
+		{ start: 8, end: 14 },
+	]);
+	assert.deepEqual(
+		findMatchRanges('foo bar foobar', ['foo', 'bar'], { wholeWord: true }),
+		[
+			{ start: 0, end: 3 },
+			{ start: 4, end: 7 },
+		],
+	);
+	// 两个词按字面各算各的（`Foo` ≠ `foo`），大小写敏感时两段都保留
+	assert.deepEqual(
+		findMatchRanges('Foo foo', ['Foo', 'foo'], { caseSensitive: true }),
+		[
+			{ start: 0, end: 3 },
+			{ start: 4, end: 7 },
+		],
+	);
+	assert.deepEqual(
+		findMatchRanges('Foo foo', ['FOO'], { caseSensitive: true }),
+		[],
+	);
+});
+
+test('findMatchRanges：数组模式的空态（空数组 / 空串词 / 纯空白）等价空查询', () => {
+	assert.deepEqual(findMatchRanges('任意内容', []), []);
+	assert.deepEqual(findMatchRanges('任意内容', ['']), []);
+	assert.deepEqual(findMatchRanges('   ', '   '), []);
+});
+
+test('splitByQuery：多词 / 重叠用例仍可还原（切段不丢字、不重复）', () => {
+	const samples = [
+		['搜索能力：搜索与能力', ['搜索', '能力']],
+		['登录问题', ['登录', '登录问题']],
+		['登录问题', ['登录', '问题']],
+		['c++ 手册', ['c++', '手册']],
+		['全命中', ['全命中', '命中']],
+		['无命中内容', ['zzz', 'yyy']],
+	];
+	for (const [text, tokens] of samples) {
+		const parts = splitByQuery(text, tokens);
+		assert.equal(
+			parts.map((p) => p.text).join(''),
+			text,
+			`还原失败：${text} / ${tokens.join(',')}`,
+		);
+		assert.equal(
+			parts.filter((p) => p.hit).length,
+			findMatchRanges(text, tokens).length,
+			`命中段数应等于合并后的区间数：${text}`,
+		);
+	}
+
+	// 重叠两词只切出一段
+	assert.deepEqual(splitByQuery('登录问题', ['登录', '登录问题']), [
+		{ text: '登录问题', hit: true },
+	]);
+});
+
+test('splitByQuery：数组模式无命中 → 整段普通文本', () => {
+	assert.deepEqual(splitByQuery('abc', ['x', 'y']), [
+		{ text: 'abc', hit: false },
+	]);
+});
+
+test('回归：字符串入参与单元素数组输出逐条相同', () => {
+	const samples = ['搜索', 'Fix Login Bug', 'c++ 手册', 'zzz', ''];
+	for (const text of samples) {
+		for (const token of ['搜索', 'login', 'c++', 'zzz']) {
+			assert.deepEqual(
+				findMatchRanges(text, [token]),
+				findMatchRanges(text, token),
+				`${text} / ${token}`,
+			);
+		}
+	}
+});
+

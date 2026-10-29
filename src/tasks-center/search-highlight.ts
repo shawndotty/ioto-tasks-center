@@ -16,6 +16,11 @@
  * 命中 span 的**类名由调用方决定**（默认 `SEARCH_HIT_CLASS`，即 Task View 口径）：
  * 同一个容器里可能同时存在两套高亮，染色 / 重扫 / 计数必须传同一个类名，
  * 否则重扫会残留旧 span、计数也会把别人的命中算进来。
+ *
+ * 🔴 `query` 支持两种入参（[[Plan-20261029-230738]] §三 S1）：
+ * - `string` → **单条字面**，语义与 v2.7.7 逐条一致（Task View 5 个调用点零改动）；
+ * - `string[]` → 多词：区间先合并再切段，**只负责「都染上」**；是 AND 还是 OR
+ *   由调用方自己定（相关链接窗口选 AND，见 `filterTaskLinks`）。
  */
 
 /** 命中区间 `[start, end)`：0 基、左闭右开、作用于**原始文本**。 */
@@ -44,6 +49,45 @@ export interface MatchOptions {
 	wholeWord?: boolean;
 }
 
+/**
+ * 查询的两种形态（[[Plan-20261029-230738]] §三 S1）：
+ * - `string` = **单条字面**，一秒都不按空格拆 —— Task View 的整串语义靠这条保住；
+ * - 数组 = 多词口径，**怎么组合（AND / OR）由调用方决定**，本模块只负责「都染上」。
+ */
+export type SearchQuery = string | readonly string[];
+
+/** 把查询归一成词表：`string` 只判空（空 / 纯空白 → 无词），绝不裁剪用于匹配的串。 */
+function toQueries(query: SearchQuery): string[] {
+	if (typeof query === 'string') {
+		return query.trim().length === 0 ? [] : [query];
+	}
+	return query.filter((token) => token.length > 0);
+}
+
+/**
+ * 把用户输入按空白拆成词表（**唯一**实现：过滤与染色共用，放两处必然漂移）。
+ *
+ * - `\s+` 覆盖 ASCII 空格、Tab、NBSP(U+00A0)、全角空格 U+3000、U+FEFF，
+ *   中文输入法下打出的「全角空格」不会把整串变成一个查不到的词；
+ * - 空段丢弃（首尾 / 连续空格折叠），字面去重且保留首次出现顺序
+ *   —— 纯空白 → `[]`，逐词跑正则时不会白跑一遍。
+ *
+ * 🔴 只用于**调用层**（`filterTaskLinks` / 相关链接弹窗）。共享函数收到字符串时
+ * 仍按整串字面处理，Task View 的搜索语义因此一字不改。
+ */
+export function tokenizeQuery(raw: string): string[] {
+	const out: string[] = [];
+	const seen = new Set<string>();
+	for (const token of raw.split(/\s+/)) {
+		if (token.length === 0 || seen.has(token)) {
+			continue;
+		}
+		seen.add(token);
+		out.push(token);
+	}
+	return out;
+}
+
 /** 转义正则元字符（查询里可能含 `.` `(` `)` `+` 等，须按字面处理）。 */
 function escapeRegExp(value: string): string {
 	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -68,11 +112,35 @@ function isWordChar(ch: string | undefined): boolean {
  * 🔴 全词匹配**不用 `\b`**：`/\b笔记\b/.test('笔记') === false`、
  * `/\bc\+\+\b/.test('c++ 手册') === false` —— 中文与标点结尾的查询会静默归零。
  * 改用「命中区间左右邻字符都不是词字符」的后置过滤（[[Plan-20261029-083909]] §五.1）。
+ *
+ * 🔴 多词（数组入参）**必须合并区间**：`登录` 是 `登录问题` 的子串，两段区间会重叠，
+ * 直接切段会把同一段文字画两遍（[[Plan-20261029-230738]] §七 唯一真坑）。
  */
 export function findMatchRanges(
 	text: string,
-	query: string,
+	query: SearchQuery,
 	options: MatchOptions = {},
+): MatchRange[] {
+	const queries = toQueries(query);
+	if (queries.length === 0 || text.length === 0) {
+		return [];
+	}
+	if (queries.length === 1) {
+		return findSingleMatchRanges(text, queries[0] as string, options);
+	}
+
+	const ranges: MatchRange[] = [];
+	for (const token of queries) {
+		ranges.push(...findSingleMatchRanges(text, token, options));
+	}
+	return mergeRanges(ranges);
+}
+
+/** 单条查询的命中区间（多词路径逐词调用它，再统一合并）。 */
+function findSingleMatchRanges(
+	text: string,
+	query: string,
+	options: MatchOptions,
 ): MatchRange[] {
 	if (query.length === 0 || text.length === 0) {
 		return [];
@@ -91,12 +159,41 @@ export function findMatchRanges(
 }
 
 /**
+ * 区间合并：按 `start` 升序、`end` 降序排好，依次吞掉与之重叠的下一段。
+ * **相接也算合并**（`[0,2)` + `[2,4)` → `[0,4)`）：两段相邻命中切出来会变成两个
+ * 紧挨的 span，计数与「N/M」都会虚高一段。
+ */
+function mergeRanges(ranges: readonly MatchRange[]): MatchRange[] {
+	if (ranges.length <= 1) {
+		return ranges.map((range) => ({ start: range.start, end: range.end }));
+	}
+	const sorted = [...ranges].sort(
+		(left, right) => left.start - right.start || right.end - left.end,
+	);
+	const merged: MatchRange[] = [];
+	for (const range of sorted) {
+		const last = merged[merged.length - 1];
+		if (last && range.start <= last.end) {
+			if (range.end > last.end) {
+				last.end = range.end;
+			}
+			continue;
+		}
+		merged.push({ start: range.start, end: range.end });
+	}
+	return merged;
+}
+
+/**
  * 把 `text` 按命中切成 `[{text, hit}]`；非命中段保留为普通文本。
  * 可自检不变量：`splitByQuery(t, q).map(p => p.text).join('') === t`（切段不丢字）。
+ *
+ * 🔴 区间若已被前一段吃掉（`start < cursor`）必须跳过：多词路径靠 `mergeRanges`
+ * 保证不重叠，这里的守卫是第二道保险 —— 漏了就会把已切走的文字再吐一遍。
  */
 export function splitByQuery(
 	text: string,
-	query: string,
+	query: SearchQuery,
 	options: MatchOptions = {},
 ): QueryPart[] {
 	if (text.length === 0) {
@@ -109,6 +206,9 @@ export function splitByQuery(
 	const parts: QueryPart[] = [];
 	let cursor = 0;
 	for (const range of ranges) {
+		if (range.start < cursor) {
+			continue;
+		}
 		if (range.start > cursor) {
 			parts.push({ text: text.slice(cursor, range.start), hit: false });
 		}
@@ -148,7 +248,7 @@ function unwrapSearchHighlight(root: HTMLElement, hitClass: string): void {
  * `<span class="{hitClass}">`。
  *
  * - 幂等：先 unwrap 旧命中，再重新切。
- * - 空查询 = 只 unwrap、不包裹（清空搜索无残留）。
+ * - 空查询 = 只 unwrap、不包裹（清空搜索无残留；纯空白同样按空处理）。
  * - **不**触碰 `code` / `pre`（Q5 默认照常高亮）；跳过 `script` / `style`，
  *   以及 `svg` / `mjx-container` / `.math` —— 公式与图表由后处理器接管，
  *   切碎它们的文本节点会把渲染结果拆坏（[[Plan-20261028-221530]] §三 S1）。
@@ -157,12 +257,13 @@ function unwrapSearchHighlight(root: HTMLElement, hitClass: string): void {
  */
 export function applySearchHighlight(
 	root: HTMLElement,
-	query: string,
+	query: SearchQuery,
 	hitClass: string = SEARCH_HIT_CLASS,
 	options: MatchOptions = {},
 ): void {
 	unwrapSearchHighlight(root, hitClass);
-	if (query.length === 0) {
+	const queries = toQueries(query);
+	if (queries.length === 0) {
 		return;
 	}
 
@@ -186,7 +287,7 @@ export function applySearchHighlight(
 		) {
 			continue;
 		}
-		const parts = splitByQuery(textNode.data, query, options);
+		const parts = splitByQuery(textNode.data, queries, options);
 		if (!parts.some((part) => part.hit)) {
 			continue; // 全段无命中 → 不改动
 		}

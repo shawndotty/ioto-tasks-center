@@ -6520,6 +6520,13 @@ button:not(.clickable-icon).ioto-tasks-center__task-links-item:focus-visible {
 	font-size: var(--font-ui-smaller);
 }
 
+/* 多词 AND 的规则提示：与「已收窄」同一档小字，排在归因按钮上方。 */
+.ioto-tasks-center__task-links-empty-and {
+	margin-top: 6px;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
 /* 刻意不带 clickable-icon：这里是文本按钮，不需要定宽图标那套。 */
 button:not(.clickable-icon).ioto-tasks-center__task-links-empty-relax {
 	margin-top: 4px;

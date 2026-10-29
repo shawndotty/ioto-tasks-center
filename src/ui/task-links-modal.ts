@@ -24,6 +24,7 @@ import {
 	applySearchHighlight,
 	collectSearchHits,
 	stepHitIndex,
+	tokenizeQuery,
 } from '../tasks-center/search-highlight';
 import {
 	TASK_LINK_CATEGORIES,
@@ -465,6 +466,8 @@ export class TaskLinksModal extends Modal {
 			attr: {
 				type: 'search',
 				placeholder: t('taskLinks.search.placeholder'),
+				// 左栏只有 320px：AND 规则放 tooltip，不靠加长 placeholder。
+				title: t('taskLinks.search.andHint'),
 			},
 		});
 		this.searchInputEl = searchEl;
@@ -609,9 +612,15 @@ export class TaskLinksModal extends Modal {
 		this.attachPreviewLinkDelegate(this.previewBodyEl);
 	}
 
-	/** 列表过滤 / 预览染色共用同一个词口径（只 trim，不做大小写归一）。 */
-	private searchQuery(): string {
-		return this.query.trim();
+	/**
+	 * 唯一的词表出口（[[Plan-20261029-230738]] §三 S3）：列表判空、预览染色、细条显隐
+	 * 全部从这里取；`query` 原样交给 `filterTaskLinks`（分词在那一层做，单一入口）。
+	 *
+	 * 🔴 判空一律用「词数 > 0」而不是 `query !== ''`：只打空格时列表按空查询处理，
+	 * 细条不该冒出来，否则会出现「有查询提示但一条命中都没有」。
+	 */
+	private searchTokens(): string[] {
+		return tokenizeQuery(this.query);
 	}
 
 	/** **唯一**的选项取值来源：过滤与预览染色都从这里取，避免两套判据漂移。 */
@@ -812,15 +821,24 @@ export class TaskLinksModal extends Modal {
 
 		const entries = this.filterResult?.sections[category] ?? [];
 		if (entries.length === 0) {
-			const query = this.searchQuery();
+			const tokens = this.searchTokens();
 			listEl.createDiv({
 				cls: 'ioto-tasks-center__task-links-empty',
-				text: query
-					? t('taskLinks.emptySearch')
-					: t(EMPTY_KEYS[category]),
+				text:
+					tokens.length > 0
+						? t('taskLinks.emptySearch')
+						: t(EMPTY_KEYS[category]),
 			});
 			// 归因只在 0 条 + 有词时算（非空态一次都不算，否则每次输入多跑 3 次过滤）。
-			if (query) {
+			if (tokens.length > 0) {
+				// 「规则说明」在「可操作建议」上方：多词 AND 是用户没搜到的最常见原因，
+				// 先说清规则，再给「关掉某个收窄条件」的按钮。
+				if (tokens.length >= 2) {
+					listEl.createDiv({
+						cls: 'ioto-tasks-center__task-links-empty-and',
+						text: t('taskLinks.empty.andHint', [String(tokens.length)]),
+					});
+				}
 				this.renderEmptyAttribution(listEl, category);
 			}
 			return;
@@ -1368,7 +1386,7 @@ export class TaskLinksModal extends Modal {
 		locate: boolean;
 	}): void {
 		const body = this.previewBodyEl;
-		const query = this.searchQuery();
+		const tokens = this.searchTokens();
 		// `previewIsEmbed` 一并拦：pdf 的文本层是真文本，扫进去会染色 pdf.js 自己的
 		// DOM 并让细条挂出 `N/176`（[[Report-20261029-060022]] 验收 6）。
 		// 「仅标题」同理：只按标题过滤时正文不存在语义上的命中，染色会自相矛盾。
@@ -1382,11 +1400,13 @@ export class TaskLinksModal extends Modal {
 			return;
 		}
 
-		applySearchHighlight(body, query, TASK_LINKS_HIT_CLASS, this.searchOptions());
+		// 多词一起染色：区间在共享层合并，所以同一段文字只会被包一次。
+		applySearchHighlight(body, tokens, TASK_LINKS_HIT_CLASS, this.searchOptions());
 		this.activeHitEl?.classList.remove(HIT_CURRENT_CLASS);
 		this.activeHitEl = null;
 		// 计数只取这一个数组：再跑一遍正则就会出现「计数与画面不一致」。
-		this.hitEls = query ? collectSearchHits(body, TASK_LINKS_HIT_CLASS) : [];
+		this.hitEls =
+			tokens.length > 0 ? collectSearchHits(body, TASK_LINKS_HIT_CLASS) : [];
 		if (options.resetIndex) {
 			this.hitIndex = this.hitEls.length > 0 ? 0 : -1;
 		}
@@ -1422,7 +1442,7 @@ export class TaskLinksModal extends Modal {
 			this.previewStack.length > 0 &&
 			!this.previewIsEmbed &&
 			this.searchScope !== 'title' &&
-			this.searchQuery() !== '';
+			this.searchTokens().length > 0;
 		barEl.toggleClass('is-hidden', !visible);
 
 		const total = this.hitEls.length;
