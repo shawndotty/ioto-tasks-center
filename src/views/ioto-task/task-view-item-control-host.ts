@@ -12,6 +12,7 @@ import type { TaskViewHost } from './task-view-host';
 import type { ItemControlBridgeHost } from './task-view-constants';
 import { isCardEditing, isSectionEditing } from './task-view-editing-state';
 import { lineAt, queryCard } from './task-view-helpers';
+import { buildRunScope } from './task-view-run-scope';
 
 /**
  * 「条目控制」桥接宿主：仅在**卡片级**内联编辑态返回；其余情况（含续行 / Section
@@ -87,6 +88,20 @@ export function getAITaskItemSource(
 	if (isSectionEditing(view.editingKind)) return null;
 	if (!view.file || view.selectedLine === null) return null;
 	return { file: view.file, line: view.selectedLine, text: view.data };
+}
+
+/**
+ * AI 运行范围开放契约（ioto-settings）：放大态声明「本次只跑这条」。
+ *
+ * 只读 `zoomLine`（放大真源）：`selectedLine` 是导航副产品、`sectionZoomLine`
+ * 里可能有多条任务，两者都不参与收窄。派发前 `item-control-bridge` 已 flush
+ * 内联编辑 → 这里读到的 `data` 与磁盘一致（对端还会拿它做原文核对）。
+ */
+export function getAITaskRunScope(
+	view: TaskViewHost,
+): { file: TFile; line: number; text: string } | null {
+	if (view.zoomLine === null) return null;
+	return buildRunScope(view.zoomLine, view.file, view.lineAt(view.zoomLine));
 }
 
 /**

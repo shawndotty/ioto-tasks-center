@@ -216,6 +216,7 @@ import type { CommitOutcome, TaskLineTransform } from './ioto-task/commit-task-l
 import {
 	commitFromItemControl,
 	getAITaskItemSource,
+	getAITaskRunScope,
 	getItemControlHost,
 	getQuickPanelHost,
 } from './ioto-task/task-view-item-control-host';
@@ -878,6 +879,10 @@ export class IOTOTaskView extends TextFileView {
 	getQuickPanelHost(): HTMLElement | null { return getQuickPanelHost(this); }
 	getAITaskItemSource(): { file: TFile; line: number; text: string } | null {
 		return getAITaskItemSource(this);
+	}
+	/** AI 运行范围开放契约（ioto-settings）：仅放大态返回非 null。 */
+	getAITaskRunScope(): { file: TFile; line: number; text: string } | null {
+		return getAITaskRunScope(this);
 	}
 	async commitFromItemControl(
 		line: number,
