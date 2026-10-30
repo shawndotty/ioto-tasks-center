@@ -55,7 +55,7 @@ npm run lint       # eslint .
 npm run dep:check  # dependency-cruiser: fail on value-level circular deps (type-only cycles allowed)
 npm run version    # version-bump.mjs; updates manifest.json + versions.json
 npm run build:deploy  # build + zip + tag + release to GitHub & Gitee (see "Versioning & releases")
-npm run build:local   # build + copy the 3 artifacts into the local IOTO vault (~/Documents/IOTO) for manual testing
+npm run build:local   # build + copy the 3 artifacts into a local vault by NAME (default IOTO), resolved via Obsidian's vault registry
 ```
 
 ## Source structure
@@ -168,7 +168,7 @@ Other folders/files:
 
 - `eslint.config.mts` — ESLint 9 flat config with `eslint-plugin-obsidianmd` recommended rules.
 
-- `scripts/` — `deploy-release.mjs`, the one-command release script (`npm run build:deploy`); `deploy-vault.mjs`, which copies `main.js` / `manifest.json` / `styles.css` into a local vault's plugin folder for live testing (`npm run build:local`, `--vault <path>` to target another vault).
+- `scripts/` — `deploy-release.mjs`, the one-command release script (`npm run build:deploy`); `deploy-vault.mjs`, which copies `main.js` / `manifest.json` / `styles.css` into a local vault's plugin folder for live testing (`npm run build:local`; `--vault <vault name|path>` targets another vault, default name `IOTO`; `--list` prints every vault registered with Obsidian).
 
 - `.github/workflows/` — `lint.yml` (lints every commit on all branches). Releases are produced locally by `npm run build:deploy`, not by CI.
 
