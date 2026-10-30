@@ -85,19 +85,22 @@ export function collectContinuationFoldKeys(content: string): string[] {
 /** 本次渲染是否必须展开（只影响本次 DOM，**不改**用户折叠态）。 */
 export function shouldForceExpand(input: {
 	continuation: string | undefined;
-	normalizedQuery: string;
+	queryTokens: readonly string[];
 	/** 该卡正在被编辑（标题或续行）→ 内容必须可见 */
 	editing?: boolean;
 }): boolean {
 	if (input.editing === true) {
 		return true;
 	}
-	const { continuation, normalizedQuery } = input;
-	if (!continuation || normalizedQuery.length === 0) {
+	const { continuation, queryTokens } = input;
+	if (!continuation || queryTokens.length === 0) {
 		return false;
 	}
-	// 与过滤 / 高亮同源：`isCardVisible` 判定「卡可见」用的就是它
-	return findMatchRanges(continuation, normalizedQuery).length > 0;
+	// 与过滤 / 高亮同源：`isCardVisible` 判定「卡可见」用的就是它。
+	// 多词口径 = 词粒度 OR：任一词命中续行 → 强制展开（单词场景与旧整串语义等价）。
+	return queryTokens.some(
+		(token) => findMatchRanges(continuation, token).length > 0,
+	);
 }
 
 /** 只动一个容器的类 / aria / tooltip；不重建 DOM、不写状态。 */

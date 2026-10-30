@@ -27,7 +27,7 @@ import { pickRecentTopLevelLines } from './recent-task-filter';
 import { sectionFoldKey } from './section-fold-key';
 import {
 	isCardVisible,
-	normalizeQuery,
+	normalizeQueryTokens,
 	type CardVisibilityContext,
 	type CardVisibilityInput,
 } from './task-query-filter';
@@ -547,8 +547,8 @@ function renderSectionBody(options: {
 	// 四层过滤（①=Section 层已在外层处理；②③ + 关键词 = 卡片层）的唯一真源：
 	// 「空态判定」与「逐卡 skip」共用 `isCardVisible`，避免两处漂移
 	// （[[Plan-20261006-161121]] §2.2c/2.2d）。
-	const normalizedQuery = normalizeQuery(searchQuery);
-	const queryActive = normalizedQuery.length > 0;
+	const queryTokens = normalizeQueryTokens(searchQuery);
+	const queryActive = queryTokens.length > 0;
 	const toVisibility = (item: NoteChecklistItem): CardVisibilityInput => ({
 		line: item.line,
 		done: isChecklistItemDone(item),
@@ -558,7 +558,7 @@ function renderSectionBody(options: {
 	const visibilityCtx: CardVisibilityContext = {
 		recentLines,
 		onlyPending: filters.onlyPending,
-		normalizedQuery,
+		queryTokens,
 		keepVisibleLine: editing.keepVisibleLine ?? null,
 	};
 

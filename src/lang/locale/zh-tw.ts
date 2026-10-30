@@ -708,7 +708,7 @@ const zhTW = {
 	'view.iotoTaskView.toolbar.toggleSearchTooltip': '搜尋任務（再次點擊關閉）',
 	'view.iotoTaskView.empty.allDone': '所有任務已完成',
 	'view.iotoTaskView.empty.noMatch': '無符合任務：{0}',
-	'view.iotoTaskView.search.placeholder': '搜尋任務…',
+	'view.iotoTaskView.search.placeholder': '搜尋任務…（空格分隔多個關鍵詞）',
 	'view.iotoTaskView.search.prev': '上一個',
 	'view.iotoTaskView.search.next': '下一個',
 	'view.iotoTaskView.search.close': '關閉',

@@ -45,7 +45,7 @@ test('shouldForceExpand：命中续写 / 只命中标题 / 空查询 / 空续写
 	assert.equal(
 		shouldForceExpand({
 			continuation: '这里有关键词 target',
-			normalizedQuery: 'target',
+			queryTokens: ['target'],
 		}),
 		true,
 	);
@@ -53,16 +53,35 @@ test('shouldForceExpand：命中续写 / 只命中标题 / 空查询 / 空续写
 	assert.equal(
 		shouldForceExpand({
 			continuation: '续写正文',
-			normalizedQuery: 'target',
+			queryTokens: ['target'],
 		}),
 		false,
 	);
 	assert.equal(
-		shouldForceExpand({ continuation: 'target', normalizedQuery: '' }),
+		shouldForceExpand({ continuation: 'target', queryTokens: [] }),
 		false,
 	);
 	assert.equal(
-		shouldForceExpand({ continuation: undefined, normalizedQuery: 'target' }),
+		shouldForceExpand({ continuation: undefined, queryTokens: ['target'] }),
+		false,
+	);
+});
+
+test('shouldForceExpand：多词——任一词命中续行 → 强制展开', () => {
+	// 词命中续行（另一词只可能命中标题）→ 强制展开
+	assert.equal(
+		shouldForceExpand({
+			continuation: '续写正文 target',
+			queryTokens: ['other', 'target'],
+		}),
+		true,
+	);
+	// 两词均不命中续行 → 不强制展开
+	assert.equal(
+		shouldForceExpand({
+			continuation: '续写正文',
+			queryTokens: ['other', 'target'],
+		}),
 		false,
 	);
 });
@@ -70,7 +89,7 @@ test('shouldForceExpand：命中续写 / 只命中标题 / 空查询 / 空续写
 test('shouldForceExpand：editing 为真 → 强制展开且无副作用', () => {
 	const input = {
 		continuation: '正文',
-		normalizedQuery: '',
+		queryTokens: [],
 		editing: true,
 	};
 	assert.equal(shouldForceExpand(input), true);
@@ -78,7 +97,7 @@ test('shouldForceExpand：editing 为真 → 强制展开且无副作用', () =>
 	assert.equal(shouldForceExpand(input), true);
 	assert.deepEqual(input, {
 		continuation: '正文',
-		normalizedQuery: '',
+		queryTokens: [],
 		editing: true,
 	});
 });

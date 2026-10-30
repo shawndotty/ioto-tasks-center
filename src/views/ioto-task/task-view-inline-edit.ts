@@ -7,7 +7,7 @@ import {
 	splitTaskLine,
 } from '../../tasks-center/note-structure';
 import { applySearchHighlight } from '../../tasks-center/search-highlight';
-import { normalizeQuery } from './task-query-filter';
+import { normalizeQueryTokens } from './task-query-filter';
 import { commitTaskText } from './commit-task-line';
 import { mountEmbeddedEditor } from './embedded-editor';
 import { getSectionStateKey, renderCardActions } from './render-note';
@@ -343,7 +343,7 @@ export function refreshCard(view: TaskViewHost, line: number): void {
 		);
 		// 就地重绘只重建标题（不动续行容器），续行里的高亮自然保留，只需对标题复跑。
 		// `applySearchHighlight` 自带 unwrap，重复调用安全（[[Discuss-20261006-183552]] §4.3）。
-		applySearchHighlight(textEl, normalizeQuery(view.searchQuery));
+		applySearchHighlight(textEl, normalizeQueryTokens(view.searchQuery));
 	}
 	// 动作区也按最新 `data` 重建（幂等），覆盖 blur 提交等所有「就地刷单卡」路径。
 	view.refreshCardActions(line);

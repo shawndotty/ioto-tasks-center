@@ -707,7 +707,7 @@ const zhCN = {
 	'view.iotoTaskView.toolbar.toggleSearchTooltip': '搜索任务（再次点击关闭）',
 	'view.iotoTaskView.empty.allDone': '所有任务已完成',
 	'view.iotoTaskView.empty.noMatch': '无匹配任务：{0}',
-	'view.iotoTaskView.search.placeholder': '搜索任务…',
+	'view.iotoTaskView.search.placeholder': '搜索任务…（空格分隔多个关键词）',
 	'view.iotoTaskView.search.prev': '上一个',
 	'view.iotoTaskView.search.next': '下一个',
 	'view.iotoTaskView.search.close': '关闭',

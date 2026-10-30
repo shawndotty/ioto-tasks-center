@@ -777,7 +777,7 @@ const en = {
 	'view.iotoTaskView.toolbar.toggleSearchTooltip': 'Search tasks (click again to close)',
 	'view.iotoTaskView.empty.allDone': 'All tasks completed',
 	'view.iotoTaskView.empty.noMatch': 'No matching tasks: {0}',
-	'view.iotoTaskView.search.placeholder': 'Search tasks…',
+	'view.iotoTaskView.search.placeholder': 'Search tasks… (space-separated keywords)',
 	'view.iotoTaskView.search.prev': 'Previous',
 	'view.iotoTaskView.search.next': 'Next',
 	'view.iotoTaskView.search.close': 'Close',
