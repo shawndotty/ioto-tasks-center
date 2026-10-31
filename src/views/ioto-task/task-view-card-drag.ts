@@ -4,9 +4,11 @@
  * - 手势骨架与 `task-view-section-drag.ts` 完全同款：Pointer Events 单实现
  * （鼠标按下即拖；触摸须先长按再移动，未长按的滑动交还原生滚动）、8px 阈值、
  * 400ms 长按、指针捕获、48px 边缘自动滚动、Esc 取消、悬浮 ghost。
+ * - 拖动单位是**块集合**（[[Plan-20261101-063126]]）：起手卡属于当前多选集 →
+ *   整组按原相对顺序搬；否则收窄为单卡。多块只支持同文件落点（跨文件留给 P3）。
  * - 拖拽过程是纯 DOM 瞬态（ghost / 落点线 / 源块整树半透明），**不写盘、不重绘**；
- *   松手才经 `moveTaskBlock`（domain 纯函数）+ `commitBlockRange` 一次原子区间
- *   重写，随后迁移折叠态 / 选中行并整树重建。
+ *   松手才经 `moveTaskBlocks` / `moveTaskBlock`（domain 纯函数）+ `commitBlockRange`
+ *   一次原子区间重写，随后迁移折叠态 / 选中行并整树重建。
  * - 落点三类：① 任务卡（卡上缘 before / 下缘 after，成为该卡同级兄弟）；
  *   ② 章节（header → section-start；body 空白 → section-end；空章节也能接收）；
  *   ③ **文件级**（卡片内的 `[[任务文件]]` 链接 / 任务中心的任务行）→ 追加到目标
@@ -23,15 +25,20 @@ import { TFile, parseLinktext } from 'obsidian';
 
 import {
 	moveTaskBlock,
-	parseChecklistItems,
+	moveTaskBlocks,
+	normalizeMoveBlocks,
 } from '../../tasks-center/note-structure';
-import { taskBlockRange } from '../../tasks-center/note-task-swap';
 import { isTaskNoteFile } from '../../tasks-center/task-note-menu';
+import { t } from '../../lang/helpter';
 import { commitBlockRange } from './commit-task-line';
 import {
 	commitCrossFileMove,
 	commitCrossFileMoveToPath,
 } from './task-view-cross-file-move';
+import {
+	commitMultiSelection,
+	currentMultiSelection,
+} from './task-view-multi-selection';
 import { resetPeerPaneCache, resolvePeerPaneAtPoint } from './task-view-peer';
 import { checkForeignDropTarget } from './task-view-transfer-guard';
 import { remapTrackedLines } from './task-view-tracked-lines';
@@ -137,9 +144,10 @@ interface DragGestureState {
 	touchedScrollEls: Set<HTMLElement>;
 	/** 手势发生所在的文档（v1 只支持同文档，不跨 popout 窗口）。 */
 	doc: Document | null;
-	/** 源任务块（含整棵子树）的原文件行范围，用于排除「落进自身」。 */
-	sourceStartLine: number;
-	sourceEndLine: number;
+	/** 本源集合的任务行号（升序；长度 1 = 单卡）。 */
+	sourceLines: number[];
+	/** 这些任务行的块区间（含子树），用于整树半透明与「落进自身」排除。 */
+	sourceBlocks: Array<{ startLine: number; endLine: number }>;
 	/** 拖拽中被打半透明标记的源块卡片（复位时逐张清类）。 */
 	sourceCardEls: HTMLElement[];
 }
@@ -180,8 +188,8 @@ function attachCardDragHandle(
 		markedEls: [],
 		touchedScrollEls: new Set<HTMLElement>(),
 		doc: null,
-		sourceStartLine: -1,
-		sourceEndLine: -1,
+		sourceLines: [],
+		sourceBlocks: [],
 		sourceCardEls: [],
 	};
 
@@ -225,8 +233,8 @@ function attachCardDragHandle(
 			el.classList.remove('is-dragging');
 		}
 		state.sourceCardEls = [];
-		state.sourceStartLine = -1;
-		state.sourceEndLine = -1;
+		state.sourceLines = [];
+		state.sourceBlocks = [];
 		// 跨窗格时曾进入过的每个目标窗格都被打过 `is-card-dragging`，统一在此摘。
 		for (const el of state.touchedScrollEls) {
 			el.classList.remove('is-card-dragging');
@@ -284,7 +292,27 @@ function attachCardDragHandle(
 		if (Number.isNaN(line)) {
 			return false;
 		}
-		return line >= state.sourceStartLine && line <= state.sourceEndLine;
+		return state.sourceBlocks.some(
+			(block) => line >= block.startLine && line <= block.endLine,
+		);
+	};
+
+	/**
+	 * 起手卡属于当前多选集 → 整组；否则单卡（并先把多选收窄成这张）。
+	 *
+	 * 与 Q2「多选态点已选卡 → 收窄」同语义：拖组外的卡就是宣告「我只要这一张」，
+	 * 否则会出现「拖一张却带走三张」的惊吓（[[Plan-20261101-063126]] §三-3/T3）。
+	 */
+	const resolveDragGroup = (fromLine: number): number[] => {
+		const { anchor, members } = currentMultiSelection(view);
+		if (anchor === null || members.length === 0) {
+			return [fromLine];
+		}
+		if (anchor === fromLine || members.includes(fromLine)) {
+			return [anchor, ...members].sort((a, b) => a - b);
+		}
+		commitMultiSelection(view, { anchor: fromLine, members: [] });
+		return [fromLine];
 	};
 
 	const beginDrag = (): boolean => {
@@ -310,20 +338,21 @@ function attachCardDragHandle(
 		}
 		state.doc = doc;
 		resetPeerPaneCache();
-		// 源块 = 任务行 + 整块更深子树（domain 同一口径）；用来①整树半透明
+		// 源集合：起手卡属于当前多选集 → 整组；否则单卡（顺带收窄多选）。
+		// 块 = 任务行 + 整块更深子树（domain 同一口径），用来①整树半透明
 		// ②排除「落进自身」的落点（domain 另有成环保护，这里先消除误导指示线）。
-		const lines = view.data.split('\n');
-		const items = parseChecklistItems(view.data, { includeEmpty: true });
-		const fromIndex = items.findIndex((item) => item.line === fromLine);
-		if (fromIndex < 0) {
+		const group = resolveDragGroup(fromLine);
+		const blocks = normalizeMoveBlocks(view.data, group);
+		if (blocks.length === 0) {
+			// 任一行号失效 → 放弃整次手势（没有可搬的块，画 ghost 只会误导）。
+			// 注意：父子同选时 blocks.length < group.length 是**合法**的归一，不在此列。
 			return false;
 		}
-		const range = taskBlockRange(items, lines, fromIndex);
-		if (range.end < range.start) {
-			return false;
-		}
-		state.sourceStartLine = range.start;
-		state.sourceEndLine = range.end;
+		state.sourceLines = group;
+		state.sourceBlocks = blocks.map(({ startLine, endLine }) => ({
+			startLine,
+			endLine,
+		}));
 
 		if (
 			state.pointerId !== null &&
@@ -351,9 +380,11 @@ function attachCardDragHandle(
 			});
 
 		const label =
-			cardEl.querySelector(CARD_TEXT_SELECTOR)?.textContent?.trim() ||
-			cardEl.dataset.taskKey ||
-			'';
+			group.length > 1
+				? t('view.iotoTaskView.cardDragGroup', [String(group.length)])
+				: cardEl.querySelector(CARD_TEXT_SELECTOR)?.textContent?.trim() ||
+					cardEl.dataset.taskKey ||
+					'';
 		const ghostEl = doc.createElement('div');
 		ghostEl.className = 'ioto-task-view__card-drag-ghost';
 		ghostEl.textContent = label;
@@ -561,7 +592,9 @@ function attachCardDragHandle(
 		);
 
 		// ⓪ 文件级落点必须**早于**卡片命中判定，否则永远是「落进那张卡」。
-		const fileDrop = resolveFileDropTarget(hit.el);
+		//    多块拖动只支持同文件（P2 范围），组大小 > 1 时不认文件级落点。
+		const groupSize = state.sourceLines.length;
+		const fileDrop = groupSize > 1 ? null : resolveFileDropTarget(hit.el);
 		if (fileDrop) {
 			setHoverPane(null);
 			applyDrop(fileDrop);
@@ -569,10 +602,12 @@ function attachCardDragHandle(
 		}
 
 		// ① 先定窗格：不在任何 IOTOTask 窗格里 / 目标窗格不受理 → 不画任何指示线。
+		//    多选组不跨文件（P3 才做），因此只能落在源窗格。
 		const pane = hit.pane;
 		const foreignOk = pane
 			? pane.view === view ||
-				checkForeignDropTarget(pane.view, view.file?.path ?? '').ok
+				(groupSize === 1 &&
+					checkForeignDropTarget(pane.view, view.file?.path ?? '').ok)
 			: false;
 		if (!pane || !foreignOk) {
 			setHoverPane(null);
@@ -654,16 +689,22 @@ function attachCardDragHandle(
 
 	const finishDrag = (): void => {
 		const drop = state.drop;
-		const fromLine = Number.parseInt(cardEl.dataset.line ?? '', 10);
+		// 🔴 组快照必须在 resetGesture 之前取（reset 会把 sourceLines 换新）。
+		const group = state.sourceLines;
+		const first = group[0];
 		const dst = state.hover?.view ?? null;
 		// 先复位视觉，再做异步写盘（写盘后整树重建，旧 DOM 必已弃用）。
 		resetGesture();
-		if (!drop || Number.isNaN(fromLine)) {
+		if (!drop || first === undefined) {
 			return;
 		}
 		if (drop.kind === 'file-link') {
 			// A′-1 / A′-2：目标没有视图，走「追加到任务节末」通道。
-			void commitCrossFileMoveToPath(view, fromLine, drop.file);
+			// 多块跨文件属 P3（evaluateDrop 已挡，这里再防御一次）。
+			if (group.length !== 1) {
+				return;
+			}
+			void commitCrossFileMoveToPath(view, first, drop.file);
 			return;
 		}
 		const target: TaskDropTarget =
@@ -680,10 +721,13 @@ function attachCardDragHandle(
 							drop.kind === 'section-start' ? 'start' : 'end',
 					};
 		if (!dst || dst === view) {
-			void commitCardMove(view, fromLine, target);
+			void commitCardMove(view, group, target);
 			return;
 		}
-		void commitCrossFileMove(view, dst, fromLine, target);
+		if (group.length !== 1) {
+			return; // 防御：多块不跨窗格（P3）
+		}
+		void commitCrossFileMove(view, dst, first, target);
 	};
 
 	handleEl.addEventListener('pointerdown', (event: PointerEvent) => {
@@ -798,15 +842,24 @@ function attachCardDragHandle(
 
 /**
  * 松手后的写盘编排（口径对齐 `commitSectionReorder` / `swapSelectedTask`）：
- * 守卫 → 落盘在册编辑器 → 纯函数移动 → 原子区间写 → 状态行号迁移 → 整树重建。
+ * 守卫 → 落盘在册编辑器 → 纯函数移动 → 原子区间写 → 状态行号迁移 → 整树重建
+ * → 补回焦点。
+ *
+ * 单块继续走 `moveTaskBlock`（19 条单测是回归基线）；多块走 `moveTaskBlocks`，
+ * 两条分支之后共用同一段写盘尾巴。
  */
 async function commitCardMove(
 	view: TaskViewHost,
-	fromLine: number,
+	fromLines: readonly number[],
 	target: TaskDropTarget,
 ): Promise<void> {
 	const file = view.file;
-	if (!file || !view.supportsInlineEdit() || !view.data) {
+	if (
+		!file ||
+		!view.supportsInlineEdit() ||
+		!view.data ||
+		fromLines.length === 0
+	) {
 		return;
 	}
 
@@ -817,11 +870,10 @@ async function commitCardMove(
 	}
 	view.cancelPendingDelete(false);
 
-	const result: TaskMoveResult | null = moveTaskBlock(
-		view.data,
-		fromLine,
-		target,
-	);
+	const result: TaskMoveResult | null =
+		fromLines.length > 1
+			? moveTaskBlocks(view.data, fromLines, target)
+			: moveTaskBlock(view.data, fromLines[0] ?? -1, target);
 	if (!result) {
 		// 等价槽位 / 成环 / 参数无效：纯函数未产出变化，按当前数据重建复原视觉。
 		view.renderNote(view.data);
@@ -833,6 +885,9 @@ async function commitCardMove(
 		endLine: result.endLine,
 		originalLines: result.originalLines,
 		nextText: result.nextLines.join('\n'),
+		// 🔴 必须显式给 `nextLines`：`nextText` 的「全空白 = 删块」折叠会吞掉
+		// 纯空行结果（[[Report-20261101-055822]] §四-4）。
+		nextLines: result.nextLines,
 	});
 	// 🔴 红线：data / lastLoadedText 同步（conflict 会弹 Notice）。
 	view.applyOutcome(outcome);
@@ -846,6 +901,16 @@ async function commitCardMove(
 		return; // unchanged：无写入、跟踪态不动
 	}
 
+	// 🔴 先 remap（含多选三字段，见 task-view-tracked-lines）再重绘：
+	// renderNote 末尾的 syncSelectionClass 按 selectedLine 画类，旧行号会画错卡。
 	remapTrackedLines(view, (line) => result.mapLine(line));
 	view.renderNote(view.data);
+
+	// 🔴 重绘会重建 DOM、焦点掉到 body → 紧接着按 Esc / Delete 全断。
+	// `preventScroll` 只补焦点：落点本来就在指针附近，跳视口会让人以为搬错了地方。
+	const anchor = view.selectedLine;
+	if (anchor !== null) {
+		view.queryCard(anchor)?.focus({ preventScroll: true });
+	}
+	view.refreshDeleteButtonVisibility();
 }

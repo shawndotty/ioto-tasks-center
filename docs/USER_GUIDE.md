@@ -160,11 +160,13 @@ The task view (card layout) can select several cards at once, mainly for bulk de
 - **`Esc`** — narrow back to the anchor card (a second `Esc` falls through to the existing "only this section" chain)
 - **`Delete` / `Backspace` or the toolbar delete button** — one shared confirmation dialog, then a **single** write deletes everything selected
 - Deletion works per **block**: each card disappears together with its subtasks and continuation text
+- **Drag the handle of any selected card** — the whole group moves together, keeping its original relative order (the ghost reads "N tasks")
 
 Limits:
 
 - With several cards selected, clicking a selected card narrows the selection instead of opening the editor (no bulk editing)
 - Multi-select is inactive while zoomed, while any editor is open, and in read-only mode (Markdown view)
+- **A multi-selection can only be dragged inside the same file**: dropping it on another task-view pane, a task-file link, or a task row in the task center does nothing (no drop indicator appears, nothing moves). Cross-file moves still work for single cards
 - No marquee on mobile (touch drag is scrolling); `Cmd` / `Ctrl` clicking is limited by the platform as well
 - The selection is transient: it is dropped when you switch files or close the view
 

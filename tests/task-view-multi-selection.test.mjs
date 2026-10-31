@@ -5,7 +5,9 @@ import { createJiti } from 'jiti';
 const jiti = createJiti(import.meta.url, { moduleCache: false });
 const {
 	collapseMulti,
+	mapMultiState,
 	pruneMembers,
+	remapMultiFields,
 	resolveMultiMembers,
 	toggleMultiMember,
 } = await jiti.import(
@@ -108,4 +110,40 @@ test('12 空集合 / 单成员锚点顺延退化：顺延后无成员即纯单�
 		toggleMultiMember(state(10), 999, ORDER),
 		state(999, [10]),
 	);
+});
+
+test('13 mapMultiState / remapMultiFields：锚点与成员各自按映射位移', () => {
+	const shift = (line) => line + 2;
+	assert.deepEqual(
+		mapMultiState(state(10, [20, 30]), shift),
+		state(12, [22, 32]),
+	);
+
+	// 视图侧：只写 multiAnchor / multiLines，不碰 selectedLine
+	const view = { selectedLine: 10, multiAnchor: 10, multiLines: new Set([20, 30]) };
+	remapMultiFields(view, shift);
+	assert.equal(view.selectedLine, 10);
+	assert.equal(view.multiAnchor, 12);
+	assert.deepEqual([...view.multiLines], [22, 32]);
+});
+
+test('14 mapMultiState：成员映射为 null → 丢弃；锚点为 null → 整组作废', () => {
+	const dropOdd = (line) => (line % 20 === 0 ? line : null);
+	assert.deepEqual(mapMultiState(state(20, [30, 40]), dropOdd), state(20, [40]));
+	// 锚点没了 → 整组作废（连成员一起清）
+	assert.deepEqual(
+		mapMultiState(state(30, [40]), dropOdd),
+		{ anchor: null, members: [] },
+	);
+});
+
+test('15 空态幂等：无锚点 / 无成员时映射不改写任何字段', () => {
+	const identity = (line) => line;
+	assert.deepEqual(mapMultiState(state(null), identity), state(null));
+
+	// 视图侧：全空时不写字段（避免把 0 条写入记到白名单上）
+	const view = { selectedLine: null, multiAnchor: null, multiLines: new Set() };
+	remapMultiFields(view, identity);
+	assert.equal(view.multiAnchor, null);
+	assert.equal(view.multiLines.size, 0);
 });

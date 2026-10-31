@@ -210,6 +210,43 @@ export function commitMultiSelection(
 }
 
 /**
+ * 纯函数：按行号映射迁移多选态（[[Plan-20261101-063126]] §四.步骤 2a）。
+ *
+ * - 成员映射为 `null`（所在行被规范化掉）→ 丢弃；
+ * - 锚点映射为 `null`（锚点行没了）→ 整组作废（不变量要求集合必须挂在一个锚点上，
+ *   没有锚点就没有键盘落点）。
+ */
+export function mapMultiState(
+	state: MultiSelection,
+	mapLine: (line: number) => number | null,
+): MultiSelection {
+	const anchor = state.anchor === null ? null : mapLine(state.anchor);
+	const kept = state.members
+		.map((line) => mapLine(line))
+		.filter((line): line is number => line !== null);
+	return anchor === null ? EMPTY_MULTI_SELECTION : { anchor, members: kept };
+}
+
+/**
+ * 🔴 迁移多选的两个附加字段（**不碰 `selectedLine`**——那个由 `remapTrackedLines`
+ * 负责，这里再写一次会与它抢同一个字段）。
+ *
+ * 场景：整组拖拽 / 互换 / 缩进等任何「按行号移动块」操作写盘后。只迁锚点会让
+ * 不变量 `multiAnchor !== selectedLine` 立刻把集合判作废 → 拖完多选就没了。
+ */
+export function remapMultiFields(
+	view: TaskViewHost,
+	mapLine: (line: number) => number | null,
+): void {
+	if (view.multiAnchor === null && view.multiLines.size === 0) {
+		return;
+	}
+	const next = mapMultiState(currentMultiSelection(view), mapLine);
+	view.multiAnchor = next.anchor;
+	view.multiLines = new Set(next.members);
+}
+
+/**
  * 多选门禁（[[Plan-20261101-054951]] §四.4c）：放大 / 任一编辑器 / 只读态
  * 一律不进入多选。返回 `false` 时调用方应原样放行事件。
  */

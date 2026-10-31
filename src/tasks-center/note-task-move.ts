@@ -277,6 +277,261 @@ function normalizeJunction(tokens: MoveToken[], boundary: number): number {
 	return boundary + (desired - blankCount);
 }
 
+/**
+ * 由「新 token 全序列」反推最小且**自洽**的提交窗口。
+ *
+ * - 前缀：与原文逐字节相同、行号也未变的头部；
+ * - 后缀：行号整体平移 `shift` 后仍逐字节相同的尾部；
+ * - 中间（含被规范化掉的空行 / 新增的空行）由 `nextLines` 一次替换。
+ *
+ * 🔴 为什么不能用「块首 … 插入缝」的几何跨度：接缝规范化可能删掉窗口外侧紧邻
+ * 的空行（例：标题与首个任务之间的空行），此时 token 序列与「按几何跨度提交」
+ * 的文件会错开一行，`mapLine` 也跟着错位（选中态落到相邻卡上）。
+ */
+function resolveEditWindow(
+	tokens: readonly MoveToken[],
+	lines: readonly string[],
+): { lo: number; hi: number; newLo: number; newHi: number } | null {
+	const shift = tokens.length - lines.length;
+	let prefix = 0;
+	while (prefix < tokens.length) {
+		const token = tokens[prefix];
+		if (token?.source !== prefix || token.text !== (lines[prefix] ?? '')) {
+			break;
+		}
+		prefix += 1;
+	}
+	let suffix = 0;
+	while (suffix < tokens.length - prefix) {
+		const index = tokens.length - 1 - suffix;
+		const token = tokens[index];
+		const source = token?.source ?? null;
+		if (source === null || source !== index - shift) {
+			break;
+		}
+		if (token?.text !== (lines[source] ?? '')) {
+			break;
+		}
+		suffix += 1;
+	}
+
+	const newLo = prefix;
+	const newHi = tokens.length - suffix - 1;
+	const lo = prefix;
+	const hi = lines.length - suffix - 1;
+	if (newLo < 0 || newHi < newLo || lo < 0 || hi < lo) {
+		return null;
+	}
+	return { lo, hi, newLo, newHi };
+}
+
+/** 归一后的任务块（去嵌套、去重、按首行升序）。 */export interface MoveBlock {
+	startLine: number;
+	endLine: number;
+	level: number;
+}
+
+/**
+ * 块归一（[[Plan-20261101-063126]] §四.步骤 1）：任一行号失效即跳过（不报错，
+ * 由调用方用「结果为空」判断整次手势是否放弃）；父子同选只留外层——口径同
+ * `note-task-multi-delete`，但额外保留 `level`（各自重缩进要用）。
+ */
+export function normalizeMoveBlocks(
+	content: string,
+	fromLines: readonly number[],
+): MoveBlock[] {
+	if (fromLines.length === 0) {
+		return [];
+	}
+	const lines = content.split('\n');
+	const items = parseChecklistItems(content, { includeEmpty: true });
+	const found: MoveBlock[] = [];
+	const seen = new Set<number>();
+	for (const fromLine of fromLines) {
+		if (seen.has(fromLine)) {
+			continue;
+		}
+		seen.add(fromLine);
+		const index = items.findIndex((item) => item.line === fromLine);
+		const item = items[index];
+		if (!item || index < 0) {
+			continue;
+		}
+		const range = taskBlockRange(items, lines, index);
+		if (range.end < range.start) {
+			continue;
+		}
+		found.push({
+			startLine: range.start,
+			endLine: range.end,
+			level: item.indentLevel,
+		});
+	}
+	if (found.length === 0) {
+		return [];
+	}
+	found.sort((a, b) => a.startLine - b.startLine);
+	const blocks: MoveBlock[] = [];
+	for (const block of found) {
+		const last = blocks[blocks.length - 1];
+		// 起点落在前一个保留块内 = 它的后裔（或自身），只搬外层。
+		if (last && block.startLine <= last.endLine) {
+			continue;
+		}
+		blocks.push(block);
+	}
+	return blocks;
+}
+
+/** 组移动结果：字段与 `TaskMoveResult` 对齐，额外给出组内每块的新首行。 */
+export interface TaskBlocksMoveResult extends TaskMoveResult {
+	/** 组内每块的新首行（按原 `startLine` 升序）。 */
+	movedNewStartLines: number[];
+}
+
+/**
+ * 整组移动（[[Plan-20261101-063126]] §四.步骤 1）：把 `fromLines` 命中的块按
+ * **原文件顺序**搬到同一个落点，每块**各自**重缩进到目标层级，整组只产**一段**
+ * 区间编辑（`commitBlockRange` 一次）+ 一份行号映射。
+ *
+ * 与 `moveTaskBlock` 的三处口径差异：
+ * 1. 成环只拒绝「严格落进块内」（`start < seam <= end`）——`seam = 某块块首`、
+ *    `seam = 末块末+1`、夹在两块之间的缝都可能是合法重排，交给末尾的逐字节
+ *    相同判定兜住；
+ * 2. 重缩进 delta 逐块计算（`targetLevel − 本块.level`），不是「按首块算一次」；
+ * 3. 提交窗口是 `[min(首块首, seam), max(末块末, seam−1)]`，远距离两块时窗口
+ *    横跨中间内容，靠 `commitBlockRange` 的序列校验兜住漂移。
+ *
+ * 单块时语义与 `moveTaskBlock` 等价（`note-task-multi-move.test.mjs` 有断言钉住）。
+ */
+export function moveTaskBlocks(
+	content: string,
+	fromLines: readonly number[],
+	target: TaskDropTarget,
+): TaskBlocksMoveResult | null {
+	const blocks = normalizeMoveBlocks(content, fromLines);
+	const firstBlock = blocks[0];
+	const lastBlock = blocks[blocks.length - 1];
+	if (!firstBlock || !lastBlock) {
+		return null;
+	}
+
+	const lines = content.split('\n');
+	const items = parseChecklistItems(content, { includeEmpty: true });
+	const anchor = resolveAnchor(content, lines, items, target);
+	if (!anchor) {
+		return null;
+	}
+	const { seam, level: targetLevel } = anchor;
+
+	// ① 成环：只有「严格落进块内」才是无意义落点；块首 / 末块尾之后这类
+	//    等价槽位交给 ⑤ 的逐字节比对（它们取决于组内其它块是否真的移位）。
+	if (blocks.some((block) => seam > block.startLine && seam <= block.endLine)) {
+		return null;
+	}
+
+	// ② 组 token：每块按自己的层级差重缩进，顺序 = 原文件顺序。
+	const groupTokens: MoveToken[] = [];
+	for (const block of blocks) {
+		const delta = targetLevel - block.level;
+		for (let line = block.startLine; line <= block.endLine; line += 1) {
+			groupTokens.push({
+				text: reindentLine(lines[line] ?? '', delta),
+				source: line,
+			});
+		}
+	}
+
+	// ③ 一次拼接：跳过全部块行；遇到 seam 插入整组；记录所有连接点。
+	const inside = (line: number): boolean =>
+		blocks.some((block) => line >= block.startLine && line <= block.endLine);
+	const tokens: MoveToken[] = [];
+	const boundaries: number[] = [];
+	let inserted = false;
+	let gap = false;
+	for (let line = 0; line < lines.length; line += 1) {
+		if (!inserted && line === seam) {
+			boundaries.push(tokens.length);
+			tokens.push(...groupTokens);
+			boundaries.push(tokens.length);
+			inserted = true;
+		}
+		if (inside(line)) {
+			gap = true;
+			continue;
+		}
+		if (gap) {
+			boundaries.push(tokens.length);
+			gap = false;
+		}
+		tokens.push({ text: lines[line] ?? '', source: line });
+	}
+	if (!inserted) {
+		// seam = 文件末：整组追加到末尾。
+		boundaries.push(tokens.length);
+		tokens.push(...groupTokens);
+		boundaries.push(tokens.length);
+	}
+
+	// ④ 连接点从右向左规范化：右侧先吃掉共享空池，左侧再看到的就是合并后的
+	//    单一连接点，索引不会失效（与 `moveTaskBlock` 同一处理顺序）。
+	for (const boundary of [...new Set(boundaries)].sort((a, b) => b - a)) {
+		normalizeJunction(tokens, boundary);
+	}
+
+	// ⑤ 逐字节相同 → no-op（等价槽位 / 拖回原位）。
+	if (
+		tokens.length === lines.length &&
+		tokens.every(
+			(token, index) => token.source === index && token.text === lines[index],
+		)
+	) {
+		return null;
+	}
+
+	// ⑥ 行号源映射 + 提交窗口。
+	const oldToNew = new Map<number, number>();
+	tokens.forEach((token, newLine) => {
+		if (token.source !== null) {
+			oldToNew.set(token.source, newLine);
+		}
+	});
+
+	const window = resolveEditWindow(tokens, lines);
+	if (!window) {
+		return null;
+	}
+	const { lo, hi, newLo, newHi } = window;
+
+	const movedNewStartLines: number[] = [];
+	for (const block of blocks) {
+		const moved = oldToNew.get(block.startLine);
+		if (moved === undefined) {
+			return null;
+		}
+		movedNewStartLines.push(moved);
+	}
+	const movedNewStartLine = movedNewStartLines[0];
+	if (movedNewStartLine === undefined) {
+		return null;
+	}
+
+	return {
+		startLine: lo,
+		endLine: hi,
+		originalLines: lines.slice(lo, hi + 1),
+		nextLines: tokens.slice(newLo, newHi + 1).map((token) => token.text),
+		movedNewStartLine,
+		movedNewStartLines,
+		mapLine(line) {
+			if (line === null) {
+				return null;
+			}
+			return oldToNew.has(line) ? (oldToNew.get(line) as number) : null;
+		},
+	};
+}
+
 export function moveTaskBlock(
 	content: string,
 	fromLine: number,
@@ -370,23 +625,8 @@ export function moveTaskBlock(
 		}
 	});
 
-	// 提交区间按**原文件坐标**取「删除缝 … 插入缝」的并集：
-	// 向下移 [srcStart, seam-1]；向上移 [seam, srcEnd]。新增的分隔空行
-	// （source=null）只会落在连接点上，必在该跨度对应的新坐标窗口之内。
-	const lo = movingDown ? sourceBlock.start : seam;
-	const hi = movingDown ? seam - 1 : sourceBlock.end;
-	let newLo = -1;
-	let newHi = -1;
-	tokens.forEach((token, index) => {
-		const inSpan = token.source === null || (token.source >= lo && token.source <= hi);
-		if (inSpan) {
-			if (newLo < 0) {
-				newLo = index;
-			}
-			newHi = index;
-		}
-	});
-	if (newLo < 0 || newHi < newLo) {
+	const window = resolveEditWindow(tokens, lines);
+	if (!window) {
 		return null;
 	}
 
@@ -396,10 +636,12 @@ export function moveTaskBlock(
 	}
 
 	return {
-		startLine: lo,
-		endLine: hi,
-		originalLines: lines.slice(lo, hi + 1),
-		nextLines: tokens.slice(newLo, newHi + 1).map((token) => token.text),
+		startLine: window.lo,
+		endLine: window.hi,
+		originalLines: lines.slice(window.lo, window.hi + 1),
+		nextLines: tokens
+			.slice(window.newLo, window.newHi + 1)
+			.map((token) => token.text),
 		movedNewStartLine,
 		mapLine(line) {
 			if (line === null) {
