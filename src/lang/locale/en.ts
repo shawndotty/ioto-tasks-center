@@ -911,6 +911,7 @@ const en = {
 	'shortcutHelp.footnoteMobile': 'A hardware keyboard is required on mobile.',
 	'shortcutHelp.key.anyOther': 'Any other key',
 	'shortcutHelp.key.modClick': '⌘/Ctrl-click',
+	'shortcutHelp.key.shiftClick': 'Shift + click',
 	'shortcutHelp.key.blankDrag': 'Drag on empty area',
 	'shortcutHelp.group.view': 'In the view',
 	'shortcutHelp.when.view': 'Focus is in the task view and you are not editing',
@@ -938,6 +939,8 @@ const en = {
 	'shortcutHelp.action.select.requestDelete': 'Ask before deleting',
 	'shortcutHelp.action.select.multiToggle':
 		'Add this card to / remove it from the multi-selection',
+	'shortcutHelp.action.select.multiRange':
+		'Select from the anchor to this card',
 	'shortcutHelp.action.select.marquee':
 		'Select every card the box touches',
 	'shortcutHelp.action.select.exitSectionZoom': 'Leave "only this section"',
@@ -975,6 +978,8 @@ const en = {
 		'With several cards selected, one dialog deletes them all',
 	'shortcutHelp.note.select.multiGate':
 		'Ignored while zoomed, editing, or read-only',
+	'shortcutHelp.note.select.multiRange':
+		'The anchor stays put; each click re-computes the range',
 	'shortcutHelp.note.select.zoom': 'Card keys are off in zoomed view',
 	'shortcutHelp.note.select.escZoomOnly':
 		'Only while "only this section" is active',

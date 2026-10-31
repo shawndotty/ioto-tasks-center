@@ -163,6 +163,10 @@ export function clearMultiSelection(view: TaskViewHost): void {
 	for (const line of view.multiLines) {
 		view.queryCard(line)?.removeClass('is-selected');
 	}
+	// 锚点不在 `multiLines` 里：描边类必须单独卸（[[Plan-20261101-073024]] §四.4a）
+	if (view.selectedLine !== null) {
+		view.queryCard(view.selectedLine)?.removeClass('is-selection-anchor');
+	}
 	view.multiLines = new Set();
 	view.multiAnchor = null;
 }
@@ -178,6 +182,11 @@ export function commitMultiSelection(
 	view: TaskViewHost,
 	next: MultiSelection,
 ): void {
+	// T4：多选与待删除遮罩不并存。收口在这里，⌘ / 框选 / Shift 三条入口自动对齐
+	// （[[Plan-20261101-073024]] §三 口径 4）。先撤遮罩再改选中：中途那次按钮刷新
+	// 读到的是「尚未改选」的自洽状态，函数末尾还会再刷一次（幂等）。
+	view.cancelPendingDelete(false);
+
 	const prevAnchor = view.selectedLine;
 	const prevMembers = resolveMultiMembers(
 		view.selectedLine,
@@ -187,6 +196,7 @@ export function commitMultiSelection(
 
 	if (prevAnchor !== null && prevAnchor !== next.anchor) {
 		view.queryCard(prevAnchor)?.removeClass('is-selected');
+		view.queryCard(prevAnchor)?.removeClass('is-selection-anchor');
 	}
 	for (const line of prevMembers) {
 		if (line !== next.anchor && !next.members.includes(line)) {
@@ -201,6 +211,13 @@ export function commitMultiSelection(
 	const anchorCard =
 		next.anchor === null ? null : view.queryCard(next.anchor);
 	anchorCard?.addClass('is-selected');
+	// 锚点描边只在「≥2 张选中」时挂：单选时焦点环本身就是唯一标识
+	// （[[Plan-20261101-073024]] §三 口径 5）。
+	if (next.members.length > 0) {
+		anchorCard?.addClass('is-selection-anchor');
+	} else {
+		anchorCard?.removeClass('is-selection-anchor');
+	}
 	for (const line of next.members) {
 		view.queryCard(line)?.addClass('is-selected');
 	}
@@ -270,6 +287,78 @@ export function toggleMulti(view: TaskViewHost, line: number): void {
 		view,
 		toggleMultiMember(currentMultiSelection(view), line, order),
 	);
+}
+
+/**
+ * `Shift`+点击连选的区间（纯函数）：`order` 上 `a` 与 `b` 的**闭区间**。
+ *
+ * 任一端点不在可见顺序里（被过滤 / 折叠 / 行号已漂移）→ `null`（不可连选，
+ * 调用方落回普通点选）。方向无关：`a` 在下、`b` 在上得到的序列同样是 DOM 顺序。
+ */
+export function rangeBetween(
+	order: readonly number[],
+	a: number,
+	b: number,
+): number[] | null {
+	const from = order.indexOf(a);
+	const to = order.indexOf(b);
+	if (from < 0 || to < 0) {
+		return null;
+	}
+	const [lo, hi] = from <= to ? [from, to] : [to, from];
+	return order.slice(lo, hi + 1);
+}
+
+/**
+ * `Shift`+点击的全部语义（纯函数）。**锚点固定不动**（[[Plan-20261101-073024]] §三 口径 1）：
+ *
+ * | 当前态 | 操作 | 结果 |
+ * | --- | --- | --- |
+ * | 无锚点 | `Shift`+点击任意卡 | 该卡成为锚点，集合为空（等价单选） |
+ * | 有锚点 | `Shift`+点击**另一张**卡 | 锚点 → 该卡的闭区间成为新选择（锚点不变） |
+ * | 有锚点 | `Shift`+点击**锚点本身** | 区间退化为它自己 → 收窄为单选 |
+ * | 任选 | 端点不可见 / 区间不成立 | `null`（调用方落回普通点选） |
+ *
+ * 🔴 与 `toggleMultiMember` 的关键差异：这里是**重算**，不读也不并 `state.members`
+ * ——⌘ 点出来的散点集在第一次 `Shift`+点击时就被区间整体替换。
+ */
+export function extendMultiTo(
+	state: MultiSelection,
+	line: number,
+	order: readonly number[],
+): MultiSelection | null {
+	const anchor = state.anchor;
+	if (anchor === null) {
+		return { anchor: line, members: [] };
+	}
+	const range = rangeBetween(order, anchor, line);
+	if (range === null) {
+		return null;
+	}
+	return {
+		anchor,
+		members: range.filter((member) => member !== anchor),
+	};
+}
+
+/**
+ * `Shift`+点击入口：读 DOM 顺序 → `extendMultiTo` → 落一次真源。
+ * 返回 `false` = **未消费**（门禁不通过 / 区间不成立），调用方按普通点选继续。
+ */
+export function extendMulti(view: TaskViewHost, line: number): boolean {
+	if (!canMultiSelect(view)) {
+		return false;
+	}
+	const next = extendMultiTo(
+		currentMultiSelection(view),
+		line,
+		collectCardLines(view.contentEl),
+	);
+	if (next === null) {
+		return false;
+	}
+	commitMultiSelection(view, next);
+	return true;
 }
 
 /** 选择数量：1 = 纯单选，0 = 无选中。 */

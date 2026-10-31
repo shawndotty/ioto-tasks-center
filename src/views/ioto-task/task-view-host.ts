@@ -303,6 +303,11 @@ export interface TaskViewHost extends Component {
 	setMultiSelection(anchor: number | null, members: readonly number[]): void;
 	/** ⌘/Ctrl 点选：按当前 DOM 顺序切换 `line` 的成员资格。 */
 	toggleMulti(line: number): void;
+	/**
+	 * `Shift`+点击：从锚点连选到 `line`（锚点不动）。
+	 * 返回 `false` = 未消费（门禁不通过 / 区间不成立），调用方落回普通点选。
+	 */
+	extendMulti(line: number): boolean;
 	/** 当前选择数量（1 = 纯单选，0 = 无选中）。 */
 	activeMultiCount(): number;
 	/** 该行是否属于附加成员集合（锚点不算）。 */

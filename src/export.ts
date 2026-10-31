@@ -218,6 +218,7 @@ const TRANSIENT_CLASSES = [
 	'is-section-zoomed', // 「只看本节」：导出仍拍全部章节（与卡片放大同口径）
 	'is-continuation-collapsed', // 续写区折叠：导出图里正文自动可见、占位条自动隐藏
 	'is-marquee', // 框选期禁选类（[[Plan-20261101-054951]] §四.步骤 7）
+	'is-selection-anchor', // 多选锚点描边：导出不进图（与 `is-selected` 同口径）
 ];
 
 /** 待删除确认遮罩的类名（整块剔除）。 */

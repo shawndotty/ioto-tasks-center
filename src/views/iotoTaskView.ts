@@ -173,6 +173,7 @@ import {
 	activeMultiCount,
 	collapseMultiSelection,
 	commitMultiSelection,
+	extendMulti,
 	isMultiSelected,
 	toggleMulti,
 } from './ioto-task/task-view-multi-selection';
@@ -813,6 +814,7 @@ export class IOTOTaskView extends TextFileView {
 		commitMultiSelection(this, { anchor, members: [...members] });
 	}
 	toggleMulti(line: number): void { toggleMulti(this, line); }
+	extendMulti(line: number): boolean { return extendMulti(this, line); }
 	collapseMulti(): boolean { return collapseMultiSelection(this); }
 	activeMultiCount(): number { return activeMultiCount(this); }
 	isMultiSelected(line: number): boolean { return isMultiSelected(this, line); }

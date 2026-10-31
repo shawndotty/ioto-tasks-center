@@ -221,6 +221,14 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
 				labelKey: 'shortcutHelp.action.select.marquee',
 			},
 			{
+				// Shift+点击连选：无法用键帽表达，走 keyText（同上方两行的口径）。
+				// （[[Plan-20261101-073024]] §四.5b）
+				chords: [],
+				keyTextKey: 'shortcutHelp.key.shiftClick',
+				labelKey: 'shortcutHelp.action.select.multiRange',
+				noteKeys: ['shortcutHelp.note.select.multiRange'],
+			},
+			{
 				chords: [['Esc']],
 				labelKey: 'shortcutHelp.action.select.exitSectionZoom',
 				noteKeys: ['shortcutHelp.note.select.escZoomOnly'],

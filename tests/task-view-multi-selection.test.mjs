@@ -5,8 +5,10 @@ import { createJiti } from 'jiti';
 const jiti = createJiti(import.meta.url, { moduleCache: false });
 const {
 	collapseMulti,
+	extendMultiTo,
 	mapMultiState,
 	pruneMembers,
+	rangeBetween,
 	remapMultiFields,
 	resolveMultiMembers,
 	toggleMultiMember,
@@ -146,4 +148,66 @@ test('15 空态幂等：无锚点 / 无成员时映射不改写任何字段', ()
 	remapMultiFields(view, identity);
 	assert.equal(view.multiAnchor, null);
 	assert.equal(view.multiLines.size, 0);
+});
+
+/* ------------------------------------------------------------------ *
+ * 16–25：Shift+点击连选（[[Plan-20261101-073024]] §四.步骤 1 / §四.6a）
+ * ------------------------------------------------------------------ */
+
+test('16 rangeBetween 正向：10→40 得到闭区间', () => {
+	assert.deepEqual(rangeBetween(ORDER, 10, 40), [10, 20, 30, 40]);
+});
+
+test('17 rangeBetween 反向：40→10 得到同一序列（DOM 顺序，不反排）', () => {
+	assert.deepEqual(rangeBetween(ORDER, 40, 10), [10, 20, 30, 40]);
+});
+
+test('18 rangeBetween 同点：30→30 只含它自己', () => {
+	assert.deepEqual(rangeBetween(ORDER, 30, 30), [30]);
+});
+
+test('19 rangeBetween 端点不可见：任一端点不在 order 里 → null', () => {
+	assert.equal(rangeBetween(ORDER, 10, 999), null);
+	assert.equal(rangeBetween(ORDER, 999, 10), null);
+	assert.equal(rangeBetween(ORDER, 999, 888), null);
+});
+
+test('20 extendMultiTo 无锚点：Shift+点哪张，哪张成为锚点且集合为空', () => {
+	assert.deepEqual(extendMultiTo(state(null), 30, ORDER), state(30, []));
+});
+
+test('21 extendMultiTo 正向：锚点 10 + Shift 点 40 → 成员 20/30/40', () => {
+	assert.deepEqual(
+		extendMultiTo(state(10), 40, ORDER),
+		state(10, [20, 30, 40]),
+	);
+});
+
+test('22 extendMultiTo 反向：锚点 40 + Shift 点 10 → 成员 10/20/30（锚点仍是 40）', () => {
+	assert.deepEqual(
+		extendMultiTo(state(40), 10, ORDER),
+		state(40, [10, 20, 30]),
+	);
+});
+
+test('23 extendMultiTo 是「替换」而不是「并集」：⌘ 散点被区间整体覆盖', () => {
+	// 原态：锚点 10 + 远端散点 50；Shift 点 20 → 只剩区间内的 20，50 被丢掉
+	assert.deepEqual(
+		extendMultiTo(state(10, [50]), 20, ORDER),
+		state(10, [20]),
+	);
+});
+
+test('24 extendMultiTo 点锚点本身：区间退化 → 收窄为单选', () => {
+	assert.deepEqual(
+		extendMultiTo(state(30, [10, 20, 40]), 30, ORDER),
+		state(30, []),
+	);
+});
+
+test('25 extendMultiTo 端点不可见 → null（含「锚点被过滤掉」的场景）', () => {
+	// 目标卡不在可见顺序里
+	assert.equal(extendMultiTo(state(10), 999, ORDER), null);
+	// 锚点被过滤隐藏：锚点不在 order 里，同样不可连选（调用方落回普通点选）
+	assert.equal(extendMultiTo(state(999, [20]), 30, ORDER), null);
 });

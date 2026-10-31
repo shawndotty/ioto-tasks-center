@@ -273,6 +273,18 @@ export function renderChecklistGroup(options: {
 				editing.toggleMulti?.(item.line);
 				return;
 			}
+			// Shift+点击：从锚点连选到本卡（[[Plan-20261101-073024]] §四.3a）。
+			// 位置紧接 ⌘ 分支：`⌘/Ctrl+Shift+点击` 先被上面那条吃掉（按 ⌘ 处理，语义
+			// 不叠加，与 macOS Finder「加选优先」一致）；下面所有交互元素 / 放大 /
+			// 续行排除仍然先生效。
+			if (event.shiftKey && !event.metaKey && !event.ctrlKey && editing.enabled) {
+				if (editing.extendMulti?.(item.line) === true) {
+					event.preventDefault();
+					event.stopPropagation();
+					return;
+				}
+				// 未消费（端点不可见 / 门禁）→ 落到下面的普通点选分支，不吞点击
+			}
 			// 「不支持内联编辑」时保留原 Notice 路径，不进选择态
 			if (!editing.enabled) {
 				editing.beginEdit(item.line);
@@ -290,6 +302,29 @@ export function renderChecklistGroup(options: {
 			} else {
 				editing.select(item.line);
 			}
+		});
+
+		// Shift+点击会先触发原生文本扩选（`user-select` 只在拖拽期被禁）。只挡这一种
+		// 默认行为：`preventDefault` 不阻断随后的 `click`，锚点焦点由
+		// `commitMultiSelection` 的 `focus({preventScroll:true})` 补回。
+		// 链接 / 按钮 / 输入类一律放行（核心的「⌘+点链接开新页」等语义不受影响）。
+		// （[[Plan-20261101-073024]] §四.3b）
+		cardEl.addEventListener('mousedown', (event) => {
+			if (!event.shiftKey || event.button !== 0) {
+				return;
+			}
+			if (!editing.enabled || editing.zoomLine != null) {
+				return;
+			}
+			const target = event.target as HTMLElement | null;
+			if (
+				target?.closest(
+					'a, button, input, textarea, select, [contenteditable]',
+				)
+			) {
+				return;
+			}
+			event.preventDefault();
 		});
 
 		// 右键菜单（[[Plan-20261023-104335]] §4.7）：桌面端 only（移动端无 contextmenu，

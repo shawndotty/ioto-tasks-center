@@ -177,6 +177,11 @@ export interface TaskNoteEditing {
 	isMultiSelected?(line: number): boolean;
 	/** ⌘/Ctrl 点选：按当前 DOM 顺序切换该行的成员资格。 */
 	toggleMulti?(line: number): void;
+	/**
+	 * `Shift`+点击：从锚点连选到该行（锚点不动）。
+	 * 返回 `false` = 未消费（门禁 / 区间不成立），调用方落回普通点选。
+	 */
+	extendMulti?(line: number): boolean;
 	/** 多选批量删除（统一 `ConfirmModal` + 一次原子写）。 */
 	deleteMulti?(): void;
 	/** `Esc` 收窄为锚点单选（多选态下第一次 `Esc` 的语义）。 */

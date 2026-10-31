@@ -312,6 +312,17 @@ export function syncSelectionClass(view: TaskViewHost): void {
 		view.multiAnchor,
 		view.multiLines,
 	);
+	// 锚点描边（[[Plan-20261101-073024]] §四.4a）：判据用**回填后的** `members`，
+	// 不是裸 `view.multiLines`——兜底改锚点时集合已作废，用裸集合会画出
+	// 「没有成员的描边」。与 `.is-selected` 同约定：别处只加不摘，摘类由
+	// `commit` / `clear` / 整树重建负责。
+	const anchorCardEl =
+		view.selectedLine === null ? null : queryCard(view, view.selectedLine);
+	if (members.length > 0) {
+		anchorCardEl?.addClass('is-selection-anchor');
+	} else {
+		anchorCardEl?.removeClass('is-selection-anchor');
+	}
 	for (const line of members) {
 		queryCard(view, line)?.addClass('is-selected');
 	}
@@ -408,6 +419,7 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 		toggleMulti: (line: number) => {
 			view.toggleMulti(line);
 		},
+		extendMulti: (line: number) => view.extendMulti(line),
 		deleteMulti: () => {
 			void view.deleteMultiSelected();
 		},

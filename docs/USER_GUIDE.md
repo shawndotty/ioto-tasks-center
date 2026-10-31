@@ -156,6 +156,7 @@ The target is written first and the source is removed only afterwards, so a fail
 The task view (card layout) can select several cards at once, mainly for bulk deletion:
 
 - **`Cmd` / `Ctrl` + click a card** — add it to / remove it from the selection; clicking it again deselects it
+- **`Shift` + click a card** — select from the anchor to this card (the anchor stays put; keep `Shift`-clicking to stretch or shrink the range; with `Cmd` / `Ctrl` held too, the `Cmd` / `Ctrl` behaviour wins)
 - **Drag on an empty area** — pull a dashed box; every card the box touches is selected (a partial overlap counts). Dragging to the top or bottom edge scrolls automatically
 - **`Esc`** — narrow back to the anchor card (a second `Esc` falls through to the existing "only this section" chain)
 - **`Delete` / `Backspace` or the toolbar delete button** — one shared confirmation dialog, then a **single** write deletes everything selected
@@ -165,6 +166,7 @@ The task view (card layout) can select several cards at once, mainly for bulk de
 Limits:
 
 - With several cards selected, clicking a selected card narrows the selection instead of opening the editor (no bulk editing)
+- The anchor card gets an extra outline while several cards are selected — it is both the start of `Shift`-clicking and the landing point of `↑↓` / `Enter` / editing; a single selection has no such outline (its focus ring is the marker)
 - Multi-select is inactive while zoomed, while any editor is open, and in read-only mode (Markdown view)
 - **A multi-selection can be dragged across files**: onto another task-view pane — the whole group is inserted at the drop position; onto an in-card task-file link or a task row in the tasks center — the group is appended after the last task of the target's `任务` section (created at the end of the file if missing)
 - After a cross-file group move the source selection is cleared, and the target file selects the **first** block of the group and scrolls it into view (select more cards to keep going)
