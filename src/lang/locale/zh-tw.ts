@@ -664,6 +664,7 @@ const zhTW = {
 	'command.swapWithNextTask': '與下一個同級任務互換',
 	'command.toggleTaskPin': '固定 / 取消固定當前任務（選中卡）',
 	'command.duplicateTask': '建立目前任務的副本（選取卡）',
+	'command.moveTaskToFile': '將目前任務移動到其他任務檔案（選取卡）',
 	'command.searchTaskView': '在任務視圖中搜尋',
 	'command.toggleAllContinuationFolds': '摺疊 / 展開全部續寫區',
 	'command.toggleAllSectionFolds': '摺疊 / 展開全部 Section',
@@ -744,6 +745,7 @@ const zhTW = {
 	'settings.exportImage.footer.desc':
 		'在匯出圖片底部置中加上品牌標語（固定英文，各語言一致）。',
 	'view.iotoTaskView.tasksSectionTitle': '任務',
+	'view.iotoTaskView.moveToFile.placeholder': '選擇要移動到哪個任務檔案',
 	'view.iotoTaskView.badge.depends': '依賴×{0}',
 	'view.iotoTaskView.badge.dependsIndex': '依賴#{0}',
 	'view.iotoTaskView.badge.agent': 'Agent：{0}',
@@ -770,6 +772,7 @@ const zhTW = {
 	'view.iotoTaskView.contextMenu.repeatTask': '標記為重複任務',
 	'view.iotoTaskView.contextMenu.unrepeatTask': '取消重複',
 	'view.iotoTaskView.contextMenu.duplicateTask': '建立任務副本',
+	'view.iotoTaskView.contextMenu.moveToFile': '移動到…',
 	'view.iotoTaskView.deleteConfirm.confirm': '確認刪除',
 	'view.iotoTaskView.deleteConfirm.cancel': '取消',
 	'view.iotoTaskView.deleteConfirm.aria': '刪除確認',
@@ -785,6 +788,11 @@ const zhTW = {
 	'notice.iotoTaskView.primarySectionDuplicate':
 		'存在多個同名章節「{0}」，已標記最前面的一個',
 	'notice.iotoTaskView.duplicateCreated': '已建立任務副本，並選取新副本。',
+	'notice.iotoTaskView.crossMoveTargetChanged':
+		'目標檔案「{0}」在拖動期間被改動了，本次移動已放棄。',
+	'notice.iotoTaskView.crossMoveSourceKept':
+		'已複製到「{0}」，但來源任務刪除失敗，請手動刪除來源任務。',
+	'notice.iotoTaskView.crossMoveDone': '已移動到「{0}」。',
 	'notice.iotoTaskView.repeatAdded':
 		'已標記為重複任務：每次執行都執行，成功後不落勾。',
 	'notice.iotoTaskView.repeatRemoved': '已取消重複標記。',

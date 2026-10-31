@@ -725,6 +725,7 @@ const en = {
 	'command.swapWithNextTask': 'Swap with next sibling task',
 	'command.toggleTaskPin': 'Toggle pin on selected task',
 	'command.duplicateTask': 'Duplicate selected task',
+	'command.moveTaskToFile': 'Move selected task to another task file',
 	'command.searchTaskView': 'Search in task view',
 	'command.toggleAllContinuationFolds':
 		'Collapse / expand all continuations',
@@ -814,6 +815,7 @@ const en = {
 	'settings.exportImage.footer.desc':
 		'Center a fixed brand slogan at the bottom of the exported image (English only, identical across languages).',
 	'view.iotoTaskView.tasksSectionTitle': 'Tasks',
+	'view.iotoTaskView.moveToFile.placeholder': 'Pick a task file to move this task into',
 	'view.iotoTaskView.badge.depends': 'Depends ×{0}',
 	'view.iotoTaskView.badge.dependsIndex': 'Depends #{0}',
 	'view.iotoTaskView.badge.agent': 'Agent: {0}',
@@ -840,6 +842,7 @@ const en = {
 	'view.iotoTaskView.contextMenu.repeatTask': 'Mark as repeat task',
 	'view.iotoTaskView.contextMenu.unrepeatTask': 'Unmark repeat task',
 	'view.iotoTaskView.contextMenu.duplicateTask': 'Duplicate task',
+	'view.iotoTaskView.contextMenu.moveToFile': 'Move to…',
 	'view.iotoTaskView.deleteConfirm.confirm': 'Confirm delete',
 	'view.iotoTaskView.deleteConfirm.cancel': 'Cancel',
 	'view.iotoTaskView.deleteConfirm.aria': 'Delete confirmation',
@@ -858,6 +861,11 @@ const en = {
 	'notice.iotoTaskView.primarySectionDuplicate':
 		'Multiple sections named "{0}"; marked the first one',
 	'notice.iotoTaskView.duplicateCreated': 'Task duplicated; the copy is selected.',
+	'notice.iotoTaskView.crossMoveTargetChanged':
+		'The target file "{0}" changed while dragging; this move was cancelled.',
+	'notice.iotoTaskView.crossMoveSourceKept':
+		'Copied to "{0}", but the source task could not be removed. Please delete it manually.',
+	'notice.iotoTaskView.crossMoveDone': 'Moved to "{0}".',
 	'notice.iotoTaskView.repeatAdded':
 		'Marked as repeat: runs every time, stays unchecked.',
 	'notice.iotoTaskView.repeatRemoved': 'Repeat mark removed.',

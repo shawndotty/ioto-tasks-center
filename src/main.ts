@@ -499,6 +499,24 @@ export default class IOTOTasksCenter extends Plugin {
 				return true;
 			},
 		});
+		// 跨任务文件搬运（[[Plan-20261031-205655]] §四.8）：低频操作只进命令面板 +
+		// 卡片右键菜单，不占工具栏按钮位。无选中卡时返回 false → 命令不可见。
+		this.addCommand({
+			id: 'itc-move-task-to-file',
+			name: t('command.moveTaskToFile'),
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(
+					IOTOTaskView,
+				);
+				if (!view || !view.canMoveSelectedTaskToFile()) {
+					return false;
+				}
+				if (!checking) {
+					view.promptMoveSelectedTaskToFile();
+				}
+				return true;
+			},
+		});
 		// 主任务区标记（[[Plan-20261024-072014]] §4.7）：低频 → 命令面板，不占工具栏按钮位。
 		// 无锚点（无选中 / 无编辑 / 无聚焦）时 `checkCallback` 返回 false → 命令不可见。
 		this.addCommand({

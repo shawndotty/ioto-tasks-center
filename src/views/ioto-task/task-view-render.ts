@@ -424,6 +424,10 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 					duplicateTask: (line: number) => {
 						void view.duplicateTask(line);
 					},
+					// 右键菜单的「移动到…」：打开任务文件选择器，选中后走跨文件搬运。
+					moveTaskToFile: (line: number) => {
+						view.promptMoveTaskToFile(line);
+					},
 					focusZoomEditor: (line: number) => {
 						view.focusZoomEditor(line);
 					},

@@ -248,6 +248,11 @@ import {
 } from './ioto-task/task-view-task-commands';
 import { addSection } from './ioto-task/task-view-add-section';
 import {
+	canMoveSelectedTaskToFile,
+	promptMoveSelectedTaskToFile,
+	promptMoveTaskToFile,
+} from './ioto-task/task-view-cross-file-move';
+import {
 	beginExternalEditorWriteback,
 	endExternalEditorWriteback,
 	flushInlineEdits,
@@ -924,6 +929,15 @@ export class IOTOTaskView extends TextFileView {
 	canDuplicateTask(): boolean { return canDuplicateTask(this); }
 	async duplicateTask(line: number): Promise<void> { await duplicateTask(this, line); }
 	async duplicateSelectedTask(): Promise<void> { await duplicateSelectedTask(this); }
+	canMoveSelectedTaskToFile(): boolean {
+		return canMoveSelectedTaskToFile(this);
+	}
+	promptMoveSelectedTaskToFile(): void {
+		promptMoveSelectedTaskToFile(this);
+	}
+	promptMoveTaskToFile(line: number): void {
+		promptMoveTaskToFile(this, line);
+	}
 	canTogglePrimarySection(): boolean { return canTogglePrimarySection(this); }
 	async togglePrimarySection(startLine: number): Promise<void> {
 		await togglePrimarySection(this, startLine);

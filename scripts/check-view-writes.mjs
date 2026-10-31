@@ -138,6 +138,16 @@ const WHITELIST = new Set([
 	// 拖拽收尸入口登记点（[[Plan-20261017-143229]] §2.2）：beginDrag 时把 resetGesture
 	// 挂到视图上、resetGesture 末尾自清；与本文件「行号迁移」同性质的迁移点。
 	'task-view-card-drag.ts :: cancelActiveDrag',
+	// 下列三条是**既有**的合法状态同步点，落地 V278 跨文件搬运时才发现一直没登记
+	// （门禁在改造当时就是红的）：
+	// - `reloadFilters` 每次重绘从 frontmatter 重算主任务区标记（属性驱动，必须回写）；
+	// - 「设为主任务区 / 取消」整篇重写 frontmatter 后的 data / lastLoadedText 红线同步。
+	'task-view-filters.ts :: primarySectionLine',
+	'task-view-task-commands.ts :: data',
+	'task-view-task-commands.ts :: lastLoadedText',
+	// 跨任务文件搬运（[[Plan-20261031-205655]] §三.3）：源块搬走后源视图的选中态
+	// 必须清空，目标视图要选中新块 —— 两处都在本模块内，是本通路唯一的写点。
+	'task-view-cross-file-move.ts :: selectedLine',
 	'task-view-section-drag.ts :: cancelActiveDrag',
 ]);
 

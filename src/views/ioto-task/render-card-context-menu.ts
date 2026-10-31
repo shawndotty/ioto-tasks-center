@@ -30,6 +30,8 @@ export interface CardContextMenuOptions {
 	onPin: (line: number) => void;
 	onRepeat: (line: number) => void;
 	onDuplicate: (line: number) => void;
+	/** 跨任务文件搬运（[[Plan-20261031-205655]] §四.8）：显式行号，不依赖选中态。 */
+	onMoveToFile: (line: number) => void;
 	onDelete: (line: number) => void;
 }
 
@@ -85,7 +87,16 @@ export function showCardContextMenu(
 			.onClick(() => defer(() => options.onDuplicate(line))),
 	);
 
-	// ⑤ 删除任务（复用既有文案键；走 requestDelete 的二次确认链，不直接 deleteSelected）
+	// ⑤ 移动到其他任务文件（跨文件搬运，与命令面板同入口）
+	menu.addItem((item) =>
+		item
+			.setTitle(t('view.iotoTaskView.contextMenu.moveToFile'))
+			.setIcon('file-input')
+			.setDisabled(!writable)
+			.onClick(() => defer(() => options.onMoveToFile(line))),
+	);
+
+	// ⑥ 删除任务（复用既有文案键；走 requestDelete 的二次确认链，不直接 deleteSelected）
 	menu.addItem((item) =>
 		item
 			.setTitle(t('view.iotoTaskView.cardActions.deleteTask'))

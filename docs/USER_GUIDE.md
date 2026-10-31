@@ -141,7 +141,15 @@ Right-click on a task row to access actions such as:
 - mark or unmark as core task
 - create subtask
 - set or clear priority
+- move the task to another task file
 - delete task
+
+Tasks can also be moved **between task files** by dragging:
+
+- with two task views side by side, drag a card onto a card or section in the other pane — it lands at that position;
+- drag onto an in-card link to another task file, onto a task row in the tasks center, or use **Move to…** — the task is appended after the last task of the target file's `任务` section (created at the end of the file if missing).
+
+The source task is written first to the target and only then removed from the source, so a failure can leave a duplicate but never loses the task.
 
 ## File Organization
 

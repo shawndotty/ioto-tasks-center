@@ -295,6 +295,7 @@ export function renderChecklistGroup(options: {
 				onPin: (line) => editing.toggleTaskPin?.(line),
 				onRepeat: (line) => editing.toggleTaskRepeat?.(line),
 				onDuplicate: (line) => editing.duplicateTask?.(line),
+				onMoveToFile: (line) => editing.moveTaskToFile?.(line),
 				onDelete: (line) => editing.delete(line),
 			});
 		});

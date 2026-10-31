@@ -285,6 +285,10 @@ export interface TaskViewHost extends Component {
 	canDuplicateTask(): boolean;
 	duplicateTask(line: number): Promise<void>;
 	duplicateSelectedTask(): Promise<void>;
+	/** 跨任务文件搬运（[[Plan-20261031-205655]] §四.8）：命令门禁 / 选择器入口。 */
+	canMoveSelectedTaskToFile(): boolean;
+	promptMoveSelectedTaskToFile(): void;
+	promptMoveTaskToFile(line: number): void;
 
 	// ---- 薄代理方法：内联编辑（标题） ----
 	beginEdit(line: number, caretOffset?: number | null): Promise<void>;

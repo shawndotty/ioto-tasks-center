@@ -18,6 +18,11 @@
  * 两侧均有非空锚点时：任一锚点是普通散文（非任务、非标题）→ 恰好 1 个空行
  * （防止散文被 list item 的 lazy continuation 吞掉）；任务 / 标题相邻 → 0 空行；
  * 任一锚点缺失（文件边缘）→ 保持原空行形态（含 EOF 空串）。
+ *
+ * 本文件的四个内部件（`kindOf` / `reindentLine` / `resolveAnchor` /
+ * `normalizeJunction`）被 `note-task-transfer.ts` 复用，**语义与 `moveTaskBlock`
+ * 共享**；改这里就是同时改同文件移动和跨文件移动，跑 `note-task-move.test.mjs`
+ * 19 条 + `note-task-transfer.test.mjs` 18 条。
  */
 
 import { parseChecklistItems } from './note-checklist';
@@ -60,7 +65,7 @@ interface MoveToken {
 	source: number | null;
 }
 
-interface Anchor {
+export interface Anchor {
 	/** 插入缝：新块插在原文件该行之前；取值范围 [0, lines.length]。 */
 	seam: number;
 	/** 整块重缩进的目标层级。 */
@@ -71,9 +76,9 @@ const HEADING_LINE_PATTERN = /^\s*#{1,6}(?:\s|$)/;
 /** 分隔线 / frontmatter 闭合行（`---` / `***` / `___`，口径同 note-continuation）。 */
 const THEMATIC_BREAK_PATTERN = /^(?:(?:-\s*){3,}|(?:\*\s*){3,}|(?:_\s*){3,})$/;
 
-type LineKind = 'task' | 'heading' | 'prose' | 'blank';
+export type LineKind = 'task' | 'heading' | 'prose' | 'blank';
 
-function kindOf(line: string): LineKind {
+export function kindOf(line: string): LineKind {
 	const normalized = line.replace(/\r+$/, ''); // CRLF：正则的 `.` 不吃 \r
 	if (normalized.trim().length === 0) {
 		return 'blank';
@@ -132,7 +137,7 @@ function shiftLeadingColumns(line: string, deltaCols: number): string {
  * 已知取舍）；其余行（续行 / 代码行等）平移行首空白列。
  * 行尾 `\r` 先拆后补，保证 CRLF 文件行尾形态不丢（任务行正则的 `.` 不吃 \r）。
  */
-function reindentLine(line: string, deltaLevels: number): string {
+export function reindentLine(line: string, deltaLevels: number): string {
 	const hasCr = line.endsWith('\r');
 	const core = hasCr ? line.slice(0, -1) : line;
 	const parts = splitTaskLine(core);
@@ -153,7 +158,7 @@ function reindentLine(line: string, deltaLevels: number): string {
 }
 
 /** 把落点目标解析成「原坐标插入缝 + 目标层级」；非法目标 → null。 */
-function resolveAnchor(
+export function resolveAnchor(
 	content: string,
 	lines: readonly string[],
 	items: ReturnType<typeof parseChecklistItems>,
