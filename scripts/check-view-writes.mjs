@@ -148,6 +148,12 @@ const WHITELIST = new Set([
 	// 跨任务文件搬运（[[Plan-20261031-205655]] §三.3）：源块搬走后源视图的选中态
 	// 必须清空，目标视图要选中新块 —— 两处都在本模块内，是本通路唯一的写点。
 	'task-view-cross-file-move.ts :: selectedLine',
+	// 多选（[[Plan-20261101-054951]] §四.1）：`selectedLine` 的**合法迁移点**——
+	// ⌘/Ctrl 点选与空白框选都会换锚点，三字段（锚点 / 成员集合 / 集合归属锚点）
+	// 只在本模块写；与 `task-view-cross-file-move.ts` 的登记同性质。
+	'task-view-multi-selection.ts :: selectedLine',
+	'task-view-multi-selection.ts :: multiLines',
+	'task-view-multi-selection.ts :: multiAnchor',
 	'task-view-section-drag.ts :: cancelActiveDrag',
 ]);
 

@@ -123,7 +123,11 @@ export function renderChecklistGroup(options: {
 				tabindex: editing.enabled ? '-1' : null,
 			},
 		});
-		if (editing.selectedLine === item.line) {
+		// 首绘选中态：锚点 + 多选成员（[[Plan-20261101-054951]] §四.3d）
+		if (
+			editing.selectedLine === item.line ||
+			editing.isMultiSelected?.(item.line) === true
+		) {
 			cardEl.addClass('is-selected');
 		}
 
@@ -259,6 +263,16 @@ export function renderChecklistGroup(options: {
 				editing.focusZoomEditor?.(item.line);
 				return;
 			}
+			// ⌘/Ctrl+点击：加入 / 移出多选（[[Plan-20261101-054951]] §四.4a）。
+			// 位置是刻意的：必须排在上面所有交互元素 / 放大态排除之后，否则会抢走
+			// `target.closest('a')` 的「⌘+点链接 = 新标签页」核心语义。
+			// macOS 的 Ctrl+click 会被系统判成右键、落进下方既有 contextmenu 分支。
+			if ((event.metaKey || event.ctrlKey) && editing.enabled) {
+				event.preventDefault();
+				event.stopPropagation();
+				editing.toggleMulti?.(item.line);
+				return;
+			}
 			// 「不支持内联编辑」时保留原 Notice 路径，不进选择态
 			if (!editing.enabled) {
 				editing.beginEdit(item.line);
@@ -266,6 +280,12 @@ export function renderChecklistGroup(options: {
 			}
 			// 用 DOM 上的类判「是否已选中」，与真实状态自洽，不依赖闭包快照
 			if (cardEl.hasClass('is-selected')) {
+				// 多选态下点已选中的卡 = 收窄为单选该卡、**不进编辑**
+				// （Q2：点一下就跳进编辑器会打断多选，[[Plan-20261101-054951]] §四.4a）
+				if ((editing.multiCount ?? 1) > 1) {
+					editing.select(item.line);
+					return;
+				}
 				editing.beginEdit(item.line);
 			} else {
 				editing.select(item.line);

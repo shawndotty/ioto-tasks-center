@@ -151,6 +151,23 @@ Tasks can also be moved **between task files** by dragging:
 
 The source task is written first to the target and only then removed from the source, so a failure can leave a duplicate but never loses the task.
 
+### Multi-select in the task view
+
+The task view (card layout) can select several cards at once, mainly for bulk deletion:
+
+- **`Cmd` / `Ctrl` + click a card** — add it to / remove it from the selection; clicking it again deselects it
+- **Drag on an empty area** — pull a dashed box; every card the box touches is selected (a partial overlap counts). Dragging to the top or bottom edge scrolls automatically
+- **`Esc`** — narrow back to the anchor card (a second `Esc` falls through to the existing "only this section" chain)
+- **`Delete` / `Backspace` or the toolbar delete button** — one shared confirmation dialog, then a **single** write deletes everything selected
+- Deletion works per **block**: each card disappears together with its subtasks and continuation text
+
+Limits:
+
+- With several cards selected, clicking a selected card narrows the selection instead of opening the editor (no bulk editing)
+- Multi-select is inactive while zoomed, while any editor is open, and in read-only mode (Markdown view)
+- No marquee on mobile (touch drag is scrolling); `Cmd` / `Ctrl` clicking is limited by the platform as well
+- The selection is transient: it is dropped when you switch files or close the view
+
 ## File Organization
 
 The plugin does not create a database. It works directly with vault files.

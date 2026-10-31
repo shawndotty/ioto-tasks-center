@@ -49,9 +49,10 @@ test('formatShortcut：逐 token 一一对应，不产生 undefined', () => {
 	}
 });
 
-test('结构：7 组 / 30 行 / 组内非空 / id 唯一', () => {
+test('结构：7 组 / 32 行 / 组内非空 / id 唯一', () => {
 	assert.equal(SHORTCUT_GROUPS.length, 7);
-	assert.equal(allEntries.length, 30);
+	// 32 = 30 + 「⌘/Ctrl+点击加入多选」+「空白处拖动框选」（[[Plan-20261101-054951]] §四.步骤 7）
+	assert.equal(allEntries.length, 32);
 	const ids = SHORTCUT_GROUPS.map((group) => group.id);
 	assert.equal(new Set(ids).size, ids.length);
 	for (const group of SHORTCUT_GROUPS) {

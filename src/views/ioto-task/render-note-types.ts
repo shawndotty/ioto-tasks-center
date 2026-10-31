@@ -163,6 +163,24 @@ export interface TaskNoteEditing {
 	 * 「只显示任务」过滤开关决定显隐。
 	 */
 	addSection?(): void;
+
+	/* ---- 多选（[[Plan-20261101-054951]] §四.3c）----
+	 * 全部可选：缺省 = 多选不可用（与 `insertOutgoingLink` 同约定，只读态天然不渲染）。
+	 */
+
+	/**
+	 * 当前选择数量（getter，读实时值）：1 = 纯单选，0 = 无选中。
+	 * 🔴 必须是 getter：渲染层在 click / keydown 闭包里读实时值。
+	 */
+	readonly multiCount?: number;
+	/** 该行是否属于附加成员集合（锚点不算）。 */
+	isMultiSelected?(line: number): boolean;
+	/** ⌘/Ctrl 点选：按当前 DOM 顺序切换该行的成员资格。 */
+	toggleMulti?(line: number): void;
+	/** 多选批量删除（统一 `ConfirmModal` + 一次原子写）。 */
+	deleteMulti?(): void;
+	/** `Esc` 收窄为锚点单选（多选态下第一次 `Esc` 的语义）。 */
+	collapseMulti?(): void;
 }
 
 /**

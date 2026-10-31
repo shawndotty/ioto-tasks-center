@@ -324,6 +324,10 @@ const en = {
 	'modal.deleteSection.desc':
 		'Delete "{0}" and everything under it, including subheadings and tasks? This cannot be undone.',
 	'modal.deleteSection.confirm': 'Delete',
+	'modal.deleteTasks.title': 'Delete tasks',
+	'modal.deleteTasks.desc':
+		'Delete the {0} selected tasks, including all their subtasks? This cannot be undone.',
+	'modal.deleteTasks.confirm': 'Delete',
 	'modal.confirm': 'Confirm',
 	'modal.cancel': 'Cancel',
 	'settings.heading.main': 'Tasks center',
@@ -775,6 +779,9 @@ const en = {
 	'view.iotoTaskView.toolbar.deleteTask': 'Delete',
 	'view.iotoTaskView.toolbar.deleteTaskTooltip':
 		'Delete the selected task (click again to confirm)',
+	'view.iotoTaskView.toolbar.deleteTasks': 'Delete {0}',
+	'view.iotoTaskView.toolbar.deleteTasksTooltip':
+		'Delete the {0} selected tasks',
 	'view.iotoTaskView.toolbar.addTask': 'Add',
 	'view.iotoTaskView.toolbar.addTaskTooltip': 'Add a task to this note',
 	'view.iotoTaskView.toolbar.addTaskTemplateHint':
@@ -901,6 +908,8 @@ const en = {
 	'shortcutHelp.button': 'View task view shortcuts',
 	'shortcutHelp.footnoteMobile': 'A hardware keyboard is required on mobile.',
 	'shortcutHelp.key.anyOther': 'Any other key',
+	'shortcutHelp.key.modClick': '⌘/Ctrl-click',
+	'shortcutHelp.key.blankDrag': 'Drag on empty area',
 	'shortcutHelp.group.view': 'In the view',
 	'shortcutHelp.when.view': 'Focus is in the task view and you are not editing',
 	'shortcutHelp.group.select': 'Card selected',
@@ -925,6 +934,10 @@ const en = {
 	'shortcutHelp.action.select.indent': 'Indent / outdent the task',
 	'shortcutHelp.action.select.toggleDone': 'Toggle done',
 	'shortcutHelp.action.select.requestDelete': 'Ask before deleting',
+	'shortcutHelp.action.select.multiToggle':
+		'Add this card to / remove it from the multi-selection',
+	'shortcutHelp.action.select.marquee':
+		'Select every card the box touches',
 	'shortcutHelp.action.select.exitSectionZoom': 'Leave "only this section"',
 	'shortcutHelp.action.delete.confirm': 'Confirm deletion',
 	'shortcutHelp.action.delete.confirmAgain': 'Press again to confirm',
@@ -956,6 +969,10 @@ const en = {
 		'Disabled while confirming a delete',
 	'shortcutHelp.note.select.requestDelete':
 		'Nothing is deleted until you confirm',
+	'shortcutHelp.note.select.multiDelete':
+		'With several cards selected, one dialog deletes them all',
+	'shortcutHelp.note.select.multiGate':
+		'Ignored while zoomed, editing, or read-only',
 	'shortcutHelp.note.select.zoom': 'Card keys are off in zoomed view',
 	'shortcutHelp.note.select.escZoomOnly':
 		'Only while "only this section" is active',

@@ -3,13 +3,22 @@ import {
 	buildSiblingTaskLine,
 	setTaskIndent,
 } from '../../tasks-center/note-structure';
-import { commitTaskLineAction } from './commit-task-line';
+import {
+	buildMultiRemovalEdit,
+	remapLineAfterMultiDelete,
+} from '../../tasks-center/note-task-multi-delete';
+import { ConfirmModal } from '../../ui/confirmModal';
+import { commitBlockRange, commitTaskLineAction } from './commit-task-line';
 import {
 	collectCardLines,
 	pickLineAfterDelete,
 } from './card-navigation';
 import type { TaskViewHost } from './task-view-host';
 import { isCardEditing } from './task-view-editing-state';
+import {
+	clearMultiSelection,
+	resolveMultiMembers,
+} from './task-view-multi-selection';
 import { isCardInZoomedSection } from './task-view-section-zoom';
 import type { ModEnterHost } from './select-mode-scope';
 
@@ -44,6 +53,10 @@ export function select(view: TaskViewHost, line: number): void {
 export function applySelection(view: TaskViewHost, line: number): void {
 	// 任何改选中的入口都先撤遮罩（坑 C / Q2）；焦点交给下面的 cardEl.focus
 	view.cancelPendingDelete(false);
+	// 多选收窄（[[Plan-20261101-054951]] §四.3c / C2）：必须放在最前面——任何进编辑
+	// 的入口都走这里，于是「不支持批量编辑」免费成立；同时保证下面的 queryCard
+	// 判定不被成员类干扰。
+	clearMultiSelection(view);
 	// 防御：「只看本节」态下选中落到聚焦节之外 → 先退出聚焦，否则加类也看不见
 	// （[[Research-20261019-131228]] §4.6）。
 	if (
@@ -171,8 +184,116 @@ export async function deleteSelected(
 }
 
 /**
- * 选择态 `Tab` / `Shift+Tab`：对选中行做 ±1 级缩进，写回后**保持选中**。
+ * 多选批量删除（[[Plan-20261101-054951]] §四.步骤 6）：统一 `ConfirmModal` +
+ * **一次**原子 `commitBlockRange`，删完把锚点映射到新行号并重绘。
  *
+ * 与 `deleteSelected` 的三处刻意差异：
+ * 1. 按**块**删（任务行 + 整棵子树 + 末节点续行），不沿用「只删任务行 + 续行」
+ *    ——否则批量删完会留下一堆缩进孤儿行；
+ * 2. 一次写（N 次单行写 = N 次 modify 事件 → N 次重绘竞争，行号迁移还会 O(N²)）；
+ * 3. 不逐条 remap 成员：这批成员本来就全没了，`clearMultiSelection` 即可。
+ *
+ * 不做撤销（`vault.process` 不进编辑器 undo 栈，与整节删除同口径）。
+ */
+export async function deleteMultiSelected(view: TaskViewHost): Promise<void> {
+	const file = view.file;
+	if (!file || !view.supportsInlineEdit()) {
+		return; // 只读降级：静默
+	}
+
+	await view.flushInlineEdits(); // 在册编辑器先落盘
+	view.cancelPendingDelete(false); // T4：多选态不并存待删除遮罩
+
+	const members = resolveMultiMembers(
+		view.selectedLine,
+		view.multiAnchor,
+		view.multiLines,
+	);
+	const lines = [
+		...members,
+		...(view.selectedLine === null ? [] : [view.selectedLine]),
+	];
+	if (lines.length < 2) {
+		return; // 单选走既有卡内遮罩链路
+	}
+
+	const confirmed = await new ConfirmModal(
+		view.app,
+		t('modal.deleteTasks.title'),
+		{
+			descriptionText: t('modal.deleteTasks.desc', [String(lines.length)]),
+			confirmButtonText: t('modal.deleteTasks.confirm'),
+			cancelButtonText: t('modal.cancel'),
+		},
+	).openAndConfirm();
+	if (!confirmed) {
+		return;
+	}
+
+	// 弹窗抢焦点会触发 blur 提交（同 deleteSection 口径），再幂等收口一次。
+	await view.flushInlineEdits();
+
+	const removal = buildMultiRemovalEdit(view.data, lines);
+	if (!removal) {
+		// 内容已漂移（块已不存在）：静默复原
+		view.renderNote(view.data);
+		return;
+	}
+
+	// 结构性变更前先退出两类聚焦（`startLine` 身份会失效，同 deleteSection 口径）。
+	if (view.sectionZoomLine !== null) {
+		view.exitSectionZoom();
+	}
+	if (view.zoomLine !== null) {
+		view.exitZoom();
+	}
+
+	const outcome = await commitBlockRange(view.app, file, {
+		...removal.edit,
+		nextText: '', // `nextLines` 通道优先，这里只为满足选项形状
+	});
+	// 🔴 红线：data / lastLoadedText 必须同步
+	view.applyOutcome(outcome);
+
+	if (outcome.status === 'conflict') {
+		clearMultiSelection(view);
+		await view.reloadFromVault();
+		return;
+	}
+	if (outcome.status !== 'ok') {
+		// unchanged：一行没删，选中态原样保留
+		view.renderNote(view.data);
+		return;
+	}
+
+	// 🔴 先 remap 再重绘：`renderNote` 末尾的 `syncSelectionClass` 会按
+	// `selectedLine` 加类，此刻若还是删除**前**的行号，就会画到新内容的同一行号上
+	// —— 即一张毫不相干的卡（[[Plan-20261101-054951]] §三.口径 3）。
+	view.selectedLine =
+		view.selectedLine === null
+			? null
+			: remapLineAfterMultiDelete(removal, view.selectedLine);
+	clearMultiSelection(view); // 成员全被删掉 ⇒ 集合必然清空
+	view.renderNote(view.data);
+
+	// 锚点被删（或被接缝规范化吃掉）→ 退到「删除窗口新坐标处最近的可见卡」。
+	const target =
+		view.selectedLine ??
+		pickEdgeAtOrAfter(collectCardLines(view.contentEl), removal.edit.startLine);
+	if (target !== null) {
+		view.applySelection(target);
+	} else {
+		view.refreshDeleteButtonVisibility();
+	}
+}
+
+/** 删除后重定位：第一个 ≥ start 的可见卡，否则最后一张。 */
+function pickEdgeAtOrAfter(order: readonly number[], start: number): number | null {
+	return order.find((line) => line >= start) ?? order[order.length - 1] ?? null;
+}
+
+/**
+ * 选择态 `Tab` / `Shift+Tab`：对选中行做 ±1 级缩进，写回后**保持选中**。
  * 与 `deleteSelected` 同构（同一 `commitTaskLineAction` + 整树重建 + 回填焦点），
  * 差别只在：缩进**不改行数**，故行号不漂移，重建后仍聚焦同一行；`setTaskIndent`
  * 负责 clamp 到 `[0, 8]` 并规整为「每级 2 空格」。到边界时 transform 返回同一行，

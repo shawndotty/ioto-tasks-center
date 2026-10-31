@@ -1,4 +1,4 @@
-import { parseLinktext } from 'obsidian';
+import { parseLinktext, Platform } from 'obsidian';
 
 import {
 	captureCardSnapshots,
@@ -17,6 +17,8 @@ import { buildSectionDragController } from './task-view-section-drag';
 import type { TaskNoteEditing, TaskNoteLinks } from './render-note-types';
 import { toExternalOpenUrl } from './external-link-url';
 import { collectCardLines, pickEdgeLine } from './card-navigation';
+import { resolveMultiMembers } from './task-view-multi-selection';
+import { attachMarqueeSelection } from './task-view-marquee';
 import {
 	EDIT_ITEM_CONTROLS_COMMAND_ID,
 	INSERT_OUTGOING_LINK_COMMAND_ID,
@@ -158,6 +160,17 @@ export function renderNote(
 			searchQuery: view.searchQuery,
 			continuationFold: view.getContinuationFold(),
 		});
+		// 空白框选（[[Plan-20261101-054951]] §四.5a）：挂在渲染层之后而不是
+		// `render-note.ts`——那一层是纯渲染层（只拿 `TaskNoteEditing`，拿不到 view）。
+		// 仍是「每次重建重新挂、旧监听随 DOM 一起丢弃」，并复用文件里已有的
+		// `IOTO_TASK_SCROLL_SELECTOR` 查询口径，不给渲染层契约加字段。
+		// 移动端不挂（Q4：触摸拖动已是滚动语义，且没有修饰键）。
+		const marqueeScrollEl = view.bodyEl?.querySelector<HTMLElement>(
+			IOTO_TASK_SCROLL_SELECTOR,
+		);
+		if (marqueeScrollEl && !Platform.isMobile) {
+			attachMarqueeSelection(marqueeScrollEl, view);
+		}
 		// 「只看本节」回填必须早于滚动快照恢复：`captureIotoTaskScroll` 的锚点是
 		// 「第一张底边越过视口顶的卡」，先上 `.is-section-zoomed` 才能让快照与
 		// 「单节」布局一致（[[Research-20261019-131228]] §4.5）。
@@ -261,37 +274,46 @@ export function prefersReducedMotion(view: TaskViewHost): boolean {
 }
 
 /**
- * 只按 `selectedLine` 回填 `.is-selected`，不抢焦点。
+ * 只按 `selectedLine` + 多选成员回填 `.is-selected`，不抢焦点。
  * 过滤 / 折叠后选中卡可能已不在 DOM（[[Plan-20261004-110845]] §5.5）：
  * 退化为「第一张可见卡」或 `null`，避免悬空选中。
  *
  * 方案 A（[[Discuss-20261008-173935]]）：放大态恒为单卡编辑面，`zoomLine` 非空时
  * 整体跳过——内部 `selectedLine` 仍保留（AI 条目来源需要），但不再回填可见选中类。
+ *
+ * 多选（[[Plan-20261101-054951]] §四.3c）：锚点先落定（含既有兜底），**再**按
+ * 锚点快照回填成员类——兜底一改锚点，`multiAnchor` 就对不上，集合自动作废。
  */
 export function syncSelectionClass(view: TaskViewHost): void {
-	const line = view.selectedLine;
-	if (line === null) {
+	const anchor = view.selectedLine;
+	if (anchor === null) {
 		return;
 	}
 	if (view.zoomLine !== null) {
 		return;
 	}
 
-	const cardEl = queryCard(view, line);
+	const cardEl = queryCard(view, anchor);
 	// 「只看本节」态下，聚焦节之外的卡虽仍在 DOM 里，但被 `display: none` 隐藏：
 	// 加类也看不见，改走下面的「第一张可见卡」兜底（防御外部状态把选中落到隐藏卡）。
 	if (cardEl && isCardInZoomedSection(view, cardEl)) {
 		cardEl.addClass('is-selected');
-		return;
+	} else {
+		const fallback = pickEdgeLine(collectCardLines(view.contentEl), 'first');
+		view.selectedLine = fallback;
+		if (fallback !== null) {
+			queryCard(view, fallback)?.addClass('is-selected');
+		}
 	}
 
-	const fallback = pickEdgeLine(
-		collectCardLines(view.contentEl),
-		'first',
+	// 成员回填：不变量按「锚点快照」判定，stale 成员只留在内存、不参与绘制。
+	const members = resolveMultiMembers(
+		view.selectedLine,
+		view.multiAnchor,
+		view.multiLines,
 	);
-	view.selectedLine = fallback;
-	if (fallback !== null) {
-		queryCard(view, fallback)?.addClass('is-selected');
+	for (const line of members) {
+		queryCard(view, line)?.addClass('is-selected');
 	}
 }
 
@@ -376,6 +398,21 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 		// 同上：标记态切换后不重建动作区，flag 按钮必须读实时值。
 		get primarySectionLine() {
 			return readPrimarySectionLine();
+		},
+		// 多选（[[Plan-20261101-054951]] §四.3c）：同样必须是 getter / 箭头，
+		// 渲染层在 click / keydown 闭包里读实时值。
+		get multiCount() {
+			return view.activeMultiCount();
+		},
+		isMultiSelected: (line: number) => view.isMultiSelected(line),
+		toggleMulti: (line: number) => {
+			view.toggleMulti(line);
+		},
+		deleteMulti: () => {
+			void view.deleteMultiSelected();
+		},
+		collapseMulti: () => {
+			view.collapseMulti();
 		},
 		beginEdit: (line) => {
 			void view.beginEdit(line);

@@ -201,7 +201,24 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
 			{
 				chords: [['Delete'], ['Backspace']],
 				labelKey: 'shortcutHelp.action.select.requestDelete',
-				noteKeys: ['shortcutHelp.note.select.requestDelete'],
+				noteKeys: [
+					'shortcutHelp.note.select.requestDelete',
+					'shortcutHelp.note.select.multiDelete',
+				],
+			},
+			{
+				// 修饰键点选无法用键帽表达（`⌘` + 鼠标左键），走 keyText
+				// （[[Plan-20261101-054951]] §四.步骤 7）。
+				chords: [],
+				keyTextKey: 'shortcutHelp.key.modClick',
+				labelKey: 'shortcutHelp.action.select.multiToggle',
+				noteKeys: ['shortcutHelp.note.select.multiGate'],
+			},
+			{
+				// 空白处拖动框选：同样无法用键帽表达。
+				chords: [],
+				keyTextKey: 'shortcutHelp.key.blankDrag',
+				labelKey: 'shortcutHelp.action.select.marquee',
 			},
 			{
 				chords: [['Esc']],

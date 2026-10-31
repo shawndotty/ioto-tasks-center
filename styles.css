@@ -6810,3 +6810,22 @@ button[aria-pressed='true']
 	.ioto-tasks-center__task-links-filter-row {
 	min-height: 44px; /* 触屏命中高度 */
 }
+
+/* ---------------- 多选：空白框选（[[Plan-20261101-054951]] §四.5c） ----------------
+   覆盖层用**内容坐标**（`.ioto-task-view__scroll` 是 position:relative，见 :2790），
+   不参与布局；`:pointer-events: none` 保证它不挡后续指针事件。 */
+.ioto-task-view__marquee {
+	position: absolute;
+	z-index: 30;
+	pointer-events: none;
+	border: 1px dashed
+		color-mix(in srgb, var(--ioto-tv-accent) 80%, transparent);
+	background: color-mix(in srgb, var(--ioto-tv-accent) 8%, transparent);
+	border-radius: var(--radius-s, 4px);
+}
+
+/* 框选期禁选：与 `.is-card-dragging *`（见 :3501）同口径 */
+.ioto-task-view__scroll.is-marquee,
+.ioto-task-view__scroll.is-marquee * {
+	user-select: none;
+}

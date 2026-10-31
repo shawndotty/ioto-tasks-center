@@ -217,10 +217,14 @@ const TRANSIENT_CLASSES = [
 	'is-zoomed', // 新增：还原被抬高的高度
 	'is-section-zoomed', // 「只看本节」：导出仍拍全部章节（与卡片放大同口径）
 	'is-continuation-collapsed', // 续写区折叠：导出图里正文自动可见、占位条自动隐藏
+	'is-marquee', // 框选期禁选类（[[Plan-20261101-054951]] §四.步骤 7）
 ];
 
 /** 待删除确认遮罩的类名（整块剔除）。 */
 const DELETE_CONFIRM_SELECTOR = '.ioto-task-view__delete-confirm';
+
+/** 框选覆盖层（整块剔除；虚线框不该进导出图）。 */
+const MARQUEE_OVERLAY_SELECTOR = '.ioto-task-view__marquee';
 
 /**
  * 把任务视图拍成**一张长图**（按内容全高一次出图，无滚动 / 拼接）。
@@ -257,6 +261,7 @@ export async function captureTaskViewCanvas(
 		clone.querySelectorAll(`.${cls}`).forEach((el) => el.classList.remove(cls));
 	}
 	clone.querySelectorAll(DELETE_CONFIRM_SELECTOR).forEach((el) => el.remove());
+	clone.querySelectorAll(MARQUEE_OVERLAY_SELECTOR).forEach((el) => el.remove());
 	host.appendChild(clone);
 	doc.body.appendChild(host);
 

@@ -101,6 +101,15 @@ export function attachCardKeydownHandler(
 			editing.cancelDelete?.();
 		}
 
+		// 多选优先占用第一次 `Esc`（Q3）：收窄为锚点，第二次才交给下方既有链路
+		// （[[Plan-20261101-054951]] §四.4b）。
+		if (event.key === 'Escape' && (editing.multiCount ?? 1) > 1) {
+			editing.collapseMulti?.();
+			event.preventDefault();
+			event.stopPropagation();
+			return;
+		}
+
 		// `Esc` 最低优先级退出层：编辑器 / 待删除 / 拖拽之后，才轮到「只看本节」
 		// （[[Research-20261019-131228]] §2.5）。只挂本地路径，不做全局捕获监听。
 		if (event.key === 'Escape' && (editing.sectionZoomLine ?? null) !== null) {
@@ -172,6 +181,12 @@ export function attachCardKeydownHandler(
 			}
 			case 'Delete':
 			case 'Backspace': {
+				// 多选态一律走统一确认弹窗（T4）：不再进卡内遮罩，避免
+				// 「遮罩在 A、成员还有 B」的歧义（[[Plan-20261101-054951]] §四.4b）。
+				if ((editing.multiCount ?? 1) > 1) {
+					editing.deleteMulti?.();
+					break;
+				}
 				editing.delete(item.line);
 				break;
 			}

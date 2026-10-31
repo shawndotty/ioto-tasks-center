@@ -157,6 +157,7 @@ import {
 	cancelPendingDelete,
 	canToggleSelectedFromScope,
 	confirmPendingDelete,
+	deleteMultiSelected as deleteMultiSelectedFn,
 	deleteSelected,
 	enterPendingDelete,
 	indentSelected,
@@ -168,6 +169,13 @@ import {
 	select,
 	toggleSelectedFromScope,
 } from './ioto-task/task-view-selection';
+import {
+	activeMultiCount,
+	collapseMultiSelection,
+	commitMultiSelection,
+	isMultiSelected,
+	toggleMulti,
+} from './ioto-task/task-view-multi-selection';
 import {
 	autosaveEdit,
 	beginEdit,
@@ -367,6 +375,18 @@ export class IOTOTaskView extends TextFileView {
 	 * 但必须**可重建**——任何整树重建（折叠 / 删除 / 外部写入）后由 `syncSelectionClass` 回填。
 	 */
 	selectedLine: number | null = null;
+	/**
+	 * 多选附加成员（文件行号，**不含锚点**）。空集 = 纯单选。**瞬态**，与
+	 * `selectedLine` 同口径不进 `getState`；`clear()` 归零。
+	 * 唯一写点是 `task-view-multi-selection.ts`（[[Plan-20261101-054951]] §四.1）。
+	 */
+	multiLines: Set<number> = new Set();
+	/**
+	 * 🔴 多选集合的归属锚点：`multiAnchor !== selectedLine` ⇒ 集合作废。
+	 * 用「锚点快照」而不是「锚点在集合里」表达不变量 —— 任何直写 `selectedLine`
+	 * 的既有通路一换锚点就自动把多选收窄成单选，无需逐处改。
+	 */
+	multiAnchor: number | null = null;
 	/**
 	 * 待删除确认中的文件行号（0 基）；非 pending 为 `null`。选择态**瞬态子状态**，
 	 * 不持久化，也不引入第四个大状态（[[Plan-20261005-141853]] §三）。
@@ -574,6 +594,9 @@ export class IOTOTaskView extends TextFileView {
 		this.primarySectionLine = null;
 		this.continuationOriginalLines = [];
 		this.selectedLine = null;
+		// 多选是瞬态：换文件 / 卸载一律归零（与 `selectedLine` 同口径）。
+		this.multiLines = new Set();
+		this.multiAnchor = null;
 		this.editingOriginalLine = '';
 		this.cancelPendingDelete(false);
 		this.resetSearchState();
@@ -783,6 +806,16 @@ export class IOTOTaskView extends TextFileView {
 	enterPendingDelete(line: number): void { enterPendingDelete(this, line); }
 	cancelPendingDelete(refocus = true): void { cancelPendingDelete(this, refocus); }
 	confirmPendingDelete(): void { confirmPendingDelete(this); }
+	async deleteMultiSelected(): Promise<void> { await deleteMultiSelectedFn(this); }
+
+	// ---- 多选（[[Plan-20261101-054951]] §四.3a）----
+	setMultiSelection(anchor: number | null, members: readonly number[]): void {
+		commitMultiSelection(this, { anchor, members: [...members] });
+	}
+	toggleMulti(line: number): void { toggleMulti(this, line); }
+	collapseMulti(): boolean { return collapseMultiSelection(this); }
+	activeMultiCount(): number { return activeMultiCount(this); }
+	isMultiSelected(line: number): boolean { return isMultiSelected(this, line); }
 	async insertSibling(line: number): Promise<void> { await insertSibling(this, line); }
 	scrollCardIntoView(cardEl: HTMLElement): void { scrollCardIntoView(this, cardEl); }
 	canToggleSelectedFromScope(): boolean { return canToggleSelectedFromScope(this); }

@@ -100,6 +100,14 @@ export interface TaskViewHost extends Component {
 
 	// ---- 可变状态：选择态 ----
 	selectedLine: number | null;
+	/**
+	 * 多选附加成员（文件行号，**不含锚点**）。空集 = 纯单选，行为与之前逐字节一致。
+	 * 与 `selectedLine` 同口径：**不持久化**（不进 `getState`），`clear()` 归零。
+	 * 唯一写点是 `task-view-multi-selection.ts`（[[Plan-20261101-054951]] §四.1）。
+	 */
+	multiLines: Set<number>;
+	/** 🔴 集合的归属锚点：`multiAnchor !== selectedLine` ⇒ 集合作废（自动收窄为单选）。 */
+	multiAnchor: number | null;
 	pendingDeleteLine: number | null;
 	pendingDeleteEl: HTMLElement | null;
 
@@ -289,6 +297,20 @@ export interface TaskViewHost extends Component {
 	canMoveSelectedTaskToFile(): boolean;
 	promptMoveSelectedTaskToFile(): void;
 	promptMoveTaskToFile(line: number): void;
+
+	// ---- 薄代理方法：多选（[[Plan-20261101-054951]] §四.3a）----
+	/** 一次性写入锚点 + 成员（框选收尾 / 收窄的唯一入口）。 */
+	setMultiSelection(anchor: number | null, members: readonly number[]): void;
+	/** ⌘/Ctrl 点选：按当前 DOM 顺序切换 `line` 的成员资格。 */
+	toggleMulti(line: number): void;
+	/** 当前选择数量（1 = 纯单选，0 = 无选中）。 */
+	activeMultiCount(): number;
+	/** 该行是否属于附加成员集合（锚点不算）。 */
+	isMultiSelected(line: number): boolean;
+	/** Esc / 普通点击：收窄为锚点单选；返回是否真的收窄过。 */
+	collapseMulti(): boolean;
+	/** 多选批量删除（统一 `ConfirmModal` + 一次原子写）。 */
+	deleteMultiSelected(): Promise<void>;
 
 	// ---- 薄代理方法：内联编辑（标题） ----
 	beginEdit(line: number, caretOffset?: number | null): Promise<void>;

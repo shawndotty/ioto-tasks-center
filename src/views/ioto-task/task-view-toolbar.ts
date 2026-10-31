@@ -6,6 +6,7 @@ import type { TaskViewHost } from './task-view-host';
 import { hasLiveEditor } from './task-view-editing-state';
 import type { ToolbarButtonClickContext } from './task-view-constants';
 import { queryCard } from './task-view-helpers';
+import { activeMultiCount } from './task-view-multi-selection';
 
 /** 建常驻外壳：`__toolbar`（固定）+ `__body`（可滚）。幂等，重绘不重建。 */
 export function buildToolbar(view: TaskViewHost): void {
@@ -284,14 +285,34 @@ export function refreshToolbarState(view: TaskViewHost): void {
  * pending 期间加 `is-pending` + `aria-pressed`，向用户传达「再点即删」。
  */
 export function refreshDeleteButtonVisibility(view: TaskViewHost): void {
+	// 多选（[[Plan-20261101-054951]] §四.3e）：1 = 纯单选，0 = 无选中。
+	const count = activeMultiCount(view);
 	const hasSelectedCard =
-		view.selectedLine !== null && queryCard(view, view.selectedLine) !== null;
+		count > 0 && queryCard(view, view.selectedLine ?? -1) !== null;
 	const show =
 		view.zoomLine === null &&
 		!hasLiveEditor(view.editingKind) &&
 		hasSelectedCard &&
 		(Platform.isMobile || view.deleteButtonOnDesktopProvider());
 	view.deleteTaskEl?.toggleClass('is-hidden', !show);
+
+	// 多选时把按钮语义换成「删除 N 项」；单选取回既有文案（必须双向复位，
+	// 否则收窄回单选后按钮还挂着多选文案）。
+	const many = count > 1;
+	view.deleteTaskEl?.setAttribute(
+		'aria-label',
+		many
+			? t('view.iotoTaskView.toolbar.deleteTasks', [String(count)])
+			: t('view.iotoTaskView.toolbar.deleteTask'),
+	);
+	view.deleteTaskEl?.setAttribute(
+		'title',
+		many
+			? t('view.iotoTaskView.toolbar.deleteTasksTooltip', [
+					String(count),
+				])
+			: t('view.iotoTaskView.toolbar.deleteTaskTooltip'),
+	);
 
 	const pending = view.pendingDeleteLine !== null;
 	view.deleteTaskEl?.toggleClass('is-pending', pending);
@@ -310,6 +331,12 @@ export function applyDeleteButtonSetting(view: TaskViewHost): void {
  * 静默 return 即可（`enterPendingDelete` 内部还会再用 `queryCard` 兜一次）。
  */
 function requestDeleteSelected(view: TaskViewHost): void {
+	// 多选态一律走统一确认弹窗（[[Plan-20261101-054951]] §四.3e / T4）：
+	// 卡内遮罩只服务单选，多选下「遮罩在 A、成员还有 B」语义不清。
+	if (activeMultiCount(view) > 1) {
+		void view.deleteMultiSelected();
+		return;
+	}
 	const line = view.selectedLine;
 	if (line === null) {
 		return;
