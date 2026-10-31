@@ -223,7 +223,11 @@
 	display: flex;
 	align-items: center;
 	gap: 10px;
+	row-gap: 6px;
 	flex-wrap: wrap;
+	/* 兜底保留 wrap：真正的不换行是靠窄栏分支收敛成 2 个控件，
+	   而不是横向滚动（两套滚动会与任务列表的纵向滚动抢手势）。 */
+	min-width: 0;
 	padding: 8px 12px;
 	margin-bottom: 6px;
 	margin-top: 10px;
@@ -240,6 +244,13 @@
 	);
 }
 
+/* 窄栏（手机 / 面板 ≤720px）：计数占一整行，按钮行只剩 [全选] [操作 ▾]。 */
+.ioto-tasks-center__batch-bar.is-compact {
+	flex-direction: column;
+	align-items: stretch;
+	gap: 8px;
+}
+
 .ioto-tasks-center__batch-bar-count {
 	font-size: var(--font-ui-small);
 	font-weight: 600;
@@ -247,23 +258,68 @@
 	white-space: nowrap;
 }
 
-.ioto-tasks-center__batch-bar-actions {
+.ioto-tasks-center__batch-bar-count.is-empty {
+	color: var(--text-muted);
+	font-weight: 500;
+}
+
+.ioto-tasks-center__batch-bar-lead {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+.ioto-tasks-center__batch-bar-hint {
+	overflow: hidden;
+	min-width: 0;
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.ioto-tasks-center__batch-bar-groups {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-left: auto;
+	min-width: 0;
+}
+
+.ioto-tasks-center__batch-bar.is-compact .ioto-tasks-center__batch-bar-groups {
+	margin-left: 0;
+}
+
+.ioto-tasks-center__batch-bar-group {
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	flex-wrap: wrap;
+	min-width: 0;
+}
+
+/* 分区竖线：用相邻兄弟伪元素实现，不额外插空 div（窄栏分支因此完全无竖线）。
+   `:not(:first-child)` 让「选择区 → 属性区 → 危险区」之间各得一条。 */
+.ioto-tasks-center__batch-bar-group
+	+ .ioto-tasks-center__batch-bar-group::before {
+	content: '';
+	width: 1px;
+	height: 16px;
+	background: var(--background-modifier-border);
 }
 
 .ioto-tasks-center__batch-bar-button {
 	appearance: none;
 	display: inline-flex;
 	align-items: center;
+	gap: 4px;
 	padding: 4px 10px;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 6px;
 	background: var(--background-primary);
 	color: var(--text-normal);
 	font-size: var(--font-ui-small);
+	white-space: nowrap;
 	cursor: pointer;
 	transition:
 		background-color 120ms ease,
@@ -275,13 +331,46 @@
 	border-color: var(--interactive-accent);
 }
 
-.ioto-tasks-center__batch-bar-button--exit {
-	border-color: var(--background-modifier-border);
-	color: var(--text-muted);
+/* 选中 0 项时属性区与危险区整体禁用：先把「为什么点了没反应」写在视觉上。 */
+.ioto-tasks-center__batch-bar-button:disabled {
+	opacity: 0.5;
+	cursor: default;
 }
 
-.ioto-tasks-center__batch-bar-button--exit:hover {
-	color: var(--text-normal);
+.ioto-tasks-center__batch-bar-caret {
+	font-size: var(--font-ui-smaller);
+	line-height: 1;
+	opacity: 0.7;
+}
+
+/* 危险区：右贴边 + 红色描边，与属性区一眼分得开。
+   文字/底色必须显式提权到 `button:not(.clickable-icon)`（核心 0,1,1）之上：
+   否则核心的按钮基线会把 color 压回 --text-normal，「红色删除」只剩边框。
+   边框色不受影响（核心不设 border-color），故仍留在低特异性规则里。 */
+.ioto-tasks-center__batch-bar-button--danger {
+	border-color: color-mix(
+		in srgb,
+		var(--text-error) 35%,
+		var(--background-modifier-border)
+	);
+}
+
+button:not(.clickable-icon).ioto-tasks-center__batch-bar-button--danger {
+	color: var(--text-error);
+}
+
+button:not(.clickable-icon).ioto-tasks-center__batch-bar-button--danger:hover:not(
+		:disabled
+	) {
+	background: var(--text-error);
+	border-color: var(--text-error);
+	color: var(--text-on-accent);
+}
+
+/* 手机触控目标 ≥36px（与 `.is-phone` 图标按钮同尺寸）。 */
+.is-phone .ioto-tasks-center__batch-bar-button {
+	min-height: 36px;
+	padding: 6px 12px;
 }
 
 .ioto-tasks-center__task-search-hint {
@@ -561,6 +650,15 @@ button:not(.clickable-icon).ioto-tasks-center__tab-settings-button {
 .is-phone button:not(.clickable-icon).ioto-tasks-center__tab-settings-button {
 	width: 36px;
 	height: 36px;
+}
+
+/* 批量编辑中：入口原地变成「×」，位置不变、不新增按钮。
+   激活态**不加底色与描边**：它和右边的「任务列表设置」是同一排同尺寸（34/36px 命中区、
+   16/18px 图标）的裸图标按钮，一旦画上实心 accent 圆盘 + 1px 描边，视觉直径比邻座
+   大一整圈，看着「按钮更大」。状态区分交给 × 图标 + accent 图标色 + aria-pressed，
+   悬停底色仍由上面的共用 hover 规则提供。 */
+button:not(.clickable-icon).ioto-tasks-center__tab-batch-edit-button.is-active {
+	color: var(--interactive-accent);
 }
 
 .ioto-tasks-center__tab {

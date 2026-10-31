@@ -54,18 +54,28 @@ export function renderTaskTabs(
 	const settingsContainerEl = tabBarEl.createDiv({
 		cls: 'ioto-tasks-center__tabs-settings',
 	});
-	if (!view.isBatchEditMode) {
-		const batchEditButtonEl = settingsContainerEl.createEl('button', {
-			cls: 'ioto-tasks-center__tab-batch-edit-button',
-		});
-		batchEditButtonEl.type = 'button';
-		batchEditButtonEl.ariaLabel = t('view.enterBatchEditMode');
-		batchEditButtonEl.title = t('view.enterBatchEditMode');
-		setIcon(batchEditButtonEl, 'check-square');
-		batchEditButtonEl.addEventListener('click', () => {
-			view.toggleBatchEditMode();
-		});
-	}
+	// 常驻的批量编辑开关：进入后原地变成高亮的「×」，位置永不移动，
+	// 也是退出批量模式的唯一出口（栏内不再放退出按钮，避免两个出口互相稀释）。
+	const batchActive = view.isBatchEditMode;
+	const batchEditButtonEl = settingsContainerEl.createEl('button', {
+		cls: 'ioto-tasks-center__tab-batch-edit-button',
+	});
+	batchEditButtonEl.type = 'button';
+	batchEditButtonEl.toggleClass('is-active', batchActive);
+	batchEditButtonEl.setAttribute(
+		'aria-pressed',
+		batchActive ? 'true' : 'false',
+	);
+	const batchEditLabel = batchActive
+		? t('view.exitBatchEditMode')
+		: t('view.enterBatchEditMode');
+	batchEditButtonEl.ariaLabel = batchEditLabel;
+	batchEditButtonEl.title = batchEditLabel;
+	setIcon(batchEditButtonEl, batchActive ? 'x' : 'check-square');
+	// 必须走同一个 `toggleBatchEditMode()`：退出时的清空选择等副作用都在那里。
+	batchEditButtonEl.addEventListener('click', () => {
+		view.toggleBatchEditMode();
+	});
 
 	const settingsButtonEl = settingsContainerEl.createEl('button', {
 		cls: 'ioto-tasks-center__tab-settings-button',

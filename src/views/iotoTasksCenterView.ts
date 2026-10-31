@@ -446,6 +446,25 @@ export class IOTOTasksCenterView extends ItemView {
 			}),
 		);
 		this.startResizeObserver();
+		// Esc 退出批量编辑：监听挂在 contentEl 上，只有本视图获得焦点时才会收到事件，
+		// 不会劫持其他面板。搜索框自身已 preventDefault + stopPropagation，事件不会到这里；
+		// `isComposing` 防中文输入法候选态下误退。
+		this.registerDomEvent(this.contentEl, 'keydown', (event: KeyboardEvent) => {
+			if (!this.isBatchEditMode || event.key !== 'Escape' || event.isComposing) {
+				return;
+			}
+
+			const target = event.target;
+			if (
+				target instanceof HTMLElement
+				&& target.closest('input, textarea, [contenteditable="true"]')
+			) {
+				return;
+			}
+
+			event.preventDefault();
+			this.toggleBatchEditMode();
+		});
 		await this.refreshFromVaultChange();
 	}
 

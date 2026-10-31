@@ -11,7 +11,7 @@ import { TASK_PRIORITY_VALUES } from '../../tasks-center/task-priority';
 import type { TaskCreationType } from '../../tasks-center/task-template-config';
 import type { TaskListTimeFilter } from '../../settings';
 import { TaskNameModal } from '../../ui/taskNameModal';
-import { batchAssignUpTask, batchSetPriority } from './batch-edit-operations';
+import { batchAssignUpTask } from './batch-edit-operations';
 import { removeDraggedTaskParent } from './drag-controller';
 import { openTaskLinksFromView } from './task-links-entry';
 import {
@@ -43,7 +43,7 @@ import {
 const MENU_ACTION_DEFER_DELAY_MS = 50;
 
 /** 关闭菜单 + 执行动作，整体延后到本次点按结束之后（成因见常量上方注释）。 */
-function runAfterMenuCloses(menu: Menu, run: () => void): void {
+export function runAfterMenuCloses(menu: Menu, run: () => void): void {
 	window.setTimeout(() => {
 		if (typeof menu.hide === 'function') {
 			menu.hide();
@@ -533,29 +533,6 @@ export function showTaskSubtaskTypeMenu(
 		x: event.clientX + 12,
 		y: event.clientY,
 	});
-}
-
-export function showBatchPriorityMenu(
-	view: IOTOTasksCenterView,
-	event?: MouseEvent,
-): void {
-	const menu = new Menu();
-	for (const priority of TASK_PRIORITY_VALUES) {
-		menu.addItem((item) =>
-			item.setTitle(formatPriorityMenuTitle(priority, false)).onClick(() => {
-				void batchSetPriority(view, priority);
-			}),
-		);
-	}
-	if (event) {
-		menu.showAtMouseEvent(event);
-	} else {
-		const rect = view.containerEl.getBoundingClientRect();
-		menu.showAtPosition({
-			x: rect.left + rect.width / 2,
-			y: rect.top + 40,
-		});
-	}
 }
 
 export async function showBatchAssignUpTaskModal(

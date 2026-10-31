@@ -26,7 +26,80 @@ export class TFile extends TAbstractFile {
 
 export class TFolder extends TAbstractFile {}
 
-export class Menu {}
+// 批量栏菜单测试需要「源码自己 new Menu()」也能被观察：这里给出可记录的最小实现，
+// 每个实例都会推进 `Menu.instances`，测试取最后一个即可断言条目与顺序。
+// 记录数组挂在 globalThis 上：jiti 的 moduleCache=false 会让本文件被加载多份，
+// 类静态字段不共享，只有 globalThis 是同一个。
+const menuInstances = (globalThis.__iotoMenuInstances ??= []);
+
+export class Menu {
+	static instances = menuInstances;
+
+	constructor() {
+		this.items = [];
+		this.shownAtMouseEvent = null;
+		this.shownAtPosition = null;
+		this.hidden = false;
+		menuInstances.push(this);
+	}
+
+	addItem(callback) {
+		const item = {
+			title: '',
+			icon: null,
+			isLabel: false,
+			checked: false,
+			disabled: false,
+			click: null,
+			setTitle(title) {
+				item.title = title;
+				return item;
+			},
+			setIcon(icon) {
+				item.icon = icon;
+				return item;
+			},
+			setIsLabel(isLabel) {
+				item.isLabel = isLabel;
+				return item;
+			},
+			setChecked(checked) {
+				item.checked = checked;
+				return item;
+			},
+			setDisabled(disabled) {
+				item.disabled = disabled;
+				return item;
+			},
+			onClick(handler) {
+				item.click = handler;
+				return item;
+			},
+		};
+		callback(item);
+		this.items.push(item);
+		return this;
+	}
+
+	addSeparator() {
+		this.items.push({ separator: true });
+		return this;
+	}
+
+	showAtMouseEvent(event) {
+		this.shownAtMouseEvent = event;
+		return this;
+	}
+
+	showAtPosition(position) {
+		this.shownAtPosition = position;
+		return this;
+	}
+
+	hide() {
+		this.hidden = true;
+	}
+}
 
 // 供 item-control-bridge 的 shim 判据使用（`type === MarkdownView`）。
 // 真实 Obsidian 里 MarkdownView 与各插件共用同一模块实例，这里用单例类模拟。
@@ -140,3 +213,17 @@ export class ToggleComponent {}
 // preview-leaf 的具名导入需要这两个导出（真实运行时它们只用于 instanceof）。
 export class FileView {}
 export class WorkspaceLeaf {}
+
+// 批量栏渲染链路会经 menus.ts → settings.ts → 设置页各分节，间接静态引入
+// 继承 obsidian 基类的弹窗 / 设置页。这里只要求「能被继承」，方法体一律留空。
+export class SuggestModal extends Modal {}
+export class FuzzySuggestModal extends SuggestModal {}
+export class PluginSettingTab {
+	constructor(app, plugin) {
+		this.app = app;
+		this.plugin = plugin;
+		this.containerEl = new FakeElement();
+	}
+	display() {}
+	hide() {}
+}

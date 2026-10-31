@@ -107,11 +107,23 @@ export function getSelectedTasks(view: IOTOTasksCenterView): TaskFileEntry[] {
 	);
 }
 
+/**
+ * 「全选 / 取消全选」的唯一判据：批量栏的按钮文案与 `selectAllVisibleTasks` 共用它，
+ * 避免两处各写一份 `every(...)` 后分叉。
+ */
+export function areAllVisibleTasksSelected(
+	view: IOTOTasksCenterView,
+): boolean {
+	const visibleTasks = view.getVisibleTasks();
+	return (
+		visibleTasks.length > 0
+		&& visibleTasks.every((task) => view.selectedTaskPaths.has(task.path))
+	);
+}
+
 export function selectAllVisibleTasks(view: IOTOTasksCenterView): void {
 	const visibleTasks = view.getVisibleTasks();
-	const allSelected = visibleTasks.every((task) =>
-		view.selectedTaskPaths.has(task.path),
-	);
+	const allSelected = areAllVisibleTasksSelected(view);
 	view.selectedTaskPaths.clear();
 	if (!allSelected) {
 		for (const task of visibleTasks) {

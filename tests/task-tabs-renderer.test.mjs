@@ -11,6 +11,7 @@ const jiti = createJiti(import.meta.url, {
 const { renderTaskTabs } = await jiti.import(
 	'../src/views/tasks-center/task-tabs-renderer.ts',
 );
+const en = (await jiti.import('../src/lang/locale/en.ts')).default;
 
 test('regular tabs show the batch edit button before presentation settings', () => {
 	const container = new FakeElement();
@@ -41,15 +42,22 @@ test('batch edit button delegates to the existing toggle and settings still open
 	assert.equal(view.settingsEvent, event);
 });
 
-test('batch edit button is hidden while batch edit mode is active', () => {
+test('batch edit button stays visible in batch mode and becomes an active x toggle', () => {
 	const container = new FakeElement();
 	renderTaskTabs(createView({ isBatchEditMode: true }), container);
 
 	const settings = container.children[0].children[1];
-	assert.deepEqual(
-		settings.children.map((button) => button.cls),
-		['ioto-tasks-center__tab-settings-button'],
+	const [batchEditButton, settingsButton] = settings.children;
+
+	assert.equal(
+		batchEditButton.cls,
+		'ioto-tasks-center__tab-batch-edit-button is-active',
 	);
+	assert.equal(batchEditButton.attributes['aria-pressed'], 'true');
+	assert.equal(batchEditButton.iconName, 'x');
+	assert.equal(batchEditButton.title, en['view.exitBatchEditMode']);
+	assert.equal(batchEditButton.ariaLabel, en['view.exitBatchEditMode']);
+	assert.equal(settingsButton.cls, 'ioto-tasks-center__tab-settings-button');
 });
 
 test('compact layout also shows the batch edit button before presentation settings', () => {
@@ -91,6 +99,7 @@ class FakeElement {
 		this.children = [];
 		this.listeners = {};
 		this.dataset = {};
+		this.attributes = {};
 	}
 
 	createDiv(options = {}) {
@@ -112,6 +121,25 @@ class FakeElement {
 
 	addClass(cls) {
 		this.cls = `${this.cls} ${cls}`.trim();
+	}
+
+	toggleClass(cls, on) {
+		const classes = this.cls.split(' ').filter(Boolean);
+		const has = classes.includes(cls);
+		const next = on ?? !has;
+		if (next && !has) {
+			classes.push(cls);
+		}
+
+		if (!next && has) {
+			classes.splice(classes.indexOf(cls), 1);
+		}
+
+		this.cls = classes.join(' ');
+	}
+
+	setAttribute(name, value) {
+		this.attributes[name] = value;
 	}
 
 	addEventListener(type, listener) {
