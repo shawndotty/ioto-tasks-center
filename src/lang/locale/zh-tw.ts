@@ -800,6 +800,7 @@ const zhTW = {
 	'notice.iotoTaskView.crossMoveSourceKept':
 		'已複製到「{0}」，但來源任務刪除失敗，請手動刪除來源任務。',
 	'notice.iotoTaskView.crossMoveDone': '已移動到「{0}」。',
+	'notice.iotoTaskView.crossMoveGroupDone': '已將 {0} 個任務移動到「{1}」。',
 	'notice.iotoTaskView.repeatAdded':
 		'已標記為重複任務：每次執行都執行，成功後不落勾。',
 	'notice.iotoTaskView.repeatRemoved': '已取消重複標記。',

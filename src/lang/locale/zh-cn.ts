@@ -799,6 +799,7 @@ const zhCN = {
 	'notice.iotoTaskView.crossMoveSourceKept':
 		'已复制到「{0}」，但源任务删除失败，请手动删除源任务。',
 	'notice.iotoTaskView.crossMoveDone': '已移动到「{0}」。',
+	'notice.iotoTaskView.crossMoveGroupDone': '已将 {0} 个任务移动到「{1}」。',
 	'notice.iotoTaskView.repeatAdded':
 		'已标记为重复任务：每次运行都执行，成功后不落勾。',
 	'notice.iotoTaskView.repeatRemoved': '已取消重复标记。',

@@ -16,9 +16,13 @@
 import { Notice } from 'obsidian';
 
 import { t } from '../../lang/helpter';
+import { buildMultiRemovalEdit } from '../../tasks-center/note-task-multi-delete';
+import { moveTaskBlocksAcrossNotes } from '../../tasks-center/note-task-multi-transfer';
 import {
+	appendTaskBlocksToNote,
 	appendTaskBlockToNote,
 	extractTaskBlock,
+	extractTaskBlocks,
 	moveTaskBlockAcrossNotes,
 	removeTaskBlockFromNote,
 } from '../../tasks-center/note-task-transfer';
@@ -27,9 +31,11 @@ import { MoveTaskFileModal } from '../../ui/moveTaskFileModal';
 import { findSectionAtLine } from '../../tasks-center/note-structure';
 import { commitBlockRange } from './commit-task-line';
 import { sectionFoldKey } from './section-fold-key';
+import { clearMultiSelection } from './task-view-multi-selection';
 import { persistSectionFolds } from './task-view-section-fold';
 import { checkForeignDropTarget } from './task-view-transfer-guard';
 import type { BlockEdit } from '../../tasks-center/note-task-transfer';
+import type { MultiRemovalEdit } from '../../tasks-center/note-task-multi-delete';
 import type { CommitBlockRangeOptions } from './commit-task-line';
 import type { TaskDropTarget } from '../../tasks-center/note-structure';
 import type { TFile } from 'obsidian';
@@ -110,6 +116,36 @@ async function removeSourceBlock(
 }
 
 /**
+ * 删掉源文件里的整组块（`removeSourceBlock` 的多块版）。成功 → `true`；
+ * 冲突 / 无改动 → `false`（调用方负责 Notice，且**不**回滚目标）。
+ *
+ * 选区在搬走之后必然全空：先清集合、再清锚点（[[Plan-20261101-070535]] §三-6）。
+ * 只做一件会留下 stale `multiLines`，工具栏计数 / 白名单语义会短暂不一致。
+ */
+async function removeSourceBlocks(
+	srcView: TaskViewHost,
+	srcFile: TFile,
+	removal: MultiRemovalEdit,
+	dstName: string,
+): Promise<boolean> {
+	const outcome = await commitBlockRange(
+		srcView.app,
+		srcFile,
+		toBlockRangeOptions(removal.edit),
+	);
+	srcView.applyOutcome(outcome);
+	clearMultiSelection(srcView);
+	srcView.selectedLine = null;
+	if (outcome.status !== 'ok') {
+		await srcView.reloadFromVault();
+		new Notice(t('notice.iotoTaskView.crossMoveSourceKept', [dstName]));
+		return false;
+	}
+	srcView.renderNote(srcView.data);
+	return true;
+}
+
+/**
  * A 主通路：从一个 `IOTOTask` 窗格拖到另一个 `IOTOTask` 窗格。
  *
  * 落点语义与同文件移动完全一致（`moveTaskBlockAcrossNotes` 复用 `resolveAnchor`）。
@@ -172,6 +208,87 @@ export async function commitCrossFileMove(
 
 	// ⑤ 目标侧：展开折叠节 → 选中新块 → 滚进视野。
 	renderTargetSelection(dstView, result.targetNewStartLine);
+}
+
+/**
+ * A 主通路（整组版，[[Plan-20261101-070535]] §四.3b）：把一个多选组从源窗格
+ * 拖到另一个 `IOTOTask` 窗格的落点。
+ *
+ * 守卫 / 顺序 / 失败语义与单块 `commitCrossFileMove` 逐条对齐；差别只有
+ * ① 源侧删除用一次 `buildMultiRemovalEdit`（不 N 次单行写）；② 目标侧只选中
+ * 组内第一块（整组选中会在折叠节下被可见性 prune 成半残态）。
+ */
+export async function commitCrossFileMoveBlocks(
+	srcView: TaskViewHost,
+	dstView: TaskViewHost,
+	fromLines: readonly number[],
+	drop: TaskDropTarget,
+): Promise<void> {
+	const srcFile = srcView.file;
+	const dstFile = dstView.file;
+	if (!srcFile || !dstFile || srcFile.path === dstFile.path) {
+		return;
+	}
+	// 二次守卫：拖拽期状态可能已经变了（目标被改成编辑态 / 过滤态等）。
+	if (checkForeignDropTarget(dstView, srcFile.path).ok !== true) {
+		return;
+	}
+	if (!srcView.supportsInlineEdit() || !srcView.data || fromLines.length === 0) {
+		return;
+	}
+
+	await prepareSourceView(srcView);
+
+	const result = moveTaskBlocksAcrossNotes(
+		srcView.data,
+		dstView.data,
+		fromLines,
+		drop,
+	);
+	if (!result) {
+		srcView.renderNote(srcView.data);
+		return;
+	}
+
+	// ③ 先写目标（顺序不可反，见模块头注释）。
+	const dstOutcome = await commitBlockRange(
+		dstView.app,
+		dstFile,
+		toBlockRangeOptions(result.target),
+	);
+	dstView.applyOutcome(dstOutcome);
+	if (dstOutcome.status !== 'ok') {
+		if (dstOutcome.status === 'conflict') {
+			await dstView.reloadFromVault();
+		}
+		new Notice(
+			t('notice.iotoTaskView.crossMoveTargetChanged', [
+				dstFile.basename,
+			]),
+		);
+		srcView.renderNote(srcView.data);
+		return; // 目标零写入 → 源也不动
+	}
+
+	// ④ 再删源；失败只降级提示，不自动回滚。
+	const removed = await removeSourceBlocks(
+		srcView,
+		srcFile,
+		result.source,
+		dstFile.basename,
+	);
+
+	// ⑤ 目标侧：展开折叠节 → 选中组内第一块 → 滚进视野。
+	renderTargetSelection(dstView, result.targetNewStartLines[0] ?? 0);
+
+	if (removed) {
+		new Notice(
+			t('notice.iotoTaskView.crossMoveGroupDone', [
+				String(result.targetNewStartLines.length),
+				dstFile.basename,
+			]),
+		);
+	}
 }
 
 /**
@@ -239,6 +356,80 @@ export async function commitCrossFileMoveToPath(
 	if (removed) {
 		new Notice(
 			t('notice.iotoTaskView.crossMoveDone', [targetFile.basename]),
+		);
+	}
+}
+
+/**
+ * A′-1 / A′-2 / B 通路的整组版（[[Plan-20261101-070535]] §四.3c）：
+ * 「追加到目标文件 `<任务>` 节末」。
+ *
+ * 源侧删除缝在写目标**之前**算好：目标写完后 `srcView.data` 不变，但「先算后写」
+ * 让「算不出来」这一种失败完全不产生写盘。这条通路没有目标视图，所以不做
+ * `renderTargetSelection`（与单块版一致：目标文件若开在别的 TaskView 里，由它
+ * 自己的 `modify` 刷新）。
+ */
+export async function commitCrossFileMoveBlocksToPath(
+	srcView: TaskViewHost,
+	fromLines: readonly number[],
+	targetFile: TFile,
+): Promise<void> {
+	const srcFile = srcView.file;
+	if (!srcFile || srcFile.path === targetFile.path) {
+		return;
+	}
+	if (!srcView.supportsInlineEdit() || !srcView.data || fromLines.length === 0) {
+		return;
+	}
+
+	await prepareSourceView(srcView);
+
+	const removal = buildMultiRemovalEdit(srcView.data, fromLines);
+	const blocks = extractTaskBlocks(srcView.data, fromLines);
+	if (!removal || blocks.length === 0) {
+		srcView.renderNote(srcView.data);
+		return;
+	}
+
+	// 用 `read` 不用 `cachedRead`：要最新字节，落点靠它算。
+	const targetContent = await srcView.app.vault.read(targetFile);
+	const appended = appendTaskBlocksToNote(
+		targetContent,
+		blocks,
+		t('view.iotoTaskView.tasksSectionTitle'),
+	);
+	if (!appended) {
+		srcView.renderNote(srcView.data);
+		return;
+	}
+
+	const outcome = await commitBlockRange(
+		srcView.app,
+		targetFile,
+		toBlockRangeOptions(appended.edit),
+	);
+	if (outcome.status !== 'ok') {
+		new Notice(
+			t('notice.iotoTaskView.crossMoveTargetChanged', [
+				targetFile.basename,
+			]),
+		);
+		srcView.renderNote(srcView.data);
+		return;
+	}
+
+	const removed = await removeSourceBlocks(
+		srcView,
+		srcFile,
+		removal,
+		targetFile.basename,
+	);
+	if (removed) {
+		new Notice(
+			t('notice.iotoTaskView.crossMoveGroupDone', [
+				String(appended.newStartLines.length),
+				targetFile.basename,
+			]),
 		);
 	}
 }

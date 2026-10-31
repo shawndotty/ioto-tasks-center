@@ -21,7 +21,12 @@ import {
 	appendSectionHeading,
 	findSectionByTitle,
 } from './note-sections';
-import { kindOf, reindentLine, resolveAnchor } from './note-task-move';
+import {
+	kindOf,
+	normalizeMoveBlocks,
+	reindentLine,
+	resolveAnchor,
+} from './note-task-move';
 import { taskBlockRange } from './note-task-swap';
 import type { LineKind, TaskDropTarget } from './note-task-move';
 
@@ -54,6 +59,14 @@ export interface ExtractedTaskBlock {
 	startLine: number;
 	/** 块末行（0 基，含）。 */
 	endLine: number;
+}
+
+/** 组内单个块的最小信息（`ExtractedTaskBlock` 结构性满足，可直接传入）。 */
+export interface TransferBlock {
+	/** 任务行 + 整棵子树 + 末节点续行。 */
+	blockLines: readonly string[];
+	/** 任务行缩进层级（0 基）——按「目标层级 − 本块层级」逐块重缩进。 */
+	level: number;
 }
 
 /** 两锚点之间应保留的空行数（口径同 `moveTaskBlock` 的 `normalizeJunction`）。 */
@@ -95,19 +108,39 @@ export function extractTaskBlock(
 }
 
 /**
- * 把任务块插到目标内容的落点；等价 / 非法 → `null`。
+ * 取出 `fromLines` 命中的任务块集合（按 `startLine` 升序，父子同选只留外层）。
  *
- * 写回窗口 = 插入缝两侧「最近非空锚点之间」的连续区间（**不含锚点行本身**，
- * 因此 frontmatter 永远不会被卷进编辑区间）。窗口可以是空的（纯插入），
- * 此时 `endLine < startLine`、`originalLines = []`。
+ * 块归一统一走 `normalizeMoveBlocks`（与同文件整组拖动同一份口径），这里
+ * 只把行号区间换成实际行文本。
  */
-export function insertTaskBlock(
+export function extractTaskBlocks(
 	content: string,
-	blockLines: readonly string[],
-	fromLevel: number,
+	fromLines: readonly number[],
+): ExtractedTaskBlock[] {
+	const lines = content.split('\n');
+	return normalizeMoveBlocks(content, fromLines).map((block) => ({
+		blockLines: lines.slice(block.startLine, block.endLine + 1),
+		level: block.level,
+		startLine: block.startLine,
+		endLine: block.endLine,
+	}));
+}
+
+/**
+ * 把整组任务块插到目标内容的落点；等价 / 非法 / 空组 → `null`。
+ *
+ * 与 `insertTaskBlock` 同构，只把「单块 moved」换成「组 `group` + 组内偏移
+ * `starts`」。**块间不补空行（0 行）**：块是完整搬运单位，块与块之间的散文
+ * 留在源文件、不随组走（[[Plan-20261101-070535]] §三-1）；只有「段首 / 段尾」
+ * 这一处接缝才按 `kindOf` 规范化。
+ */
+export function insertTaskBlocks(
+	content: string,
+	blocks: readonly TransferBlock[],
 	drop: TaskDropTarget,
-): { edit: BlockEdit; newStartLine: number } | null {
-	if (blockLines.length === 0) {
+): { edit: BlockEdit; newStartLines: number[] } | null {
+	const valid = blocks.filter((block) => block.blockLines.length > 0);
+	if (valid.length === 0) {
 		return null;
 	}
 	const lines = content.split('\n');
@@ -121,7 +154,18 @@ export function insertTaskBlock(
 		return null;
 	}
 
-	const moved = blockLines.map((line) => reindentLine(line, level - fromLevel));
+	// 组：每块各自重缩进，块间不加空行。
+	const group: string[] = [];
+	const starts: number[] = [];
+	for (const block of valid) {
+		starts.push(group.length);
+		for (const line of block.blockLines) {
+			group.push(reindentLine(line, level - block.level));
+		}
+	}
+	if (group.length === 0) {
+		return null;
+	}
 
 	// 左右锚点：seam 之前 / 之后最近的**非空**行（缺失 = 文件边缘）。
 	let left = seam - 1;
@@ -142,20 +186,15 @@ export function insertTaskBlock(
 	const blankAfter = endLine + 1 - seam;
 	const beforeBlanks =
 		left >= 0
-			? junctionBlanks(
-					kindOf(lines[left] ?? ''),
-					kindOf(moved[0] ?? ''),
-				)
+			? junctionBlanks(kindOf(lines[left] ?? ''), kindOf(group[0] ?? ''))
 			: blankBefore;
-	// 右侧**只补不删**：目标文件原有的分隔空行是它自己的排版，跨文件搬运不替用户
-	// 重排；与 `moveTaskBlock` 的可观测行为一致（插入块之后的空行落在提交区间外，
-	// 规范化结果被丢弃，原文那几行留下来）。
+	// 右侧**只补不删**（口径同 `insertTaskBlock`）。
 	const afterBlanks =
 		right < lines.length
 			? Math.max(
 					blankAfter,
 					junctionBlanks(
-						kindOf(moved[moved.length - 1] ?? ''),
+						kindOf(group[group.length - 1] ?? ''),
 						kindOf(lines[right] ?? ''),
 					),
 				)
@@ -163,14 +202,39 @@ export function insertTaskBlock(
 
 	const nextLines = [
 		...keepBlanks(lines.slice(startLine, seam), beforeBlanks),
-		...moved,
+		...group,
 		...keepBlanks(lines.slice(seam, endLine + 1), afterBlanks),
 	];
 
+	const base = startLine + beforeBlanks;
 	return {
 		edit: { startLine, endLine, originalLines, nextLines },
-		newStartLine: startLine + beforeBlanks,
+		newStartLines: starts.map((offset) => base + offset),
 	};
+}
+
+/**
+ * 把任务块插到目标内容的落点；等价 / 非法 → `null`（单块入口，内部委托
+ * `insertTaskBlocks`，保证两条通路只留一份口径）。
+ */
+export function insertTaskBlock(
+	content: string,
+	blockLines: readonly string[],
+	fromLevel: number,
+	drop: TaskDropTarget,
+): { edit: BlockEdit; newStartLine: number } | null {
+	const inserted = insertTaskBlocks(
+		content,
+		[{ blockLines, level: fromLevel }],
+		drop,
+	);
+	if (!inserted) {
+		return null;
+	}
+	const newStartLine = inserted.newStartLines[0];
+	return newStartLine === undefined
+		? null
+		: { edit: inserted.edit, newStartLine };
 }
 
 /**
@@ -263,28 +327,29 @@ export function moveTaskBlockAcrossNotes(
 }
 
 /**
- * 远端文件「追加到 `<tasksSectionTitle>` 节末」：
+ * 远端文件「把整组任务块追加到 `<tasksSectionTitle>` 节末」：
  * - 命中节且有任务 → 插在该节末个顶层块之后（层级 = 该节最浅缩进）；
  * - 命中但无任务 → 标题下一行、0 级；
  * - 未命中 → 文末新建同名标题（层级取现有顶层标题级别，无标题则 `#`）再插任务行；
  * - `tasksSectionTitle` 为空串（语言包缺键）→ `null`，绝不写坏文件。
  *
- * 目标文件是空文件也合法（A′/B 的「文末新建」通道）。
+ * 目标文件是空文件也合法（A′/B 的「文末新建」通道）。组内每块各自重缩进到
+ * 0 级、块间不补空行。
  */
-export function appendTaskBlockToNote(
+export function appendTaskBlocksToNote(
 	content: string,
-	blockLines: readonly string[],
-	fromLevel: number,
+	blocks: readonly TransferBlock[],
 	tasksSectionTitle: string,
-): { edit: BlockEdit; newStartLine: number } | null {
+): { edit: BlockEdit; newStartLines: number[] } | null {
 	const title = tasksSectionTitle.trim();
-	if (title.length === 0 || blockLines.length === 0) {
+	const valid = blocks.filter((block) => block.blockLines.length > 0);
+	if (title.length === 0 || valid.length === 0) {
 		return null;
 	}
 
 	const section = findSectionByTitle(content, title);
 	if (section) {
-		return insertTaskBlock(content, blockLines, fromLevel, {
+		return insertTaskBlocks(content, valid, {
 			kind: 'section',
 			sectionStartLine: section.startLine,
 			position: 'end',
@@ -293,7 +358,14 @@ export function appendTaskBlockToNote(
 
 	// 未命中：文末新建标题块（复用 `appendSectionHeading` 的层级 / 空行口径）。
 	const appended = appendSectionHeading(content, title);
-	const moved = blockLines.map((line) => reindentLine(line, -fromLevel));
+	const flat: string[] = [];
+	const starts: number[] = [];
+	for (const block of valid) {
+		starts.push(flat.length);
+		for (const line of block.blockLines) {
+			flat.push(reindentLine(line, -block.level));
+		}
+	}
 
 	if (content.length === 0) {
 		// 空文件：`split('\n')` 会给出一个幽灵空串行，用等长替换把它吃掉，
@@ -303,9 +375,11 @@ export function appendTaskBlockToNote(
 				startLine: 0,
 				endLine: 0,
 				originalLines: [''],
-				nextLines: [...appended.content.split('\n'), ...moved],
+				nextLines: [...appended.content.split('\n'), ...flat],
 			},
-			newStartLine: appended.headingLine + 1,
+			newStartLines: starts.map(
+				(offset) => appended.headingLine + 1 + offset,
+			),
 		};
 	}
 
@@ -317,8 +391,33 @@ export function appendTaskBlockToNote(
 			startLine: baseLines.length,
 			endLine: baseLines.length - 1,
 			originalLines: [],
-			nextLines: [...prefix, ...moved],
+			nextLines: [...prefix, ...flat],
 		},
-		newStartLine: baseLines.length + prefix.length,
+		newStartLines: starts.map(
+			(offset) => baseLines.length + prefix.length + offset,
+		),
 	};
+}
+
+/**
+ * 单块版「追加到节末」：委托 `appendTaskBlocksToNote`，与多块共用一份口径。
+ */
+export function appendTaskBlockToNote(
+	content: string,
+	blockLines: readonly string[],
+	fromLevel: number,
+	tasksSectionTitle: string,
+): { edit: BlockEdit; newStartLine: number } | null {
+	const appended = appendTaskBlocksToNote(
+		content,
+		[{ blockLines, level: fromLevel }],
+		tasksSectionTitle,
+	);
+	if (!appended) {
+		return null;
+	}
+	const newStartLine = appended.newStartLines[0];
+	return newStartLine === undefined
+		? null
+		: { edit: appended.edit, newStartLine };
 }

@@ -149,7 +149,7 @@ Tasks can also be moved **between task files** by dragging:
 - with two task views side by side, drag a card onto a card or section in the other pane — it lands at that position;
 - drag onto an in-card link to another task file, onto a task row in the tasks center, or use **Move to…** — the task is appended after the last task of the target file's `任务` section (created at the end of the file if missing).
 
-The source task is written first to the target and only then removed from the source, so a failure can leave a duplicate but never loses the task.
+The target is written first and the source is removed only afterwards, so a failure can leave a duplicate but never loses the task. Moving a whole multi-selection follows the same rule.
 
 ### Multi-select in the task view
 
@@ -166,7 +166,8 @@ Limits:
 
 - With several cards selected, clicking a selected card narrows the selection instead of opening the editor (no bulk editing)
 - Multi-select is inactive while zoomed, while any editor is open, and in read-only mode (Markdown view)
-- **A multi-selection can only be dragged inside the same file**: dropping it on another task-view pane, a task-file link, or a task row in the task center does nothing (no drop indicator appears, nothing moves). Cross-file moves still work for single cards
+- **A multi-selection can be dragged across files**: onto another task-view pane — the whole group is inserted at the drop position; onto an in-card task-file link or a task row in the tasks center — the group is appended after the last task of the target's `任务` section (created at the end of the file if missing)
+- After a cross-file group move the source selection is cleared, and the target file selects the **first** block of the group and scrolls it into view (select more cards to keep going)
 - No marquee on mobile (touch drag is scrolling); `Cmd` / `Ctrl` clicking is limited by the platform as well
 - The selection is transient: it is dropped when you switch files or close the view
 

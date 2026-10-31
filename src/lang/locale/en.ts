@@ -874,6 +874,7 @@ const en = {
 	'notice.iotoTaskView.crossMoveSourceKept':
 		'Copied to "{0}", but the source task could not be removed. Please delete it manually.',
 	'notice.iotoTaskView.crossMoveDone': 'Moved to "{0}".',
+	'notice.iotoTaskView.crossMoveGroupDone': 'Moved {0} tasks to "{1}".',
 	'notice.iotoTaskView.repeatAdded':
 		'Marked as repeat: runs every time, stays unchecked.',
 	'notice.iotoTaskView.repeatRemoved': 'Repeat mark removed.',

@@ -5,7 +5,9 @@
  * （鼠标按下即拖；触摸须先长按再移动，未长按的滑动交还原生滚动）、8px 阈值、
  * 400ms 长按、指针捕获、48px 边缘自动滚动、Esc 取消、悬浮 ghost。
  * - 拖动单位是**块集合**（[[Plan-20261101-063126]]）：起手卡属于当前多选集 →
- *   整组按原相对顺序搬；否则收窄为单卡。多块只支持同文件落点（跨文件留给 P3）。
+ *   整组按原相对顺序搬；否则收窄为单卡。多块支持同文件与跨文件落点
+ *   （跨文件由 [[Plan-20261101-070535]] 落地：窗格 → 插到落点；文件级落点 →
+ *   追加到目标「任务」节末）。
  * - 拖拽过程是纯 DOM 瞬态（ghost / 落点线 / 源块整树半透明），**不写盘、不重绘**；
  *   松手才经 `moveTaskBlocks` / `moveTaskBlock`（domain 纯函数）+ `commitBlockRange`
  *   一次原子区间重写，随后迁移折叠态 / 选中行并整树重建。
@@ -33,6 +35,8 @@ import { t } from '../../lang/helpter';
 import { commitBlockRange } from './commit-task-line';
 import {
 	commitCrossFileMove,
+	commitCrossFileMoveBlocks,
+	commitCrossFileMoveBlocksToPath,
 	commitCrossFileMoveToPath,
 } from './task-view-cross-file-move';
 import {
@@ -92,6 +96,8 @@ type DropTarget =
 			file: TFile;
 			el: HTMLElement;
 	  };
+
+type FileDropTarget = Extract<DropTarget, { kind: 'file-link' }>;
 
 const DROP_CLASS_NAMES = [
 	'is-drop-before',
@@ -469,7 +475,7 @@ function attachCardDragHandle(
 	 */
 	const resolveFileDropTarget = (
 		hitEl: HTMLElement | null,
-	): DropTarget | null => {
+	): FileDropTarget | null => {
 		const srcPath = view.file?.path;
 		if (!srcPath) {
 			return null;
@@ -507,17 +513,28 @@ function attachCardDragHandle(
 		return null;
 	};
 
-	/** 更新 ghost 文案：跨窗格时补上「→ 目标文件名」。 */
-	const updateGhostLabel = (pane: PeerPane | null): void => {
+	/**
+	 * ghost 文案：`基础文案` + 可选「→ 目标」。窗格落点与文件级落点共用
+	 * （[[Plan-20261101-070535]] §三-9）——文件级落点走 `setHoverPane(null)`，
+	 * 不能只靠 `updateGhostLabel` 拼后缀。
+	 */
+	const setGhostTarget = (targetName: string): void => {
 		const ghostEl = state.ghostEl;
 		if (!ghostEl) {
 			return;
 		}
-		const foreignName =
-			pane && pane.view !== view ? (pane.view.file?.basename ?? '') : '';
-		ghostEl.textContent = foreignName
-			? `${state.ghostBaseLabel} → ${foreignName}`
+		ghostEl.textContent = targetName
+			? `${state.ghostBaseLabel} → ${targetName}`
 			: state.ghostBaseLabel;
+	};
+
+	/** 更新 ghost 文案：跨窗格时补上「→ 目标文件名」。 */
+	const updateGhostLabel = (pane: PeerPane | null): void => {
+		setGhostTarget(
+			pane && pane.view !== view
+				? (pane.view.file?.basename ?? '')
+				: '',
+		);
 	};
 
 	/** 更新「指针在哪个窗格」及其视觉回执（受理框 / ghost 文案）。 */
@@ -592,22 +609,21 @@ function attachCardDragHandle(
 		);
 
 		// ⓪ 文件级落点必须**早于**卡片命中判定，否则永远是「落进那张卡」。
-		//    多块拖动只支持同文件（P2 范围），组大小 > 1 时不认文件级落点。
-		const groupSize = state.sourceLines.length;
-		const fileDrop = groupSize > 1 ? null : resolveFileDropTarget(hit.el);
+		//    整组同样受理（P3）：落点语义是「追加到目标文件任务节末」，与组大小无关。
+		const fileDrop = resolveFileDropTarget(hit.el);
 		if (fileDrop) {
 			setHoverPane(null);
 			applyDrop(fileDrop);
+			setGhostTarget(fileDrop.file.basename);
 			return;
 		}
 
 		// ① 先定窗格：不在任何 IOTOTask 窗格里 / 目标窗格不受理 → 不画任何指示线。
-		//    多选组不跨文件（P3 才做），因此只能落在源窗格。
+		//    整组也可跨窗格（P3），受理判据保持不变。
 		const pane = hit.pane;
 		const foreignOk = pane
 			? pane.view === view ||
-				(groupSize === 1 &&
-					checkForeignDropTarget(pane.view, view.file?.path ?? '').ok)
+				checkForeignDropTarget(pane.view, view.file?.path ?? '').ok
 			: false;
 		if (!pane || !foreignOk) {
 			setHoverPane(null);
@@ -700,11 +716,12 @@ function attachCardDragHandle(
 		}
 		if (drop.kind === 'file-link') {
 			// A′-1 / A′-2：目标没有视图，走「追加到任务节末」通道。
-			// 多块跨文件属 P3（evaluateDrop 已挡，这里再防御一次）。
-			if (group.length !== 1) {
+			// 单块走老入口（零回归），整组走多块入口（P3）。
+			if (group.length === 1) {
+				void commitCrossFileMoveToPath(view, first, drop.file);
 				return;
 			}
-			void commitCrossFileMoveToPath(view, first, drop.file);
+			void commitCrossFileMoveBlocksToPath(view, group, drop.file);
 			return;
 		}
 		const target: TaskDropTarget =
@@ -724,10 +741,12 @@ function attachCardDragHandle(
 			void commitCardMove(view, group, target);
 			return;
 		}
-		if (group.length !== 1) {
-			return; // 防御：多块不跨窗格（P3）
+		// 跨窗格：单块走老入口（零回归），整组走多块入口（P3）。
+		if (group.length === 1) {
+			void commitCrossFileMove(view, dst, first, target);
+			return;
 		}
-		void commitCrossFileMove(view, dst, first, target);
+		void commitCrossFileMoveBlocks(view, dst, group, target);
 	};
 
 	handleEl.addEventListener('pointerdown', (event: PointerEvent) => {
