@@ -15,9 +15,16 @@ const {
 // 只锁「选择器契约 + null/异常兜底」；defer 时序与真实提交语义靠真机验证
 // （Plan-20261003-101010 §5.5、Research-20261003-100337 §3.2）。
 
-test('OVERLAY_FOCUS_SELECTOR：契约覆盖 modal / suggestion / prompt 三类浮层', () => {
+test('OVERLAY_FOCUS_SELECTOR：契约覆盖 modal / suggestion / prompt 三类浮层与灯箱', () => {
 	assert.equal(typeof OVERLAY_FOCUS_SELECTOR, 'string');
-	for (const cls of ['.modal-container', '.suggestion-container', '.prompt']) {
+	for (const cls of [
+		'.modal-container',
+		'.suggestion-container',
+		'.prompt',
+		// 核心灯箱：showImage 会把焦点交给 .lightbox 并主动 blur 编辑器；
+		// 不放行就会在点「放大」时提交并销毁编辑器（Research-20261031-061126 §四·R2）。
+		'.lightbox',
+	]) {
 		assert.ok(
 			OVERLAY_FOCUS_SELECTOR.includes(cls),
 			`选择器应包含 ${cls}`,
@@ -95,6 +102,33 @@ test('OVERLAY_FOCUS_GUARD_SELECTOR：契约覆盖宿主 quickPanel 与卡片动�
 		OVERLAY_FOCUS_GUARD_SELECTOR.includes(
 			'.ioto-task-view__card.is-editing .ioto-task-view__card-checkbox',
 		),
+	);
+	// 编辑态嵌入动作条（核心「放大」/「编辑区块」+ Text Popup 图标）：mousedown
+	// 会带走焦点 → blur 提交销毁编辑器 → mouseup 打空、click 根本不派发
+	// （Research-20261031-061126 §三）。同样必须带 `.is-editing` 限定。
+	// mock 只验证「选择器串里有没有这个词」，作用域语义靠真机清单兜底。
+	assert.ok(
+		OVERLAY_FOCUS_GUARD_SELECTOR.includes(
+			'.ioto-task-view__card.is-editing .embed-actions',
+		),
+	);
+});
+
+test('isOverlayFocusGuardTarget：命中嵌入动作条图标 → true', () => {
+	assert.equal(
+		isOverlayFocusGuardTarget({
+			closest: (s) => (s.includes('.embed-actions') ? {} : null),
+		}),
+		true,
+	);
+});
+
+test('isOverlayFocusTarget：灯箱抢焦点 → true（放行、不提交）', () => {
+	assert.equal(
+		isOverlayFocusTarget({
+			closest: (s) => (s.includes('.lightbox') ? {} : null),
+		}),
+		true,
 	);
 });
 

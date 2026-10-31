@@ -43,10 +43,19 @@ export function probeEmbeddedEditorSupport(app: App): boolean {
 
 /**
  * 抢焦点的浮层容器：核心 Modal（含 ioto-settings 的 FuzzySuggestModal）/
- * 核心建议器 / 建议器主体。集中一处，便于随核心版本或 Phase 2 卡片右键菜单增补。
+ * 核心建议器 / 建议器主体 / 图片灯箱。集中一处，便于随核心版本或 Phase 2
+ * 卡片右键菜单增补。
+ *
+ * `.lightbox`：核心 `showImage()` 构造灯箱时把 `containerEl.tabIndex = -1` 并
+ * `focus()`，blur 那一帧 `activeElement` 就是 `.lightbox`；随后核心还会主动
+ * `contentDOM.blur()`。放进这里走「落进浮层就放行」分支：不置 blurred、不还原
+ * `activeEditor`、不提交 → 编辑器不销毁，灯箱关闭时核心 `view.focus()` 回焦、
+ * 我们的 focus 事件重新登记（[[Research-20261031-061126]] §四·R2）。
+ * 副作用：`.lightbox` 是全局单例，若「别的视图开着灯箱」时本卡编辑器失焦会被
+ * 误判为浮层抢占而跳过提交 —— 概率极低，后果只是「这次没自动退出编辑态」。
  */
 export const OVERLAY_FOCUS_SELECTOR =
-	'.modal-container, .suggestion-container, .prompt';
+	'.modal-container, .suggestion-container, .prompt, .lightbox';
 
 /**
  * 「需要主动保焦点」的宿主浮层：由外部插件（ioto-settings）挂进本视图的 quickPanel。
@@ -66,9 +75,21 @@ export const OVERLAY_FOCUS_SELECTOR =
  * 编辑态先退出、click 才切换状态（[[Report-20261007-092357]] 根因）。并入本守卫
  * 让编辑态内勾选就地完成。**只在 `.is-editing` 限定下命中**：点别的卡的勾选框时
  * 仍走原有 blur 提交语义，跨卡行为零变化。
+ *
+ * 第四类：编辑态卡片里**附件 embeds 的动作条** `.embed-actions`
+ * （[[Research-20261031-061126]] §三、[[Plan-20261031-062122]] 步骤 1）。
+ * 该容器由核心 widget 基类 `addAction()` 建立，内含核心「放大」「编辑区块」与
+ * Text Popup 注入的 `.text-popup-action` —— **三个图标全在它下面**，所以按容器
+ * 拦截即可，不必逐个列类名。其中核心两个是**不可聚焦的 `div`**，点下去同样会让
+ * `<body>` 接管焦点 → `.cm-content` 失焦 → blur 提交销毁编辑器 → mouseup 打空、
+ * click 根本不派发（表现为「三个图标全点不动」）；Text Popup 那个带
+ * `tabindex="0"`，行为一致。**必须带 `.is-editing`**：本守卫挂在 `ownerDoc`
+ * 捕获阶段（全应用生效），无条件写 `.embed-actions` 会顺手改掉真 MarkdownView
+ * 里的焦点行为。
  */
 export const OVERLAY_FOCUS_GUARD_SELECTOR =
-	'.ioto-quick-panel, .ioto-task-view__card-action-btn, .ioto-task-view__card.is-editing .ioto-task-view__card-checkbox';
+	'.ioto-quick-panel, .ioto-task-view__card-action-btn, .ioto-task-view__card.is-editing .ioto-task-view__card-checkbox, ' +
+	'.ioto-task-view__card.is-editing .embed-actions';
 
 /**
  * 纯判断：给定元素，其是否落在 `selector` 内。
@@ -306,6 +327,11 @@ export async function mountEmbeddedEditor(
 
 		const controller: any = {
 			app: appProxy,
+			// 供依赖 `workspace.activeEditor` 的第三方插件做「点的是不是这个编辑器」
+			// 判定（Text Popup 的放大图标即按 `containerEl.contains(actionEl)` 认领）。
+			// 与 `app: appProxy` 并列补齐，且不动任何现有行为 —— 当前无人读它
+			// （[[Plan-20261031-062122]] 步骤 3）。
+			containerEl: hostEl,
 			showSearch: noop,
 			toggleMode: noop,
 			onMarkdownScroll: noop,

@@ -19,6 +19,10 @@ import {
 
 import { t, type TranslationKey } from '../lang/helpter';
 import { mapWithConcurrency } from '../tasks-center/async';
+import {
+	EXCALIDRAW_PLUGIN_ID,
+	isExcalidrawFile,
+} from '../tasks-center/excalidraw-target';
 import { stripFrontmatter } from '../tasks-center/markdown-body';
 import { resolveHitLine } from '../tasks-center/search-hit-line';
 import {
@@ -55,6 +59,26 @@ function isMarkdownPath(app: App, path: string): boolean {
 	return file instanceof TFile && file.extension.toLowerCase() === 'md';
 }
 
+/** Excalidraw 是否装着且启用：关着的时候改道反而更差（`![[x.excalidraw]]` 只会退化成 md 转写）。 */
+function isExcalidrawPluginEnabled(app: App): boolean {
+	const plugins = (
+		app as unknown as { plugins?: { enabledPlugins?: Set<string> } }
+	).plugins;
+	return Boolean(plugins?.enabledPlugins?.has(EXCALIDRAW_PLUGIN_ID));
+}
+
+/** 绘图当嵌入预览的两个前提：文件是绘图 + 接管它的插件在场。 */
+function isExcalidrawPreviewTarget(app: App, path: string): boolean {
+	const file = app.vault.getAbstractFileByPath(path);
+	if (!(file instanceof TFile) || !isExcalidrawPluginEnabled(app)) {
+		return false;
+	}
+	return isExcalidrawFile({
+		extension: file.extension,
+		frontmatter: app.metadataCache.getFileCache(file)?.frontmatter,
+	});
+}
+
 /** 正文预读并发：列表通常只有个位数到几十条，8 足够且不打满磁盘。 */
 const BODY_READ_CONCURRENCY = 8;
 
@@ -75,6 +99,9 @@ const NOTE_PREVIEW_STATE_CLASS = 'is-note-preview';
 
 /** 预览体里装的是**嵌入媒体**（pdf / 图片 / canvas / 音频）：满幅，无纸面。 */
 const EMBED_PREVIEW_STATE_CLASS = 'is-embed-preview';
+
+/** 预览体里装的是**Excalidraw 绘图**：嵌入的一种，只多挂一条「加载期遮转写壳」的 CSS 钩子。 */
+const EXCALIDRAW_PREVIEW_STATE_CLASS = 'is-excalidraw-preview';
 
 /** 核心嵌入组件的最小形状（`embedRegistry` 无 d.ts，只声明用到的那几项）。 */
 interface CoreEmbed extends Component {
@@ -1130,17 +1157,16 @@ export class TaskLinksModal extends Modal {
 		const folder = getLeafFolderName(top.entry.path);
 		this.previewPathEl?.setText(folder);
 		this.previewPathEl?.toggle(folder.length > 0);
+		const asEmbed =
+			!isMarkdownPath(this.app, top.entry.path) ||
+			isExcalidrawPreviewTarget(this.app, top.entry.path);
 		this.previewOpenEl?.setText(
-			t(
-				isMarkdownPath(this.app, top.entry.path)
-					? 'taskLinks.preview.openNote'
-					: 'taskLinks.preview.openFile',
-			),
+			t(asEmbed ? 'taskLinks.preview.openFile' : 'taskLinks.preview.openNote'),
 		);
 
-		// 非 md：整件事交给核心 embedRegistry，必须在 `cached` 判断之前分流，
-		// 否则会先落「正在加载…」再落乱码。
-		if (!isMarkdownPath(this.app, top.entry.path)) {
+		// 非 md / 绘图：整件事交给核心 embedRegistry 与 Excalidraw 的 post processor，
+		// 必须在 `cached` 判断之前分流，否则会先落「正在加载…」再落乱码。
+		if (asEmbed) {
 			this.paintEmbedPreview(top, component);
 			return;
 		}
@@ -1230,7 +1256,8 @@ export class TaskLinksModal extends Modal {
 			return;
 		}
 
-		this.setPreviewKind('embed');
+		const drawing = isExcalidrawPreviewTarget(this.app, frame.entry.path);
+		this.setPreviewKind(drawing ? 'embed-drawing' : 'embed');
 		bodyEl.empty();
 		this.clearPdfEmbedState(bodyEl);
 		bodyEl.scrollTop = 0;
@@ -1372,14 +1399,21 @@ export class TaskLinksModal extends Modal {
 	 * 状态类必须一起变。只加不摘是这类 bug 的老剧本 —— 见 `clearPdfEmbedState` 的注释
 	 * （pdf 状态残留会把旧高度 / 旧配色带回下一篇）。
 	 */
-	private setPreviewKind(kind: 'note' | 'embed' | 'none'): void {
-		this.previewIsEmbed = kind === 'embed';
+	private setPreviewKind(
+		kind: 'note' | 'embed' | 'embed-drawing' | 'none',
+	): void {
+		const isEmbed = kind === 'embed' || kind === 'embed-drawing';
+		this.previewIsEmbed = isEmbed;
 		const bodyEl = this.previewBodyEl;
 		if (!bodyEl) {
 			return;
 		}
 		bodyEl.toggleClass(NOTE_PREVIEW_STATE_CLASS, kind === 'note');
-		bodyEl.toggleClass(EMBED_PREVIEW_STATE_CLASS, kind === 'embed');
+		bodyEl.toggleClass(EMBED_PREVIEW_STATE_CLASS, isEmbed);
+		bodyEl.toggleClass(
+			EXCALIDRAW_PREVIEW_STATE_CLASS,
+			kind === 'embed-drawing',
+		);
 	}
 
 	// ---------------------------------------------------------------

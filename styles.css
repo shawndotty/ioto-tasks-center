@@ -6205,6 +6205,33 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 	display: none;
 }
 
+/* Excalidraw 嵌入：插件按 settings.width（本机 400）把 max-width 与 <svg width>
+   写死，预览体动辄 600~900px，不盖就只有半宽（Research-20261031-071052 §八·R2）。
+   两者都是内联样式，必须 !important。 */
+.ioto-tasks-center__task-links-preview-body .excalidraw-svg {
+	max-width: 100%;
+}
+
+.ioto-tasks-center__task-links-preview-body .excalidraw-embedded-img {
+	width: 100% !important;
+	max-width: 100% !important;
+}
+
+/* SVG 与 PNG 两种 previewImageType 各一条：高度一律 auto，保住纵横比。 */
+.ioto-tasks-center__task-links-preview-body .excalidraw-embedded-img > svg,
+.ioto-tasks-center__task-links-preview-body .excalidraw-embedded-img > img {
+	width: 100% !important;
+	height: auto !important;
+}
+
+/* 替换是异步的（post processor 要 await 初始化 + 现算 SVG），这期间核心的 md 转写
+   还在，先藏住免得闪一帧源码骨架。只在本插件确认「这一页是绘图」时才生效：
+   插件失效 / 渲染失败时类不挂，转写照常可见，不会得到一片空白。 */
+.ioto-tasks-center__task-links-preview-body.is-excalidraw-preview
+	.internal-embed:not(.is-loaded) {
+	visibility: hidden;
+}
+
 /* 未识别的类型降级成「图标 + 文件名」卡片，可点的语义是「打开文件」 */
 .ioto-tasks-center__task-links-preview-body .file-embed {
 	cursor: pointer;
