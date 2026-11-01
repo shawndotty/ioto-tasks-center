@@ -449,8 +449,12 @@ function attachCardDragHandle(
 		if (!inside) {
 			return null;
 		}
-		const sections =
-			paneScrollEl.querySelectorAll<HTMLElement>(SECTION_SELECTOR);
+		// 只认有布局盒的节：只看本节 / 卡片放大下其它节是 display:none 但仍在 DOM，
+		// 取「末项」会兜到隐藏节（[[Research-20261101-114007]] §五 T3）。
+		// 口径同 card-navigation.ts 的 isVisiblyLaidOut（getClientRects 零盒判定）。
+		const sections = Array.from(
+			paneScrollEl.querySelectorAll<HTMLElement>(SECTION_SELECTOR),
+		).filter((el) => el.getClientRects().length > 0);
 		const last = sections[sections.length - 1];
 		if (!last) {
 			return null;
