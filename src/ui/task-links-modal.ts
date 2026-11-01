@@ -1386,7 +1386,7 @@ export class TaskLinksModal extends Modal {
 		}
 
 		bodyEl.removeClass(PDF_EMBED_STATE_CLASS);
-		bodyEl.style.height = '';
+		bodyEl.setCssProps({ height: '' });
 	}
 
 	private disposePdfHeightObserver(): void {
