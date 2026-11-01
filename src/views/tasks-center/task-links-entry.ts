@@ -95,6 +95,16 @@ function openTaskLinksWindow(context: TaskLinksLaunchContext): void {
 
 	new TaskLinksModal(context.app, {
 		snapshot,
+		// 就地切换：`roots` / `sortMode` / `showProjectName…` 只在入口层手上，
+		// 弹窗按架构不 import 视图模块（ui → views 的值级依赖边禁止）。
+		buildSnapshot: (taskPath) =>
+			buildTaskLinksSnapshot({
+				app: context.app,
+				roots: context.roots,
+				taskPath,
+				sortMode: context.sortMode,
+				showProjectNameInTaskList: context.showProjectNameInTaskList,
+			}),
 		onOpenEntry: (entry, kind, line) => {
 			if (context.view) {
 				const file = context.app.vault.getAbstractFileByPath(entry.path);

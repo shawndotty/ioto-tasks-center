@@ -272,6 +272,7 @@ const zhCN = {
 	'taskLinks.preview.back': '返回',
 	'taskLinks.preview.openNote': '查看笔记',
 	'taskLinks.preview.openFile': '打开文件',
+	'taskLinks.preview.openLinks': '查看相关链接',
 	'taskLinks.preview.missing': '笔记内容不可用。',
 	'taskLinks.preview.matchPrev': '上一个匹配',
 	'taskLinks.preview.matchNext': '下一个匹配',

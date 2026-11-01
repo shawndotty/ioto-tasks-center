@@ -2,8 +2,8 @@
  * 任务链接浏览窗口（[[Plan-20261028-154638]] §4.8、[[Plan-20261028-190721]] §3）。
  *
  * 打开类**不 import 任何视图模块**：只收一个快照 Promise、一个点击回调，
- * 以及两个「值注入」句柄（预览内双链解析 / 外链打开）。因此任务中心没打开时
- * 也能用（命令 1），也避免 ui → views 的值级依赖边。
+ * 以及三个「值注入」句柄（预览内双链解析 / 外链打开 / 就地切换用的快照工厂）。
+ * 因此任务中心没打开时也能用（命令 1），也避免 ui → views 的值级依赖边。
  */
 
 import {
@@ -11,6 +11,7 @@ import {
 	Keymap,
 	MarkdownRenderer,
 	Modal,
+	Notice,
 	Platform,
 	TFile,
 	setIcon,
@@ -171,6 +172,12 @@ export interface TaskLinksModalOptions {
 	) => { path: string; kind: TaskLinkEntryKind } | null;
 	/** 预览内外链（views 层负责 `toExternalOpenUrl` + `window.open`）。 */
 	openExternalLink?: (href: string) => void;
+	/**
+	 * 就地切换用：给另一个任务重跑一次快照。缺省 = 不支持切换（按钮不出现）。
+	 * 只能由入口层注入：`roots` / `sortMode` / `showProjectName…` 都在那边，
+	 * 本文件按「只收快照 + 值注入句柄」的架构不 import 任何视图模块。
+	 */
+	buildSnapshot?: (taskPath: string) => Promise<TaskLinksSnapshot>;
 }
 
 interface PreviewFrame {
@@ -221,6 +228,10 @@ export class TaskLinksModal extends Modal {
 	private previewBodyEl: HTMLElement | null = null;
 	/** 「查看笔记 / 打开文件」按钮：文案随预览的是 md 还是附件切换。 */
 	private previewOpenEl: HTMLButtonElement | null = null;
+	/** 「查看相关链接」按钮：只在预览的是任务笔记、且不是本窗口自己时出现。 */
+	private previewLinksEl: HTMLButtonElement | null = null;
+	/** 切换单飞位：连点两次只切一次（第二次在 await 期间被挡）。 */
+	private switching = false;
 	/** 当前预览是「附件嵌入」而不是渲染出的正文（决定 `.file-embed` 的点击要不要接管）。 */
 	private previewIsEmbed = false;
 	/** 盯着 `.pdf-embed` 内联高度的观察器：核心缩放 / 窗口变化时会重算页高。 */
@@ -253,47 +264,21 @@ export class TaskLinksModal extends Modal {
 	}
 
 	onClose(): void {
+		// 必须先归零：`isAlive()` 是 `isActive && modalEl.isConnected`，飞行中的
+		// `switchToTask` 靠它在 `await` 之后立刻收手，不会继续拆已销毁的 DOM。
 		this.isActive = false;
-		// 浮层是挂在左栏里的 DOM + document 监听：不先销毁就会跟着残留。
-		this.filterPopover?.destroy();
-		this.filterPopover = null;
-		this.filterButtonEl = null;
-		this.narrowDotEl = null;
-		this.disposePreviewComponent();
+		this.resetShell();
 		this.contentEl.empty();
 		this.snapshot = null;
 		this.filterResult = null;
 		this.bodies.clear();
-		this.tabButtons.clear();
-		this.previewStack = [];
-		this.previewToken += 1;
-		this.selectedByCategory.clear();
-		this.itemEls.clear();
-		this.listFocusRequest = null;
-		this.listEl = null;
-		this.searchInputEl = null;
-		this.bodyEl = null;
-		this.listColEl = null;
-		this.previewEl = null;
-		this.previewTitleEl = null;
-		this.previewPathEl = null;
-		this.previewBodyEl = null;
-		this.previewOpenEl = null;
-		this.previewSourcePath = '';
-		this.previewIsEmbed = false;
+		this.switching = false;
 		this.query = '';
 		// 每次开窗回默认（不做跨窗口记忆：要记就得进 settings，会把「重置」语义
 		// 污染成「改全局配置」，[[Plan-20261029-083909]] §六）。
 		this.searchScope = 'both';
 		this.caseSensitive = false;
 		this.wholeWord = false;
-		this.hitEls = [];
-		this.hitIndex = -1;
-		this.activeHitEl = null;
-		this.hitBarEl = null;
-		this.hitCountEl = null;
-		this.hitPrevEl = null;
-		this.hitNextEl = null;
 	}
 
 	/**
@@ -601,7 +586,27 @@ export class TaskLinksModal extends Modal {
 			cls: 'ioto-tasks-center__task-links-preview-path',
 		});
 
-		const openEl = headerEl.createEl('button', {
+		// 两个文字按钮包一层：窄窗 / 平板下只有 meta 收缩，按钮整块不折行
+		// （调研 §2.4 的 640px 行；容器规则见 styles.css）。
+		const actionsEl = headerEl.createDiv({
+			cls: 'ioto-tasks-center__task-links-preview-actions',
+		});
+		const linksEl = actionsEl.createEl('button', {
+			cls: 'ioto-tasks-center__task-links-preview-links',
+			text: t('taskLinks.preview.openLinks'),
+			attr: { type: 'button' },
+		});
+		this.previewLinksEl = linksEl;
+		// 默认收起：显隐只由 `syncPreviewLinksButton` 决定（与标题/路径同一时机）。
+		linksEl.toggle(false);
+		linksEl.addEventListener('click', () => {
+			const top = this.previewStack[this.previewStack.length - 1];
+			if (top) {
+				void this.switchToTask(top.entry.path);
+			}
+		});
+
+		const openEl = actionsEl.createEl('button', {
 			cls: 'ioto-tasks-center__task-links-preview-open',
 			text: t('taskLinks.preview.openNote'),
 			attr: { type: 'button' },
@@ -1134,6 +1139,75 @@ export class TaskLinksModal extends Modal {
 		this.renderList();
 	}
 
+	/**
+	 * 就地换成另一个任务的窗口（[[Research-20261101-172607]] §4.2）。
+	 *
+	 * 🔴 先构建、后拆壳：构建失败要留着现在这个**可用**的窗口，只发一条 Notice；
+	 * 先 `resetShell()` 再 await 只会得到「空壳 + 加载失败」。
+	 */
+	private async switchToTask(taskPath: string): Promise<void> {
+		const build = this.options.buildSnapshot;
+		if (!build || this.switching || !this.isAlive()) {
+			return;
+		}
+
+		if (taskPath === this.snapshot?.taskPath) {
+			return; // 自指：按钮本就不该出现在这种帧上，这里是第二道保险
+		}
+
+		this.switching = true;
+		const buttonEl = this.previewLinksEl;
+		if (buttonEl) {
+			buttonEl.disabled = true;
+			buttonEl.setAttribute('aria-busy', 'true');
+		}
+
+		let next: TaskLinksSnapshot | null = null;
+		try {
+			next = await build(taskPath);
+		} catch (error) {
+			console.error('[IOTO Task Center] 切换相关链接窗口失败', error);
+		}
+
+		if (!this.isAlive()) {
+			return; // 关窗即弃（`onClose` 已把 switching 归位）
+		}
+
+		if (!next) {
+			// 复用既有文案（三语都有），不为失败路径新增 key。
+			new Notice(t('taskLinks.state.error'));
+			if (buttonEl) {
+				buttonEl.disabled = false;
+				buttonEl.removeAttribute('aria-busy');
+			}
+			this.switching = false;
+			return;
+		}
+
+		// 正文预读放在拆壳之前：这段时间旧窗口仍然完全可用，且它不碰任何 shell 引用。
+		const bodies = await this.readBodies(collectEntryPaths(next));
+		if (!this.isAlive()) {
+			return;
+		}
+
+		this.resetShell();
+		this.snapshot = next;
+		this.bodies = bodies;
+		// 切换后的使用态一律回默认（= 重跑一遍开窗）：组合态最少，也避免
+		// 「新任务在当前 tab 是空的」第一印象。
+		this.query = '';
+		this.searchScope = 'both';
+		this.caseSensitive = false;
+		this.wholeWord = false;
+		this.activeCategory = 'subtask';
+		this.modalEl.removeClass('is-split');
+		this.switching = false;
+
+		this.renderShell();
+		// 整窗 DOM 全换 → 焦点掉到 body，Tab 会从窗口顶部重来：还给搜索框。
+		this.searchInputEl?.focus();
+	}
+
 	private renderPreview(): void {
 		const top = this.previewStack[this.previewStack.length - 1];
 		const bodyEl = this.previewBodyEl;
@@ -1157,6 +1231,7 @@ export class TaskLinksModal extends Modal {
 		const folder = getLeafFolderName(top.entry.path);
 		this.previewPathEl?.setText(folder);
 		this.previewPathEl?.toggle(folder.length > 0);
+		this.syncPreviewLinksButton(top);
 		const asEmbed =
 			!isMarkdownPath(this.app, top.entry.path) ||
 			isExcalidrawPreviewTarget(this.app, top.entry.path);
@@ -1193,6 +1268,23 @@ export class TaskLinksModal extends Modal {
 		this.paintPreviewBody(cached, component, token);
 	}
 
+	/**
+	 * 「查看相关链接」按钮的显隐。判据三条全满足才出现：
+	 * 1. 入口层注入了 `buildSnapshot`（缺省 = 本窗口不支持切换）；
+	 * 2. 当前帧是**任务笔记**（输入/输出/成果、附件、绘图都没有「相关链接窗口」）；
+	 * 3. 不是本窗口自己（B 的正文链回 A 时不该出现，点了只会白闪一次）。
+	 *
+	 * 用 `toggle()` 而不是加 `is-hidden`：隐藏时右侧按钮顺位左移，不留空洞
+	 * （与标题下路径行同一手法）。
+	 */
+	private syncPreviewLinksButton(top: PreviewFrame): void {
+		this.previewLinksEl?.toggle(
+			Boolean(this.options.buildSnapshot) &&
+				top.kind === 'task' &&
+				top.entry.path !== this.snapshot?.taskPath,
+		);
+	}
+
 	/** 卸载当前预览的宿主管子（连同它带起的嵌入子组件一起回收）。 */
 	private disposePreviewComponent(): void {
 		// 页高观察器挂在上一个宿主管子上，跟它一起作废。
@@ -1203,6 +1295,46 @@ export class TaskLinksModal extends Modal {
 
 		this.previewComponent.unload();
 		this.previewComponent = null;
+	}
+
+	/**
+	 * 拆壳的唯一入口：就地切换与关窗共用（[[Plan-20261101-173650]] §4.3）。
+	 *
+	 * 只拆「窗内壳 + 会话态」，**不动** `snapshot` / `bodies` / `query` /
+	 * `activeCategory` / 三项收窄：切换要先把新值装上再重绘，关窗由 `onClose` 收尾。
+	 */
+	private resetShell(): void {
+		// 浮层是挂在左栏里的 DOM + document 监听：不先销毁就会跟着残留。
+		this.filterPopover?.destroy();
+		this.filterPopover = null;
+		this.filterButtonEl = null;
+		this.narrowDotEl = null;
+		this.disposePreviewComponent();
+		this.tabButtons.clear();
+		this.itemEls.clear();
+		this.selectedByCategory.clear();
+		this.previewStack = [];
+		// 清空之前先让飞行中的 paintPreviewBody 作废，否则 A 的正文会画进 B 的窗口。
+		this.previewToken += 1;
+		this.listFocusRequest = null;
+		this.previewSourcePath = '';
+		// 逻辑布尔与三类状态类一起归零（唯一写入口；此时 bodyEl 还在，摘得掉）。
+		this.setPreviewKind('none');
+		this.resetPreviewHits();
+		this.listEl = null;
+		this.searchInputEl = null;
+		this.bodyEl = null;
+		this.listColEl = null;
+		this.previewEl = null;
+		this.previewTitleEl = null;
+		this.previewPathEl = null;
+		this.previewBodyEl = null;
+		this.previewOpenEl = null;
+		this.previewLinksEl = null;
+		this.hitBarEl = null;
+		this.hitCountEl = null;
+		this.hitPrevEl = null;
+		this.hitNextEl = null;
 	}
 
 	private paintPreviewBody(

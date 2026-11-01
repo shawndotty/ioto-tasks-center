@@ -6408,8 +6408,23 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 	white-space: nowrap;
 }
 
+/* 预览头右上两个文字按钮的包裹：整块宽高由内容决定、永不被压缩
+   → 窄窗 / 平板（核心给非 clickable-icon 按钮加 padding）时只有 meta 收缩，
+   按钮不折行、不截字（[[Research-20261101-172607]] §2.4 的 640px 行）。 */
+.ioto-tasks-center__task-links-preview-actions {
+	display: flex;
+	flex: 0 0 auto;
+	gap: 6px;
+}
+
+.ioto-tasks-center__task-links-preview-actions button {
+	white-space: nowrap;
+}
+
 /* 核心 button:not(.clickable-icon) 的底色 (0,1,1) 会盖掉插件规则，
-   所以选择器必须带 button:not(.clickable-icon) 才生效。 */
+   所以选择器必须带 button:not(.clickable-icon) 才生效。
+   两个按钮共用一条 → 字号 / 内边距 / 内阴影永远一致，不靠复制粘贴对齐。 */
+button:not(.clickable-icon).ioto-tasks-center__task-links-preview-links,
 button:not(.clickable-icon).ioto-tasks-center__task-links-preview-open {
 	padding: 2px 8px;
 	box-shadow: none;
