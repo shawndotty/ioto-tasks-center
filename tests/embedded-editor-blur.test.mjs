@@ -112,6 +112,33 @@ test('OVERLAY_FOCUS_GUARD_SELECTOR：契约覆盖宿主 quickPanel 与卡片动�
 			'.ioto-task-view__card.is-editing .embed-actions',
 		),
 	);
+	// 续写编辑态：`.is-editing` 挂在 `.card-continuation` 上、卡片只带 is-selected，
+	// 上面那条卡片限定命中不到 → 续写区三图标全哑（Research-20261102-051140 §四·C1）。
+	// 之所以要单列一条，是因为三个编辑宿主用的是同一个 mountEmbeddedEditor，
+	// 而 closest() 只能从元素向上找，容器的 `.is-editing` 宿主各不相同。
+	assert.ok(
+		OVERLAY_FOCUS_GUARD_SELECTOR.includes(
+			'.ioto-task-view__card-continuation.is-editing .embed-actions',
+		),
+	);
+	// 节正文编辑态同款（`.is-editing` 在 `.ioto-task-view__section` 上）。
+	assert.ok(
+		OVERLAY_FOCUS_GUARD_SELECTOR.includes(
+			'.ioto-task-view__section.is-editing .embed-actions',
+		),
+	);
+});
+
+test('isOverlayFocusGuardTarget：续写编辑态嵌入动作条 → true', () => {
+	assert.equal(
+		isOverlayFocusGuardTarget({
+			closest: (s) =>
+				s.includes('.ioto-task-view__card-continuation.is-editing')
+					? {}
+					: null,
+		}),
+		true,
+	);
 });
 
 test('isOverlayFocusGuardTarget：命中嵌入动作条图标 → true', () => {

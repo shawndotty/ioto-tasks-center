@@ -86,10 +86,27 @@ export const OVERLAY_FOCUS_SELECTOR =
  * `tabindex="0"`，行为一致。**必须带 `.is-editing`**：本守卫挂在 `ownerDoc`
  * 捕获阶段（全应用生效），无条件写 `.embed-actions` 会顺手改掉真 MarkdownView
  * 里的焦点行为。
+ *
+ * 为什么按宿主拆成三条 `.embed-actions` 规则（[[Research-20261102-051140]] §四·C1）：
+ *
+ * 1. 同一个 `mountEmbeddedEditor` 有**三个**宿主 —— 卡片（`.ioto-task-view__card`）、
+ *    续写容器（`.ioto-task-view__card-continuation`）、节容器（`.ioto-task-view__section`），
+ *    `.is-editing` 分别挂在三者各自身上；`closest()` 只能从命中元素向上找，所以
+ *    每种宿主都要单列一条，否则该宿主下三个图标全哑。
+ * 2. 三条都带 `.is-editing`：守卫挂在 `ownerDoc` 捕获阶段（全应用生效），去掉限定
+ *    会顺手改掉真 MarkdownView 的焦点行为。
+ * 3. 按 `.embed-actions` 容器拦即覆盖三个图标：核心「放大」「编辑区块」与 Text Popup
+ *    的 `.text-popup-action` 都是它的子节点。
  */
 export const OVERLAY_FOCUS_GUARD_SELECTOR =
 	'.ioto-quick-panel, .ioto-task-view__card-action-btn, .ioto-task-view__card.is-editing .ioto-task-view__card-checkbox, ' +
-	'.ioto-task-view__card.is-editing .embed-actions';
+	'.ioto-task-view__card.is-editing .embed-actions, ' +
+	// 续写编辑态：`.is-editing` 挂在 `.card-continuation` 上、卡片只带 `is-selected`，
+	// 上一条的卡片限定命中不到 → mousedown 把焦点移出 `.cm-content` → blur 提交销毁
+	// 编辑器 → mouseup 打空、click 0 次（[[Research-20261102-051140]] §四·C1）。
+	'.ioto-task-view__card-continuation.is-editing .embed-actions, ' +
+	// 节正文编辑态同款（`.is-editing` 在 `.ioto-task-view__section` 上），一并覆盖。
+	'.ioto-task-view__section.is-editing .embed-actions';
 
 /**
  * 纯判断：给定元素，其是否落在 `selector` 内。
@@ -625,6 +642,27 @@ export async function mountEmbeddedEditor(
 		};
 		hostEl.addEventListener('mousedown', onEditorLinkMouseDown, true);
 
+		// 编辑器内的嵌入动作条（核心「放大」「编辑区块」+ Text Popup 图标）：核心「编辑区块」
+		// 会在 target 自身的 click 监听里把该 widget 的 DOM 整体换掉，被点的节点当场 detach
+		// → 冒泡到卡片时 `target.closest()` 全部返回 null，卡片把这次点击误判成「点了卡片
+		// 空白」而 `beginEdit` 跳进**标题编辑态**，把续写编辑器顶掉
+		// （[[Research-20261102-051140]] §四·C2）。
+		// 必须在**冒泡**阶段（捕获阶段会插到核心图标 handler 之前），且只
+		// `stopPropagation()`：核心自己的 handler 已执行完，不受影响。
+		const onEmbedActionClick = (event: MouseEvent) => {
+			const inActions = event
+				.composedPath()
+				.some(
+					(el) =>
+						el instanceof Element &&
+						el.classList.contains('embed-actions'),
+				);
+			if (inActions) {
+				event.stopPropagation();
+			}
+		};
+		hostEl.addEventListener('click', onEmbedActionClick, false);
+
 		const getEditorValue = (): string => {
 			try {
 				if (editor?.cm?.state?.doc) {
@@ -660,6 +698,15 @@ export async function mountEmbeddedEditor(
 					'mousedown',
 					onEditorLinkMouseDown,
 					true,
+				);
+			} catch {
+				/* ignore */
+			}
+			try {
+				hostEl.removeEventListener(
+					'click',
+					onEmbedActionClick,
+					false,
 				);
 			} catch {
 				/* ignore */
