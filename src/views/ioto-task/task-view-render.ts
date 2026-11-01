@@ -143,12 +143,12 @@ export function renderNote(
 				view.supportsInlineEdit() && !view.filters.onlyTaskBlocks
 					? buildSectionDragController(view)
 					: undefined,
-			// 卡片拖拽手柄：过滤 / 搜索态下 DOM 是源文件的不完整子集，行号虽真实，
-			// 但隐藏卡可能夹在落点之间导致排序结果不可预测，一律不挂；放大态由手势
+			// 卡片拖拽手柄：「只显示任务」不隐藏任何任务卡（只滤掉无任务的顶层节），
+			// 握把照挂（[[Research-20261101-114007]] §三 / [[Plan-20261101-132207]]）；
+			// 其余过滤档会让被拖的卡或落点不可见，仍不挂；放大 / 只看本节由手势
 			// 开始时 gate。
 			cardDrag:
 				view.supportsInlineEdit() &&
-				!view.filters.onlyTaskBlocks &&
 				!view.filters.onlyPending &&
 				!view.filters.recentOnly &&
 				view.searchQuery.trim().length === 0

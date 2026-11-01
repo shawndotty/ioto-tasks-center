@@ -79,12 +79,18 @@ test('section-zoomed：目标处于只看本节', () => {
 	);
 });
 
-test('filtered：三个过滤开关任一', () => {
-	for (const key of ['onlyTaskBlocks', 'onlyPending', 'recentOnly']) {
+test('filtered：只显示未完成 / 只显示最近 N 仍拒绝', () => {
+	for (const key of ['onlyPending', 'recentOnly']) {
 		const target = makeTarget();
 		target.filters = { ...target.filters, [key]: true };
 		assert.equal(checkForeignDropTarget(target, SRC).reason, 'filtered', key);
 	}
+});
+
+test('只显示任务：不隐藏任何任务卡 → 目标窗格照常受理', () => {
+	const target = makeTarget();
+	target.filters = { ...target.filters, onlyTaskBlocks: true };
+	assert.deepEqual(checkForeignDropTarget(target, SRC), { ok: true });
 });
 
 test('searching：目标有搜索词', () => {

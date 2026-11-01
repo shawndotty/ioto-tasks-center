@@ -39,8 +39,8 @@ export interface ForeignDropCandidate {
  * 判定 `dst` 能否接收来自 `srcPath` 的任务卡。
  *
  * 矩阵（先命中先返回）：`not-ready`（无文件 / 无内容）→ `readonly` → `editing`
- * → `zoomed` → `section-zoomed` → `filtered`（三开关任一）→ `searching` →
- * `same-file`（**同一文件开两个叶子也走同文件逻辑**）。
+ * → `zoomed` → `section-zoomed` → `filtered`（`onlyPending` / `recentOnly`
+ * 任一）→ `searching` → `same-file`（**同一文件开两个叶子也走同文件逻辑**）。
  */
 export function checkForeignDropTarget(
 	dst: ForeignDropCandidate | null,
@@ -61,11 +61,7 @@ export function checkForeignDropTarget(
 	if (dst.sectionZoomLine !== null) {
 		return { ok: false, reason: 'section-zoomed' };
 	}
-	if (
-		dst.filters.onlyTaskBlocks ||
-		dst.filters.onlyPending ||
-		dst.filters.recentOnly
-	) {
+	if (dst.filters.onlyPending || dst.filters.recentOnly) {
 		return { ok: false, reason: 'filtered' };
 	}
 	if (dst.searchQuery.trim().length > 0) {

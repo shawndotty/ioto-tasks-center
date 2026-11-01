@@ -151,6 +151,8 @@ Tasks can also be moved **between task files** by dragging:
 
 The target is written first and the source is removed only afterwards, so a failure can leave a duplicate but never loses the task. Moving a whole multi-selection follows the same rule.
 
+Dragging also works under the **Only task blocks** filter: that mode only hides sections without any task, so every card keeps its grip; those hidden sections simply cannot be used as drop targets. The other filters (only pending / recent N / search) still hide the grip.
+
 ### Multi-select in the task view
 
 The task view (card layout) can select several cards at once, mainly for bulk deletion:
