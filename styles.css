@@ -6253,9 +6253,11 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 }
 
 /* macOS 隐藏标题栏：左上 80×30 是系统红黄绿按钮区（--frame-left-space），
-   满幅会把标题压进去；`body.is-fullscreen`（系统全屏）没有窗口按钮，:not() 摘掉那支。 */
+   满幅会把标题压进去；`body.is-fullscreen`（系统全屏）没有窗口按钮，:not() 摘掉那支。
+   `is-frame-buttons-hidden` = 按钮是插件藏的（[[Plan-20261102-184451]] §C5）：
+   藏成功 → 标题归零左对齐；藏失败（API 缺失/异常）→ 类不挂 → 退回让位缩进兜底。 */
 body.mod-macos.is-hidden-frameless:not(.is-fullscreen)
-	.ioto-tasks-center__task-links-modal.is-fullscreen
+	.ioto-tasks-center__task-links-modal.is-fullscreen:not(.is-frame-buttons-hidden)
 	.modal-title {
 	padding-inline-start: var(--frame-left-space);
 }

@@ -7,6 +7,7 @@ import {
 	type WorkspaceWindow,
 } from 'obsidian';
 import { t } from './lang/helpter';
+import { restoreMacWindowButtons } from './ui/macos-window-buttons';
 import {
 	resolvePriorityFromSources,
 	resolveStarredFromSources,
@@ -815,6 +816,19 @@ export default class IOTOTasksCenter extends Plugin {
 		// 「条目控制」桥接：让 IOTOTask 卡片内联编辑态下的 Option+I 可用
 		// （[[Plan-20261003-105625]]）；`register` 会在 onunload 时还原原方法。
 		this.register(installItemControlBridge(this.app));
+	}
+
+	onunload(): void {
+		restoreMacWindowButtons();
+		// plugin:reload 等场景弹窗可能不随插件关闭：类留在 DOM 上会让 CSS
+		// 以为按钮还藏着、标题却不缩进，压进按钮区。顺手摘干净。
+		// （popout 窗口的弹窗在别的 document 上，藏按钮通路也只在主窗生效，
+		// 这里按计划只扫主文档；v1 不跨窗口，[[Plan-20261102-184451]] §C4。）
+		activeDocument
+			.querySelectorAll(
+				'.ioto-tasks-center__task-links-modal.is-frame-buttons-hidden',
+			)
+			.forEach((el) => el.removeClass('is-frame-buttons-hidden'));
 	}
 
 	async loadSettings() {

@@ -20,6 +20,10 @@ import {
 } from 'obsidian';
 
 import { t, type TranslationKey } from '../lang/helpter';
+import {
+	hideMacWindowButtons,
+	restoreMacWindowButtons,
+} from './macos-window-buttons';
 import { mapWithConcurrency } from '../tasks-center/async';
 import {
 	EXCALIDRAW_PLUGIN_ID,
@@ -311,6 +315,11 @@ export class TaskLinksModal extends Modal {
 		// 每个窗口状态开窗回默认：全屏不进 settings，也不跨窗口记忆。
 		this.fullscreen = false;
 		this.modalEl.removeClass('is-fullscreen');
+		// 满幅态直接关窗（关闭图标 / Esc 第五段）：按钮是我藏的就还回去。
+		if (this.modalEl.hasClass('is-frame-buttons-hidden')) {
+			restoreMacWindowButtons();
+			this.modalEl.removeClass('is-frame-buttons-hidden');
+		}
 	}
 
 	/**
@@ -550,6 +559,20 @@ export class TaskLinksModal extends Modal {
 	private toggleFullscreen(): void {
 		this.fullscreen = !this.fullscreen;
 		this.modalEl.toggleClass('is-fullscreen', this.fullscreen);
+		// macOS：满幅时藏系统红黄绿按钮，标题才能与正文左对齐（[[Plan-20261102-184451]] §C2）。
+		// 系统原生全屏（body.is-fullscreen）本来就没按钮，不用我们藏。
+		// 用弹窗自己的 document（popout 下 activeDocument 可能指别窗）。
+		if (this.fullscreen) {
+			const hiddenByUs =
+				!this.modalEl.ownerDocument.body.classList.contains(
+					'is-fullscreen',
+				) && hideMacWindowButtons();
+			// 类只在 hide 成功时挂：它是 CSS 让位缩进的豁免开关，宁缩进不遮挡。
+			this.modalEl.toggleClass('is-frame-buttons-hidden', hiddenByUs);
+		} else if (this.modalEl.hasClass('is-frame-buttons-hidden')) {
+			restoreMacWindowButtons();
+			this.modalEl.removeClass('is-frame-buttons-hidden');
+		}
 		this.applyFullscreenState();
 		// 浮层是 fixed + 打开那刻取视口坐标：满幅后留在原处会错位。
 		this.filterPopover?.close();
