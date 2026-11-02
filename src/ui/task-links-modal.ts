@@ -50,6 +50,11 @@ import type {
 	TaskLinkEntryKind,
 	TaskLinksSnapshot,
 } from '../tasks-center/types';
+import {
+	canEmbedWeb,
+	mountWebPreview,
+	type WebPreviewHandle,
+} from '../tasks-center/web-preview';
 import { TaskPickerModal } from './taskPickerModal';
 import {
 	TaskLinksFilterPopover,
@@ -105,6 +110,9 @@ const EMBED_PREVIEW_STATE_CLASS = 'is-embed-preview';
 
 /** 预览体里装的是**Excalidraw 绘图**：嵌入的一种，只多挂一条「加载期遮转写壳」的 CSS 钩子。 */
 const EXCALIDRAW_PREVIEW_STATE_CLASS = 'is-excalidraw-preview';
+
+/** 预览体里装的是**网页**（自建 webview）：满幅、无纸面、不参与命中染色。 */
+const WEB_PREVIEW_STATE_CLASS = 'is-web-preview';
 
 /** 核心嵌入组件的最小形状（`embedRegistry` 无 d.ts，只声明用到的那几项）。 */
 interface CoreEmbed extends Component {
@@ -227,6 +235,8 @@ export class TaskLinksModal extends Modal {
 	/** 「下一次 renderList 收尾时把焦点落到这个 path」；一次消费即清空。 */
 	private listFocusRequest: string | null = null;
 	private previewComponent: Component | null = null;
+	/** 网页帧的 guest 句柄：元素离开 DOM 即销毁，所以只留一个「收尸」入口。 */
+	private webPreview: WebPreviewHandle | null = null;
 	private previewSourcePath = '';
 	/** 竞态令牌：只有最后一次 renderPreview 的结果会被画上去。 */
 	private previewToken = 0;
@@ -246,6 +256,8 @@ export class TaskLinksModal extends Modal {
 	private switching = false;
 	/** 当前预览是「附件嵌入」而不是渲染出的正文（决定 `.file-embed` 的点击要不要接管）。 */
 	private previewIsEmbed = false;
+	/** 当前预览是网页帧：命中细条与正文染色都要停（网页里没有可染色的 DOM 文本）。 */
+	private previewIsWeb = false;
 	/** 盯着 `.pdf-embed` 内联高度的观察器：核心缩放 / 窗口变化时会重算页高。 */
 	private pdfHeightObserver: MutationObserver | null = null;
 	/** 预览正文的命中集合：只由 `refreshPreviewHits` 一次算出，染色与计数共用。 */
@@ -515,14 +527,9 @@ export class TaskLinksModal extends Modal {
 			});
 			tabEl.addEventListener('click', () => {
 				this.activeCategory = category;
-				// 外部条目从不进预览：从别的 tab 带着 `is-split` 进来会让左栏仍是
-				// 320px、右栏还挂着上一篇笔记，所以这里先收起。
-				// `collapsePreview()` 内部已 `renderList()`，不能再补一次。
-				if (category === 'external') {
-					this.collapsePreview();
-					this.updateTabs();
-					return;
-				}
+				// 外链现在能进右栏预览，原先「切到 external 先 collapsePreview」的特例
+				// 已经失去理由：切换分类与其它 tab 完全一致（预览留在右栏，
+				// 与「输入 → 输出」切 tab 时预览不消失的既有语义同源）。
 				this.updateTabs();
 				this.renderList();
 			});
@@ -982,9 +989,13 @@ export class TaskLinksModal extends Modal {
 				});
 			}
 			itemEl.addEventListener('click', (event) => {
-				// 外部条目没有可预览的东西（iframe 被站点拒绝、自建 webview 是私有实现），
-				// 单击 / Cmd+单击一律直接打开。Enter 走下面的 keydown，同理。
+				// 外链条目（§1.1 D1）：桌面端单击 = 右栏只读嵌页（不关窗）；
+				// Cmd/Ctrl+单击、库内 file://、手机端 = 老行为（关窗 + 直接打开）。
 				if (entry.kind === 'external') {
+					if (!Keymap.isModEvent(event) && this.canPreviewExternal(entry)) {
+						this.previewFromList(entry, 'external');
+						return;
+					}
 					this.openEntry(entry, 'external');
 					return;
 				}
@@ -1001,6 +1012,11 @@ export class TaskLinksModal extends Modal {
 				if (event.key === 'Enter') {
 					// 挡掉按钮把 Enter 合成 click（那会走单选预览）。
 					event.preventDefault();
+					// Enter 与单击同义（§1.1 D6）：能嵌就嵌，否则照旧打开。
+					if (this.canPreviewExternal(entry)) {
+						this.previewFromList(entry, 'external');
+						return;
+					}
 					this.openEntry(entry, entry.kind);
 					return;
 				}
@@ -1059,6 +1075,17 @@ export class TaskLinksModal extends Modal {
 		}
 		if (next.path === selectedPath) {
 			return; // 边界：已在首/尾
+		}
+		// 网页帧开着时先收起（§1.1 D5）：方向键永远只做「浏览列表」、不发起任何请求；
+		// 收掉才能保证「高亮的那条 == 正在看的那条」。`collapsePreview()` 内部已
+		// `renderList()`，这里的 `selectExternalEntry` 会再重绘一次把焦点补上。
+		if (this.previewIsWeb) {
+			this.collapsePreview();
+		}
+		// 外部条目只选中不加载：方向键顺手打开网页是本功能最贵的误操作。
+		if (next.kind === 'external') {
+			this.selectExternalEntry(next);
+			return;
 		}
 		this.previewFromList(next, next.kind); // remember 默认 true → 重绘 + 回焦
 	}
@@ -1158,10 +1185,10 @@ export class TaskLinksModal extends Modal {
 		kind: TaskLinkEntryKind,
 		options: { remember?: boolean } = {},
 	): void {
-		// 外部条目只「选中」，不预览：方向键顺手打开网页是本功能最贵的误操作，
-		// 而且它一旦打开就要关掉本窗口。
-		if (kind === 'external') {
-			this.selectExternalEntry(entry);
+		// 同一条外链再点一次不重建 guest：每次挂载都是新实例（元素离开 DOM 即销毁），
+		// 重复点会把滚动位置重置，而选中态本来就已经是对的。
+		const top = this.previewStack[this.previewStack.length - 1];
+		if (kind === 'external' && this.previewIsWeb && top?.entry.path === entry.path) {
 			return;
 		}
 
@@ -1175,6 +1202,23 @@ export class TaskLinksModal extends Modal {
 		this.previewStack = [{ entry, kind }];
 		this.modalEl.addClass('is-split');
 		this.renderPreview();
+	}
+
+	/**
+	 * 这条外链能不能在这扇窗里看（§1.1 D1/D4）：
+	 * - 库内 `file://`（有 `targetPath`）不进网页帧：它属于库，内部预览（pdf.js /
+	 *   图片嵌入）本来就更好，且 V279 已真机验收过「单击直接打开」；
+	 * - 手机 / 无 `webview` 标签的宿主一票否决（`canEmbedWeb`，判据取预览体自己的 document）。
+	 */
+	private canPreviewExternal(entry: TaskLinkEntry): boolean {
+		const doc = this.previewBodyEl?.ownerDocument;
+		return (
+			entry.kind === 'external' &&
+			entry.targetPath === undefined &&
+			Platform.isDesktopApp &&
+			doc !== undefined &&
+			canEmbedWeb(this.app, doc)
+		);
 	}
 
 	/** 外部条目的「选中 = 高亮 + 焦点」，与 `previewFromList` 的 remember 段同构。 */
@@ -1349,10 +1393,25 @@ export class TaskLinksModal extends Modal {
 		this.previewTitleEl?.setText(top.entry.title);
 		// 与列表第二行同一口径（[[Plan-20261029-095917]] §3.2）；
 		// 空串会留一条空白行，必须整个收掉。
-		const folder = getLeafFolderName(top.entry.path);
-		this.previewPathEl?.setText(folder);
-		this.previewPathEl?.toggle(folder.length > 0);
+		// 外部条目没有「叶子文件夹」：`getLeafFolderName('https://a/b')` 会算出 `a`，
+		// 是纯噪音。网页帧没有地址栏（§1.1 D2），路径行就是地址栏 → 直接写完整 URL
+		// （`.task-links-preview-path` 已有 ellipsis，撑不破头部）。
+		const pathLine =
+			top.kind === 'external'
+				? top.entry.path
+				: getLeafFolderName(top.entry.path);
+		this.previewPathEl?.setText(pathLine);
+		this.previewPathEl?.toggle(pathLine.length > 0);
 		this.syncPreviewLinksButton(top);
+
+		// 网页帧：必须在 `asEmbed` 之前分叉 —— 外链的 `path` 是 URL，
+		// `isMarkdownPath` 恒 false，会误落「嵌入」分支去渲染 `![[https://…]]`。
+		if (top.kind === 'external') {
+			this.previewOpenEl?.setText(t('taskLinks.preview.openWeb'));
+			this.paintWebPreview(top, token);
+			return;
+		}
+
 		const asEmbed =
 			!isMarkdownPath(this.app, top.entry.path) ||
 			isExcalidrawPreviewTarget(this.app, top.entry.path);
@@ -1410,6 +1469,10 @@ export class TaskLinksModal extends Modal {
 	private disposePreviewComponent(): void {
 		// 页高观察器挂在上一个宿主管子上，跟它一起作废。
 		this.disposePdfHeightObserver();
+		// 网页帧的 guest 只认元素：元素一摘就回收。必须在前面的 `return` 之前 ——
+		// 网页帧没有 previewComponent，早退会把 guest 漏成孤儿（进程泄漏）。
+		this.webPreview?.destroy();
+		this.webPreview = null;
 		if (!this.previewComponent) {
 			return;
 		}
@@ -1649,15 +1712,94 @@ export class TaskLinksModal extends Modal {
 	}
 
 	/**
+	 * 网页帧（[[Research-20261102-143206]] §5.2）。
+	 *
+	 * 三件事必须**一起**做，漏一件就把脏状态带进下一帧：
+	 * 1. `setPreviewKind('web')` → 命中细条与染色同时停（网页没有可染色的 DOM 文本）；
+	 * 2. `clearPdfEmbedState` → 上一帧若是 pdf，内联「一页高」还挂在预览体上，
+	 *    不清掉 webview 会撑在一个旧高度里；
+	 * 3. `resetPreviewHits` → 否则细条会挂着上一篇的 `N/0`。
+	 */
+	private paintWebPreview(frame: PreviewFrame, token: number): void {
+		const bodyEl = this.previewBodyEl;
+		if (!bodyEl) {
+			return;
+		}
+
+		this.setPreviewKind('web');
+		bodyEl.empty();
+		this.clearPdfEmbedState(bodyEl);
+		bodyEl.scrollTop = 0;
+		this.resetPreviewHits();
+
+		// 能力探测兜一道：入口（`canPreviewExternal`）已经拦过，这里防「帧来源变更」
+		// 以后出现一条没人守的入口 —— 宁可给卡片，也不要一片空白。
+		if (!canEmbedWeb(this.app, bodyEl.ownerDocument)) {
+			this.renderWebPreviewFallback('');
+			return;
+		}
+
+		this.webPreview = mountWebPreview(this.app, bodyEl, frame.entry.path, {
+			onFail: (description) => {
+				// 最后一帧胜出：换页过快时旧 guest 的失败不该画在新帧上。
+				if (token !== this.previewToken || !this.isAlive()) {
+					return;
+				}
+				this.renderWebPreviewFallback(description);
+			},
+		});
+	}
+
+	/**
+	 * 打不开的兜底卡片（research §八·4）。
+	 *
+	 * 只给「重试」：「在浏览器中打开」是头部按钮的固定语义（§1.1 D2），卡片里再放一个
+	 * 同义按钮会让用户以为是两件事。重试 = 重画这一帧（`renderPreview` 会先
+	 * `disposePreviewComponent` 把旧 guest 收掉，不会漏进程）。
+	 */
+	private renderWebPreviewFallback(description: string): void {
+		const bodyEl = this.previewBodyEl;
+		if (!bodyEl) {
+			return;
+		}
+
+		bodyEl.empty();
+		const cardEl = bodyEl.createDiv({
+			cls: 'ioto-tasks-center__task-links-web-fallback',
+		});
+		cardEl.createDiv({
+			cls: 'ioto-tasks-center__task-links-web-fallback-title',
+			text: t('taskLinks.preview.webFailed'),
+		});
+		if (description) {
+			// 具体错误码（ERR_NAME_NOT_RESOLVED / ERR_CONNECTION_REFUSED）帮用户判断
+			// 「是不是地址打错了」，但不抢主文案的位置。
+			cardEl.createDiv({
+				cls: 'ioto-tasks-center__task-links-web-fallback-detail',
+				text: description,
+			});
+		}
+		const retryEl = cardEl.createEl('button', {
+			cls: 'ioto-tasks-center__task-links-web-fallback-retry',
+			text: t('taskLinks.preview.webRetry'),
+			attr: { type: 'button' },
+		});
+		retryEl.addEventListener('click', () => {
+			this.renderPreview();
+		});
+	}
+
+	/**
 	 * 预览体身份（笔记 / 嵌入 / 空）的唯一写入口：逻辑布尔 `previewIsEmbed` 与 DOM
 	 * 状态类必须一起变。只加不摘是这类 bug 的老剧本 —— 见 `clearPdfEmbedState` 的注释
 	 * （pdf 状态残留会把旧高度 / 旧配色带回下一篇）。
 	 */
 	private setPreviewKind(
-		kind: 'note' | 'embed' | 'embed-drawing' | 'none',
+		kind: 'note' | 'embed' | 'embed-drawing' | 'web' | 'none',
 	): void {
 		const isEmbed = kind === 'embed' || kind === 'embed-drawing';
 		this.previewIsEmbed = isEmbed;
+		this.previewIsWeb = kind === 'web';
 		const bodyEl = this.previewBodyEl;
 		if (!bodyEl) {
 			return;
@@ -1668,6 +1810,7 @@ export class TaskLinksModal extends Modal {
 			EXCALIDRAW_PREVIEW_STATE_CLASS,
 			kind === 'embed-drawing',
 		);
+		bodyEl.toggleClass(WEB_PREVIEW_STATE_CLASS, kind === 'web');
 	}
 
 	// ---------------------------------------------------------------
@@ -1688,6 +1831,8 @@ export class TaskLinksModal extends Modal {
 			!body ||
 			this.previewStack.length === 0 ||
 			this.previewIsEmbed ||
+			// 网页帧里没有可染色的 DOM 文本（guest 是独立进程，宿主 querySelector 摸不到）。
+			this.previewIsWeb ||
 			this.searchScope === 'title'
 		) {
 			this.resetPreviewHits();
@@ -1735,6 +1880,7 @@ export class TaskLinksModal extends Modal {
 		const visible =
 			this.previewStack.length > 0 &&
 			!this.previewIsEmbed &&
+			!this.previewIsWeb &&
 			this.searchScope !== 'title' &&
 			this.searchTokens().length > 0;
 		barEl.toggleClass('is-hidden', !visible);

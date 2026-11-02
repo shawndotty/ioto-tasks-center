@@ -6358,6 +6358,49 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 	height: 100% !important;
 }
 
+/* 网页帧（[[Plan-20261102-144054]] §1.1 D1）：webview 自己滚、不参与父级滚动，
+   父级必须是确定高度 + padding:0 + overflow:hidden，否则会出现「外层一条、内层一条」
+   双滚动条（research §六.4）。确定高度来自 `.modal` 锁高 + 三层 min-height:0，
+   不需要额外计算。 */
+.ioto-tasks-center__task-links-preview-body.is-web-preview {
+	padding: 0;
+	overflow: hidden;
+}
+
+/* 尺寸只补满幅与底色：不写 display —— Electron 给 webview 的默认 display 已经可用
+   （research §3 P1 实测 `height:100%` 直接生效，未做任何 display 覆盖）。
+   `background` 是白色网页加载首帧的底色，**唯一来源**：JS 侧不写内联样式
+   （`no-static-styles-assignment` 会拦字面量赋值），别两处各写一半。 */
+.ioto-tasks-center__task-links-web {
+	width: 100%;
+	height: 100%;
+	border: 0;
+	background: #fff;
+}
+
+/* 打不开的兜底卡片：整块居中，不参与外层滚动（父级 overflow:hidden）。 */
+.ioto-tasks-center__task-links-web-fallback {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	height: 100%;
+	padding: 24px;
+	text-align: center;
+}
+
+.ioto-tasks-center__task-links-web-fallback-title {
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+}
+
+.ioto-tasks-center__task-links-web-fallback-detail {
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+	word-break: break-all;
+}
+
 /* 弹窗不提供「编辑块」：核心给每个嵌入都塞了 .embed-actions */
 .ioto-tasks-center__task-links-preview-body .embed-actions {
 	display: none;
