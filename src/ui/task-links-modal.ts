@@ -252,6 +252,10 @@ export class TaskLinksModal extends Modal {
 	private previewLinksEl: HTMLButtonElement | null = null;
 	/** 标题旁的「切换」图标：图标存在与否 = 本窗口是否支持主动切换。 */
 	private switchButtonEl: HTMLButtonElement | null = null;
+	/** 满幅态：状态类挂在 `modalEl` 上，`resetShell()` 不清（切换任务要保持）。 */
+	private fullscreen = false;
+	/** 标题里的全屏图标：`renderTitle()` 每次重建，故只存引用。 */
+	private fullscreenButtonEl: HTMLButtonElement | null = null;
 	/** 切换单飞位：连点两次只切一次（第二次在 await 期间被挡）。 */
 	private switching = false;
 	/** 当前预览是「附件嵌入」而不是渲染出的正文（决定 `.file-embed` 的点击要不要接管）。 */
@@ -303,10 +307,13 @@ export class TaskLinksModal extends Modal {
 		this.searchScope = 'both';
 		this.caseSensitive = false;
 		this.wholeWord = false;
+		// 每个窗口状态开窗回默认：全屏不进 settings，也不跨窗口记忆。
+		this.fullscreen = false;
+		this.modalEl.removeClass('is-fullscreen');
 	}
 
 	/**
-	 * 四段式 Esc：浮层 → 搜索词 → 预览 → 关窗。
+	 * 五段式 Esc：浮层 → 搜索词 → 预览 → 全屏 → 关窗（[[Plan-20261102-152437]] §4.6）。
 	 *
 	 * 浮层是「浮在窗口上的临时层」，比清词更浅，必须先关它；焦点回按钮，
 	 * 键盘用户不丢位置。
@@ -330,6 +337,12 @@ export class TaskLinksModal extends Modal {
 
 		if (this.previewStack.length > 0) {
 			this.collapsePreview();
+			return;
+		}
+
+		// 键盘用户要有「只退全屏」的路径，否则满幅下 Esc 直接关窗。
+		if (this.fullscreen) {
+			this.toggleFullscreen();
 			return;
 		}
 
@@ -430,7 +443,8 @@ export class TaskLinksModal extends Modal {
 	}
 
 	/**
-	 * 标题行 = 任务名 + 「切换」图标（[[卡片笔记-20261102-101357]] 交互 1）。
+	 * 标题行 = 任务名 + 「切换」图标 + 全屏图标（[[卡片笔记-20261102-101357]] 交互 1、
+	 * [[Plan-20261102-152437]] §4.3）。
 	 *
 	 * 不用 `setTitle()`：核心是 `titleEl.setText(...)`，会把图标一起清掉（§3.1）；
 	 * 因此标题由本方法独占重建，`onOpen` 的加载态仍用 `setTitle`（那时还没有图标）。
@@ -438,30 +452,71 @@ export class TaskLinksModal extends Modal {
 	private renderTitle(title: string): void {
 		this.titleEl.empty();
 		this.switchButtonEl = null;
+		this.fullscreenButtonEl = null;
 		this.titleEl.createSpan({
 			cls: 'ioto-tasks-center__task-links-title-text',
 			text: title,
 		});
 
 		const listTargets = this.options.listSwitchTargets;
-		if (!listTargets) {
-			return; // 缺省 = 不支持主动切换（与 buildSnapshot 同构的降级）
+		if (listTargets) {
+			// `clickable-icon`：图标观感 / hover / 命中区全部走核心，不自己写样式。
+			const switchEl = this.titleEl.createEl('button', {
+				cls: 'clickable-icon ioto-tasks-center__task-links-switch',
+				attr: {
+					type: 'button',
+					'aria-label': t('taskLinks.switch.label'),
+					title: t('taskLinks.switch.label'),
+				},
+			});
+			setIcon(switchEl, 'arrow-right-left');
+			switchEl.addEventListener('click', () => {
+				this.openTaskPicker();
+			});
+			this.switchButtonEl = switchEl;
 		}
 
-		// `clickable-icon`：图标观感 / hover / 命中区全部走核心，不自己写样式。
-		const switchEl = this.titleEl.createEl('button', {
-			cls: 'clickable-icon ioto-tasks-center__task-links-switch',
-			attr: {
-				type: 'button',
-				'aria-label': t('taskLinks.switch.label'),
-				title: t('taskLinks.switch.label'),
-			},
+		// 全屏与「能否主动切换」无关：无条件建，顺带在切换任务重建后回放状态。
+		const fullscreenEl = this.titleEl.createEl('button', {
+			cls: 'clickable-icon ioto-tasks-center__task-links-fullscreen',
+			attr: { type: 'button' },
 		});
-		setIcon(switchEl, 'arrow-right-left');
-		switchEl.addEventListener('click', () => {
-			this.openTaskPicker();
+		fullscreenEl.addEventListener('click', () => {
+			this.toggleFullscreen();
 		});
-		this.switchButtonEl = switchEl;
+		this.fullscreenButtonEl = fullscreenEl;
+		this.applyFullscreenState();
+	}
+
+	/** 按钮外观的唯一写入口：`renderTitle()` 重建与 toggle 都走这里。 */
+	private applyFullscreenState(): void {
+		const buttonEl = this.fullscreenButtonEl;
+		if (!buttonEl) {
+			return;
+		}
+		const label = t(
+			this.fullscreen
+				? 'taskLinks.fullscreen.exit'
+				: 'taskLinks.fullscreen.enter',
+		);
+		setIcon(buttonEl, this.fullscreen ? 'exit-fullscreen' : 'fullscreen');
+		buttonEl.setAttribute('aria-label', label);
+		buttonEl.setAttribute('title', label);
+		buttonEl.setAttribute('aria-pressed', String(this.fullscreen));
+	}
+
+	/**
+	 * 全屏 = 铺满 Obsidian 窗口，不是系统级全屏、也不是只把右栏拉满。
+	 *
+	 * 只做三件事：切状态类、刷按钮外观、关掉可能停在旧坐标上的筛选浮层。
+	 * 不重建 `titleEl`：同一颗按钮的两种状态，重建只会丢焦点。
+	 */
+	private toggleFullscreen(): void {
+		this.fullscreen = !this.fullscreen;
+		this.modalEl.toggleClass('is-fullscreen', this.fullscreen);
+		this.applyFullscreenState();
+		// 浮层是 fixed + 打开那刻取视口坐标：满幅后留在原处会错位。
+		this.filterPopover?.close();
 	}
 
 	private renderShell(): void {
@@ -1516,6 +1571,9 @@ export class TaskLinksModal extends Modal {
 		this.previewOpenEl = null;
 		this.previewLinksEl = null;
 		this.switchButtonEl = null;
+		// 🔴 只清引用、不清 `fullscreen` 布尔：`switchToTask()` 也走这里，
+		// 而切换任务要保持满幅（否则类还在、状态说不在，下一次点按钮反而退不出）。
+		this.fullscreenButtonEl = null;
 		this.hitBarEl = null;
 		this.hitCountEl = null;
 		this.hitPrevEl = null;

@@ -6210,7 +6210,9 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 
 /* 图标永不被压缩：名字再长也只让 span 省略。 */
 .ioto-tasks-center__task-links-modal
-	.ioto-tasks-center__task-links-switch {
+	.ioto-tasks-center__task-links-switch,
+.ioto-tasks-center__task-links-modal
+	.ioto-tasks-center__task-links-fullscreen {
 	flex: 0 0 auto;
 }
 
@@ -6223,6 +6225,43 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 	width: 100vw;
 	max-width: var(--dialog-max-width);
 	transition: none;
+}
+
+/* 满幅（[[Plan-20261102-152437]] §4.8）：组合选择器压过 is-split 的锁高，
+   不依赖源码先后顺序。圆角与边框必须一起抹，否则四角露出底色。 */
+.ioto-tasks-center__task-links-modal.is-split.is-fullscreen,
+.ioto-tasks-center__task-links-modal.is-fullscreen {
+	width: 100%;
+	max-width: 100%;
+	height: 100%;
+	max-height: 100%;
+	border: none;
+	border-radius: 0;
+	/* 核心 .modal 没有 height，插件的 transition 只过渡宽：进场宽度滑、高度瞬跳；
+	   pdf 页高会跟着宽度逐帧重算，没必要跑这段动画。 */
+	transition: none;
+}
+
+/* 图标常驻右端：短标题时图标不跟着文字走。 */
+.ioto-tasks-center__task-links-modal
+	.ioto-tasks-center__task-links-title-text {
+	flex: 1 1 auto;
+}
+
+/* macOS 隐藏标题栏：左上 80×30 是系统红黄绿按钮区（--frame-left-space），
+   满幅会把标题压进去；`body.is-fullscreen`（系统全屏）没有窗口按钮，:not() 摘掉那支。 */
+body.mod-macos.is-hidden-frameless:not(.is-fullscreen)
+	.ioto-tasks-center__task-links-modal.is-fullscreen
+	.modal-title {
+	padding-inline-start: var(--frame-left-space);
+}
+
+/* 手机本来就是一整屏（核心 `.is-phone .modal.mod-lg` 已 height:100%）：按钮是死键。
+   display:none 顺带把它移出 Tab 序。 */
+.is-phone
+	.ioto-tasks-center__task-links-modal
+	.ioto-tasks-center__task-links-fullscreen {
+	display: none;
 }
 
 .ioto-tasks-center__task-links-modal .modal-content {

@@ -304,6 +304,8 @@ const en = {
 	'taskLinks.preview.webRetry': 'Retry',
 	'taskLinks.switch.label': 'Switch task',
 	'taskLinks.switch.placeholder': 'Search task files',
+	'taskLinks.fullscreen.enter': 'Full screen',
+	'taskLinks.fullscreen.exit': 'Exit full screen',
 	'taskLinks.preview.openLinks': 'View related links',
 	'taskLinks.preview.missing': 'Note content is unavailable.',
 	'taskLinks.preview.matchPrev': 'Previous match',

@@ -281,6 +281,8 @@ const zhCN = {
 	'taskLinks.preview.webRetry': '重试',
 	'taskLinks.switch.label': '切换任务',
 	'taskLinks.switch.placeholder': '搜索任务文件',
+	'taskLinks.fullscreen.enter': '全屏',
+	'taskLinks.fullscreen.exit': '退出全屏',
 	'taskLinks.preview.openLinks': '查看相关链接',
 	'taskLinks.preview.missing': '笔记内容不可用。',
 	'taskLinks.preview.matchPrev': '上一个匹配',
