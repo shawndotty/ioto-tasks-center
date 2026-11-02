@@ -40,6 +40,8 @@ export const TASK_LINK_CATEGORIES: readonly TaskLinkCategory[] = [
 	'output',
 	'outcome',
 	'other',
+	// 外链不属于 vault 分类体系 → 永远排最后（[[Plan-20261102-113642]] §4.4）。
+	'external',
 ];
 
 export function getDirname(path: string): string {
@@ -298,6 +300,7 @@ export function filterTaskLinks(
 		output: [],
 		outcome: [],
 		other: [],
+		external: [],
 	} as Record<TaskLinkCategory, TaskLinkEntry[]>;
 	const counts = {
 		subtask: 0,
@@ -305,6 +308,7 @@ export function filterTaskLinks(
 		output: 0,
 		outcome: 0,
 		other: 0,
+		external: 0,
 	} as Record<TaskLinkCategory, number>;
 
 	for (const category of TASK_LINK_CATEGORIES) {
@@ -338,10 +342,17 @@ function matchesTaskLink(
 	const scope = options.scope ?? 'both';
 	// 正文只取一次：逐词再查 Map 属于纯浪费。
 	const body = bodies.get(entry.path);
+	// 外部条目没有正文，可见文字全在 title（链接文字 / URL）与 subtitle（域名 /
+	// 文件名）上，两者都要可搜，否则「列表里看得见、搜索框搜不到」（§1.1 D6）。
+	// 完整 URL 一并并入：它在 tooltip 里看得见，粘一段 URL 来搜是自然动作。
+	const externalText =
+		entry.kind === 'external' ? `${entry.subtitle ?? ''}\n${entry.path}` : '';
 	for (const token of tokens) {
 		const inTitle =
 			scope !== 'body' &&
-			findMatchRanges(entry.title, token, options).length > 0;
+			(findMatchRanges(entry.title, token, options).length > 0 ||
+				(externalText.length > 0 &&
+					findMatchRanges(externalText, token, options).length > 0));
 		const inBody =
 			scope !== 'title' &&
 			body !== undefined &&

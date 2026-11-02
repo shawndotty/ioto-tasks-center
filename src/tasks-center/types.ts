@@ -125,19 +125,26 @@ export type TaskLinkCategory =
 	| 'input'
 	| 'output'
 	| 'outcome'
-	| 'other';
+	| 'other'
+	| 'external';
 
-/** 条目的打开语义：任务笔记走任务视图，其余走普通文件。 */
-export type TaskLinkEntryKind = 'task' | 'note';
+/** 条目的打开语义：任务笔记走任务视图，其余走普通文件，外链走 URL 路由。 */
+export type TaskLinkEntryKind = 'task' | 'note' | 'external';
 
 export interface TaskLinkEntry {
 	path: string;
 	/** 主标题：与任务列表 / outlink popover 同一展示口径。 */
 	title: string;
-	/** 次级行：vault 相对路径（已去 `.md`），用于同名消歧。 */
+	/** 次级行：vault 相对路径（已去 `.md`）；外部条目存**完整 URL**（当 tooltip 用）。 */
 	subPath: string;
 	/** 打开语义由快照判定，列表不再按分类猜（第 5 个分类必然猜错）。 */
 	kind: TaskLinkEntryKind;
+	/** 外部条目专用：第二行（域名 / 文件名 / 库内目录），快照已按当前语言拼好。 */
+	subtitle?: string;
+	/** 外部条目专用：`file://` 指向**本库**文件时的 vault 相对路径（命中才填）。 */
+	targetPath?: string;
+	/** 外部条目专用：`targetPath` 的打开语义（指到任务笔记就走任务视图）。 */
+	targetKind?: 'task' | 'note';
 }
 
 export interface TaskLinksRoots {

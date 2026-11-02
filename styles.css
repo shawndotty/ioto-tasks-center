@@ -6522,15 +6522,19 @@ button:not(.clickable-icon).ioto-tasks-center__task-links-parent-item {
 /* 三档视觉重量（[[Plan-20261029-143027]] §4.3）：tab 是「目录」，不是按钮。
    基础 .ioto-tasks-center__tab 是任务中心共用的胶囊（:566-617），这里只在本窗口
    作用域内改写形状，绝不改基础规则。
-   五个标签在 320px 左栏里必须单行（[[Research-20261029-101207]]）：nowrap + 可收缩，
-   剩余溢出被省略号吸收，而不是折行。
+   标签数按分类走（[[Plan-20261102-113642]] §1.1 D4）：5 个中文 tab 在 320px 里
+   还有 48px 富余，但第 6 个「外部链接」实测整行 351.6px、溢出 31.6px；英文包
+   5 个 tab **今天就已经溢出 47.8px**。缩短文案 / 调 gap 都是踩线，所以改成 wrap：
+   多一行换「任何语言、任何计数都不溢出」。
+   row-gap 取 2px：下划线是按钮内的 inset 阴影，行间距大了两排 tab 会散成两块。
    🔴 选择器必须带 button:not(.clickable-icon)：平板态核心有
    `.is-tablet button:not(.clickable-icon){padding:4px 20px}`（特指度 0,2,1），
    只用两个类（0,2,0）压不过它 —— 实测 tab 高 30 → 44、整行溢出 6px。 */
 .ioto-tasks-center__task-links-tabs {
-	flex-wrap: nowrap;
+	flex-wrap: wrap;
 	justify-content: flex-start; /* 不再 space-between 拉满 → 左边缘有公共列线 */
 	gap: 12px;
+	row-gap: 2px; /* 必须在 gap 之后：gap 是 row/column 的缩写，写前面会被覆盖 */
 	margin-bottom: 8px;
 }
 

@@ -134,6 +134,7 @@ const TAB_LABEL_KEYS: Record<TaskLinkCategory, TranslationKey> = {
 	output: 'taskLinks.tabs.output',
 	outcome: 'taskLinks.tabs.outcome',
 	other: 'taskLinks.tabs.other',
+	external: 'taskLinks.tabs.external',
 };
 
 const EMPTY_KEYS: Record<TaskLinkCategory, TranslationKey> = {
@@ -142,6 +143,7 @@ const EMPTY_KEYS: Record<TaskLinkCategory, TranslationKey> = {
 	output: 'taskLinks.empty.output',
 	outcome: 'taskLinks.empty.outcome',
 	other: 'taskLinks.empty.other',
+	external: 'taskLinks.empty.external',
 };
 
 /** 开关变更的补丁：字段名用弹窗自己的状态名（私有字段不在 `keyof` 里，不能用 Pick）。 */
@@ -513,6 +515,14 @@ export class TaskLinksModal extends Modal {
 			});
 			tabEl.addEventListener('click', () => {
 				this.activeCategory = category;
+				// 外部条目从不进预览：从别的 tab 带着 `is-split` 进来会让左栏仍是
+				// 320px、右栏还挂着上一篇笔记，所以这里先收起。
+				// `collapsePreview()` 内部已 `renderList()`，不能再补一次。
+				if (category === 'external') {
+					this.collapsePreview();
+					this.updateTabs();
+					return;
+				}
 				this.updateTabs();
 				this.renderList();
 			});
@@ -930,7 +940,13 @@ export class TaskLinksModal extends Modal {
 		// 整表重建：高亮只在重建时按记忆决定，不存在节点复用 → 不会有残留。
 		// 第二行显隐按**未过滤**的分类集判定（[[Plan-20261029-095917]] §一 不变量 2）：
 		// 用 filterResult 会让用户一打字路径行就出现/消失。
-		const folderView = buildTaskLinkFolderView(snapshot.sections[category] ?? []);
+		// 外部条目的第二行是「它在哪」的身份标识，不参与「整类只有一种取值就隐藏」的
+		// 目录行规则（那条规则是给同名笔记消歧用的）→ 直接取快照拼好的 subtitle，
+		// 也省掉一次对 URL 调 getLeafFolderName。
+		const folderView =
+			category === 'external'
+				? null
+				: buildTaskLinkFolderView(snapshot.sections[category] ?? []);
 		const selectedPath = this.selectedByCategory.get(category);
 		// 罗文 tabindex 的锚点：有选中 = 选中条，无选中 = 第一条（列表仍可被 Tab 到达）。
 		const rovingPath = selectedPath ?? entries[0]?.path ?? null;
@@ -952,10 +968,13 @@ export class TaskLinksModal extends Modal {
 				cls: 'ioto-tasks-center__task-links-item-title',
 				text: entry.title,
 			});
-			// 只有叶子文件夹，且整类不止一种取值时才建节点（不建空 span，避免残留空白行高）。
-			const folder = folderView.show
-				? (folderView.labels.get(entry.path) ?? '')
-				: '';
+			// 只有外部条目恒有一行；其余分类仍是「叶子文件夹 + 整类不止一种取值」。
+			const folder =
+				entry.kind === 'external'
+					? (entry.subtitle ?? '')
+					: folderView?.show
+						? (folderView.labels.get(entry.path) ?? '')
+						: '';
 			if (folder) {
 				itemEl.createSpan({
 					cls: 'ioto-tasks-center__task-links-item-path',
@@ -963,6 +982,12 @@ export class TaskLinksModal extends Modal {
 				});
 			}
 			itemEl.addEventListener('click', (event) => {
+				// 外部条目没有可预览的东西（iframe 被站点拒绝、自建 webview 是私有实现），
+				// 单击 / Cmd+单击一律直接打开。Enter 走下面的 keydown，同理。
+				if (entry.kind === 'external') {
+					this.openEntry(entry, 'external');
+					return;
+				}
 				if (Keymap.isModEvent(event)) {
 					this.openEntry(entry, entry.kind);
 					return;
@@ -1133,6 +1158,13 @@ export class TaskLinksModal extends Modal {
 		kind: TaskLinkEntryKind,
 		options: { remember?: boolean } = {},
 	): void {
+		// 外部条目只「选中」，不预览：方向键顺手打开网页是本功能最贵的误操作，
+		// 而且它一旦打开就要关掉本窗口。
+		if (kind === 'external') {
+			this.selectExternalEntry(entry);
+			return;
+		}
+
 		if (options.remember !== false) {
 			this.selectedByCategory.set(this.activeCategory, entry.path);
 			// 与 renderList 成对：重绘会销毁被点的那颗按钮，焦点只能按 path 重建后补。
@@ -1143,6 +1175,13 @@ export class TaskLinksModal extends Modal {
 		this.previewStack = [{ entry, kind }];
 		this.modalEl.addClass('is-split');
 		this.renderPreview();
+	}
+
+	/** 外部条目的「选中 = 高亮 + 焦点」，与 `previewFromList` 的 remember 段同构。 */
+	private selectExternalEntry(entry: TaskLinkEntry): void {
+		this.selectedByCategory.set(this.activeCategory, entry.path);
+		this.listFocusRequest = entry.path;
+		this.renderList();
 	}
 
 	/** 预览内双链 → 压栈（深度 +1），列表高亮不变。 */
@@ -1832,6 +1871,11 @@ export class TaskLinksModal extends Modal {
 		path: string,
 		kind: TaskLinkEntryKind,
 	): TaskLinkEntry | null {
+		// 只服务「预览内双链」：外部条目不是 vault 文件，从这里造条目一定是调用方搞错了。
+		if (kind === 'external') {
+			return null;
+		}
+
 		const snapshot = this.snapshot;
 		if (!snapshot) {
 			return null;
@@ -1911,6 +1955,15 @@ export class TaskLinksModal extends Modal {
 	 * 顺序反了永远拿到 `null`（普通打开）。
 	 */
 	private openEntry(entry: TaskLinkEntry, kind: TaskLinkEntryKind): void {
+		// 外部条目没有行号、没有预览栈：路由交给入口层（库内文件 / Web viewer / 系统浏览器）。
+		// 必须在 `resolveCurrentHitLine` 之前分叉——那个函数按 `previewSourcePath` 判等，
+		// 对外部链接恒 undefined，但先算一次纯属误导读者。
+		if (kind === 'external') {
+			this.close();
+			this.options.onOpenEntry(entry, 'external');
+			return;
+		}
+
 		const line = this.resolveCurrentHitLine(entry.path);
 		this.close();
 		this.options.onOpenEntry(entry, kind, line);
@@ -1961,6 +2014,10 @@ function collectEntryPaths(snapshot: TaskLinksSnapshot): string[] {
 	const paths = snapshot.parents.map((entry) => entry.path);
 	for (const category of TASK_LINK_CATEGORIES) {
 		for (const entry of snapshot.sections[category] ?? []) {
+			// 外链的 `path` 是 URL：`getAbstractFileByPath` 恒 null，读正文纯属空转。
+			if (entry.kind === 'external') {
+				continue;
+			}
 			paths.push(entry.path);
 		}
 	}

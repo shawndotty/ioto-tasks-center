@@ -19,7 +19,10 @@ import type {
 	IOTOTasksCenterSettings,
 	TaskListSortMode,
 } from '../../settings-types';
-import type { TaskLinksRoots } from '../../tasks-center/types';
+import type {
+	TaskLinkEntry,
+	TaskLinksRoots,
+} from '../../tasks-center/types';
 import { isTaskNoteFile } from '../../tasks-center/task-note-menu';
 import {
 	TaskLinksModal,
@@ -28,6 +31,7 @@ import {
 } from '../../ui/task-links-modal';
 import { toExternalOpenUrl } from '../ioto-task/external-link-url';
 import { setLeafToTaskView } from '../ioto-task/task-file-link-open';
+import { openExternalUrl } from './open-external-url';
 import { buildTaskLinksSnapshot } from './task-links-snapshot';
 
 export interface TaskLinksLaunchContext {
@@ -113,6 +117,12 @@ function openTaskLinksWindow(context: TaskLinksLaunchContext): void {
 					isTaskNoteFile(file, context.roots.tasksRootPath),
 				),
 		onOpenEntry: (entry, kind, line) => {
+			// 外部条目：库内文件走与「输入/输出」完全一致的打开路径，其余交给
+			// Web viewer / 系统浏览器。必须在 vault 查文件之前分叉。
+			if (kind === 'external') {
+				openExternalEntry(context, entry);
+				return;
+			}
 			if (context.view) {
 				const file = context.app.vault.getAbstractFileByPath(entry.path);
 				if (!(file instanceof TFile)) {
@@ -158,6 +168,36 @@ function createPreviewLinkHooks(
 			window.open(toExternalOpenUrl(href));
 		},
 	};
+}
+
+/**
+ * 外部条目的打开路由（四个分支，顺序不能换）：
+ * 1. `targetPath` 命中库内文件 → 与其它 tab 完全一致的打开（视图内预览 / 标签页）；
+ * 2. 网页 / 库外 `file://` → Web viewer；
+ * 3. Web viewer 不可用（关着 / 手机）→ 系统浏览器。
+ * 映射命中但文件已不在（改名 / 移出库）→ 落到 2，不弹错。
+ */
+function openExternalEntry(
+	context: TaskLinksLaunchContext,
+	entry: TaskLinkEntry,
+): void {
+	const targetPath = entry.targetPath;
+	if (targetPath) {
+		const file = context.app.vault.getAbstractFileByPath(targetPath);
+		if (file instanceof TFile) {
+			const kind = entry.targetKind ?? 'note';
+			if (context.view) {
+				void (kind === 'task'
+					? context.view.openFileInPreview(file)
+					: context.view.openOutlinkFileInPreview(file));
+				return;
+			}
+			void openLinkedFileInTab(context, targetPath, kind);
+			return;
+		}
+	}
+
+	openExternalUrl(context.app, entry.path);
 }
 
 async function openLinkedFileInTab(

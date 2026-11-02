@@ -227,6 +227,7 @@ test('搜索过滤：标题命中 / 正文命中 / 大小写不敏感 / 中文�
 		output: 0,
 		outcome: 0,
 		other: 0,
+		external: 0,
 	});
 
 	const byChinese = filterTaskLinks(snapshot, '贝塔', bodies);
@@ -433,6 +434,7 @@ test('搜索过滤：空词返回全量且计数等于长度，无命中返回�
 		output: 1,
 		outcome: 0,
 		other: 0,
+		external: 0,
 	});
 
 	const noHit = filterTaskLinks(snapshot, 'zzz', new Map());
@@ -443,6 +445,7 @@ test('搜索过滤：空词返回全量且计数等于长度，无命中返回�
 		output: 0,
 		outcome: 0,
 		other: 0,
+		external: 0,
 	});
 });
 
