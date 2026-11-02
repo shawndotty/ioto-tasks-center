@@ -272,6 +272,8 @@ const zhTW = {
 	'taskLinks.preview.back': '返回',
 	'taskLinks.preview.openNote': '檢視筆記',
 	'taskLinks.preview.openFile': '開啟檔案',
+	'taskLinks.switch.label': '切換任務',
+	'taskLinks.switch.placeholder': '搜尋任務檔案',
 	'taskLinks.preview.openLinks': '檢視相關連結',
 	'taskLinks.preview.missing': '筆記內容無法使用。',
 	'taskLinks.preview.matchPrev': '上一個符合',

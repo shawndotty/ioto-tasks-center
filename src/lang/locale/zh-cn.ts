@@ -272,6 +272,8 @@ const zhCN = {
 	'taskLinks.preview.back': '返回',
 	'taskLinks.preview.openNote': '查看笔记',
 	'taskLinks.preview.openFile': '打开文件',
+	'taskLinks.switch.label': '切换任务',
+	'taskLinks.switch.placeholder': '搜索任务文件',
 	'taskLinks.preview.openLinks': '查看相关链接',
 	'taskLinks.preview.missing': '笔记内容不可用。',
 	'taskLinks.preview.matchPrev': '上一个匹配',

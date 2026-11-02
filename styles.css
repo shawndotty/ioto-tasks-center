@@ -6184,15 +6184,38 @@ body:not(.is-phone) .ioto-outgoing-link-modal {
 	height: var(--dialog-max-height);
 }
 
-/* 核心桌面端 .modal-title 只给字号/字重/居中，没有 overflow 处理，长任务名会把
-   关闭按钮顶走；手机端核心已自带省略，这条在手机上被同款声明覆盖也无害。 */
+/* 标题行 = 任务名 + 「切换」图标（[[Plan-20261102-101509]] §4.9）。
+   核心桌面端 .modal-title 只给字号/字重/居中，没有 overflow 处理，长任务名会把
+   关闭按钮顶走；手机端核心已自带省略。改成 flex 之后省略号必须落在文本 span 上
+   —— flex 容器不吃 text-overflow。
+
+   右侧留白给绝对定位的关闭按钮让位（§3.1 实测口径）：
+   桌面 24px 宽 + inset 6px ≈ 30px；.is-mobile（平板/手机）inset 16px ≈ 40px。
+   不自留白的话，长任务名下图标会滑进关闭按钮底下，点不到。 */
 .ioto-tasks-center__task-links-modal .modal-title {
-	flex: 1 1 auto;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+	padding-inline-end: 34px;
+}
+
+.ioto-tasks-center__task-links-modal
+	.ioto-tasks-center__task-links-title-text {
 	min-width: 0;
 	overflow: hidden;
-	padding-inline-end: 4px;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+/* 图标永不被压缩：名字再长也只让 span 省略。 */
+.ioto-tasks-center__task-links-modal
+	.ioto-tasks-center__task-links-switch {
+	flex: 0 0 auto;
+}
+
+.is-mobile .ioto-tasks-center__task-links-modal .modal-title {
+	padding-inline-end: 44px;
 }
 
 /* 核心 .is-phone 已把 --dialog-width 设为 100vw；这里写死 80vw 会比核心默认更窄。 */

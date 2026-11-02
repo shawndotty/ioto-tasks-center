@@ -105,6 +105,13 @@ function openTaskLinksWindow(context: TaskLinksLaunchContext): void {
 				sortMode: context.sortMode,
 				showProjectNameInTaskList: context.showProjectNameInTaskList,
 			}),
+		// 「切换」图标的候选：任务根目录下的全部任务笔记（点击时现取）。
+		listSwitchTargets: () =>
+			context.app.vault
+				.getMarkdownFiles()
+				.filter((file) =>
+					isTaskNoteFile(file, context.roots.tasksRootPath),
+				),
 		onOpenEntry: (entry, kind, line) => {
 			if (context.view) {
 				const file = context.app.vault.getAbstractFileByPath(entry.path);

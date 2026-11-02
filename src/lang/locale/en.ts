@@ -295,6 +295,8 @@ const en = {
 	'taskLinks.preview.back': 'Back',
 	'taskLinks.preview.openNote': 'Open note',
 	'taskLinks.preview.openFile': 'Open file',
+	'taskLinks.switch.label': 'Switch task',
+	'taskLinks.switch.placeholder': 'Search task files',
 	'taskLinks.preview.openLinks': 'View related links',
 	'taskLinks.preview.missing': 'Note content is unavailable.',
 	'taskLinks.preview.matchPrev': 'Previous match',

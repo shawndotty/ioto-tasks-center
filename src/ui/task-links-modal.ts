@@ -2,7 +2,8 @@
  * 任务链接浏览窗口（[[Plan-20261028-154638]] §4.8、[[Plan-20261028-190721]] §3）。
  *
  * 打开类**不 import 任何视图模块**：只收一个快照 Promise、一个点击回调，
- * 以及三个「值注入」句柄（预览内双链解析 / 外链打开 / 就地切换用的快照工厂）。
+ * 以及四个「值注入」句柄（预览内双链解析 / 外链打开 / 就地切换用的快照工厂 /
+ * 主动切换用的候选来源）。
  * 因此任务中心没打开时也能用（命令 1），也避免 ui → views 的值级依赖边。
  */
 
@@ -49,6 +50,7 @@ import type {
 	TaskLinkEntryKind,
 	TaskLinksSnapshot,
 } from '../tasks-center/types';
+import { TaskPickerModal } from './taskPickerModal';
 import {
 	TaskLinksFilterPopover,
 	type TaskLinksFilterState,
@@ -178,6 +180,12 @@ export interface TaskLinksModalOptions {
 	 * 本文件按「只收快照 + 值注入句柄」的架构不 import 任何视图模块。
 	 */
 	buildSnapshot?: (taskPath: string) => Promise<TaskLinksSnapshot>;
+	/**
+	 * 「切换」图标的候选来源。缺省 = 不支持主动切换（图标不出现）。
+	 * 只由入口层注入：`tasksRootPath` 在那边，ui/ 不 import 视图模块。
+	 * 用函数而不是数组：窗口可能开着很久，候选要按**点击那一刻**的库状态现取。
+	 */
+	listSwitchTargets?: () => readonly TFile[];
 }
 
 interface PreviewFrame {
@@ -230,6 +238,8 @@ export class TaskLinksModal extends Modal {
 	private previewOpenEl: HTMLButtonElement | null = null;
 	/** 「查看相关链接」按钮：只在预览的是任务笔记、且不是本窗口自己时出现。 */
 	private previewLinksEl: HTMLButtonElement | null = null;
+	/** 标题旁的「切换」图标：图标存在与否 = 本窗口是否支持主动切换。 */
+	private switchButtonEl: HTMLButtonElement | null = null;
 	/** 切换单飞位：连点两次只切一次（第二次在 await 期间被挡）。 */
 	private switching = false;
 	/** 当前预览是「附件嵌入」而不是渲染出的正文（决定 `.file-embed` 的点击要不要接管）。 */
@@ -405,6 +415,41 @@ export class TaskLinksModal extends Modal {
 		});
 	}
 
+	/**
+	 * 标题行 = 任务名 + 「切换」图标（[[卡片笔记-20261102-101357]] 交互 1）。
+	 *
+	 * 不用 `setTitle()`：核心是 `titleEl.setText(...)`，会把图标一起清掉（§3.1）；
+	 * 因此标题由本方法独占重建，`onOpen` 的加载态仍用 `setTitle`（那时还没有图标）。
+	 */
+	private renderTitle(title: string): void {
+		this.titleEl.empty();
+		this.switchButtonEl = null;
+		this.titleEl.createSpan({
+			cls: 'ioto-tasks-center__task-links-title-text',
+			text: title,
+		});
+
+		const listTargets = this.options.listSwitchTargets;
+		if (!listTargets) {
+			return; // 缺省 = 不支持主动切换（与 buildSnapshot 同构的降级）
+		}
+
+		// `clickable-icon`：图标观感 / hover / 命中区全部走核心，不自己写样式。
+		const switchEl = this.titleEl.createEl('button', {
+			cls: 'clickable-icon ioto-tasks-center__task-links-switch',
+			attr: {
+				type: 'button',
+				'aria-label': t('taskLinks.switch.label'),
+				title: t('taskLinks.switch.label'),
+			},
+		});
+		setIcon(switchEl, 'arrow-right-left');
+		switchEl.addEventListener('click', () => {
+			this.openTaskPicker();
+		});
+		this.switchButtonEl = switchEl;
+	}
+
 	private renderShell(): void {
 		const snapshot = this.snapshot;
 		if (!snapshot) {
@@ -413,7 +458,7 @@ export class TaskLinksModal extends Modal {
 
 		// 窗口身份 = 任务名（[[Plan-20261029-143027]] §4.1）：功能名留在命令面板，
 		// 窗内不再重复。快照拿不到任务名时回退占位，空标题比功能名更难读。
-		this.setTitle(snapshot.taskTitle || t('taskLinks.title'));
+		this.renderTitle(snapshot.taskTitle || t('taskLinks.title'));
 
 		this.contentEl.empty();
 		this.bodyEl = this.contentEl.createDiv({
@@ -1140,6 +1185,34 @@ export class TaskLinksModal extends Modal {
 	}
 
 	/**
+	 * 打开任务选择器（[[卡片笔记-20261102-101357]] 交互 2）。
+	 *
+	 * 候选点击时现取：窗口可能开着很久，期间新建 / 删除的任务文件都该反映进来。
+	 * 当前任务是「切换」的无效目标（`switchToTask` 里还有一道自指守卫），这里先滤掉。
+	 */
+	private openTaskPicker(): void {
+		const listTargets = this.options.listSwitchTargets;
+		if (!listTargets || this.switching || !this.isAlive()) {
+			return;
+		}
+
+		const currentPath = this.snapshot?.taskPath;
+		new TaskPickerModal(this.app, {
+			files: listTargets().filter((file) => file.path !== currentPath),
+			placeholder: t('taskLinks.switch.placeholder'),
+			onChoose: (file) => {
+				void this.switchToTask(file.path);
+			},
+			// 取消后把焦点还给图标（键盘用户不丢位置）。选中路径上核心是「先关窗、
+			// 再回调」（§3.1），此刻还没开始切，回焦会先落一帧，随后 `switchToTask`
+			// 重建整窗并把焦点交给搜索框 —— 被覆盖，无副作用。
+			onClosed: () => {
+				this.switchButtonEl?.focus();
+			},
+		}).open();
+	}
+
+	/**
 	 * 就地换成另一个任务的窗口（[[Research-20261101-172607]] §4.2）。
 	 *
 	 * 🔴 先构建、后拆壳：构建失败要留着现在这个**可用**的窗口，只发一条 Notice；
@@ -1156,11 +1229,7 @@ export class TaskLinksModal extends Modal {
 		}
 
 		this.switching = true;
-		const buttonEl = this.previewLinksEl;
-		if (buttonEl) {
-			buttonEl.disabled = true;
-			buttonEl.setAttribute('aria-busy', 'true');
-		}
+		this.setSwitchingBusy(true);
 
 		let next: TaskLinksSnapshot | null = null;
 		try {
@@ -1176,10 +1245,7 @@ export class TaskLinksModal extends Modal {
 		if (!next) {
 			// 复用既有文案（三语都有），不为失败路径新增 key。
 			new Notice(t('taskLinks.state.error'));
-			if (buttonEl) {
-				buttonEl.disabled = false;
-				buttonEl.removeAttribute('aria-busy');
-			}
+			this.setSwitchingBusy(false);
 			this.switching = false;
 			return;
 		}
@@ -1206,6 +1272,22 @@ export class TaskLinksModal extends Modal {
 		this.renderShell();
 		// 整窗 DOM 全换 → 焦点掉到 body，Tab 会从窗口顶部重来：还给搜索框。
 		this.searchInputEl?.focus();
+	}
+
+	/** 切换飞行中：标题图标与预览头按钮一起禁用（单飞位只挡逻辑，UI 也要看得见）。 */
+	private setSwitchingBusy(busy: boolean): void {
+		for (const buttonEl of [this.previewLinksEl, this.switchButtonEl]) {
+			if (!buttonEl) {
+				continue;
+			}
+
+			buttonEl.disabled = busy;
+			if (busy) {
+				buttonEl.setAttribute('aria-busy', 'true');
+			} else {
+				buttonEl.removeAttribute('aria-busy');
+			}
+		}
 	}
 
 	private renderPreview(): void {
@@ -1331,6 +1413,7 @@ export class TaskLinksModal extends Modal {
 		this.previewBodyEl = null;
 		this.previewOpenEl = null;
 		this.previewLinksEl = null;
+		this.switchButtonEl = null;
 		this.hitBarEl = null;
 		this.hitCountEl = null;
 		this.hitPrevEl = null;
