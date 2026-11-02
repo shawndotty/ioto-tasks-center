@@ -20,6 +20,9 @@ const {
 const { filterTaskLinks } = await jiti.import(
 	'../src/tasks-center/task-links-index.ts',
 );
+const { isWebViewerOpenAllowed } = await jiti.import(
+	'../src/views/tasks-center/open-external-url.ts',
+);
 
 const VAULT_BASE = '/Users/johnny/Documents/Sync/IOTO-Plugins';
 
@@ -199,6 +202,17 @@ test('getExternalHost / getExternalFileName：端口、query、CJK 解码', () =
 	);
 	assert.equal(getExternalFileName('https://a/b.pdf?x=1'), 'b.pdf');
 	assert.equal(getExternalFileName('https://a/'), '');
+});
+
+test('isWebViewerOpenAllowed：显式 false 才关门，缺失/undefined/true 都视为开启（[[Plan-20261102-192630]] §3.1）', () => {
+	// 核心默认 true（F4），且 onEnable 保证 options 存在 → true 允许。
+	assert.equal(isWebViewerOpenAllowed({ options: { openExternalURLs: true } }), true);
+	// 本需求的正例：设置关闭 → 不允许（落系统浏览器兜底）。
+	assert.equal(isWebViewerOpenAllowed({ options: { openExternalURLs: false } }), false);
+	// 字段缺失 / options 缺失 / viewer 为 null：异常环境按开启处理（最保守方向）。
+	assert.equal(isWebViewerOpenAllowed({}), true);
+	assert.equal(isWebViewerOpenAllowed({ options: {} }), true);
+	assert.equal(isWebViewerOpenAllowed(null), false, 'viewer 为 null 是原有「拿不到实例」判据，防回归');
 });
 
 /** 「可见即可搜」的一条外部条目：title 是链接文字，subtitle 是域名。 */

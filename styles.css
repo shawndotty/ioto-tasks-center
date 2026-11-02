@@ -6295,7 +6295,7 @@ body.mod-macos.is-hidden-frameless:not(.is-fullscreen)
 
 .ioto-tasks-center__task-links-modal.is-split
 	.ioto-tasks-center__task-links-list-col {
-	flex: 0 0 320px;
+	flex: 0 0 360px;
 }
 
 /* 信息块（任务名 + 父级药丸）在左栏内部，不占 contentEl 的整行高度：
