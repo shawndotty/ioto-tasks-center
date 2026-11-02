@@ -286,6 +286,7 @@ export class TaskLinksModal extends Modal {
 			this.modalEl.addClass('mod-lg');
 		}
 		this.setTitle(t('taskLinks.title'));
+		this.mountCloseButtonIntoTitle();
 		this.contentEl.empty();
 		this.renderStatus(t('taskLinks.state.loading'));
 		void this.load();
@@ -486,6 +487,41 @@ export class TaskLinksModal extends Modal {
 		});
 		this.fullscreenButtonEl = fullscreenEl;
 		this.applyFullscreenState();
+		this.mountCloseButtonIntoTitle();
+	}
+
+	/**
+	 * 把核心 Modal 自建的关闭按钮挂进标题行当最后一个 flex 项
+	 * （[[Plan-20261102-160223]] §4）。
+	 *
+	 * 根因：关闭按钮以 `position:absolute` 挂在 `.modal` 上、是标题行的兄弟节点
+	 * （当前核心类名 `modal-header-button`，直接子节点；旧版叫 `modal-close-button`），
+	 * 与「切换 / 放大」两颗图标不在同一排，间距也不均。
+	 *
+	 * 关键口径：当前核心把按钮建成构造函数里的**局部变量**、不存实例属性
+	 * （解包 app.js 实证），只能按类名从 DOM 找回；找回一次后由本插件持有引用——
+	 * `renderTitle()` 的 `titleEl.empty()` 只摘 DOM 不销毁元素，重新 `appendChild`
+	 * 后 click 监听（核心绑在元素上）完好。核心已自带 `clickable-icon` 类，
+	 * hover/圆角/命中区与旁边两颗一致。
+	 *
+	 * 找不到按钮（核心未来改名）则静默回退到角标布局，仅失去同排，功能不坏。
+	 */
+	private closeButtonEl: HTMLElement | null = null;
+
+	private mountCloseButtonIntoTitle(): void {
+		const closeEl =
+			this.closeButtonEl ??
+			this.modalEl.querySelector<HTMLElement>(
+				':scope > .modal-header-button',
+			);
+		if (!closeEl) {
+			return;
+		}
+		this.closeButtonEl = closeEl;
+		if (closeEl.parentElement !== this.titleEl) {
+			this.titleEl.appendChild(closeEl);
+		}
+		closeEl.setAttribute('aria-label', t('taskLinks.close.label'));
 	}
 
 	/** 按钮外观的唯一写入口：`renderTitle()` 重建与 toggle 都走这里。 */

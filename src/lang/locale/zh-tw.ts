@@ -283,6 +283,7 @@ const zhTW = {
 	'taskLinks.switch.placeholder': '搜尋任務檔案',
 	'taskLinks.fullscreen.enter': '全螢幕',
 	'taskLinks.fullscreen.exit': '結束全螢幕',
+	'taskLinks.close.label': '關閉',
 	'taskLinks.preview.openLinks': '檢視相關連結',
 	'taskLinks.preview.missing': '筆記內容無法使用。',
 	'taskLinks.preview.matchPrev': '上一個符合',
