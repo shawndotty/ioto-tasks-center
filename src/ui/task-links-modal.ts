@@ -30,6 +30,7 @@ import {
 	isExcalidrawFile,
 } from '../tasks-center/excalidraw-target';
 import { stripFrontmatter } from '../tasks-center/markdown-body';
+import { syncHeadingColorVars } from '../tasks-center/preview-theme-vars';
 import { resolveHitLine } from '../tasks-center/search-hit-line';
 import {
 	applySearchHighlight,
@@ -1654,6 +1655,9 @@ export class TaskLinksModal extends Modal {
 		// pdf 切回 md：`empty()` 不清类名与内联高度，残留会让 pdf 的撑满规则与
 		// 「一页高」基准继续挂在正文上。
 		this.clearPdfEmbedState(bodyEl);
+		// 弹窗是 `body > .modal-container`，取不到只赋在 `.app-container` 上的标题色；
+		// 把主题侧的解析值抄到预览体上，标题色才会跟主题（[[Plan-20261103-150245]] C2）。
+		syncHeadingColorVars(bodyEl);
 		// 先归零再渲染：MarkdownRenderer 的基础 DOM 同步 append，异步补齐的图片只撑高。
 		bodyEl.scrollTop = 0;
 		// 已挂载的旧内容要跟着换身份（缓存命中时 renderPreview 不经过加载态）。
