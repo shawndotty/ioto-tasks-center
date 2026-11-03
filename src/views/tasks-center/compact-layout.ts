@@ -83,15 +83,27 @@ export function renderCompactProjectSwitcher(
 	createProjectPresentationButton(view, toolbarEl);
 	renderCompactCategoryFilterButton(view, toolbarEl);
 
-	const buttonLabel = getProjectSwitcherLabel(view);
+	const { label, visible } = getProjectSwitcherTexts(view);
 	const projectSwitcherEl = toolbarEl.createEl('button', {
 		cls: 'ioto-tasks-center__project-switcher',
-		text: buttonLabel,
 	});
 	projectSwitcherEl.type = 'button';
 	projectSwitcherEl.disabled = !view.canSwitchProjects();
-	projectSwitcherEl.ariaLabel = buttonLabel;
-	projectSwitcherEl.title = buttonLabel;
+	projectSwitcherEl.ariaLabel = label;
+	projectSwitcherEl.title = label;
+
+	projectSwitcherEl.createSpan({
+		cls: 'ioto-tasks-center__project-switcher-name',
+		text: visible,
+	});
+
+	// 图标表示「可切换」，不表示「当前」：因此不随选中项变化，也不需要读给 AT。
+	const iconEl = projectSwitcherEl.createSpan({
+		cls: 'ioto-tasks-center__project-switcher-icon',
+	});
+	setIcon(iconEl, 'chevrons-up-down');
+	iconEl.setAttribute('aria-hidden', 'true');
+
 	projectSwitcherEl.addEventListener('click', (event: MouseEvent) => {
 		void showProjectSwitcherMenu(view, event);
 	});
@@ -199,6 +211,27 @@ function getProjectSwitcherLabel(view: IOTOTasksCenterView): string {
 	}
 
 	return t('view.projectSwitcher.current', [view.selectedProject]);
+}
+
+export interface ProjectSwitcherTexts {
+	/** 语义完整句：「当前项目：X」／加载中…／切换项目 —— 只给 aria-label / title。 */
+	label: string;
+	/** 可见文本：就绪态只留项目名，其余态与 label 相同（加载/空态本身已经很短，不需要缩写）。 */
+	visible: string;
+}
+
+/**
+ * 拆成导出纯函数是为了可单测：`label` 与 `visible` 的分歧点全部收在这一个 if 里，
+ * DOM 侧只负责用哪个字段（DOM 形态仍按测试分层约定走真机验证）。
+ */
+export function getProjectSwitcherTexts(
+	view: IOTOTasksCenterView,
+): ProjectSwitcherTexts {
+	const label = getProjectSwitcherLabel(view);
+	const project = view.selectedProject;
+	const isReady =
+		!view.isProjectsLoading && !view.isTasksLoading && project !== null;
+	return { label, visible: isReady ? project : label };
 }
 
 async function showProjectSwitcherMenu(

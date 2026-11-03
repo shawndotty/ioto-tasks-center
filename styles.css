@@ -578,14 +578,42 @@ button:not(.clickable-icon).ioto-tasks-center__batch-bar-button--danger:hover:no
 	cursor: not-allowed;
 }
 
-/* 与左侧分类筛选图标按钮同处一行：填满剩余宽度、超长省略。 */
+/* 与左侧分类筛选图标按钮同处一行：填满剩余宽度，省略号交给内部 name span。
+   按钮本体只负责布局 —— flex 容器上的 text-overflow 不生效（现状正是硬截断，
+   半个字被切且没有「…」），因此这里不再声明 text-overflow。
+   padding 由公共块的 12px 收到 10px：实测视图 360px 时文本框只有 109px，
+   比 16 字符项目名少 2px，省略号一出现就吃掉「ter」三个字符（只剩
+   「IOTO Task Cen…」）。收窄 2px/侧让出 4px 后 360px 能完整显示。 */
 .ioto-tasks-center__project-switcher {
+	display: flex;
+	align-items: center;
+	gap: 4px;
 	flex: 1 1 auto;
 	width: auto;
 	min-width: 0;
+	padding: 8px 10px;
 	white-space: nowrap;
 	overflow: hidden;
+}
+
+.ioto-tasks-center__project-switcher-name {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
 	text-overflow: ellipsis;
+}
+
+.ioto-tasks-center__project-switcher-icon {
+	flex: 0 0 auto;
+	display: inline-flex;
+	color: var(--text-muted);
+}
+
+/* 14px 显式宽高：不写时核心按 16px 渲染，正好吃掉那 2px 余量。 */
+.ioto-tasks-center__project-switcher-icon svg {
+	width: 14px;
+	height: 14px;
 }
 
 .ioto-tasks-center__task-filter-switcher {
