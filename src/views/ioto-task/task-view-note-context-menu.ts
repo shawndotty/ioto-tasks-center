@@ -50,6 +50,14 @@ export interface NoteContextMenuOptions {
 	onToggleStarred: () => void;
 	onToggleAllSections: () => void;
 	onToggleAllContinuations: () => void;
+	/** 导出进行中（= `view.isExporting`）→ 导出 / 复制两项置灰 */
+	exporting: boolean;
+	/** 与命令面板 `itc-insert-entry-template` 同一门禁（= `view.canInsertEntryTemplate()`） */
+	canInsertEntryTemplate: boolean;
+	onExportImage: () => void;
+	onCopyImage: () => void;
+	onInsertEntryTemplate: () => void;
+	onSearchTasks: () => void;
 	onDelete: () => void;
 }
 
@@ -139,7 +147,58 @@ export function buildNoteContextMenu(
 		}
 	}
 
-	// ⑤ 分隔线 + 删除当前任务（破坏性动作隔离，恒居末位）
+	// ⑤ 视图动作组（[[Plan-20261103-155712]]）：四条视图级命令的单行简写入口。
+	//    顺序 = 用户列举顺序；「搜索任务」压尾，让「插入条目模板」（唯一写盘项）
+	//    不与「删除当前任务」相邻。
+	//    🔴 置灰而非隐藏：导出锁命中时 `captureForExport` 静默返回 null，
+	//    只有置灰能解释「为什么没反应」。
+	const viewActions: Array<{
+		title: string;
+		icon: string;
+		disabled?: boolean;
+		run: () => void;
+	}> = [
+		{
+			title: t('view.iotoTaskView.noteMenu.exportImage'),
+			icon: 'image-down',
+			disabled: options.exporting,
+			run: options.onExportImage,
+		},
+		{
+			title: t('view.iotoTaskView.noteMenu.copyImage'),
+			icon: 'clipboard-copy',
+			disabled: options.exporting,
+			run: options.onCopyImage,
+		},
+	];
+	// 稳定态门禁 → 隐藏（与命令面板 / 折叠组同口径）
+	if (options.canInsertEntryTemplate) {
+		viewActions.push({
+			title: t('view.iotoTaskView.noteMenu.insertEntryTemplate'),
+			icon: 'layout-template',
+			run: options.onInsertEntryTemplate,
+		});
+	}
+	viewActions.push({
+		title: t('view.iotoTaskView.noteMenu.searchTasks'),
+		icon: 'search',
+		run: options.onSearchTasks,
+	});
+	// 组内至少恒有 3 项 → 分隔线无条件添加（不像折叠组要判空）。
+	menu.addSeparator();
+	for (const entry of viewActions) {
+		menu.addItem((item) =>
+			item
+				.setTitle(entry.title)
+				.setIcon(entry.icon)
+				.setDisabled(entry.disabled === true)
+				// 同一条 defer 口径：导出要写盘、插入模板要开 Modal 并重绘、
+				// 搜索要 rAF 聚焦（焦点必须在菜单 teardown 之后才落得住）。
+				.onClick(() => defer(entry.run)),
+		);
+	}
+
+	// ⑥ 分隔线 + 删除当前任务（破坏性动作隔离，恒居末位）
 	menu.addSeparator();
 	menu.addItem((item) =>
 		item
@@ -225,6 +284,12 @@ export function showNoteContextMenu(
 		onToggleStarred: () => void toggleNoteStarred(view),
 		onToggleAllSections: () => void view.toggleAllSectionFolds(),
 		onToggleAllContinuations: () => void view.toggleAllContinuationFolds(),
+		exporting: view.isExporting,
+		canInsertEntryTemplate: view.canInsertEntryTemplate(),
+		onExportImage: () => void view.exportAsImage(),
+		onCopyImage: () => void view.copyImageToClipboard(),
+		onInsertEntryTemplate: () => void view.insertEntryTemplate(),
+		onSearchTasks: () => view.revealSearch(),
 		onDelete: () => void deleteCurrentTask(view),
 	});
 	menu.showAtMouseEvent(event);

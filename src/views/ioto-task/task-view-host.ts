@@ -393,6 +393,13 @@ export interface TaskViewHost extends Component {
 	/** 文末新增同级 Section（默认标题）并进入该节标题编辑态。 */
 	addSection(): Promise<void>;
 	insertEntryTemplate(): Promise<void>;
+	// ---- 薄代理方法：笔记级右键菜单的视图动作（[[Plan-20261103-155712]]）----
+	/** 与命令面板 `itc-insert-entry-template` 同一门禁（`file !== null && supportsInlineEdit()`）。 */
+	canInsertEntryTemplate(): boolean;
+	/** 命令面板「导出任务视图为图片」的同一实现（写库内附件目录）。 */
+	exportAsImage(): Promise<void>;
+	/** 命令面板「复制任务视图图片到剪贴板」的同一实现（恒 PNG，桌面回退 Electron）。 */
+	copyImageToClipboard(): Promise<void>;
 	resolveCurrentProjectNames(): string[];
 	runTask(): Promise<void>;
 	canMarkAllTasksDone(): boolean;
