@@ -136,6 +136,7 @@ const en = {
 		'Pick another category or switch back to “All categories”.',
 	'view.taskFilterSwitcher.current': 'Filter: {0} ({1})',
 	'view.taskFilterSwitcher.menuItem': '{0} ({1})',
+	'view.taskFilterSwitcher.visible': '{0} ({1})',
 	'view.enterBatchEditMode': 'Enter batch edit mode',
 	'view.exitBatchEditMode': 'Exit batch edit mode (Esc)',
 	'view.taskListSettings': 'Task list presentation settings',

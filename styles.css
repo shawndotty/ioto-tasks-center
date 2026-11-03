@@ -616,15 +616,40 @@ button:not(.clickable-icon).ioto-tasks-center__batch-bar-button--danger:hover:no
 	height: 14px;
 }
 
+/* 与项目切换按钮同构：flex 只负责布局，省略号必须交给内部 name span ——
+   flex 容器上的 text-overflow 不生效（改前靠 block 的 ellipsis 生效，
+   套上 span 后会静默失效，留着只会误导下一个人去调它）。
+   padding 保持公共块的 12px：本次是纯减法（省 47px 前缀），不需要抢字位。 */
 .ioto-tasks-center__task-filter-switcher {
-	display: block;
+	display: flex;
+	align-items: center;
+	gap: 4px;
 	flex: 1 1 auto;
 	width: auto;
 	min-width: 0;
+	padding: 0 12px;
 	white-space: nowrap;
 	overflow: hidden;
+}
+
+.ioto-tasks-center__task-filter-switcher-name {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
 	text-overflow: ellipsis;
-	padding: 0 12px;
+}
+
+.ioto-tasks-center__task-filter-switcher-icon {
+	flex: 0 0 auto;
+	display: inline-flex;
+	color: var(--text-muted);
+}
+
+/* 14px 显式宽高：不写时核心按 16px 渲染，白吃 2px 余量。 */
+.ioto-tasks-center__task-filter-switcher-icon svg {
+	width: 14px;
+	height: 14px;
 }
 
 /* 菜单当前项（任务筛选 / 分类筛选）：把对勾从标题左侧移到「标题（计数）」之后，

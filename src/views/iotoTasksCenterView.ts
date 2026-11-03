@@ -142,10 +142,11 @@ import {
 	getTaskSearchHit as getTaskSearchHitFn,
 	applyTaskSearch as applyTaskSearchFn,
 	getTaskFilterCounts as getTaskFilterCountsFn,
-	getTaskFilterSwitcherLabel as getTaskFilterSwitcherLabelFn,
+	getTaskFilterSwitcherTexts as getTaskFilterSwitcherTextsFn,
 	renderTaskListIncremental as renderTaskListIncrementalFn,
 	syncTaskSearchCount as syncTaskSearchCountFn,
 } from './tasks-center/task-search-ops';
+import type { TaskFilterSwitcherTexts } from './tasks-center/task-search-ops';
 import { renderTaskTabs as renderTaskTabsFn } from './tasks-center/task-tabs-renderer';
 import {
 	getTasksForActiveTab as getTasksForActiveTabFn,
@@ -791,8 +792,8 @@ export class IOTOTasksCenterView extends ItemView {
 		);
 	}
 
-	public getTaskFilterSwitcherLabel(): string {
-		return getTaskFilterSwitcherLabelFn(this);
+	public getTaskFilterSwitcherTexts(): TaskFilterSwitcherTexts {
+		return getTaskFilterSwitcherTextsFn(this);
 	}
 
 	renderTaskRows(

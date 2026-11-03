@@ -17,6 +17,7 @@ import { updateTaskSearchCountText } from './task-search-row';
 import {
 	TAB_BUTTON_SELECTOR,
 	TAB_COUNT_SELECTOR,
+	TASK_FILTER_SWITCHER_NAME_SELECTOR,
 	TASK_FILTER_SWITCHER_SELECTOR,
 	TASK_LIST_CLASS,
 	TASK_LIST_DESC_SELECTOR,
@@ -150,6 +151,37 @@ export function getTaskFilterSwitcherLabel(view: IOTOTasksCenterView): string {
 	]);
 }
 
+export interface TaskFilterSwitcherTexts {
+	/** 语义完整句：「当前筛选：X（N）」—— 只给 aria-label / title。 */
+	label: string;
+	/** 可见文本：就绪态只留「X（N）」，退化态与 label 同源。 */
+	visible: string;
+}
+
+/**
+ * 与 `getProjectSwitcherTexts()` 同构：`label` 与 `visible` 的分歧点全部收在这里，
+ * DOM 侧只负责「用哪个字段」。拆成导出纯函数是为了可单测。
+ */
+export function getTaskFilterSwitcherTexts(
+	view: IOTOTasksCenterView,
+): TaskFilterSwitcherTexts {
+	const label = getTaskFilterSwitcherLabel(view);
+	const activeTab = view
+		.getVisibleTaskFilterTabs()
+		.find((tab) => tab.key === view.activeTaskFilterTab);
+	if (!activeTab) {
+		// 退化分支：`resolveActiveTaskFilterTab()` 保证活动 tab 必在可见集内，
+		// 实际不可达，因此不额外造一条「只有名字」的文案。
+		return { label, visible: label };
+	}
+
+	const count = String(view.getTaskFilterCounts()[activeTab.key]);
+	return {
+		label,
+		visible: t('view.taskFilterSwitcher.visible', [activeTab.label, count]),
+	};
+}
+
 function updateTaskTabCounts(view: IOTOTasksCenterView): void {
 	const counts = view.getTaskFilterCounts();
 	const tabButtonEls =
@@ -170,8 +202,11 @@ function updateTaskTabCounts(view: IOTOTasksCenterView): void {
 		TASK_FILTER_SWITCHER_SELECTOR,
 	);
 	if (switcherEl) {
-		const label = view.getTaskFilterSwitcherLabel();
-		switcherEl.setText(label);
+		const { label, visible } = getTaskFilterSwitcherTexts(view);
+		// 只改 name span：`setText()` 会清空子节点，把行尾图标一起删掉。
+		switcherEl
+			.querySelector<HTMLElement>(TASK_FILTER_SWITCHER_NAME_SELECTOR)
+			?.setText(visible);
 		switcherEl.ariaLabel = label;
 		switcherEl.title = label;
 	}

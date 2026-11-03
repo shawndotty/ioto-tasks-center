@@ -150,6 +150,8 @@ export const TAB_BUTTON_SELECTOR = '.ioto-tasks-center__tab';
 export const TAB_COUNT_SELECTOR = '.ioto-tasks-center__tab-count';
 export const TASK_FILTER_SWITCHER_SELECTOR =
 	'.ioto-tasks-center__task-filter-switcher';
+export const TASK_FILTER_SWITCHER_NAME_SELECTOR =
+	'.ioto-tasks-center__task-filter-switcher-name';
 export const TASK_LIST_DESC_SELECTOR =
 	'.ioto-tasks-center__pane--tasks .ioto-tasks-center__task-list-desc';
 export const TASK_SEARCH_ROW_SELECTOR =

@@ -98,14 +98,26 @@ function renderCompactTaskFilterSwitcher(
 		return;
 	}
 
-	const buttonLabel = view.getTaskFilterSwitcherLabel();
+	const { label, visible } = view.getTaskFilterSwitcherTexts();
 	const switcherEl = tabBarEl.createEl('button', {
 		cls: 'ioto-tasks-center__task-filter-switcher',
-		text: buttonLabel,
 	});
 	switcherEl.type = 'button';
-	switcherEl.ariaLabel = buttonLabel;
-	switcherEl.title = buttonLabel;
+	switcherEl.ariaLabel = label;
+	switcherEl.title = label;
+
+	switcherEl.createSpan({
+		cls: 'ioto-tasks-center__task-filter-switcher-name',
+		text: visible,
+	});
+
+	// 图标表示「可切换」，不表示「已筛选」：因此不随活动 tab 变化，也不需要读给 AT。
+	const iconEl = switcherEl.createSpan({
+		cls: 'ioto-tasks-center__task-filter-switcher-icon',
+	});
+	setIcon(iconEl, 'chevrons-up-down');
+	iconEl.setAttribute('aria-hidden', 'true');
+
 	switcherEl.addEventListener('click', (event: MouseEvent) => {
 		showTaskFilterSwitcherMenu(view, event);
 	});

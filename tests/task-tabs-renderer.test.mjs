@@ -69,6 +69,25 @@ test('compact layout also shows the batch edit button before presentation settin
 	assert.equal(settings.children[1].cls, 'ioto-tasks-center__tab-settings-button');
 });
 
+test('compact filter switcher renders name span + chevrons icon, never duplicate text', () => {
+	const container = new FakeElement();
+	renderTaskTabs(createView({ isCompactLayout: true }), container);
+
+	const switcher = container.children[0].children[0];
+	assert.equal(switcher.cls, 'ioto-tasks-center__task-filter-switcher');
+	// 完整句只走 aria/title；按钮本体不写文本节点，否则和 name span 一起出现两遍。
+	assert.equal(switcher.ariaLabel, 'Filter tasks');
+	assert.equal(switcher.title, 'Filter tasks');
+	assert.equal(switcher.text, '');
+
+	const [nameEl, iconEl] = switcher.children;
+	assert.equal(nameEl.cls, 'ioto-tasks-center__task-filter-switcher-name');
+	assert.equal(nameEl.text, 'All (2)');
+	assert.equal(iconEl.cls, 'ioto-tasks-center__task-filter-switcher-icon');
+	assert.equal(iconEl.iconName, 'chevrons-up-down');
+	assert.equal(iconEl.attributes['aria-hidden'], 'true');
+});
+
 function createView(overrides = {}) {
 	return {
 		isBatchEditMode: false,
@@ -81,7 +100,10 @@ function createView(overrides = {}) {
 			{ key: 'all', label: 'All' },
 		],
 		getTaskFilterCounts: () => ({ core: 1, all: 2 }),
-		getTaskFilterSwitcherLabel: () => 'Filter tasks',
+		getTaskFilterSwitcherTexts: () => ({
+			label: 'Filter tasks',
+			visible: 'All (2)',
+		}),
 		toggleBatchEditMode() {
 			this.toggleCalls += 1;
 		},
