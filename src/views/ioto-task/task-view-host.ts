@@ -265,6 +265,18 @@ export interface TaskViewHost extends Component {
 	/** 按「当前上下文」推导 Section 再切换（命令面板入口）。 */
 	toggleCurrentPrimarySection(): Promise<void>;
 
+	// ---- 薄代理方法：批量折叠（命令面板与笔记右键菜单同一门禁）----
+	/**
+	 * 当前笔记是否有可折叠 Section / 续写区（纯 `data` 解析，不扫 DOM）。
+	 * 两个菜单入口与命令面板共用它，保证「面板里没有的项，菜单里也不出现」。
+	 */
+	canToggleAllSectionFolds(): boolean;
+	canToggleAllContinuationFolds(): boolean;
+	/** 二态切换全文件全部 Section（async：flush + 退聚焦 + 落盘 + 重绘）。 */
+	toggleAllSectionFolds(): Promise<boolean>;
+	/** 二态切换全文件全部续写区（同步：不重绘，只改集合与已渲染节点）。 */
+	toggleAllContinuationFolds(): boolean;
+
 	// ---- 薄代理方法：命令就绪补偿 ----
 	canDispatch(commandId: string): boolean;
 	dispatchCommand(commandId: string): void;

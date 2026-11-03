@@ -40,10 +40,16 @@ export interface NoteContextMenuOptions {
 	priority: TaskPriorityValue | null;
 	/** 仅任务根目录内的 `.md` 为真；false → 「删除当前任务」置灰 */
 	canDelete: boolean;
+	/** 有可折叠 Section（= `view.canToggleAllSectionFolds()`）才出第一项 */
+	hasSections: boolean;
+	/** 有续写区（= `view.canToggleAllContinuationFolds()`）才出第二项 */
+	hasContinuations: boolean;
 	onShowLinks: () => void;
 	onSetPriority: (value: TaskPriorityValue) => void;
 	onClearPriority: () => void;
 	onToggleStarred: () => void;
+	onToggleAllSections: () => void;
+	onToggleAllContinuations: () => void;
 	onDelete: () => void;
 }
 
@@ -102,7 +108,38 @@ export function buildNoteContextMenu(
 			.onClick(() => defer(options.onToggleStarred)),
 	);
 
-	// ④ 分隔线 + 删除当前任务（破坏性动作隔离）
+	// ④ 折叠组（[[Plan-20261103-152334]]）：两条全文件级视图动作，单独成组。
+	//    🔴 两项都不可用时不画分隔线 —— 否则菜单尾部会出现两条连续分隔线。
+	const foldItems: Array<{ title: string; icon: string; run: () => void }> = [];
+	if (options.hasSections) {
+		foldItems.push({
+			title: t('command.toggleAllSectionFolds'),
+			icon: 'chevrons-down-up',
+			run: options.onToggleAllSections,
+		});
+	}
+	if (options.hasContinuations) {
+		foldItems.push({
+			title: t('command.toggleAllContinuationFolds'),
+			icon: 'fold-vertical',
+			run: options.onToggleAllContinuations,
+		});
+	}
+	if (foldItems.length > 0) {
+		menu.addSeparator();
+		for (const entry of foldItems) {
+			menu.addItem((item) =>
+				item
+					.setTitle(entry.title)
+					.setIcon(entry.icon)
+					// 与四项旧动作同一延迟口径：Section 折叠会整树重建，
+					// 续写区折叠虽不重绘，也保持一致（菜单项点击必须在菜单关闭后执行）。
+					.onClick(() => defer(entry.run)),
+			);
+		}
+	}
+
+	// ⑤ 分隔线 + 删除当前任务（破坏性动作隔离，恒居末位）
 	menu.addSeparator();
 	menu.addItem((item) =>
 		item
@@ -180,10 +217,14 @@ export function showNoteContextMenu(
 		starred: readNoteStarred(content),
 		priority: readNotePriority(content),
 		canDelete: isTaskNoteFile(file, tasksRootPath),
+		hasSections: view.canToggleAllSectionFolds(),
+		hasContinuations: view.canToggleAllContinuationFolds(),
 		onShowLinks: () => view.openTaskLinks(file.path),
 		onSetPriority: (value) => void setNotePriority(view, value),
 		onClearPriority: () => void clearNotePriority(view),
 		onToggleStarred: () => void toggleNoteStarred(view),
+		onToggleAllSections: () => void view.toggleAllSectionFolds(),
+		onToggleAllContinuations: () => void view.toggleAllContinuationFolds(),
 		onDelete: () => void deleteCurrentTask(view),
 	});
 	menu.showAtMouseEvent(event);
