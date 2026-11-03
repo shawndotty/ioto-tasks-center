@@ -466,20 +466,24 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 					toggleZoom: (line: number) => {
 						view.toggleZoomCard(line);
 					},
-					// 右键菜单的 pin / repeat：显式行号，不读 selectedLine。
-					toggleTaskPin: (line: number) => {
-						void view.toggleTaskPin(line);
+					// 右键菜单的 pin / repeat：显式行号集合，不读 selectedLine。
+					setTasksPin: (lines, pinned) => {
+						void view.setTasksPin(lines, pinned);
 					},
-					toggleTaskRepeat: (line: number) => {
-						void view.toggleTaskRepeat(line);
+					setTasksRepeat: (lines, repeated) => {
+						void view.setTasksRepeat(lines, repeated);
 					},
-					// 右键菜单的「创建任务副本」：整块复制，副本落在该卡块尾。
-					duplicateTask: (line: number) => {
-						void view.duplicateTask(line);
+					// 右键菜单的「创建任务副本」：整块复制，副本落在各自块尾。
+					duplicateTasks: (lines) => {
+						void view.duplicateTasks(lines);
 					},
 					// 右键菜单的「移动到…」：打开任务文件选择器，选中后走跨文件搬运。
-					moveTaskToFile: (line: number) => {
-						view.promptMoveTaskToFile(line);
+					moveTasksToFile: (lines) => {
+						view.promptMoveTasksToFile(lines);
+					},
+					// 右键菜单的「删除」：>1 走多选批量、=1 走卡内删除遮罩。
+					deleteCards: (lines) => {
+						dispatchDeleteCards(view, lines);
 					},
 					focusZoomEditor: (line: number) => {
 						view.focusZoomEditor(line);
@@ -519,6 +523,32 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 				}
 			: {}),
 	};
+}
+
+/**
+ * 右键菜单「删除」的分派：=1 走卡内删除遮罩的既有链路，>1 走多选批量。
+ *
+ * 🔴 批量前先把状态与 DOM 目标集合对齐：`deleteMultiSelected` 读的是 `multiLines`，
+ * 而过滤开关切换后可能残留已不渲染的成员（C8 的绕行口径）。这里以可见目标集合
+ * 为准重写一次，`< 2` 守卫在分派正确时不会命中。
+ */
+function dispatchDeleteCards(
+	view: TaskViewHost,
+	lines: readonly number[],
+): void {
+	if (lines.length === 0) {
+		return;
+	}
+	const anchor = lines[0];
+	if (anchor === undefined) {
+		return;
+	}
+	if (lines.length === 1) {
+		void view.requestDelete(anchor);
+		return;
+	}
+	view.setMultiSelection(anchor, lines.slice(1));
+	void view.deleteMultiSelected();
 }
 
 /**

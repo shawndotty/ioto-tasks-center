@@ -306,14 +306,21 @@ export interface TaskViewHost extends Component {
 	 */
 	toggleTaskPin(line: number): Promise<void>;
 	toggleTaskRepeat(line: number): Promise<void>;
+	/** 右键菜单批量 pin / repeat（[[Plan-20261104-060428]] C11）：统一到给定目标态。 */
+	setTasksPin(lines: readonly number[], pinned: boolean): Promise<void>;
+	setTasksRepeat(lines: readonly number[], repeated: boolean): Promise<void>;
 	/** 创建任务副本（[[Plan-20261023-145916]]）：整块复制，副本落在块尾。 */
 	canDuplicateTask(): boolean;
 	duplicateTask(line: number): Promise<void>;
 	duplicateSelectedTask(): Promise<void>;
+	/** 右键菜单批量创建副本：各块各自一份，一次写盘。 */
+	duplicateTasks(lines: readonly number[]): Promise<void>;
 	/** 跨任务文件搬运（[[Plan-20261031-205655]] §四.8）：命令门禁 / 选择器入口。 */
 	canMoveSelectedTaskToFile(): boolean;
 	promptMoveSelectedTaskToFile(): void;
 	promptMoveTaskToFile(line: number): void;
+	/** 右键菜单批量移动：整组通道，按 DOM 顺序追加到目标节末。 */
+	promptMoveTasksToFile(lines: readonly number[]): void;
 
 	// ---- 薄代理方法：多选（[[Plan-20261101-054951]] §四.3a）----
 	/** 一次性写入锚点 + 成员（框选收尾 / 收窄的唯一入口）。 */

@@ -614,6 +614,9 @@ const zhCN = {
 	'modal.duplicateTask.cancel': '取消',
 	'modal.duplicateTask.taskOnly': '仅复制任务',
 	'modal.duplicateTask.withContinuation': '连同续写区',
+	// 批量副本（[[Plan-20261104-060428]] C13）：{0} 个任务块，续写区合计 {1} 行
+	'modal.duplicateTasks.desc':
+		'共 {0} 个任务带有续写区（合计 {1} 行）。副本要一并复制吗？',
 	'modal.batchConfirm.title': '确认批量创建',
 	'modal.batchConfirm.summary':
 		'模板：{0} | 前缀：{1} | 后缀：{2} | 项目：{3}',
@@ -793,6 +796,13 @@ const zhCN = {
 	'view.iotoTaskView.contextMenu.unrepeatTask': '取消重复',
 	'view.iotoTaskView.contextMenu.duplicateTask': '创建任务副本',
 	'view.iotoTaskView.contextMenu.moveToFile': '移动到…',
+	// 卡片右键菜单的批量文案（[[Plan-20261104-060428]] C12）：多选（≥2）时出现
+	'view.iotoTaskView.contextMenu.pinTasks': '固定 {0} 项任务',
+	'view.iotoTaskView.contextMenu.unpinTasks': '取消固定 {0} 项任务',
+	'view.iotoTaskView.contextMenu.repeatTasks': '标记 {0} 项任务为重复',
+	'view.iotoTaskView.contextMenu.unrepeatTasks': '取消 {0} 项任务的重复',
+	'view.iotoTaskView.contextMenu.duplicateTasks': '创建 {0} 份任务副本',
+	'view.iotoTaskView.contextMenu.moveToFiles': '移动到…（{0} 项）',
 	// 空白处右键的笔记级菜单（[[Plan-20261103-103716]] §四.C7）
 	'view.iotoTaskView.noteMenu.priority': '优先级',
 	'view.iotoTaskView.noteMenu.priorityWithValue': '优先级：{0}',
@@ -809,6 +819,11 @@ const zhCN = {
 	'notice.iotoTaskView.swapNoNext': '已经是同级任务中的最后一条',
 	'notice.iotoTaskView.pinAdded': '已固定：最近任务视图下始终保留。',
 	'notice.iotoTaskView.pinRemoved': '已取消固定。',
+	'notice.iotoTaskView.pinAddedMany': '已固定 {0} 项任务',
+	'notice.iotoTaskView.pinRemovedMany': '已取消固定 {0} 项任务',
+	'notice.iotoTaskView.repeatAddedMany': '已标记 {0} 项任务为重复',
+	'notice.iotoTaskView.repeatRemovedMany': '已取消 {0} 项任务的重复',
+	'notice.iotoTaskView.duplicateTasksCreated': '已创建 {0} 份任务副本',
 	// 笔记级属性写反馈（[[Plan-20261103-103716]] §四.C7）：任务视图不显示 P{n}/⭐，Notice 是唯一反馈
 	'notice.iotoTaskView.notePrioritySet': '优先级已设为 {0}',
 	'notice.iotoTaskView.notePriorityCleared': '已取消优先级',

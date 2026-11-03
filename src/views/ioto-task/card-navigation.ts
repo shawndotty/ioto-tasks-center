@@ -21,6 +21,11 @@ interface CardElementLike {
 	 * `display:none` 的卡（节聚焦 / 卡片放大的兄弟节点）`getClientRects()` 为空数组。
 	 */
 	getClientRects?: () => ArrayLike<unknown> | null;
+	/**
+	 * 选中态判据（可选：纯逻辑假对象可不提供 → 视为未选中）。
+	 * 读**实时**类名，不读 `view.multiLines`：过滤开关切换后成员可能指向不渲染的卡。
+	 */
+	classList?: { contains: (name: string) => boolean };
 }
 
 interface QueryableContainerLike {
@@ -70,6 +75,43 @@ function isVisiblyLaidOut(card: CardElementLike | undefined): boolean {
 	}
 	const rects = measure.call(card);
 	return rects !== null && rects !== undefined && rects.length > 0;
+}
+
+/**
+ * 收集当前**选中**的卡片行号（DOM 顺序、仅可见、含被右键那一张）。
+ *
+ * 三个判据一次拿全，是批量右键菜单的目标集合：
+ * - **DOM 顺序**：跨文件搬运按顺序追加，顺序错 = 落到目标文件里的顺序错；
+ * - **可见性**：只作用于当前渲染出来的卡，不误改被过滤隐藏的任务（C8）；
+ * - **实时类**：`is-selected` 是唯一真源；`pruneMembers` 在生产链路没有调用点，
+ *   过滤开关切换后 `view.multiLines` 可能残留不渲染的成员。
+ *
+ * `fallbackLine` 不在结果里（单选未加类 / 放大态无选中类）→ 返回 `[fallbackLine]`，
+ * 保持「单卡菜单」的既有语义。
+ */
+export function collectSelectedCardLines(
+	root: QueryableContainerLike | null | undefined,
+	fallbackLine: number,
+): number[] {
+	const nodes = root?.querySelectorAll?.(IOTO_TASK_CARD_SELECTOR);
+	const selected: number[] = [];
+	if (nodes) {
+		for (const node of Array.from(nodes)) {
+			const card = node as CardElementLike;
+			if (card.classList?.contains('is-selected') !== true) {
+				continue;
+			}
+			if (!isVisiblyLaidOut(card)) {
+				continue;
+			}
+			const line = readLine(card);
+			if (line !== null) {
+				selected.push(line);
+			}
+		}
+	}
+
+	return selected.includes(fallbackLine) ? selected : [fallbackLine];
 }
 
 /**

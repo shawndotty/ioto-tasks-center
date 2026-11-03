@@ -241,12 +241,15 @@ import {
 	canToggleSelectedTaskPin,
 	duplicateSelectedTask,
 	duplicateTask,
+	duplicateTasks,
 	findTasksSection,
 	insertEntryTemplate,
 	markAllTasksDone,
 	resolveCurrentProjectNames,
 	resolveCurrentSubject,
 	runTask,
+	setTasksPin,
+	setTasksRepeat,
 	swapSelectedTask,
 	toggleCurrentPrimarySection,
 	togglePrimarySection,
@@ -260,6 +263,7 @@ import {
 	canMoveSelectedTaskToFile,
 	promptMoveSelectedTaskToFile,
 	promptMoveTaskToFile,
+	promptMoveTasksToFile,
 } from './ioto-task/task-view-cross-file-move';
 import {
 	beginExternalEditorWriteback,
@@ -965,9 +969,21 @@ export class IOTOTaskView extends TextFileView {
 	async toggleTaskRepeat(line: number): Promise<void> {
 		await toggleTaskRepeat(this, line);
 	}
+	async setTasksPin(lines: readonly number[], pinned: boolean): Promise<void> {
+		await setTasksPin(this, lines, pinned);
+	}
+	async setTasksRepeat(
+		lines: readonly number[],
+		repeated: boolean,
+	): Promise<void> {
+		await setTasksRepeat(this, lines, repeated);
+	}
 	canDuplicateTask(): boolean { return canDuplicateTask(this); }
 	async duplicateTask(line: number): Promise<void> { await duplicateTask(this, line); }
 	async duplicateSelectedTask(): Promise<void> { await duplicateSelectedTask(this); }
+	async duplicateTasks(lines: readonly number[]): Promise<void> {
+		await duplicateTasks(this, lines);
+	}
 	canMoveSelectedTaskToFile(): boolean {
 		return canMoveSelectedTaskToFile(this);
 	}
@@ -976,6 +992,9 @@ export class IOTOTaskView extends TextFileView {
 	}
 	promptMoveTaskToFile(line: number): void {
 		promptMoveTaskToFile(this, line);
+	}
+	promptMoveTasksToFile(lines: readonly number[]): void {
+		promptMoveTasksToFile(this, lines);
 	}
 	canTogglePrimarySection(): boolean { return canTogglePrimarySection(this); }
 	async togglePrimarySection(startLine: number): Promise<void> {

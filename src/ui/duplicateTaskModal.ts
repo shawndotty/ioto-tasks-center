@@ -7,22 +7,27 @@ export type DuplicateTaskChoice = 'task' | 'withContinuation' | null;
 export interface DuplicateTaskModalOptions {
 	/** 本卡续写行数，仅用于正文文案 */
 	continuationCount: number;
+	/** 批量副本：任务块数；提供时用批量文案 `modal.duplicateTasks.desc` */
+	taskCount?: number;
 }
 
 /**
- * 「创建任务副本」三态弹窗（[[Plan-20261023-145916]] §5.2）。
+ * 「创建任务副本」三态弹窗（[[Plan-20261023-145916]] §5.2；批量文案见
+ * [[Plan-20261104-060428]] C13）。
  *
  * 不能用 `ConfirmModal`：它只有 `boolean` 两个出口，表达不了「不要续写区、但要任务」
  * （[[Research-20261023-143754]] D4）。三个按钮 = 三个结果，单击一次完成，无需复选框。
  */
 export class DuplicateTaskModal extends Modal {
 	private readonly continuationCount: number;
+	private readonly taskCount?: number;
 	private resolvePromise: ((value: DuplicateTaskChoice) => void) | null = null;
 	private isResolved = false;
 
 	constructor(app: Modal['app'], options: DuplicateTaskModalOptions) {
 		super(app);
 		this.continuationCount = options.continuationCount;
+		this.taskCount = options.taskCount;
 	}
 
 	openAndPick(): Promise<DuplicateTaskChoice> {
@@ -36,7 +41,15 @@ export class DuplicateTaskModal extends Modal {
 		this.setTitle(t('modal.duplicateTask.title'));
 
 		const descriptionEl = this.contentEl.createEl('p', {
-			text: t('modal.duplicateTask.desc', [String(this.continuationCount)]),
+			text:
+				this.taskCount === undefined
+					? t('modal.duplicateTask.desc', [
+							String(this.continuationCount),
+						])
+					: t('modal.duplicateTasks.desc', [
+							String(this.taskCount),
+							String(this.continuationCount),
+						]),
 		});
 		descriptionEl.addClass('ioto-tasks-center__modal-desc');
 

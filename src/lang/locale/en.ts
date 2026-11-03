@@ -671,6 +671,9 @@ const en = {
 	'modal.duplicateTask.cancel': 'Cancel',
 	'modal.duplicateTask.taskOnly': 'Task only',
 	'modal.duplicateTask.withContinuation': 'Include continuation',
+	// Batch duplicate ([[Plan-20261104-060428]] C13): {0} blocks, {1} continuation lines in total
+	'modal.duplicateTasks.desc':
+		'{0} tasks have continuation blocks ({1} lines in total). Copy them too?',
 	'modal.batchConfirm.title': 'Confirm batch creation',
 	'modal.batchConfirm.summary':
 		'Template: {0} | Prefix: {1} | Suffix: {2} | Project: {3}',
@@ -865,6 +868,13 @@ const en = {
 	'view.iotoTaskView.contextMenu.unrepeatTask': 'Unmark repeat task',
 	'view.iotoTaskView.contextMenu.duplicateTask': 'Duplicate task',
 	'view.iotoTaskView.contextMenu.moveToFile': 'Move to…',
+	// Batch card menu ([[Plan-20261104-060428]] C12): shown when >1 card is selected
+	'view.iotoTaskView.contextMenu.pinTasks': 'Pin {0} tasks',
+	'view.iotoTaskView.contextMenu.unpinTasks': 'Unpin {0} tasks',
+	'view.iotoTaskView.contextMenu.repeatTasks': 'Mark {0} tasks as repeat',
+	'view.iotoTaskView.contextMenu.unrepeatTasks': 'Unmark repeat for {0} tasks',
+	'view.iotoTaskView.contextMenu.duplicateTasks': 'Duplicate {0} tasks',
+	'view.iotoTaskView.contextMenu.moveToFiles': 'Move to… ({0})',
 	// Blank-area note-level menu ([[Plan-20261103-103716]] C7)
 	'view.iotoTaskView.noteMenu.priority': 'Priority',
 	'view.iotoTaskView.noteMenu.priorityWithValue': 'Priority: {0}',
@@ -883,6 +893,12 @@ const en = {
 	'notice.iotoTaskView.pinAdded':
 		'Pinned — stays visible in the recent-only view.',
 	'notice.iotoTaskView.pinRemoved': 'Unpinned.',
+	'notice.iotoTaskView.pinAddedMany': 'Pinned {0} tasks.',
+	'notice.iotoTaskView.pinRemovedMany': 'Unpinned {0} tasks.',
+	'notice.iotoTaskView.repeatAddedMany': 'Marked {0} tasks as repeat.',
+	'notice.iotoTaskView.repeatRemovedMany':
+		'Repeat mark removed from {0} tasks.',
+	'notice.iotoTaskView.duplicateTasksCreated': 'Created {0} task copies.',
 	// Note-level property write feedback ([[Plan-20261103-103716]] C7)
 	'notice.iotoTaskView.notePrioritySet': 'Priority set to {0}',
 	'notice.iotoTaskView.notePriorityCleared': 'Priority cleared',

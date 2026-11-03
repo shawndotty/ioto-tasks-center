@@ -478,3 +478,50 @@ export function promptMoveTaskToFile(
 		},
 	}).open();
 }
+
+/**
+ * 右键菜单的多行入口（[[Plan-20261104-060428]] C10）。
+ *
+ * 长度 1 → 委托既有 `promptMoveTaskToFile`（零回归）；≥2 → 同一批候选、同一个
+ * `MoveTaskFileModal`，选中后走整组通道 `commitCrossFileMoveBlocksToPath`
+ * （按 `lines` 顺序追加到目标 `<任务>` 节末）。
+ *
+ * 收尾的选中清空由整组通道的 `removeSourceBlocks` 负责（`clearMultiSelection` +
+ * `selectedLine = null`），这里不重复处理。
+ */
+export function promptMoveTasksToFile(
+	view: TaskViewHost,
+	lines: readonly number[],
+): void {
+	const targets = [...new Set(lines)];
+	if (targets.length === 0) {
+		return;
+	}
+	const single = targets[0];
+	if (targets.length === 1 && single !== undefined) {
+		promptMoveTaskToFile(view, single);
+		return;
+	}
+
+	const srcFile = view.file;
+	if (!srcFile) {
+		return;
+	}
+	const { tasksRootPath } = view.taskFileLinkPolicyProvider();
+	const files = view.app.vault
+		.getMarkdownFiles()
+		.filter(
+			(file) =>
+				file.path !== srcFile.path &&
+				isTaskNoteFile(file, tasksRootPath),
+		);
+	if (files.length === 0) {
+		return;
+	}
+	new MoveTaskFileModal(view.app, {
+		files,
+		onChoose: (file) => {
+			void commitCrossFileMoveBlocksToPath(view, targets, file);
+		},
+	}).open();
+}

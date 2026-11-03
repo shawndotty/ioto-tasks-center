@@ -25,6 +25,7 @@ import {
 	showCardContextMenu,
 } from './render-card-context-menu';
 import { attachCardKeydownHandler } from './render-card-keybind';
+import { collectSelectedCardLines } from './card-navigation';
 import {
 	isCardVisible,
 	type CardVisibilityContext,
@@ -327,8 +328,8 @@ export function renderChecklistGroup(options: {
 			event.preventDefault();
 		});
 
-		// 右键菜单（[[Plan-20261023-104335]] §4.7）：桌面端 only（移动端无 contextmenu，
-		// 长按已被拖拽手柄占用，见 [[Research-20261023-090756]] D7）。
+		// 右键菜单（[[Plan-20261023-104335]] §4.7，批量见 [[Plan-20261104-060428]] C7）：
+		// 桌面端 only（移动端无 contextmenu，长按已被拖拽手柄占用）。
 		cardEl.addEventListener('contextmenu', (event) => {
 			// 移动端直接放行系统行为，不 preventDefault
 			if (Platform.isMobile) return;
@@ -337,21 +338,33 @@ export function renderChecklistGroup(options: {
 			}
 			event.preventDefault();
 			event.stopPropagation();
+
+			// 目标集合在**右键那一刻**算完并闭包捕获：50ms defer 之后 DOM 已被重绘。
+			const root = scrollEl ?? cardEl.closest('.ioto-task-view__scroll');
+			const targets = collectSelectedCardLines(root, item.line);
+
 			// 惰性选中：只作视觉副作用（select 内部会顺带 cancelPendingDelete）。
+			// 🔴 条件收窄为 length === 1：多选时 select → applySelection →
+			// clearMultiSelection 会把整组选中抹掉（根因）。
 			// 放大态一律不改选——applySelection 的 focus 会把常驻编辑器打掉（M3）。
-			if (editing.zoomLine == null && editing.selectedLine !== item.line) {
+			if (
+				targets.length === 1 &&
+				editing.zoomLine == null &&
+				editing.selectedLine !== item.line
+			) {
 				editing.select(item.line);
 			}
+
 			showCardContextMenu(event, {
-				line: item.line,
+				targets,
 				pinned: item.controls.some((control) => control.kind === 'pin'),
 				repeated: item.controls.some((control) => control.kind === 'repeat'),
 				writable: editing.enabled,
-				onPin: (line) => editing.toggleTaskPin?.(line),
-				onRepeat: (line) => editing.toggleTaskRepeat?.(line),
-				onDuplicate: (line) => editing.duplicateTask?.(line),
-				onMoveToFile: (line) => editing.moveTaskToFile?.(line),
-				onDelete: (line) => editing.delete(line),
+				onPin: (lines, on) => editing.setTasksPin?.(lines, on),
+				onRepeat: (lines, on) => editing.setTasksRepeat?.(lines, on),
+				onDuplicate: (lines) => editing.duplicateTasks?.(lines),
+				onMoveToFile: (lines) => editing.moveTasksToFile?.(lines),
+				onDelete: (lines) => editing.deleteCards?.(lines),
 			});
 		});
 

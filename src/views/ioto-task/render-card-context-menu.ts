@@ -1,9 +1,13 @@
 /**
- * 任务卡右键菜单（[[Plan-20261023-104335]] §4.6）。
+ * 任务卡右键菜单（[[Plan-20261023-104335]] §4.6，批量语义见 [[Plan-20261104-060428]] C5）。
  *
- * 四项：固定任务 / 取消固定 → 标记为重复任务 / 取消重复 → 分隔线
- * → 创建任务副本 → 删除任务（顺序由 Johnny 拍板，[[Research-20261023-090756]] §八 #3 /
+ * 五项：固定任务 / 取消固定 → 标记为重复任务 / 取消重复 → 分隔线
+ * → 创建任务副本 → 移动到… → 删除（顺序由 Johnny 拍板，[[Research-20261023-090756]] §八 #3 /
  * [[Plan-20261023-145916]] §二 #4）。
+ *
+ * 作用对象是**目标行集合** `targets`：长度 1 = 既有单选语义（文案逐字不变），
+ * ≥2 = 批量（文案带条数，动作一次落盘）。构造（`buildCardContextMenu`）与弹出
+ * （`showCardContextMenu`）拆开，前者纯逻辑可直接单测。
  *
  * 只吃 `TaskNoteEditing` 级别的回调，**不碰 `TaskViewHost`**：渲染层拿不到 host
  * （`render-note.ts` → `render-sections.ts` → `render-checklist-card.ts` 全程只透传
@@ -21,26 +25,38 @@ import { t } from '../../lang/helpter';
 const MENU_ACTION_DEFER_DELAY_MS = 50;
 
 export interface CardContextMenuOptions {
-	line: number;
+	/** 目标行集合（DOM 顺序、可见、含被右键那张）；长度 = 1 走单选文案 */
+	targets: readonly number[];
 	/** 渲染期从 `item.controls` 读的快照：卡片每次写回都整树重建，快照在一次渲染周期内恒真 */
 	pinned: boolean;
 	repeated: boolean;
-	/** 可写（`editing.enabled`）；false → 四项全部置灰（Johnny 拍板 #2） */
+	/** 可写（`editing.enabled`）；false → 全部置灰（Johnny 拍板 #2） */
 	writable: boolean;
-	onPin: (line: number) => void;
-	onRepeat: (line: number) => void;
-	onDuplicate: (line: number) => void;
+	/**
+	 * 方向由本层给出（`!pinned` / `!repeated`）：文案说「取消固定」，动作就必须是取消。
+	 * 🔴 不能在写回函数里逐行取反——混合态会被翻转成错的那一半（[[Plan-20261104-060428]] A4）。
+	 */
+	onPin: (lines: readonly number[], pinned: boolean) => void;
+	onRepeat: (lines: readonly number[], repeated: boolean) => void;
+	onDuplicate: (lines: readonly number[]) => void;
 	/** 跨任务文件搬运（[[Plan-20261031-205655]] §四.8）：显式行号，不依赖选中态。 */
-	onMoveToFile: (line: number) => void;
-	onDelete: (line: number) => void;
+	onMoveToFile: (lines: readonly number[]) => void;
+	onDelete: (lines: readonly number[]) => void;
 }
 
-export function showCardContextMenu(
-	event: MouseEvent,
+/**
+ * 纯构造：不 `new Menu`、不 `show`，供单测直接断言条目 / 文案 / 置灰 / 顺序。
+ *
+ * 文案随 `targets.length` 二态：1 → 既有单条键（逐字不变）；≥2 → 带条数的批量键。
+ * 删除项多点时复用工具栏的 `toolbar.deleteTasks`（`删除 {0} 项`），与批量删除弹窗同一句。
+ */
+export function buildCardContextMenu(
+	menu: Menu,
 	options: CardContextMenuOptions,
 ): void {
-	const { line, pinned, repeated, writable } = options;
-	const menu = new Menu();
+	const { targets, pinned, repeated, writable } = options;
+	const count = targets.length;
+	const many = count > 1;
 	const defer = (run: () => void): void => {
 		window.setTimeout(run, MENU_ACTION_DEFER_DELAY_MS);
 	};
@@ -49,30 +65,44 @@ export function showCardContextMenu(
 	menu.addItem((item) =>
 		item
 			.setTitle(
-				t(
-					pinned
-						? 'view.iotoTaskView.contextMenu.unpinTask'
-						: 'view.iotoTaskView.contextMenu.pinTask',
-				),
+				many
+					? t(
+							pinned
+								? 'view.iotoTaskView.contextMenu.unpinTasks'
+								: 'view.iotoTaskView.contextMenu.pinTasks',
+							[String(count)],
+						)
+					: t(
+							pinned
+								? 'view.iotoTaskView.contextMenu.unpinTask'
+								: 'view.iotoTaskView.contextMenu.pinTask',
+						),
 			)
 			.setIcon(pinned ? 'pin-off' : 'pin')
 			.setDisabled(!writable)
-			.onClick(() => defer(() => options.onPin(line))),
+			.onClick(() => defer(() => options.onPin(targets, !pinned))),
 	);
 
 	// ② 标记为重复任务 / 取消重复
 	menu.addItem((item) =>
 		item
 			.setTitle(
-				t(
-					repeated
-						? 'view.iotoTaskView.contextMenu.unrepeatTask'
-						: 'view.iotoTaskView.contextMenu.repeatTask',
-				),
+				many
+					? t(
+							repeated
+								? 'view.iotoTaskView.contextMenu.unrepeatTasks'
+								: 'view.iotoTaskView.contextMenu.repeatTasks',
+							[String(count)],
+						)
+					: t(
+							repeated
+								? 'view.iotoTaskView.contextMenu.unrepeatTask'
+								: 'view.iotoTaskView.contextMenu.repeatTask',
+						),
 			)
 			.setIcon(repeated ? 'repeat-2' : 'repeat')
 			.setDisabled(!writable)
-			.onClick(() => defer(() => options.onRepeat(line))),
+			.onClick(() => defer(() => options.onRepeat(targets, !repeated))),
 	);
 
 	// ③ 分隔线（删除放最后且与前两项隔开）
@@ -81,30 +111,54 @@ export function showCardContextMenu(
 	// ④ 创建任务副本（Johnny 拍板：分隔线之后、删除之前）
 	menu.addItem((item) =>
 		item
-			.setTitle(t('view.iotoTaskView.contextMenu.duplicateTask'))
+			.setTitle(
+				many
+					? t('view.iotoTaskView.contextMenu.duplicateTasks', [
+							String(count),
+						])
+					: t('view.iotoTaskView.contextMenu.duplicateTask'),
+			)
 			.setIcon('copy')
 			.setDisabled(!writable)
-			.onClick(() => defer(() => options.onDuplicate(line))),
+			.onClick(() => defer(() => options.onDuplicate(targets))),
 	);
 
 	// ⑤ 移动到其他任务文件（跨文件搬运，与命令面板同入口）
 	menu.addItem((item) =>
 		item
-			.setTitle(t('view.iotoTaskView.contextMenu.moveToFile'))
+			.setTitle(
+				many
+					? t('view.iotoTaskView.contextMenu.moveToFiles', [
+							String(count),
+						])
+					: t('view.iotoTaskView.contextMenu.moveToFile'),
+			)
 			.setIcon('file-input')
 			.setDisabled(!writable)
-			.onClick(() => defer(() => options.onMoveToFile(line))),
+			.onClick(() => defer(() => options.onMoveToFile(targets))),
 	);
 
-	// ⑥ 删除任务（复用既有文案键；走 requestDelete 的二次确认链，不直接 deleteSelected）
+	// ⑥ 删除任务（复用既有文案键；走 requestDelete 的二次确认链 / 多选批量确认）
 	menu.addItem((item) =>
 		item
-			.setTitle(t('view.iotoTaskView.cardActions.deleteTask'))
+			.setTitle(
+				many
+					? t('view.iotoTaskView.toolbar.deleteTasks', [String(count)])
+					: t('view.iotoTaskView.cardActions.deleteTask'),
+			)
 			.setIcon('trash-2')
 			.setDisabled(!writable)
-			.onClick(() => defer(() => options.onDelete(line))),
+			.onClick(() => defer(() => options.onDelete(targets))),
 	);
+}
 
+/** 生产入口：`new Menu` + 构造 + 在鼠标位置弹出（50ms defer 原样保留）。 */
+export function showCardContextMenu(
+	event: MouseEvent,
+	options: CardContextMenuOptions,
+): void {
+	const menu = new Menu();
+	buildCardContextMenu(menu, options);
 	menu.showAtMouseEvent(event);
 }
 

@@ -615,6 +615,9 @@ const zhTW = {
 	'modal.duplicateTask.cancel': '取消',
 	'modal.duplicateTask.taskOnly': '僅複製任務',
 	'modal.duplicateTask.withContinuation': '連同續寫區',
+	// 批次副本（[[Plan-20261104-060428]] C13）：{0} 個任務區塊，續寫區合計 {1} 行
+	'modal.duplicateTasks.desc':
+		'共 {0} 個任務帶有續寫區（合計 {1} 行）。副本要一併複製嗎？',
 	'modal.batchConfirm.title': '確認批次建立',
 	'modal.batchConfirm.summary':
 		'範本：{0} | 前綴：{1} | 後綴：{2} | 專案：{3}',
@@ -794,6 +797,13 @@ const zhTW = {
 	'view.iotoTaskView.contextMenu.unrepeatTask': '取消重複',
 	'view.iotoTaskView.contextMenu.duplicateTask': '建立任務副本',
 	'view.iotoTaskView.contextMenu.moveToFile': '移動到…',
+	// 卡片右鍵選單的批次文案（[[Plan-20261104-060428]] C12）：多選（≥2）時出現
+	'view.iotoTaskView.contextMenu.pinTasks': '固定 {0} 項任務',
+	'view.iotoTaskView.contextMenu.unpinTasks': '取消固定 {0} 項任務',
+	'view.iotoTaskView.contextMenu.repeatTasks': '標記 {0} 項任務為重複',
+	'view.iotoTaskView.contextMenu.unrepeatTasks': '取消 {0} 項任務的重複',
+	'view.iotoTaskView.contextMenu.duplicateTasks': '建立 {0} 份任務副本',
+	'view.iotoTaskView.contextMenu.moveToFiles': '移動到…（{0} 項）',
 	// 空白處右鍵的筆記級選單（[[Plan-20261103-103716]] §四.C7）
 	'view.iotoTaskView.noteMenu.priority': '優先級',
 	'view.iotoTaskView.noteMenu.priorityWithValue': '優先級：{0}',
@@ -810,6 +820,11 @@ const zhTW = {
 	'notice.iotoTaskView.swapNoNext': '已經是同級任務中的最後一條',
 	'notice.iotoTaskView.pinAdded': '已固定：最近任務檢視下始終保留。',
 	'notice.iotoTaskView.pinRemoved': '已取消固定。',
+	'notice.iotoTaskView.pinAddedMany': '已固定 {0} 項任務',
+	'notice.iotoTaskView.pinRemovedMany': '已取消固定 {0} 項任務',
+	'notice.iotoTaskView.repeatAddedMany': '已標記 {0} 項任務為重複',
+	'notice.iotoTaskView.repeatRemovedMany': '已取消 {0} 項任務的重複',
+	'notice.iotoTaskView.duplicateTasksCreated': '已建立 {0} 份任務副本',
 	// 筆記級屬性寫入回饋（[[Plan-20261103-103716]] §四.C7）
 	'notice.iotoTaskView.notePrioritySet': '優先級已設為 {0}',
 	'notice.iotoTaskView.notePriorityCleared': '已取消優先級',

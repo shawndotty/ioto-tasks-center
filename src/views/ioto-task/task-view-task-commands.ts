@@ -37,6 +37,8 @@ import {
 	type SwapDirection,
 } from '../../tasks-center/note-task-swap';
 import { buildTaskDuplicatePlan } from '../../tasks-center/note-task-duplicate';
+import { buildMultiControlEdit } from '../../tasks-center/note-task-multi-control';
+import { buildMultiDuplicatePlan } from '../../tasks-center/note-task-multi-duplicate';
 import { DuplicateTaskModal } from '../../ui/duplicateTaskModal';
 import { isTemplateAvailableForProject } from '../../tasks-center/batch-task-template';
 import { extractListPropertyValuesFromContent } from '../../tasks-center/task-creation';
@@ -552,6 +554,102 @@ export async function toggleSelectedTaskPin(view: TaskViewHost): Promise<void> {
 }
 
 /* ------------------------------------------------------------------ *
+ * 批量 pin / repeat（[[Plan-20261104-060428]] C9）
+ *
+ * 长度 1 委托既有单行路径（零回归，含既有 Notice 键）；≥2 走**一次**原子区间写，
+ * 重绘后不调 `applySelection` / `select`（那会清掉多选）。
+ * ------------------------------------------------------------------ */
+
+/**
+ * 批量设置 pin / repeat 到**统一目标态** `on`。
+ *
+ * 🔴 `on` 由菜单层给出（`!pinned`），这里不逐行取反：混合态必须被拉平。
+ */
+export async function setTasksControl(
+	view: TaskViewHost,
+	lines: readonly number[],
+	kind: 'pin' | 'repeat',
+	on: boolean,
+): Promise<void> {
+	const targets = [...new Set(lines)].sort((a, b) => a - b);
+	if (targets.length === 0) return;
+
+	const single = targets[0];
+	if (targets.length === 1 && single !== undefined) {
+		// 单选：保持原有「取反 + 单行 Notice」语义，行为逐字节不变
+		await toggleTaskControl(view, single, kind);
+		return;
+	}
+
+	const file = view.file;
+	if (!file || !view.supportsInlineEdit()) return;
+
+	// ① 先落盘在册编辑器，避免与未提交正文双写错位
+	await view.flushInlineEdits();
+
+	// ② 一次算完窗口编辑；零改动 → 静默返回（不写盘、不重绘、不弹 Notice）
+	const plan = buildMultiControlEdit(view.data, targets, kind, on);
+	if (!plan || plan.changedLines.length === 0) return;
+
+	// ③ 一次原子区间写
+	const outcome = await commitBlockRange(view.app, file, {
+		...plan.edit,
+		nextText: '', // `nextLines` 通道优先，这里只为满足选项形状
+	});
+	// 🔴 红线：data / lastLoadedText 必须同步
+	view.applyOutcome(outcome);
+
+	if (outcome.status === 'conflict') {
+		await view.reloadFromVault();
+		view.renderNote(view.data);
+		new Notice(t('notice.iotoTaskView.commitConflict'));
+		return;
+	}
+	if (outcome.status !== 'ok') {
+		view.renderNote(view.data);
+		return;
+	}
+
+	// ④ 重绘；**不** applySelection / select —— 那会清掉多选。
+	// `syncSelectionClass` 会按锚点 + 成员自动回填类，滚动位置由 renderNote 的
+	// 捕获-恢复保住。
+	view.renderNote(view.data);
+
+	// ⑤ Notice：条数 = 实际变化的行数（不是目标行数）
+	const changed = String(plan.changedLines.length);
+	new Notice(
+		t(
+			kind === 'pin'
+				? on
+					? 'notice.iotoTaskView.pinAddedMany'
+					: 'notice.iotoTaskView.pinRemovedMany'
+				: on
+					? 'notice.iotoTaskView.repeatAddedMany'
+					: 'notice.iotoTaskView.repeatRemovedMany',
+			[changed],
+		),
+	);
+}
+
+/** 右键菜单：把**指定行集合**的 pin 统一设为 `pinned`。 */
+export async function setTasksPin(
+	view: TaskViewHost,
+	lines: readonly number[],
+	pinned: boolean,
+): Promise<void> {
+	await setTasksControl(view, lines, 'pin', pinned);
+}
+
+/** 右键菜单：把**指定行集合**的 repeat 统一设为 `repeated`。 */
+export async function setTasksRepeat(
+	view: TaskViewHost,
+	lines: readonly number[],
+	repeated: boolean,
+): Promise<void> {
+	await setTasksControl(view, lines, 'repeat', repeated);
+}
+
+/* ------------------------------------------------------------------ *
  * 创建任务副本（[[Plan-20261023-145916]]）
  *
  * 写盘复用 `commitBlockRange`（一次原子区间替换），不新增写盘原语。
@@ -670,6 +768,106 @@ export async function duplicateSelectedTask(
 		return;
 	}
 	await duplicateTask(view, line);
+}
+
+/**
+ * 批量创建副本（[[Plan-20261104-060428]] C9）：每块各复制一份，副本落在各自块尾，
+ * **一次**原子区间写。长度 1 委托既有单行路径（零回归）。
+ *
+ * 只弹一次续写区选择窗；`ownContinuationCount` = 组内求和，文案带任务块数。
+ * 收尾：选中全部副本（锚点 = 第一份）。
+ */
+export async function duplicateTasks(
+	view: TaskViewHost,
+	lines: readonly number[],
+): Promise<void> {
+	const targets = [...new Set(lines)].sort((a, b) => a - b);
+	if (targets.length === 0) {
+		return;
+	}
+	const single = targets[0];
+	if (targets.length === 1 && single !== undefined) {
+		await duplicateTask(view, single);
+		return;
+	}
+
+	const file = view.file;
+	if (!file || !view.supportsInlineEdit()) {
+		return; // 只读降级：静默
+	}
+
+	// ① 守卫：先落盘在册编辑器，否则复制的是旧字节
+	await view.flushInlineEdits();
+	// ② 守卫：放大态重绘后 restoreZoom 会停在原卡，新副本看不见
+	if (view.zoomLine !== null) {
+		view.exitZoom();
+	}
+	// ③ 守卫：撤待删除确认遮罩（与 duplicateTask 同序）
+	view.cancelPendingDelete(false);
+
+	// ④ 先算一遍只为取「续写区总行数 / 块数」决定是否弹窗
+	const probe = buildMultiDuplicatePlan(view.data, targets, {
+		includeContinuation: true,
+	});
+	if (!probe) {
+		return; // 已不是任务块（stale data-line）
+	}
+
+	let includeContinuation = true;
+	if (probe.ownContinuationCount > 0) {
+		const choice = await new DuplicateTaskModal(view.app, {
+			continuationCount: probe.ownContinuationCount,
+			taskCount: probe.blocks.length,
+		}).openAndPick();
+		if (choice === null) {
+			return; // 取消：不写盘
+		}
+		includeContinuation = choice === 'withContinuation';
+	}
+
+	// ⑤ 弹窗是长窗口：用**最新** data 重算（定位漂移由 originalLines 兜底）
+	const plan = buildMultiDuplicatePlan(view.data, targets, {
+		includeContinuation,
+	});
+	if (!plan) {
+		new Notice(t('notice.iotoTaskView.commitConflict'));
+		await view.reloadFromVault();
+		view.renderNote(view.data);
+		return;
+	}
+
+	// ⑥ 一次原子区间重写（A, A', B, B'）
+	const outcome = await commitBlockRange(view.app, file, {
+		...plan.edit,
+		nextText: '', // `nextLines` 通道优先
+	});
+	// 🔴 红线：data / lastLoadedText 必须同步
+	view.applyOutcome(outcome);
+
+	if (outcome.status === 'conflict') {
+		await view.reloadFromVault();
+		view.renderNote(view.data);
+		new Notice(t('notice.iotoTaskView.commitConflict'));
+		return;
+	}
+	if (outcome.status !== 'ok') {
+		return; // unchanged：防御性短路
+	}
+
+	// ⑦ 整树重建 → 选中全部副本（锚点 = 第一份）
+	const firstCopy = plan.duplicateLines[0];
+	if (firstCopy === undefined) {
+		view.renderNote(view.data);
+		return;
+	}
+	view.renderNote(view.data);
+	view.applySelection(firstCopy);
+	view.setMultiSelection(firstCopy, plan.duplicateLines.slice(1));
+	new Notice(
+		t('notice.iotoTaskView.duplicateTasksCreated', [
+			String(plan.duplicateLines.length),
+		]),
+	);
 }
 
 /* ------------------------------------------------------------------ *

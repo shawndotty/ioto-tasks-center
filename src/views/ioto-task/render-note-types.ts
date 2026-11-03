@@ -87,22 +87,28 @@ export interface TaskNoteEditing {
 	 */
 	toggleZoom?(line: number): void;
 	/**
-	 * 右键菜单：给该行加 / 去 `#ioto/pin`（[[Plan-20261023-104335]] §4.8）。
+	 * 右键菜单：给该组行加 / 去 `#ioto/pin`（[[Plan-20261104-060428]] C6）。
+	 * 长度 1 走既有单行路径（零回归）；≥2 一次原子区间写。
 	 * **缺省 = 菜单项置灰**（只读 / 不支持内联编辑时不可写，但入口仍保留）。
 	 */
-	toggleTaskPin?(line: number): void;
-	/** 右键菜单：给该行加 / 去 `#ioto/repeat`（同上）。 */
-	toggleTaskRepeat?(line: number): void;
+	setTasksPin?(lines: readonly number[], pinned: boolean): void;
+	/** 右键菜单：给该组行加 / 去 `#ioto/repeat`（同上）。 */
+	setTasksRepeat?(lines: readonly number[], repeated: boolean): void;
 	/**
-	 * 右键菜单：给该行创建任务副本（[[Plan-20261023-145916]] §5.4）。
-	 * **缺省 = 菜单项置灰**（只读 / 不支持内联编辑时不可写，但入口仍保留）。
+	 * 右键菜单：给该组行各创建一份任务副本（[[Plan-20261104-060428]] C6）。
+	 * 副本落在各自块尾，一次写盘；**缺省 = 菜单项置灰**。
 	 */
-	duplicateTask?(line: number): void;
+	duplicateTasks?(lines: readonly number[]): void;
 	/**
-	 * 右键菜单：把该行任务移动到另一个任务文件（[[Plan-20261031-205655]] §四.8）。
+	 * 右键菜单：把该组任务移动到另一个任务文件（同上）。
 	 * **缺省 = 菜单项置灰**（只读 / 不支持内联编辑时不可写）。
 	 */
-	moveTaskToFile?(line: number): void;
+	moveTasksToFile?(lines: readonly number[]): void;
+	/**
+	 * 右键菜单「删除」：>1 走多选批量（一次确认 + 一次原子写），=1 走卡内删除遮罩
+	 * （`delete` 的既有链路）。**缺省 = 菜单项置灰**。
+	 */
+	deleteCards?(lines: readonly number[]): void;
 	/**
 	 * 放大态点击卡片：把焦点交还内嵌编辑器（[[Discuss-20261008-173935]] 方案 A）。
 	 * 放大卡点击一律走这里——不走「未选中 → 先选中」两段式，也不回落选中态。

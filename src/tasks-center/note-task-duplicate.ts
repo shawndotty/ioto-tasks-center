@@ -68,6 +68,39 @@ export function buildTaskDuplicatePlan(
 	}
 
 	const blockLines = lines.slice(block.start, block.end + 1);
+	const copy = duplicateBlockLines(blockLines, options);
+	if (copy === null) {
+		return null;
+	}
+
+	return {
+		start: block.start,
+		end: block.end,
+		originalLines: blockLines,
+		nextLines: [...blockLines, ...copy.copyLines],
+		duplicateLine: block.end + 1,
+	};
+}
+
+export interface DuplicateBlockCopy {
+	/** 副本（任务行 + 可选本卡续行 + 整棵子树） */
+	copyLines: string[];
+	/** 本卡自身续写区行数（副本实际带走 / 按选项丢弃的那 N 行） */
+	ownContinuationCount: number;
+}
+
+/**
+ * 从**一个完整任务块**（任务行 + 续写区 + 整棵子树）生成副本行。
+ *
+ * 单块 `buildTaskDuplicatePlan` 与批量 `buildMultiDuplicatePlan` 共用这一份剥离
+ * 语义，避免「复制副本时是否带续写区 / 是否剥离控制项」在两处漂移。
+ *
+ * `null` = 首行不是任务行。
+ */
+export function duplicateBlockLines(
+	blockLines: readonly string[],
+	options: DuplicateTaskOptions,
+): DuplicateBlockCopy | null {
 	const head = splitTaskLine(blockLines[0] ?? '');
 	if (!head) {
 		return null;
@@ -108,13 +141,7 @@ export function buildTaskDuplicatePlan(
 					}),
 				];
 
-	return {
-		start: block.start,
-		end: block.end,
-		originalLines: blockLines,
-		nextLines: [...blockLines, ...copyLines],
-		duplicateLine: block.end + 1,
-	};
+	return { copyLines, ownContinuationCount: ownContinuations };
 }
 
 /** 剥离 `#ioto/pin` / `#ioto/repeat`（幂等：目标态已达时逐字节返回原行） */

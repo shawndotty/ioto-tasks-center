@@ -5,6 +5,7 @@ import { createJiti } from 'jiti';
 const jiti = createJiti(import.meta.url, { moduleCache: false });
 const {
 	collectCardLines,
+	collectSelectedCardLines,
 	pickAdjacentLine,
 	pickEdgeLine,
 	pickLineAfterDelete,
@@ -14,6 +15,15 @@ function makeCard(line) {
 	return {
 		getAttribute: (name) => (name === 'data-line' ? String(line) : null),
 		getClientRects: () => [{}],
+	};
+}
+
+/** 带选中类的卡（`classList` 是纯逻辑假对象，只实现 `contains`）。 */
+function makeSelectableCard(line, selected, visible = true) {
+	return {
+		getAttribute: (name) => (name === 'data-line' ? String(line) : null),
+		getClientRects: () => (visible ? [{}] : []),
+		classList: { contains: (name) => name === 'is-selected' && selected },
 	};
 }
 
@@ -59,6 +69,38 @@ test('collectCardLines：无 getClientRects 的纯逻辑假对象按可见处理
 		querySelectorAll: () => [{ getAttribute: () => '5' }],
 	};
 	assert.deepEqual(collectCardLines(root), [5]);
+});
+
+test('collectSelectedCardLines：按 DOM 顺序返回带 is-selected 的可见卡', () => {
+	const cards = [
+		makeSelectableCard(3, true),
+		makeSelectableCard(7, false),
+		makeSelectableCard(11, true),
+	];
+	const root = { querySelectorAll: () => cards };
+	assert.deepEqual(collectSelectedCardLines(root, 3), [3, 11]);
+});
+
+test('collectSelectedCardLines：零布局盒（display:none）的选中卡被跳过', () => {
+	const root = {
+		querySelectorAll: () => [
+			makeSelectableCard(3, true),
+			makeSelectableCard(7, true, false),
+			makeSelectableCard(11, true),
+		],
+	};
+	assert.deepEqual(collectSelectedCardLines(root, 3), [3, 11]);
+});
+
+test('collectSelectedCardLines：fallbackLine 未被选中 / 无容器 → [fallbackLine]', () => {
+	// 单选：目标卡没有 is-selected 类（放大态 / 刚渲染）
+	const root = { querySelectorAll: () => [makeSelectableCard(3, false)] };
+	assert.deepEqual(collectSelectedCardLines(root, 3), [3]);
+	assert.deepEqual(collectSelectedCardLines(null, 5), [5]);
+	assert.deepEqual(collectSelectedCardLines({}, 9), [9]);
+	// 无 classList 的假对象视为未选中
+	const plain = { querySelectorAll: () => [makeCard(3)] };
+	assert.deepEqual(collectSelectedCardLines(plain, 3), [3]);
 });
 
 test('pickAdjacentLine：向下 / 向上取相邻卡片', () => {
