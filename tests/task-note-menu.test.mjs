@@ -9,9 +9,8 @@ const jiti = createJiti(import.meta.url, {
 	},
 });
 const { TFile, TFolder } = await jiti.import('./stubs/obsidian.mjs');
-const { buildTaskNoteMenu, isTaskNoteFile } = await jiti.import(
-	'../src/tasks-center/task-note-menu.ts',
-);
+const { buildTaskNoteMenu, isTaskNoteFile, isTaskSwitchTargetFile } =
+	await jiti.import('../src/tasks-center/task-note-menu.ts');
 
 test('任务根目录下的 markdown 笔记会被识别为任务笔记', () => {
 	assert.equal(
@@ -58,6 +57,37 @@ test('与任务根目录同前缀的兄弟目录不会被误判', () => {
 
 test('文件夹不会被识别为任务笔记', () => {
 	assert.equal(isTaskNoteFile(new TFolder('3-任务/项目A'), '3-任务'), false);
+});
+
+test('切换候选排除项目元数据 _project.md', () => {
+	assert.equal(
+		isTaskSwitchTargetFile(new TFile('3-任务/项目A/_project.md'), '3-任务'),
+		false,
+	);
+});
+
+test('切换候选保留普通任务笔记', () => {
+	assert.equal(
+		isTaskSwitchTargetFile(new TFile('3-任务/项目A/任务.md'), '3-任务'),
+		true,
+	);
+});
+
+test('深层目录中的 _project.md 同样被排除', () => {
+	assert.equal(
+		isTaskSwitchTargetFile(
+			new TFile('3-任务/项目A/子目录/_project.md'),
+			'3-任务',
+		),
+		false,
+	);
+});
+
+test('任务根目录之外的 _project.md 不是切换候选', () => {
+	assert.equal(
+		isTaskSwitchTargetFile(new TFile('2-输出/项目A/_project.md'), '3-任务'),
+		false,
+	);
 });
 
 test('两个开关都开启时，文件菜单只多出一个子菜单', () => {

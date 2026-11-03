@@ -23,7 +23,10 @@ import type {
 	TaskLinkEntry,
 	TaskLinksRoots,
 } from '../../tasks-center/types';
-import { isTaskNoteFile } from '../../tasks-center/task-note-menu';
+import {
+	isTaskNoteFile,
+	isTaskSwitchTargetFile,
+} from '../../tasks-center/task-note-menu';
 import {
 	TaskLinksModal,
 	type TaskLinkEntryKind,
@@ -109,12 +112,12 @@ function openTaskLinksWindow(context: TaskLinksLaunchContext): void {
 				sortMode: context.sortMode,
 				showProjectNameInTaskList: context.showProjectNameInTaskList,
 			}),
-		// 「切换」图标的候选：任务根目录下的全部任务笔记（点击时现取）。
+		// 「切换」图标的候选：任务根目录下的任务笔记（点击时现取，排除项目元数据 _project.md）。
 		listSwitchTargets: () =>
 			context.app.vault
 				.getMarkdownFiles()
 				.filter((file) =>
-					isTaskNoteFile(file, context.roots.tasksRootPath),
+					isTaskSwitchTargetFile(file, context.roots.tasksRootPath),
 				),
 		onOpenEntry: (entry, kind, line) => {
 			// 外部条目：库内文件走与「输入/输出」完全一致的打开路径，其余交给

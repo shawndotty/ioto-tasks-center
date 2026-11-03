@@ -1,6 +1,7 @@
 import { Menu, Notice, TAbstractFile, TFile, type App } from 'obsidian';
 import { t, type TranslationKey } from '../lang/helpter';
 import { formatPriorityMenuTitle } from '../views/tasks-center/helpers';
+import { PROJECT_METADATA_FILE_NAME } from './project-metadata';
 import { isPathInsideRoot } from './task-path';
 import {
 	TASK_PRIORITY_VALUES,
@@ -22,6 +23,20 @@ export function isTaskNoteFile(
 		file instanceof TFile &&
 		file.extension === 'md' &&
 		isPathInsideRoot(file.path, tasksRootPath)
+	);
+}
+
+/**
+ * 「挑一个任务」类入口（相关链接窗口的切换任务选择器）的候选判据：
+ * 任务笔记，但排除项目元数据 `_project.md`——与列表侧 data.ts 同口径。
+ */
+export function isTaskSwitchTargetFile(
+	file: TAbstractFile,
+	tasksRootPath: string,
+): file is TFile {
+	return (
+		isTaskNoteFile(file, tasksRootPath) &&
+		file.name !== PROJECT_METADATA_FILE_NAME
 	);
 }
 
