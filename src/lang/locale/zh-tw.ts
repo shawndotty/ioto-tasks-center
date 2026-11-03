@@ -794,6 +794,10 @@ const zhTW = {
 	'view.iotoTaskView.contextMenu.unrepeatTask': '取消重複',
 	'view.iotoTaskView.contextMenu.duplicateTask': '建立任務副本',
 	'view.iotoTaskView.contextMenu.moveToFile': '移動到…',
+	// 空白處右鍵的筆記級選單（[[Plan-20261103-103716]] §四.C7）
+	'view.iotoTaskView.noteMenu.priority': '優先級',
+	'view.iotoTaskView.noteMenu.priorityWithValue': '優先級：{0}',
+	'view.iotoTaskView.noteMenu.deleteNote': '刪除目前任務',
 	'view.iotoTaskView.deleteConfirm.confirm': '確認刪除',
 	'view.iotoTaskView.deleteConfirm.cancel': '取消',
 	'view.iotoTaskView.deleteConfirm.aria': '刪除確認',
@@ -802,6 +806,11 @@ const zhTW = {
 	'notice.iotoTaskView.swapNoNext': '已經是同級任務中的最後一條',
 	'notice.iotoTaskView.pinAdded': '已固定：最近任務檢視下始終保留。',
 	'notice.iotoTaskView.pinRemoved': '已取消固定。',
+	// 筆記級屬性寫入回饋（[[Plan-20261103-103716]] §四.C7）
+	'notice.iotoTaskView.notePrioritySet': '優先級已設為 {0}',
+	'notice.iotoTaskView.notePriorityCleared': '已取消優先級',
+	'notice.iotoTaskView.noteStarredSet': '已標記為核心任務',
+	'notice.iotoTaskView.noteStarredCleared': '已取消核心任務標記',
 	'notice.iotoTaskView.primarySectionMarked': '已將「{0}」設為主任務區',
 	'notice.iotoTaskView.primarySectionUnmarked': '已取消主任務區標記',
 	'notice.iotoTaskView.primarySectionMissing':

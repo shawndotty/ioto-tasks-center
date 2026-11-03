@@ -865,6 +865,10 @@ const en = {
 	'view.iotoTaskView.contextMenu.unrepeatTask': 'Unmark repeat task',
 	'view.iotoTaskView.contextMenu.duplicateTask': 'Duplicate task',
 	'view.iotoTaskView.contextMenu.moveToFile': 'Move to…',
+	// Blank-area note-level menu ([[Plan-20261103-103716]] C7)
+	'view.iotoTaskView.noteMenu.priority': 'Priority',
+	'view.iotoTaskView.noteMenu.priorityWithValue': 'Priority: {0}',
+	'view.iotoTaskView.noteMenu.deleteNote': 'Delete current task note',
 	'view.iotoTaskView.deleteConfirm.confirm': 'Confirm delete',
 	'view.iotoTaskView.deleteConfirm.cancel': 'Cancel',
 	'view.iotoTaskView.deleteConfirm.aria': 'Delete confirmation',
@@ -875,6 +879,11 @@ const en = {
 	'notice.iotoTaskView.pinAdded':
 		'Pinned — stays visible in the recent-only view.',
 	'notice.iotoTaskView.pinRemoved': 'Unpinned.',
+	// Note-level property write feedback ([[Plan-20261103-103716]] C7)
+	'notice.iotoTaskView.notePrioritySet': 'Priority set to {0}',
+	'notice.iotoTaskView.notePriorityCleared': 'Priority cleared',
+	'notice.iotoTaskView.noteStarredSet': 'Marked as core task',
+	'notice.iotoTaskView.noteStarredCleared': 'Core task mark cleared',
 	'notice.iotoTaskView.primarySectionMarked':
 		'Marked "{0}" as the primary task section',
 	'notice.iotoTaskView.primarySectionUnmarked': 'Primary task section unset',

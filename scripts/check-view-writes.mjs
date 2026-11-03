@@ -154,6 +154,11 @@ const WHITELIST = new Set([
 	'task-view-multi-selection.ts :: selectedLine',
 	'task-view-multi-selection.ts :: multiLines',
 	'task-view-multi-selection.ts :: multiAnchor',
+	// 空白处右键的笔记级属性写（[[Plan-20261103-103716]] §四.C3）：整篇 frontmatter
+	// 改写后的 data / lastLoadedText 红线同步，与 task-view-task-commands.ts 的
+	// togglePrimarySection 同性质，是本通路唯一的写点。
+	'task-view-note-actions.ts :: data',
+	'task-view-note-actions.ts :: lastLoadedText',
 	'task-view-section-drag.ts :: cancelActiveDrag',
 ]);
 

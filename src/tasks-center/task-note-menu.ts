@@ -103,7 +103,7 @@ function appendTaskNoteMenuItems(
 	// 注意：必须隐藏 rootMenu（根菜单）而非 target（子菜单），否则在移动端根菜单会
 	// 残留、点击后不消失，也无法反映设置后的新状态。
 	function triggerTaskNoteAction(
-		action: (app: App, file: TFile) => Promise<void>,
+		action: (app: App, file: TFile) => Promise<unknown>,
 		errorNoticeKey: TranslationKey,
 	): void {
 		if (typeof rootMenu.hide === 'function') {
@@ -175,7 +175,7 @@ function appendTaskNoteMenuItems(
 async function runTaskNoteAction(
 	app: App,
 	file: TFile,
-	action: (app: App, file: TFile) => Promise<void>,
+	action: (app: App, file: TFile) => Promise<unknown>,
 	errorNoticeKey: TranslationKey,
 ): Promise<void> {
 	try {

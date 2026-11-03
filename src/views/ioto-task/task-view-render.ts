@@ -19,6 +19,7 @@ import { toExternalOpenUrl } from './external-link-url';
 import { collectCardLines, pickEdgeLine } from './card-navigation';
 import { resolveMultiMembers } from './task-view-multi-selection';
 import { attachMarqueeSelection } from './task-view-marquee';
+import { attachNoteContextMenu } from './task-view-note-context-menu';
 import {
 	EDIT_ITEM_CONTROLS_COMMAND_ID,
 	INSERT_OUTGOING_LINK_COMMAND_ID,
@@ -170,6 +171,9 @@ export function renderNote(
 		);
 		if (marqueeScrollEl && !Platform.isMobile) {
 			attachMarqueeSelection(marqueeScrollEl, view);
+			// 空白处右键 = 笔记级菜单（[[Plan-20261103-103716]] §四.C1）：
+			// 同款「每次重建重新挂、旧监听随 DOM 丢弃」，不新增查询、不改渲染层契约。
+			attachNoteContextMenu(marqueeScrollEl, view);
 		}
 		// 「只看本节」回填必须早于滚动快照恢复：`captureIotoTaskScroll` 的锚点是
 		// 「第一张底边越过视口顶的卡」，先上 `.is-section-zoomed` 才能让快照与

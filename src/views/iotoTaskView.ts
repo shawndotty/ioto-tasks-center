@@ -455,6 +455,8 @@ export class IOTOTaskView extends TextFileView {
 		mode: TaskFileLinkViewMode;
 		tasksRootPath: string;
 	};
+	/** 查看任务笔记的相关链接（[[Plan-20261103-103716]] §四.C6）：窄回调，不吃 settings。 */
+	readonly openTaskLinks: (taskPath: string) => void;
 	/**
 	 * 导出重入锁（[[Plan-20261006-102142]] §三.6）：克隆几百张卡 + 内联样式可能耗时数秒，
 	 * 期间禁止重复触发（工具栏连点 / 命令面板重入）。
@@ -513,6 +515,7 @@ export class IOTOTaskView extends TextFileView {
 			mode: TaskFileLinkViewMode;
 			tasksRootPath: string;
 		},
+		openTaskLinks: (taskPath: string) => void,
 	) {
 		super(leaf);
 		this.allowNoFile = false;
@@ -525,6 +528,7 @@ export class IOTOTaskView extends TextFileView {
 		this.mobileSectionActionsVisibleProvider =
 			mobileSectionActionsVisibleProvider;
 		this.taskFileLinkPolicyProvider = taskFileLinkPolicyProvider;
+		this.openTaskLinks = openTaskLinks;
 
 		// 视图级热键：Mod+F（任务搜索）/ Mod+Enter（切换选中卡完成态）。
 		//

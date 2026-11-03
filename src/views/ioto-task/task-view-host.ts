@@ -63,6 +63,11 @@ export interface TaskViewHost extends Component {
 		mode: TaskFileLinkViewMode;
 		tasksRootPath: string;
 	};
+	/**
+	 * 查看任务笔记的相关链接（[[Plan-20261103-103716]] §四.C6）：任务中心开着 →
+	 * 复用预览叶；没开 → 标签页。视图不该知道 4 个根目录与排序口径，只收一个回调。
+	 */
+	readonly openTaskLinks: (taskPath: string) => void;
 	readonly autosave: AutosaveScheduler;
 	readonly hoverPreviewParent: { hoverPopover: HoverPopover | null };
 

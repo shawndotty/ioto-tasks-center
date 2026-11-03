@@ -263,6 +263,7 @@ export default class IOTOTasksCenter extends Plugin {
 						mode: this.settings.taskFileLinkView,
 						tasksRootPath: this.settings.tasksRootPath,
 					}),
+					(path) => this.openTaskLinksForPath(path),
 				),
 		);
 
@@ -1175,6 +1176,20 @@ export default class IOTOTasksCenter extends Plugin {
 
 	private getTasksCenterView(): IOTOTasksCenterView | null {
 		return getTasksCenterView(this.app);
+	}
+
+	/**
+	 * 任务视图的「查看相关链接」：任务中心开着就复用预览叶（与任务行右键 100% 一致），
+	 * 没开就退到标签页（无锚点不该凭空分栏，同 `openTaskLinksFromSettings` 口径）。
+	 * 走窄回调注入而非给视图塞 settings：视图不该知道 4 个根目录与排序口径。
+	 */
+	private openTaskLinksForPath(taskPath: string): void {
+		const center = this.getTasksCenterView();
+		if (center) {
+			openTaskLinksFromView(center, taskPath);
+			return;
+		}
+		openTaskLinksFromSettings(this.app, this.settings, taskPath);
 	}
 
 	// --- 生命周期：视图切换悬浮按钮（[[Plan-20261019-190001]]） ---

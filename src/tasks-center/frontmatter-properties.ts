@@ -5,13 +5,17 @@ import { removeListProperty, upsertListProperty } from './task-creation';
 /**
  * 原子地读改写任务笔记的 frontmatter：把 `vault.read + vault.modify` 换成
  * `vault.process`，避免两次操作之间被其它写入覆盖。
+ *
+ * 返回写盘后的完整内容（`Vault.process` 本来就有）：任务视图里「整篇属性写」
+ * 需要拿它算 frontmatter 行数 Δ 并同步 `data` / `lastLoadedText`
+ * （[[Plan-20261103-103716]] §四.C4）；既有调用方 `await` 后丢弃返回值，行为不变。
  */
 export async function rewriteTaskFrontmatter(
 	app: App,
 	file: TFile,
 	transform: (content: string) => string,
-): Promise<void> {
-	await app.vault.process(file, transform);
+): Promise<string> {
+	return app.vault.process(file, transform);
 }
 
 /**

@@ -708,7 +708,7 @@ async function applyCreatedSubtaskProperties(
 async function updateTaskProperty(
     view: IOTOTasksCenterView,
     task: TaskFileEntry,
-    action: (app: IOTOTasksCenterView['app'], file: TFile) => Promise<void>,
+    action: (app: IOTOTasksCenterView['app'], file: TFile) => Promise<unknown>,
     errorNoticeKey: TranslationKey,
 ): Promise<void> {
     const file = view.app.vault.getAbstractFileByPath(task.path);

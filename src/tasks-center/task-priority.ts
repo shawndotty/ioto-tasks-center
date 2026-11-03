@@ -13,27 +13,32 @@ export function isTaskPriorityValue(value: number): value is TaskPriorityValue {
 	return TASK_PRIORITY_VALUES.includes(value as TaskPriorityValue);
 }
 
+/**
+ * 设置任务笔记的优先级属性，返回写盘后的完整内容
+ * （调用方据此算 frontmatter 行数 Δ，见 [[Plan-20261103-103716]] §四.C4）。
+ */
 export async function setTaskFilePriority(
 	app: App,
 	file: TFile,
 	priority: TaskPriorityValue,
-): Promise<void> {
-	await updateTaskFilePriority(app, file, priority);
+): Promise<string> {
+	return updateTaskFilePriority(app, file, priority);
 }
 
+/** 删除优先级属性，返回写盘后的完整内容。 */
 export async function clearTaskFilePriority(
 	app: App,
 	file: TFile,
-): Promise<void> {
-	await updateTaskFilePriority(app, file);
+): Promise<string> {
+	return updateTaskFilePriority(app, file);
 }
 
 async function updateTaskFilePriority(
 	app: App,
 	file: TFile,
 	priority?: TaskPriorityValue,
-): Promise<void> {
-	await rewriteTaskFrontmatter(app, file, (content) =>
+): Promise<string> {
+	return rewriteTaskFrontmatter(app, file, (content) =>
 		priority === undefined
 			? removeScalarProperty(content, 'Priority')
 			: upsertScalarProperty(content, 'Priority', `${priority}`),

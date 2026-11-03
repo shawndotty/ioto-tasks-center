@@ -793,6 +793,10 @@ const zhCN = {
 	'view.iotoTaskView.contextMenu.unrepeatTask': '取消重复',
 	'view.iotoTaskView.contextMenu.duplicateTask': '创建任务副本',
 	'view.iotoTaskView.contextMenu.moveToFile': '移动到…',
+	// 空白处右键的笔记级菜单（[[Plan-20261103-103716]] §四.C7）
+	'view.iotoTaskView.noteMenu.priority': '优先级',
+	'view.iotoTaskView.noteMenu.priorityWithValue': '优先级：{0}',
+	'view.iotoTaskView.noteMenu.deleteNote': '删除当前任务',
 	'view.iotoTaskView.deleteConfirm.confirm': '确认删除',
 	'view.iotoTaskView.deleteConfirm.cancel': '取消',
 	'view.iotoTaskView.deleteConfirm.aria': '删除确认',
@@ -801,6 +805,11 @@ const zhCN = {
 	'notice.iotoTaskView.swapNoNext': '已经是同级任务中的最后一条',
 	'notice.iotoTaskView.pinAdded': '已固定：最近任务视图下始终保留。',
 	'notice.iotoTaskView.pinRemoved': '已取消固定。',
+	// 笔记级属性写反馈（[[Plan-20261103-103716]] §四.C7）：任务视图不显示 P{n}/⭐，Notice 是唯一反馈
+	'notice.iotoTaskView.notePrioritySet': '优先级已设为 {0}',
+	'notice.iotoTaskView.notePriorityCleared': '已取消优先级',
+	'notice.iotoTaskView.noteStarredSet': '已标记为核心任务',
+	'notice.iotoTaskView.noteStarredCleared': '已取消核心任务标记',
 	'notice.iotoTaskView.primarySectionMarked': '已将「{0}」设为主任务区',
 	'notice.iotoTaskView.primarySectionUnmarked': '已取消主任务区标记',
 	'notice.iotoTaskView.primarySectionMissing':
