@@ -803,6 +803,7 @@ const zhCN = {
 	'view.iotoTaskView.contextMenu.unrepeatTasks': '取消 {0} 项任务的重复',
 	'view.iotoTaskView.contextMenu.duplicateTasks': '创建 {0} 份任务副本',
 	'view.iotoTaskView.contextMenu.moveToFiles': '移动到…（{0} 项）',
+	'view.iotoTaskView.contextMenu.doneTasks': '标记 {0} 项任务为完成',
 	// 空白处右键的笔记级菜单（[[Plan-20261103-103716]] §四.C7）
 	'view.iotoTaskView.noteMenu.priority': '优先级',
 	'view.iotoTaskView.noteMenu.priorityWithValue': '优先级：{0}',
@@ -823,6 +824,10 @@ const zhCN = {
 	'notice.iotoTaskView.pinRemovedMany': '已取消固定 {0} 项任务',
 	'notice.iotoTaskView.repeatAddedMany': '已标记 {0} 项任务为重复',
 	'notice.iotoTaskView.repeatRemovedMany': '已取消 {0} 项任务的重复',
+	'notice.iotoTaskView.doneTasks': '已标记 {0} 项任务为完成',
+	'notice.iotoTaskView.doneTasksWithRepeat':
+		'已标记 {0} 项任务为完成，其中 {1} 项为重复任务，将暂停执行',
+	'notice.iotoTaskView.doneTasksNone': '没有需要标记为完成的任务',
 	'notice.iotoTaskView.duplicateTasksCreated': '已创建 {0} 份任务副本',
 	// 笔记级属性写反馈（[[Plan-20261103-103716]] §四.C7）：任务视图不显示 P{n}/⭐，Notice 是唯一反馈
 	'notice.iotoTaskView.notePrioritySet': '优先级已设为 {0}',

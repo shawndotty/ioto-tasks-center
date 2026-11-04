@@ -71,6 +71,7 @@ function baseOptions(overrides = {}) {
 		writable: true,
 		onPin: () => {},
 		onRepeat: () => {},
+		onMarkDone: () => {},
 		onDuplicate: () => {},
 		onMoveToFile: () => {},
 		onDelete: () => {},
@@ -108,13 +109,14 @@ test('单选已固定 / 已重复：标题与图标翻转（二态不变）', ()
 	assert.equal(entries[1].icon, 'repeat-2');
 });
 
-test('多选（targets 长度 3）：五项都带条数，删除复用工具栏键', () => {
+test('多选（targets 长度 3）：六项都带条数，删除复用工具栏键', () => {
 	const menu = createFakeMenu();
 	buildCardContextMenu(menu, baseOptions({ targets: [3, 7, 11] }));
 
 	assert.deepEqual(titlesOf(menu), [
 		'Pin 3 tasks',
 		'Mark 3 tasks as repeat',
+		'Mark 3 tasks as done',
 		'---',
 		'Duplicate 3 tasks',
 		'Move to… (3)',
@@ -134,12 +136,12 @@ test('多选且已固定 / 已重复：批量取消文案', () => {
 	assert.equal(entries[1].title, 'Unmark repeat for 2 tasks');
 });
 
-test('writable:false → 五项全部置灰（分隔线不计）', () => {
+test('writable:false → 六项全部置灰（分隔线不计）', () => {
 	const menu = createFakeMenu();
 	buildCardContextMenu(menu, baseOptions({ targets: [3, 7], writable: false }));
 
 	const entries = entriesOf(menu);
-	assert.equal(entries.length, 5);
+	assert.equal(entries.length, 6);
 	for (const entry of entries) {
 		assert.equal(entry.disabled, true, entry.title);
 	}
@@ -157,6 +159,7 @@ test('点击回调收到完整 targets 数组；onPin / onRepeat 收到相反方
 			onPin: (lines, pinned) => received.push(['pin', lines, pinned]),
 			onRepeat: (lines, repeated) =>
 				received.push(['repeat', lines, repeated]),
+			onMarkDone: (lines) => received.push(['done', lines]),
 			onDuplicate: (lines) => received.push(['duplicate', lines]),
 			onMoveToFile: (lines) => received.push(['move', lines]),
 			onDelete: (lines) => received.push(['delete', lines]),
@@ -169,12 +172,14 @@ test('点击回调收到完整 targets 数组；onPin / onRepeat 收到相反方
 	entries[2].click();
 	entries[3].click();
 	entries[4].click();
+	entries[5].click();
 
 	assert.deepEqual(received, []);
 	await wait(80);
 	assert.deepEqual(received, [
 		['pin', [3, 7, 11], false],
 		['repeat', [3, 7, 11], true],
+		['done', [3, 7, 11]],
 		['duplicate', [3, 7, 11]],
 		['move', [3, 7, 11]],
 		['delete', [3, 7, 11]],

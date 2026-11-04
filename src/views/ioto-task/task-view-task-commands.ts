@@ -38,6 +38,7 @@ import {
 } from '../../tasks-center/note-task-swap';
 import { buildTaskDuplicatePlan } from '../../tasks-center/note-task-duplicate';
 import { buildMultiControlEdit } from '../../tasks-center/note-task-multi-control';
+import { buildMultiDoneEdit } from '../../tasks-center/note-task-multi-done';
 import { buildMultiDuplicatePlan } from '../../tasks-center/note-task-multi-duplicate';
 import { DuplicateTaskModal } from '../../ui/duplicateTaskModal';
 import { isTemplateAvailableForProject } from '../../tasks-center/batch-task-template';
@@ -60,6 +61,8 @@ import {
 import { lineAt, countContinuationLines } from './task-view-helpers';
 import { runLineAction } from './task-view-editor-handlers';
 import { commitBlockRange, commitTaskLineAction } from './commit-task-line';
+import { collectCardLines, pickNeighborOutside } from './card-navigation';
+import { clearMultiSelection } from './task-view-multi-selection';
 
 /**
  * 命令面板 / 快捷键入口：仅转发到 `addTask`，不复制逻辑。
@@ -647,6 +650,97 @@ export async function setTasksRepeat(
 	repeated: boolean,
 ): Promise<void> {
 	await setTasksControl(view, lines, 'repeat', repeated);
+}
+
+/* ------------------------------------------------------------------ *
+ * 批量「标记为完成」（[[Plan-20261104-063936]] C7）
+ *
+ * 只改勾选位 → 行数不变 → 行号不漂移，因此 `targets` / `neighbor` /
+ * `selectedLine` 都不需要 remap（与批量删除最大的差别）。
+ * 唯一的新分支：`onlyPending` 下目标卡全部消失，必须「清集合 + 就近选」。
+ *
+ * 口径（不要「顺手补」）：
+ * - 长度 1 不分支：菜单层根本不给入口；函数按行集合写（幂等）。
+ * - 单向：没有 `on` 参数、没有取反；反向入口是卡片 checkbox（二态）。
+ * - 不级联子任务：只改 `lines` 点名行。
+ * - 不提供撤销：`vault.process` 不进编辑器 undo 栈（与批量删除同口径）。
+ * - 不加运行中门禁：与 pin / repeat 一致，执行器按行号 + 内容定位。
+ * ------------------------------------------------------------------ */
+
+/** 右键菜单：把**指定行集合**的任务标为完成。 */
+export async function markTasksDone(
+	view: TaskViewHost,
+	lines: readonly number[],
+): Promise<void> {
+	const file = view.file;
+	if (!file || !view.supportsInlineEdit()) return; // 只读降级：静默
+
+	const targets = [...new Set(lines)].sort((a, b) => a - b);
+	if (targets.length === 0) return;
+
+	// ① 在册编辑器先落盘，避免与未提交正文双写错位
+	await view.flushInlineEdits();
+
+	// ② 一次算完窗口编辑
+	const plan = buildMultiDoneEdit(view.data, targets);
+	if (!plan) return;
+	if (plan.changedLines.length === 0) {
+		new Notice(t('notice.iotoTaskView.doneTasksNone'));
+		return;
+	}
+
+	// ③ 写盘前抓落点：重绘后目标卡已不在 DOM（onlyPending）
+	const neighbor = view.filters.onlyPending
+		? pickNeighborOutside(collectCardLines(view.contentEl), targets)
+		: null;
+
+	// ④ 一次原子区间写
+	const outcome = await commitBlockRange(view.app, file, {
+		...plan.edit,
+		nextText: '', // `nextLines` 通道优先，这里只为满足选项形状
+	});
+	// 🔴 红线：data / lastLoadedText 必须同步
+	view.applyOutcome(outcome);
+
+	if (outcome.status === 'conflict') {
+		await view.reloadFromVault();
+		view.renderNote(view.data);
+		new Notice(t('notice.iotoTaskView.commitConflict'));
+		return;
+	}
+	if (outcome.status !== 'ok') {
+		view.renderNote(view.data);
+		return;
+	}
+
+	// ⑤ 重绘与收尾：只有 onlyPending 需要显式收拾选中态
+	if (view.filters.onlyPending) {
+		// 目标卡已全部消失：不清集合 → `syncSelectionClass` 会把锚点兜底到
+		// **第一张可见卡**（用户看到「选中跳到顶部」）；清了不选邻居 → 焦点断档。
+		clearMultiSelection(view);
+		view.selectedLine = null;
+		view.renderNote(view.data);
+		if (neighbor !== null) {
+			view.applySelection(neighbor);
+		} else {
+			view.refreshDeleteButtonVisibility();
+		}
+	} else {
+		// 行数不变：多选类由 `syncSelectionClass` 按锚点 + 成员自动回填，滚动位置
+		// 由 renderNote 的捕获-恢复保住。🔴 不调 applySelection（会清多选）。
+		view.renderNote(view.data);
+	}
+
+	// ⑥ Notice：条数 = 实际变化的行数（不是目标行数）
+	const changed = String(plan.changedLines.length);
+	new Notice(
+		plan.repeatLines.length > 0
+			? t('notice.iotoTaskView.doneTasksWithRepeat', [
+					changed,
+					String(plan.repeatLines.length),
+				])
+			: t('notice.iotoTaskView.doneTasks', [changed]),
+	);
 }
 
 /* ------------------------------------------------------------------ *

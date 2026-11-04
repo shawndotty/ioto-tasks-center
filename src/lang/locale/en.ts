@@ -875,6 +875,7 @@ const en = {
 	'view.iotoTaskView.contextMenu.unrepeatTasks': 'Unmark repeat for {0} tasks',
 	'view.iotoTaskView.contextMenu.duplicateTasks': 'Duplicate {0} tasks',
 	'view.iotoTaskView.contextMenu.moveToFiles': 'Move to… ({0})',
+	'view.iotoTaskView.contextMenu.doneTasks': 'Mark {0} tasks as done',
 	// Blank-area note-level menu ([[Plan-20261103-103716]] C7)
 	'view.iotoTaskView.noteMenu.priority': 'Priority',
 	'view.iotoTaskView.noteMenu.priorityWithValue': 'Priority: {0}',
@@ -898,6 +899,10 @@ const en = {
 	'notice.iotoTaskView.repeatAddedMany': 'Marked {0} tasks as repeat.',
 	'notice.iotoTaskView.repeatRemovedMany':
 		'Repeat mark removed from {0} tasks.',
+	'notice.iotoTaskView.doneTasks': 'Marked {0} tasks as done.',
+	'notice.iotoTaskView.doneTasksWithRepeat':
+		'Marked {0} tasks as done. {1} of them are repeat tasks and will be paused.',
+	'notice.iotoTaskView.doneTasksNone': 'No tasks to mark as done.',
 	'notice.iotoTaskView.duplicateTasksCreated': 'Created {0} task copies.',
 	// Note-level property write feedback ([[Plan-20261103-103716]] C7)
 	'notice.iotoTaskView.notePrioritySet': 'Priority set to {0}',

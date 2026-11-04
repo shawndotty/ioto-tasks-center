@@ -473,6 +473,10 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 					setTasksRepeat: (lines, repeated) => {
 						void view.setTasksRepeat(lines, repeated);
 					},
+					// 右键菜单的「标记为完成」：只在多选出现，一次原子写。
+					markTasksDone: (lines) => {
+						void view.markTasksDone(lines);
+					},
 					// 右键菜单的「创建任务副本」：整块复制，副本落在各自块尾。
 					duplicateTasks: (lines) => {
 						void view.duplicateTasks(lines);

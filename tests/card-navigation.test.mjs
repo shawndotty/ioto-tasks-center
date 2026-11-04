@@ -9,6 +9,7 @@ const {
 	pickAdjacentLine,
 	pickEdgeLine,
 	pickLineAfterDelete,
+	pickNeighborOutside,
 } = await jiti.import('../src/views/ioto-task/card-navigation.ts');
 
 function makeCard(line) {
@@ -136,6 +137,28 @@ test('pickEdgeLine：只有一张卡时首尾都是它自己（select 幂等）'
 test('pickEdgeLine：空列表返回 null', () => {
 	assert.equal(pickEdgeLine([], 'first'), null);
 	assert.equal(pickEdgeLine([], 'last'), null);
+});
+
+test('pickNeighborOutside：从最大目标行向下找第一张集合外的卡', () => {
+	// 选中 [7, 11] → 最大行 11 的下一张是 15
+	assert.equal(pickNeighborOutside([3, 7, 11, 15], [7, 11]), 15);
+	// 非连续选中：跳过所有 target 继续向下
+	assert.equal(pickNeighborOutside([3, 7, 11, 15], [7, 9, 11]), 15);
+});
+
+test('pickNeighborOutside：向下无果转向上（末尾整组被选中）', () => {
+	assert.equal(pickNeighborOutside([3, 7, 11], [7, 11]), 3);
+	assert.equal(pickNeighborOutside([3, 7, 11], [11]), 7);
+});
+
+test('pickNeighborOutside：整篇只剩这些任务 → null', () => {
+	assert.equal(pickNeighborOutside([3, 7, 11], [3, 7, 11]), null);
+	assert.equal(pickNeighborOutside([], []), null);
+});
+
+test('pickNeighborOutside：目标不在 order 里不抛错 → null', () => {
+	assert.equal(pickNeighborOutside([3, 7], [99, 100]), null);
+	assert.equal(pickNeighborOutside([3, 7], [99]), null);
 });
 
 test('pickLineAfterDelete：中间项落到原位置的下一张（行号已前移 1）', () => {

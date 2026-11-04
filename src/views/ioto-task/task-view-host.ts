@@ -309,6 +309,8 @@ export interface TaskViewHost extends Component {
 	/** 右键菜单批量 pin / repeat（[[Plan-20261104-060428]] C11）：统一到给定目标态。 */
 	setTasksPin(lines: readonly number[], pinned: boolean): Promise<void>;
 	setTasksRepeat(lines: readonly number[], repeated: boolean): Promise<void>;
+	/** 右键菜单批量「标记为完成」（[[Plan-20261104-063936]]）：单向、不级联，一次原子写。 */
+	markTasksDone(lines: readonly number[]): Promise<void>;
 	/** 创建任务副本（[[Plan-20261023-145916]]）：整块复制，副本落在块尾。 */
 	canDuplicateTask(): boolean;
 	duplicateTask(line: number): Promise<void>;

@@ -804,6 +804,7 @@ const zhTW = {
 	'view.iotoTaskView.contextMenu.unrepeatTasks': '取消 {0} 項任務的重複',
 	'view.iotoTaskView.contextMenu.duplicateTasks': '建立 {0} 份任務副本',
 	'view.iotoTaskView.contextMenu.moveToFiles': '移動到…（{0} 項）',
+	'view.iotoTaskView.contextMenu.doneTasks': '標記 {0} 項任務為完成',
 	// 空白處右鍵的筆記級選單（[[Plan-20261103-103716]] §四.C7）
 	'view.iotoTaskView.noteMenu.priority': '優先級',
 	'view.iotoTaskView.noteMenu.priorityWithValue': '優先級：{0}',
@@ -824,6 +825,10 @@ const zhTW = {
 	'notice.iotoTaskView.pinRemovedMany': '已取消固定 {0} 項任務',
 	'notice.iotoTaskView.repeatAddedMany': '已標記 {0} 項任務為重複',
 	'notice.iotoTaskView.repeatRemovedMany': '已取消 {0} 項任務的重複',
+	'notice.iotoTaskView.doneTasks': '已標記 {0} 項任務為完成',
+	'notice.iotoTaskView.doneTasksWithRepeat':
+		'已標記 {0} 項任務為完成，其中 {1} 項為重複任務，將暫停執行',
+	'notice.iotoTaskView.doneTasksNone': '沒有需要標記為完成的任務',
 	'notice.iotoTaskView.duplicateTasksCreated': '已建立 {0} 份任務副本',
 	// 筆記級屬性寫入回饋（[[Plan-20261103-103716]] §四.C7）
 	'notice.iotoTaskView.notePrioritySet': '優先級已設為 {0}',

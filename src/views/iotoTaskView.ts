@@ -245,6 +245,7 @@ import {
 	findTasksSection,
 	insertEntryTemplate,
 	markAllTasksDone,
+	markTasksDone,
 	resolveCurrentProjectNames,
 	resolveCurrentSubject,
 	runTask,
@@ -977,6 +978,9 @@ export class IOTOTaskView extends TextFileView {
 		repeated: boolean,
 	): Promise<void> {
 		await setTasksRepeat(this, lines, repeated);
+	}
+	async markTasksDone(lines: readonly number[]): Promise<void> {
+		await markTasksDone(this, lines);
 	}
 	canDuplicateTask(): boolean { return canDuplicateTask(this); }
 	async duplicateTask(line: number): Promise<void> { await duplicateTask(this, line); }

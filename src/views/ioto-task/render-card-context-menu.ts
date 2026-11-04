@@ -38,6 +38,8 @@ export interface CardContextMenuOptions {
 	 */
 	onPin: (lines: readonly number[], pinned: boolean) => void;
 	onRepeat: (lines: readonly number[], repeated: boolean) => void;
+	/** 标记为完成（仅多选注入；单向，反向入口是卡片 checkbox） */
+	onMarkDone: (lines: readonly number[]) => void;
 	onDuplicate: (lines: readonly number[]) => void;
 	/** 跨任务文件搬运（[[Plan-20261031-205655]] §四.8）：显式行号，不依赖选中态。 */
 	onMoveToFile: (lines: readonly number[]) => void;
@@ -105,10 +107,25 @@ export function buildCardContextMenu(
 			.onClick(() => defer(() => options.onRepeat(targets, !repeated))),
 	);
 
-	// ③ 分隔线（删除放最后且与前两项隔开）
+	// ③ 标记为完成（仅多选：单选有卡片 checkbox 原位入口，Q3）
+	if (many) {
+		menu.addItem((item) =>
+			item
+				.setTitle(
+					t('view.iotoTaskView.contextMenu.doneTasks', [
+						String(count),
+					]),
+				)
+				.setIcon('check')
+				.setDisabled(!writable)
+				.onClick(() => defer(() => options.onMarkDone(targets))),
+		);
+	}
+
+	// ④ 分隔线（删除放最后且与前两项隔开）
 	menu.addSeparator();
 
-	// ④ 创建任务副本（Johnny 拍板：分隔线之后、删除之前）
+	// ⑤ 创建任务副本（Johnny 拍板：分隔线之后、删除之前）
 	menu.addItem((item) =>
 		item
 			.setTitle(
@@ -123,7 +140,7 @@ export function buildCardContextMenu(
 			.onClick(() => defer(() => options.onDuplicate(targets))),
 	);
 
-	// ⑤ 移动到其他任务文件（跨文件搬运，与命令面板同入口）
+	// ⑥ 移动到其他任务文件（跨文件搬运，与命令面板同入口）
 	menu.addItem((item) =>
 		item
 			.setTitle(
@@ -138,7 +155,7 @@ export function buildCardContextMenu(
 			.onClick(() => defer(() => options.onMoveToFile(targets))),
 	);
 
-	// ⑥ 删除任务（复用既有文案键；走 requestDelete 的二次确认链 / 多选批量确认）
+	// ⑦ 删除任务（复用既有文案键；走 requestDelete 的二次确认链 / 多选批量确认）
 	menu.addItem((item) =>
 		item
 			.setTitle(

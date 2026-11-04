@@ -137,6 +137,34 @@ export function pickAdjacentLine(
 }
 
 /**
+ * 「目标集合整组从视图消失」时的就近落点（[[Plan-20261104-063936]] C6）。
+ *
+ * 从 `targets` 的最大行**向下**找第一张不在集合里的卡；找不到再**向上**找。
+ * 与 `pickLineAfterDelete` 的差别：本场景（批量标记完成）**行数不变**，行号不漂移，
+ * 返回的就是可直接 `applySelection` 的真实行号；那边要按删除行数回退。
+ *
+ * `order` 必须是**写盘前**的 DOM 顺序（`collectCardLines` 的输出）。
+ * 集合外的卡一张都没有（整篇只剩这些任务）→ `null`。
+ */
+export function pickNeighborOutside(
+	order: readonly number[],
+	targets: readonly number[],
+): number | null {
+	const skip = new Set(targets);
+	const downStart = order.indexOf(targets[targets.length - 1] ?? Number.NaN);
+	for (let i = downStart + 1; downStart >= 0 && i < order.length; i += 1) {
+		const line = order[i];
+		if (line !== undefined && !skip.has(line)) return line;
+	}
+	const upStart = order.indexOf(targets[0] ?? Number.NaN);
+	for (let i = upStart - 1; upStart >= 0 && i >= 0; i -= 1) {
+		const line = order[i];
+		if (line !== undefined && !skip.has(line)) return line;
+	}
+	return null;
+}
+
+/**
  * 取 DOM 顺序里的首 / 末张卡片（`edge = 'first' | 'last'`）。
  *
  * 与 `pickAdjacentLine` 同源、同口径：只认**可见**卡片（折叠 Section 的卡不在 DOM 里）、

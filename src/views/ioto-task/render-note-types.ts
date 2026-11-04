@@ -95,6 +95,11 @@ export interface TaskNoteEditing {
 	/** 右键菜单：给该组行加 / 去 `#ioto/repeat`（同上）。 */
 	setTasksRepeat?(lines: readonly number[], repeated: boolean): void;
 	/**
+	 * 右键菜单：把该组任务全部标为完成（单向、不级联；与 `setTasksRepeat` 同批）。
+	 * 长度 1 不在此分支（菜单层不出现）；**缺省 = 菜单项置灰**。
+	 */
+	markTasksDone?(lines: readonly number[]): void;
+	/**
 	 * 右键菜单：给该组行各创建一份任务副本（[[Plan-20261104-060428]] C6）。
 	 * 副本落在各自块尾，一次写盘；**缺省 = 菜单项置灰**。
 	 */

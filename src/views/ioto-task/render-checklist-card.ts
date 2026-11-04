@@ -362,6 +362,7 @@ export function renderChecklistGroup(options: {
 				writable: editing.enabled,
 				onPin: (lines, on) => editing.setTasksPin?.(lines, on),
 				onRepeat: (lines, on) => editing.setTasksRepeat?.(lines, on),
+				onMarkDone: (lines) => editing.markTasksDone?.(lines),
 				onDuplicate: (lines) => editing.duplicateTasks?.(lines),
 				onMoveToFile: (lines) => editing.moveTasksToFile?.(lines),
 				onDelete: (lines) => editing.deleteCards?.(lines),
