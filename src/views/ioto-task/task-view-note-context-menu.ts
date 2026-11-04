@@ -54,9 +54,13 @@ export interface NoteContextMenuOptions {
 	exporting: boolean;
 	/** 与命令面板 `itc-insert-entry-template` 同一门禁（= `view.canInsertEntryTemplate()`） */
 	canInsertEntryTemplate: boolean;
+	/** 与命令面板 `itc-mark-all-tasks-done` 同一门禁（= `view.canMarkAllTasksDone()`） */
+	canMarkAllTasksDone: boolean;
 	onExportImage: () => void;
 	onCopyImage: () => void;
 	onInsertEntryTemplate: () => void;
+	/** 整篇写盘：直接委派 `view.markAllTasksDone()`，**不**在这层复制写盘管线 */
+	onMarkAllTasksDone: () => void;
 	onSearchTasks: () => void;
 	onDelete: () => void;
 }
@@ -147,9 +151,9 @@ export function buildNoteContextMenu(
 		}
 	}
 
-	// ⑤ 视图动作组（[[Plan-20261103-155712]]）：四条视图级命令的单行简写入口。
-	//    顺序 = 用户列举顺序；「搜索任务」压尾，让「插入条目模板」（唯一写盘项）
-	//    不与「删除当前任务」相邻。
+	// ⑤ 视图动作组（[[Plan-20261103-155712]]）：五条视图级命令的单行简写入口。
+	//    顺序 = 用户列举顺序；「搜索任务」压尾，让两个写盘项（插入条目模板、
+	//    标记所有任务为完成）都不与「删除当前任务」相邻。
 	//    🔴 置灰而非隐藏：导出锁命中时 `captureForExport` 静默返回 null，
 	//    只有置灰能解释「为什么没反应」。
 	const viewActions: Array<{
@@ -177,6 +181,20 @@ export function buildNoteContextMenu(
 			title: t('view.iotoTaskView.noteMenu.insertEntryTemplate'),
 			icon: 'layout-template',
 			run: options.onInsertEntryTemplate,
+		});
+	}
+	// 「标记所有任务为完成」= 命令面板 `itc-mark-all-tasks-done` 的视图侧简写。
+	// 门禁同源（`canMarkAllTasksDone` = 有文件 + 可内嵌编辑）：只读态下
+	// `markAllTasksDone` 第一步就静默 return，出现一个「点了完全没反应」的项
+	// 比不出现更糟 → 稳定态不可用即隐藏（与插入模板 / 命令面板同口径）。
+	// 🔴 不做「没有未完成任务就置灰」：右键会让内联编辑器 blur，commit 是**异步**的，
+	//    菜单是同步构建的，此刻 `view.data` 是中间态，任何基于内容的灰态必然说谎；
+	//    已有的「当前文件没有需要标记的任务」Notice 是更诚实的兜底。
+	if (options.canMarkAllTasksDone) {
+		viewActions.push({
+			title: t('view.iotoTaskView.noteMenu.markAllTasksDone'),
+			icon: 'check',
+			run: options.onMarkAllTasksDone,
 		});
 	}
 	viewActions.push({
@@ -286,9 +304,11 @@ export function showNoteContextMenu(
 		onToggleAllContinuations: () => void view.toggleAllContinuationFolds(),
 		exporting: view.isExporting,
 		canInsertEntryTemplate: view.canInsertEntryTemplate(),
+		canMarkAllTasksDone: view.canMarkAllTasksDone(),
 		onExportImage: () => void view.exportAsImage(),
 		onCopyImage: () => void view.copyImageToClipboard(),
 		onInsertEntryTemplate: () => void view.insertEntryTemplate(),
+		onMarkAllTasksDone: () => void view.markAllTasksDone(),
 		onSearchTasks: () => view.revealSearch(),
 		onDelete: () => void deleteCurrentTask(view),
 	});

@@ -100,9 +100,11 @@ function baseOptions(overrides = {}) {
 		onToggleAllContinuations: () => {},
 		exporting: false,
 		canInsertEntryTemplate: true,
+		canMarkAllTasksDone: true,
 		onExportImage: () => {},
 		onCopyImage: () => {},
 		onInsertEntryTemplate: () => {},
+		onMarkAllTasksDone: () => {},
 		onSearchTasks: () => {},
 		onDelete: () => {},
 		...overrides,
@@ -113,12 +115,12 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ---- 菜单构造（15 条） ----
 
-test('未标记、无优先级：顶层 10 项 + 4 分隔线（含折叠组与视图动作组）', () => {
+test('未标记、无优先级：顶层 11 项 + 4 分隔线（含折叠组与视图动作组）', () => {
 	const menu = createFakeMenu();
 	buildNoteContextMenu(menu, baseOptions());
 
 	const entries = entriesOf(menu);
-	assert.equal(entries.length, 10);
+	assert.equal(entries.length, 11);
 	assert.equal(menu.items.filter((entry) => entry.separator).length, 4);
 	assert.deepEqual(
 		entries.map((entry) => entry.title),
@@ -131,6 +133,7 @@ test('未标记、无优先级：顶层 10 项 + 4 分隔线（含折叠组与�
 			'Export as image',
 			'Copy as image',
 			'Insert entry template',
+			'Mark all tasks as done',
 			'Search tasks',
 			'Delete current task note',
 		],
@@ -193,7 +196,7 @@ test('无 setSubmenu 且无优先级：标题项禁用 + 平铺 4 档', () => {
 	buildNoteContextMenu(menu, baseOptions({ priority: null }));
 
 	const entries = entriesOf(menu);
-	assert.equal(entries.length, 14);
+	assert.equal(entries.length, 15);
 	assert.equal(menu.items.filter((entry) => entry.separator).length, 4);
 	assert.deepEqual(
 		entries.map((entry) => entry.title),
@@ -210,6 +213,7 @@ test('无 setSubmenu 且无优先级：标题项禁用 + 平铺 4 档', () => {
 			'Export as image',
 			'Copy as image',
 			'Insert entry template',
+			'Mark all tasks as done',
 			'Search tasks',
 			'Delete current task note',
 		],
@@ -222,7 +226,7 @@ test('无 setSubmenu 且已设优先级：平铺取消项与 4 档', () => {
 	buildNoteContextMenu(menu, baseOptions({ priority: 2 }));
 
 	const entries = entriesOf(menu);
-	assert.equal(entries.length, 15);
+	assert.equal(entries.length, 16);
 	assert.equal(menu.items.filter((entry) => entry.separator).length, 5);
 	assert.deepEqual(
 		entries.map((entry) => entry.title),
@@ -240,6 +244,7 @@ test('无 setSubmenu 且已设优先级：平铺取消项与 4 档', () => {
 			'Export as image',
 			'Copy as image',
 			'Insert entry template',
+			'Mark all tasks as done',
 			'Search tasks',
 			'Delete current task note',
 		],
@@ -305,7 +310,7 @@ test('无续写区：只隐藏续写项，Section 项仍在', () => {
 	buildNoteContextMenu(menu, baseOptions({ hasContinuations: false }));
 
 	const titles = entriesOf(menu).map((entry) => entry.title);
-	assert.equal(titles.length, 9);
+	assert.equal(titles.length, 10);
 	assert.equal(menu.items.filter((entry) => entry.separator).length, 4);
 	assert.ok(!titles.includes('Collapse / expand all continuations'));
 	assert.ok(titles.includes('Collapse / expand all sections'));
@@ -316,13 +321,13 @@ test('无 Section：只隐藏 Section 项，续写项仍在', () => {
 	buildNoteContextMenu(menu, baseOptions({ hasSections: false }));
 
 	const titles = entriesOf(menu).map((entry) => entry.title);
-	assert.equal(titles.length, 9);
+	assert.equal(titles.length, 10);
 	assert.equal(menu.items.filter((entry) => entry.separator).length, 4);
 	assert.ok(!titles.includes('Collapse / expand all sections'));
 	assert.ok(titles.includes('Collapse / expand all continuations'));
 });
 
-test('两者都不可用：折叠组整组消失、视图动作组仍在（8 项 + 3 分隔线）', () => {
+test('两者都不可用：折叠组整组消失、视图动作组仍在（9 项 + 3 分隔线）', () => {
 	const menu = createFakeMenu();
 	buildNoteContextMenu(
 		menu,
@@ -338,6 +343,7 @@ test('两者都不可用：折叠组整组消失、视图动作组仍在（8 项
 		'Export as image',
 		'Copy as image',
 		'Insert entry template',
+		'Mark all tasks as done',
 		'Search tasks',
 		'---',
 		'Delete current task note',
@@ -388,25 +394,26 @@ test('折叠组后紧跟视图动作组：折叠组夹在核心任务与视图�
 	assert.equal(deleteIndex, searchIndex + 2);
 });
 
-// ---- 视图动作组（5 条，[[Plan-20261103-155712]] C4） ----
+// ---- 视图动作组（7 条，[[Plan-20261103-155712]] C4） ----
 
-test('N1 视图动作组：四项相邻，顺序为导图→复制→插入模板→搜索，上下各一条分隔线', () => {
+test('N1 视图动作组：五项相邻，顺序为导图→复制→插入模板→标记全部→搜索，上下各一条分隔线', () => {
 	const menu = createFakeMenu();
 	buildNoteContextMenu(menu, baseOptions());
 
 	const titles = titlesOf(menu);
 	const exportIndex = titles.indexOf('Export as image');
-	assert.deepEqual(titles.slice(exportIndex - 1, exportIndex + 5), [
+	assert.deepEqual(titles.slice(exportIndex - 1, exportIndex + 6), [
 		'---',
 		'Export as image',
 		'Copy as image',
 		'Insert entry template',
+		'Mark all tasks as done',
 		'Search tasks',
 		'---',
 	]);
 });
 
-test('N2 视图动作组：图标分别为 image-down / clipboard-copy / layout-template / search', () => {
+test('N2 视图动作组：图标分别为 image-down / clipboard-copy / layout-template / check / search', () => {
 	const menu = createFakeMenu();
 	buildNoteContextMenu(menu, baseOptions());
 
@@ -415,6 +422,10 @@ test('N2 视图动作组：图标分别为 image-down / clipboard-copy / layout-
 	assert.equal(
 		entryByTitle(menu, 'Insert entry template').item.icon,
 		'layout-template',
+	);
+	assert.equal(
+		entryByTitle(menu, 'Mark all tasks as done').item.icon,
+		'check',
 	);
 	assert.equal(entryByTitle(menu, 'Search tasks').item.icon, 'search');
 });
@@ -427,6 +438,8 @@ test('N3 canInsertEntryTemplate=false：插入项隐藏，其余三项仍在且�
 	assert.ok(!titles.includes('Insert entry template'));
 	assert.ok(titles.includes('Export as image'));
 	assert.ok(titles.includes('Copy as image'));
+	// 两个门禁互不影响：插入模板不可用不影响「标记全部」照常出现
+	assert.ok(titles.includes('Mark all tasks as done'));
 	assert.ok(titles.includes('Search tasks'));
 
 	const rawTitles = titlesOf(menu);
@@ -441,12 +454,13 @@ test('N3 canInsertEntryTemplate=false：插入项隐藏，其余三项仍在且�
 	}
 });
 
-test('N4 exporting 置灰：导出 / 复制随 exporting 翻转，插入 / 搜索恒可点', () => {
+test('N4 exporting 置灰：导出 / 复制随 exporting 翻转，插入 / 标记全部 / 搜索恒可点', () => {
 	const busy = createFakeMenu();
 	buildNoteContextMenu(busy, baseOptions({ exporting: true }));
 	assert.equal(entryByTitle(busy, 'Export as image').item.disabled, true);
 	assert.equal(entryByTitle(busy, 'Copy as image').item.disabled, true);
 	assert.equal(entryByTitle(busy, 'Insert entry template').item.disabled, false);
+	assert.equal(entryByTitle(busy, 'Mark all tasks as done').item.disabled, false);
 	assert.equal(entryByTitle(busy, 'Search tasks').item.disabled, false);
 
 	const idle = createFakeMenu();
@@ -455,17 +469,19 @@ test('N4 exporting 置灰：导出 / 复制随 exporting 翻转，插入 / 搜�
 		'Export as image',
 		'Copy as image',
 		'Insert entry template',
+		'Mark all tasks as done',
 		'Search tasks',
 	]) {
 		assert.equal(entryByTitle(idle, title).item.disabled, false, title);
 	}
 });
 
-test('N5 点击视图动作四项：各自回调恰好一次（延迟执行）', async () => {
+test('N5 点击视图动作五项：各自回调恰好一次（延迟执行）', async () => {
 	const calls = {
 		exportImage: 0,
 		copyImage: 0,
 		insertTemplate: 0,
+		markAll: 0,
 		search: 0,
 	};
 	const menu = createFakeMenu();
@@ -475,6 +491,7 @@ test('N5 点击视图动作四项：各自回调恰好一次（延迟执行）',
 			onExportImage: () => (calls.exportImage += 1),
 			onCopyImage: () => (calls.copyImage += 1),
 			onInsertEntryTemplate: () => (calls.insertTemplate += 1),
+			onMarkAllTasksDone: () => (calls.markAll += 1),
 			onSearchTasks: () => (calls.search += 1),
 		}),
 	);
@@ -482,11 +499,13 @@ test('N5 点击视图动作四项：各自回调恰好一次（延迟执行）',
 	entryByTitle(menu, 'Export as image').item.click();
 	entryByTitle(menu, 'Copy as image').item.click();
 	entryByTitle(menu, 'Insert entry template').item.click();
+	entryByTitle(menu, 'Mark all tasks as done').item.click();
 	entryByTitle(menu, 'Search tasks').item.click();
 	assert.deepEqual(calls, {
 		exportImage: 0,
 		copyImage: 0,
 		insertTemplate: 0,
+		markAll: 0,
 		search: 0,
 	});
 	await wait(80);
@@ -494,8 +513,41 @@ test('N5 点击视图动作四项：各自回调恰好一次（延迟执行）',
 		exportImage: 1,
 		copyImage: 1,
 		insertTemplate: 1,
+		markAll: 1,
 		search: 1,
 	});
+});
+
+test('N6 canMarkAllTasksDone=false：标记全部项隐藏，其余项与分隔线不受影响', () => {
+	const menu = createFakeMenu();
+	buildNoteContextMenu(menu, baseOptions({ canMarkAllTasksDone: false }));
+
+	const rawTitles = titlesOf(menu);
+	assert.ok(!rawTitles.includes('Mark all tasks as done'));
+	assert.ok(rawTitles.includes('Insert entry template'));
+	assert.ok(rawTitles.includes('Search tasks'));
+	// 不产生连续分隔线（照抄 N3 的写法）
+	for (let i = 1; i < rawTitles.length; i += 1) {
+		assert.ok(
+			!(rawTitles[i] === '---' && rawTitles[i - 1] === '---'),
+			`consecutive separators at ${i}`,
+		);
+	}
+});
+
+test('N7 位置约束：新项紧跟插入模板，「搜索任务」仍压尾', () => {
+	const menu = createFakeMenu();
+	buildNoteContextMenu(menu, baseOptions());
+
+	const titles = entriesOf(menu).map((entry) => entry.title);
+	const insertIndex = titles.indexOf('Insert entry template');
+	assert.equal(titles.indexOf('Mark all tasks as done'), insertIndex + 1);
+	assert.equal(titles.indexOf('Search tasks'), insertIndex + 2);
+	// 两个写盘项都必须排在「删除当前任务」之前（搜索压尾规则的实质）
+	assert.ok(
+		titles.indexOf('Delete current task note') >
+			titles.indexOf('Search tasks'),
+	);
 });
 
 // ---- 命中判定（2 条） ----

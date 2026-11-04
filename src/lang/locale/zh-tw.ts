@@ -812,6 +812,7 @@ const zhTW = {
 	'view.iotoTaskView.noteMenu.exportImage': '匯出為圖片',
 	'view.iotoTaskView.noteMenu.copyImage': '複製為圖片',
 	'view.iotoTaskView.noteMenu.insertEntryTemplate': '插入條目模板',
+	'view.iotoTaskView.noteMenu.markAllTasksDone': '將所有任務標記為完成',
 	'view.iotoTaskView.noteMenu.searchTasks': '搜尋任務',
 	'view.iotoTaskView.deleteConfirm.confirm': '確認刪除',
 	'view.iotoTaskView.deleteConfirm.cancel': '取消',

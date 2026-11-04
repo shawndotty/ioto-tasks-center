@@ -883,6 +883,7 @@ const en = {
 	'view.iotoTaskView.noteMenu.exportImage': 'Export as image',
 	'view.iotoTaskView.noteMenu.copyImage': 'Copy as image',
 	'view.iotoTaskView.noteMenu.insertEntryTemplate': 'Insert entry template',
+	'view.iotoTaskView.noteMenu.markAllTasksDone': 'Mark all tasks as done',
 	'view.iotoTaskView.noteMenu.searchTasks': 'Search tasks',
 	'view.iotoTaskView.deleteConfirm.confirm': 'Confirm delete',
 	'view.iotoTaskView.deleteConfirm.cancel': 'Cancel',

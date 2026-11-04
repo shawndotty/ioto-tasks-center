@@ -811,6 +811,7 @@ const zhCN = {
 	'view.iotoTaskView.noteMenu.exportImage': '导出为图片',
 	'view.iotoTaskView.noteMenu.copyImage': '复制为图片',
 	'view.iotoTaskView.noteMenu.insertEntryTemplate': '插入条目模板',
+	'view.iotoTaskView.noteMenu.markAllTasksDone': '标记所有任务为完成',
 	'view.iotoTaskView.noteMenu.searchTasks': '搜索任务',
 	'view.iotoTaskView.deleteConfirm.confirm': '确认删除',
 	'view.iotoTaskView.deleteConfirm.cancel': '取消',
