@@ -8,6 +8,7 @@
 import { Notice } from 'obsidian';
 
 import { t, type TranslationKey } from '../../lang/helpter';
+import type { TaskViewAppearanceStyle } from '../../settings';
 import { readBooleanProperty } from '../../tasks-center/frontmatter-properties';
 import { isTaskNoteFile } from '../../tasks-center/task-note-menu';
 import {
@@ -147,11 +148,26 @@ export async function deleteCurrentTask(view: TaskViewHost): Promise<void> {
 	try {
 		await trashTaskFile(view.app, file);
 		// 不渲染、不关叶子：核心会随文件删除自动关闭本视图（Research §3.7 实测 2 → 1）
-	} catch (error) {
+	} 	catch (error) {
 		new Notice(
 			error instanceof Error
 				? error.message
 				: t('view.notice.deleteTaskFailed'),
 		);
 	}
+}
+
+/**
+ * 切换任务视图外观（[[Plan-20261104-130657]] §三.C4）：只写插件 `data.json`
+ * （**全局设置**，所有已开任务视图一起变），不碰笔记。
+ * 仍要先 `flushInlineEdits()`：右键已让内联编辑器 blur，commit 是**异步**的；
+ * 而换档会连带 `applyRecentTaskCount`（开着「显示最近任务」时整块重绘），
+ * 撞上进行中的 commit 会丢字（§6.2）。
+ */
+export async function setAppearanceStyle(
+	view: TaskViewHost,
+	style: TaskViewAppearanceStyle,
+): Promise<void> {
+	await view.flushInlineEdits();
+	view.setAppearanceStyleSetting(style);
 }

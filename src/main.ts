@@ -264,6 +264,7 @@ export default class IOTOTasksCenter extends Plugin {
 						tasksRootPath: this.settings.tasksRootPath,
 					}),
 					(path) => this.openTaskLinksForPath(path),
+					(style) => void this.updateAppearanceStyle(style),
 				),
 		);
 

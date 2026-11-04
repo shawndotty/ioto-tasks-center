@@ -444,7 +444,7 @@ const en = {
 	'settings.appearanceStyle.name': 'IOTOTask view appearance',
 	'settings.appearanceStyle.desc':
 		'Choose the visual style of the IOTOTask view: Glass (dark aurora + glassmorphism, default), Modern (borderless layered surfaces with large radii and soft shadows), Simple (white surface + tinted header band + hairline separators + pill buttons), Card (classic flat cards), or Morandi (built-in low-saturation warm palette + generous line height, an accessibility-first look easier on dry eyes / astigmatism).',
-	'settings.appearanceStyle.glass': 'Glass (recommended)',
+	'settings.appearanceStyle.glass': 'Glass',
 	'settings.appearanceStyle.modern': 'Modern',
 	'settings.appearanceStyle.simple': 'Simple',
 	'settings.appearanceStyle.card': 'Card (classic)',
@@ -885,6 +885,7 @@ const en = {
 	'view.iotoTaskView.noteMenu.insertEntryTemplate': 'Insert entry template',
 	'view.iotoTaskView.noteMenu.markAllTasksDone': 'Mark all tasks as done',
 	'view.iotoTaskView.noteMenu.searchTasks': 'Search tasks',
+	'view.iotoTaskView.noteMenu.appearanceWithValue': 'Task view theme: {0}',
 	'view.iotoTaskView.deleteConfirm.confirm': 'Confirm delete',
 	'view.iotoTaskView.deleteConfirm.cancel': 'Cancel',
 	'view.iotoTaskView.deleteConfirm.aria': 'Delete confirmation',

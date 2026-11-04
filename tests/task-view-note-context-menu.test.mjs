@@ -89,6 +89,7 @@ function baseOptions(overrides = {}) {
 	return {
 		starred: false,
 		priority: null,
+		appearanceStyle: 'glass',
 		canDelete: true,
 		hasSections: true,
 		hasContinuations: true,
@@ -106,6 +107,7 @@ function baseOptions(overrides = {}) {
 		onInsertEntryTemplate: () => {},
 		onMarkAllTasksDone: () => {},
 		onSearchTasks: () => {},
+		onSetAppearanceStyle: () => {},
 		onDelete: () => {},
 		...overrides,
 	};
@@ -113,15 +115,15 @@ function baseOptions(overrides = {}) {
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// ---- 菜单构造（15 条） ----
+// ---- 菜单构造（19 条） ----
 
-test('未标记、无优先级：顶层 11 项 + 4 分隔线（含折叠组与视图动作组）', () => {
+test('未标记、无优先级：顶层 12 项 + 5 分隔线（含折叠组、视图动作组与主题组）', () => {
 	const menu = createFakeMenu();
 	buildNoteContextMenu(menu, baseOptions());
 
 	const entries = entriesOf(menu);
-	assert.equal(entries.length, 11);
-	assert.equal(menu.items.filter((entry) => entry.separator).length, 4);
+	assert.equal(entries.length, 12);
+	assert.equal(menu.items.filter((entry) => entry.separator).length, 5);
 	assert.deepEqual(
 		entries.map((entry) => entry.title),
 		[
@@ -135,6 +137,7 @@ test('未标记、无优先级：顶层 11 项 + 4 分隔线（含折叠组与�
 			'Insert entry template',
 			'Mark all tasks as done',
 			'Search tasks',
+			'Task view theme: Glass',
 			'Delete current task note',
 		],
 	);
@@ -196,8 +199,8 @@ test('无 setSubmenu 且无优先级：标题项禁用 + 平铺 4 档', () => {
 	buildNoteContextMenu(menu, baseOptions({ priority: null }));
 
 	const entries = entriesOf(menu);
-	assert.equal(entries.length, 15);
-	assert.equal(menu.items.filter((entry) => entry.separator).length, 4);
+	assert.equal(entries.length, 21);
+	assert.equal(menu.items.filter((entry) => entry.separator).length, 5);
 	assert.deepEqual(
 		entries.map((entry) => entry.title),
 		[
@@ -215,6 +218,12 @@ test('无 setSubmenu 且无优先级：标题项禁用 + 平铺 4 档', () => {
 			'Insert entry template',
 			'Mark all tasks as done',
 			'Search tasks',
+			'Task view theme: Glass',
+			'Glass (current)',
+			'Modern',
+			'Simple',
+			'Card (classic)',
+			'Morandi (low-glare)',
 			'Delete current task note',
 		],
 	);
@@ -226,8 +235,8 @@ test('无 setSubmenu 且已设优先级：平铺取消项与 4 档', () => {
 	buildNoteContextMenu(menu, baseOptions({ priority: 2 }));
 
 	const entries = entriesOf(menu);
-	assert.equal(entries.length, 16);
-	assert.equal(menu.items.filter((entry) => entry.separator).length, 5);
+	assert.equal(entries.length, 22);
+	assert.equal(menu.items.filter((entry) => entry.separator).length, 6);
 	assert.deepEqual(
 		entries.map((entry) => entry.title),
 		[
@@ -246,6 +255,12 @@ test('无 setSubmenu 且已设优先级：平铺取消项与 4 档', () => {
 			'Insert entry template',
 			'Mark all tasks as done',
 			'Search tasks',
+			'Task view theme: Glass',
+			'Glass (current)',
+			'Modern',
+			'Simple',
+			'Card (classic)',
+			'Morandi (low-glare)',
 			'Delete current task note',
 		],
 	);
@@ -310,8 +325,8 @@ test('无续写区：只隐藏续写项，Section 项仍在', () => {
 	buildNoteContextMenu(menu, baseOptions({ hasContinuations: false }));
 
 	const titles = entriesOf(menu).map((entry) => entry.title);
-	assert.equal(titles.length, 10);
-	assert.equal(menu.items.filter((entry) => entry.separator).length, 4);
+	assert.equal(titles.length, 11);
+	assert.equal(menu.items.filter((entry) => entry.separator).length, 5);
 	assert.ok(!titles.includes('Collapse / expand all continuations'));
 	assert.ok(titles.includes('Collapse / expand all sections'));
 });
@@ -321,13 +336,13 @@ test('无 Section：只隐藏 Section 项，续写项仍在', () => {
 	buildNoteContextMenu(menu, baseOptions({ hasSections: false }));
 
 	const titles = entriesOf(menu).map((entry) => entry.title);
-	assert.equal(titles.length, 10);
-	assert.equal(menu.items.filter((entry) => entry.separator).length, 4);
+	assert.equal(titles.length, 11);
+	assert.equal(menu.items.filter((entry) => entry.separator).length, 5);
 	assert.ok(!titles.includes('Collapse / expand all sections'));
 	assert.ok(titles.includes('Collapse / expand all continuations'));
 });
 
-test('两者都不可用：折叠组整组消失、视图动作组仍在（9 项 + 3 分隔线）', () => {
+test('两者都不可用：折叠组整组消失、视图动作组与主题组仍在（10 项 + 4 分隔线）', () => {
 	const menu = createFakeMenu();
 	buildNoteContextMenu(
 		menu,
@@ -345,6 +360,8 @@ test('两者都不可用：折叠组整组消失、视图动作组仍在（9 项
 		'Insert entry template',
 		'Mark all tasks as done',
 		'Search tasks',
+		'---',
+		'Task view theme: Glass',
 		'---',
 		'Delete current task note',
 	]);
@@ -391,7 +408,10 @@ test('折叠组后紧跟视图动作组：折叠组夹在核心任务与视图�
 	// 折叠组与视图动作组之间仍是**一条**分隔线
 	assert.equal(exportIndex, continuationsIndex + 2);
 	assert.equal(titles[continuationsIndex + 1], '---');
-	assert.equal(deleteIndex, searchIndex + 2);
+	// 主题组夹在「搜索任务」与删除之间（上下各一条分隔线）
+	assert.equal(titles[searchIndex + 1], '---');
+	assert.equal(titles[searchIndex + 2], 'Task view theme: Glass');
+	assert.equal(deleteIndex, searchIndex + 4);
 });
 
 // ---- 视图动作组（7 条，[[Plan-20261103-155712]] C4） ----
@@ -428,6 +448,7 @@ test('N2 视图动作组：图标分别为 image-down / clipboard-copy / layout-
 		'check',
 	);
 	assert.equal(entryByTitle(menu, 'Search tasks').item.icon, 'search');
+	assert.equal(entryByTitle(menu, 'Task view theme: Glass').item.icon, 'palette');
 });
 
 test('N3 canInsertEntryTemplate=false：插入项隐藏，其余三项仍在且只有一条前置分隔线', () => {
@@ -462,6 +483,8 @@ test('N4 exporting 置灰：导出 / 复制随 exporting 翻转，插入 / 标�
 	assert.equal(entryByTitle(busy, 'Insert entry template').item.disabled, false);
 	assert.equal(entryByTitle(busy, 'Mark all tasks as done').item.disabled, false);
 	assert.equal(entryByTitle(busy, 'Search tasks').item.disabled, false);
+	// 主题组与 exporting 无关（本菜单唯一的无条件项）
+	assert.equal(entryByTitle(busy, 'Task view theme: Glass').item.disabled, false);
 
 	const idle = createFakeMenu();
 	buildNoteContextMenu(idle, baseOptions({ exporting: false }));
@@ -471,6 +494,7 @@ test('N4 exporting 置灰：导出 / 复制随 exporting 翻转，插入 / 标�
 		'Insert entry template',
 		'Mark all tasks as done',
 		'Search tasks',
+		'Task view theme: Glass',
 	]) {
 		assert.equal(entryByTitle(idle, title).item.disabled, false, title);
 	}
@@ -535,7 +559,7 @@ test('N6 canMarkAllTasksDone=false：标记全部项隐藏，其余项与分隔�
 	}
 });
 
-test('N7 位置约束：新项紧跟插入模板，「搜索任务」仍压尾', () => {
+test('N7 位置约束：新项紧跟插入模板，「搜索任务」仍压视图动作组尾', () => {
 	const menu = createFakeMenu();
 	buildNoteContextMenu(menu, baseOptions());
 
@@ -543,11 +567,97 @@ test('N7 位置约束：新项紧跟插入模板，「搜索任务」仍压尾',
 	const insertIndex = titles.indexOf('Insert entry template');
 	assert.equal(titles.indexOf('Mark all tasks as done'), insertIndex + 1);
 	assert.equal(titles.indexOf('Search tasks'), insertIndex + 2);
-	// 两个写盘项都必须排在「删除当前任务」之前（搜索压尾规则的实质）
-	assert.ok(
-		titles.indexOf('Delete current task note') >
-			titles.indexOf('Search tasks'),
+	// 两个写盘项都必须排在「删除当前任务」之前（搜索压尾规则的实质）；
+	// 搜索之后只剩主题组（只写插件设置）与删除，末项仍是删除。
+	const rawTitles = titlesOf(menu);
+	const searchIndex = rawTitles.indexOf('Search tasks');
+	assert.equal(rawTitles[searchIndex + 1], '---');
+	assert.equal(rawTitles[searchIndex + 2], 'Task view theme: Glass');
+	assert.equal(rawTitles[rawTitles.length - 1], 'Delete current task note');
+});
+
+// ---- 主题组（4 条，[[Plan-20261104-130657]] §5.4） ----
+
+test('T1 主题子菜单：5 档顺序与设置页一致，当前档带 (current) 后缀', () => {
+	const menu = createFakeMenu();
+	buildNoteContextMenu(menu, baseOptions({ appearanceStyle: 'morandi' }));
+
+	const themeEntry = entryByTitle(
+		menu,
+		'Task view theme: Morandi (low-glare)',
 	);
+	assert.equal(themeEntry.item.icon, 'palette');
+	assert.deepEqual(titlesOf(themeEntry.item.submenu), [
+		'Glass',
+		'Modern',
+		'Simple',
+		'Card (classic)',
+		'Morandi (low-glare) (current)',
+	]);
+});
+
+test('T2 点击主题档位：回调收到对应值恰好一次（延迟执行），当前档也照常触发', async () => {
+	const received = [];
+	const menu = createFakeMenu();
+	buildNoteContextMenu(
+		menu,
+		baseOptions({
+			appearanceStyle: 'glass',
+			onSetAppearanceStyle: (style) => received.push(style),
+		}),
+	);
+
+	const submenu = entryByTitle(menu, 'Task view theme: Glass').item.submenu;
+	entryByTitle(submenu, 'Morandi (low-glare)').item.click();
+	entryByTitle(submenu, 'Glass (current)').item.click();
+	assert.deepEqual(received, []);
+	await wait(80);
+	assert.deepEqual(received, ['morandi', 'glass']);
+});
+
+test('T3 无 setSubmenu：父项禁用 + 5 档就地平铺，删除仍居末位', () => {
+	const menu = createFakeMenu({ withoutSubmenu: true });
+	buildNoteContextMenu(menu, baseOptions());
+
+	const rawTitles = titlesOf(menu);
+	const themeIndex = rawTitles.indexOf('Task view theme: Glass');
+	assert.equal(
+		entryByTitle(menu, 'Task view theme: Glass').item.disabled,
+		true,
+	);
+	assert.equal(rawTitles[themeIndex - 1], '---');
+	assert.deepEqual(rawTitles.slice(themeIndex + 1, themeIndex + 6), [
+		'Glass (current)',
+		'Modern',
+		'Simple',
+		'Card (classic)',
+		'Morandi (low-glare)',
+	]);
+	assert.equal(rawTitles[themeIndex + 6], '---');
+	assert.equal(rawTitles[rawTitles.length - 1], 'Delete current task note');
+});
+
+test('T4 无条件性：全部门禁关闭 + 导出中 → 主题组与 5 档仍在且可点', () => {
+	const menu = createFakeMenu();
+	buildNoteContextMenu(
+		menu,
+		baseOptions({
+			hasSections: false,
+			hasContinuations: false,
+			canInsertEntryTemplate: false,
+			canMarkAllTasksDone: false,
+			exporting: true,
+			canDelete: false,
+		}),
+	);
+
+	const themeEntry = entryByTitle(menu, 'Task view theme: Glass');
+	assert.equal(themeEntry.item.disabled, false);
+	const styles = entriesOf(themeEntry.item.submenu);
+	assert.equal(styles.length, 5);
+	for (const entry of styles) {
+		assert.equal(entry.item.disabled, false, entry.title);
+	}
 });
 
 // ---- 命中判定（2 条） ----

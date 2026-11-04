@@ -417,7 +417,7 @@ const zhCN = {
 	'settings.appearanceStyle.name': 'IOTOTask 视图外观',
 	'settings.appearanceStyle.desc':
 		'选择 IOTOTask 视图的视觉风格：玻璃（深色 Aurora 渐变 + 玻璃拟态，默认）、现代（无边框分层 + 大圆角 + 柔和投影，克制耐看）、简洁（白卡 + 浅灰表头带 + 发丝分隔线 + 药丸按钮）、卡片（经典扁平卡片）或莫兰迪（自带低饱和暖色板 + 宽行高，对干眼 / 散光更友好的无障碍外观）。',
-	'settings.appearanceStyle.glass': '玻璃（推荐）',
+	'settings.appearanceStyle.glass': '玻璃',
 	'settings.appearanceStyle.modern': '现代（Modern）',
 	'settings.appearanceStyle.simple': '简洁（Simple）',
 	'settings.appearanceStyle.card': '卡片（经典）',
@@ -813,6 +813,7 @@ const zhCN = {
 	'view.iotoTaskView.noteMenu.insertEntryTemplate': '插入条目模板',
 	'view.iotoTaskView.noteMenu.markAllTasksDone': '标记所有任务为完成',
 	'view.iotoTaskView.noteMenu.searchTasks': '搜索任务',
+	'view.iotoTaskView.noteMenu.appearanceWithValue': '任务视图主题：{0}',
 	'view.iotoTaskView.deleteConfirm.confirm': '确认删除',
 	'view.iotoTaskView.deleteConfirm.cancel': '取消',
 	'view.iotoTaskView.deleteConfirm.aria': '删除确认',

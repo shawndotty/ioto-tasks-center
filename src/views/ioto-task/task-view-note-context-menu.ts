@@ -11,6 +11,11 @@
 import { Menu } from 'obsidian';
 
 import { t } from '../../lang/helpter';
+import type { TaskViewAppearanceStyle } from '../../settings';
+import {
+	getTaskViewAppearanceStyleOptions,
+	isTaskViewAppearanceStyle,
+} from '../../settings-options';
 import {
 	readBooleanProperty,
 	readScalarProperty,
@@ -27,6 +32,7 @@ import type { TaskViewHost } from './task-view-host';
 import {
 	clearNotePriority,
 	deleteCurrentTask,
+	setAppearanceStyle,
 	setNotePriority,
 	toggleNoteStarred,
 } from './task-view-note-actions';
@@ -56,12 +62,16 @@ export interface NoteContextMenuOptions {
 	canInsertEntryTemplate: boolean;
 	/** 与命令面板 `itc-mark-all-tasks-done` 同一门禁（= `view.canMarkAllTasksDone()`） */
 	canMarkAllTasksDone: boolean;
+	/** 当前外观档（= `view.appearanceStyleProvider()`）：父项标题与「（当前）」后缀都用它 */
+	appearanceStyle: TaskViewAppearanceStyle;
 	onExportImage: () => void;
 	onCopyImage: () => void;
 	onInsertEntryTemplate: () => void;
 	/** 整篇写盘：直接委派 `view.markAllTasksDone()`，**不**在这层复制写盘管线 */
 	onMarkAllTasksDone: () => void;
 	onSearchTasks: () => void;
+	/** 只写插件设置（全局），不写笔记；菜单层不判「是否同一档」 */
+	onSetAppearanceStyle: (style: TaskViewAppearanceStyle) => void;
 	onDelete: () => void;
 }
 
@@ -216,7 +226,39 @@ export function buildNoteContextMenu(
 		);
 	}
 
-	// ⑥ 分隔线 + 删除当前任务（破坏性动作隔离，恒居末位）
+	// ⑥ 任务视图主题（[[Plan-20261104-130657]]）：视图级**外观**设置，单独成组，
+	//    夹在视图动作组与删除之间（用户指定位置）。
+	//    🔴 本菜单唯一的「无条件项」：不判 file / 可编辑 / 导出锁 / 折叠组，
+	//       恒显示、恒可点；当前档点了也安全（updater 同值早退）。
+	//    🔴 与「搜索压尾」不冲突：那条规则的实质是「写盘到**笔记**的项不要与删除
+	//       相邻」；本项只写插件 `data.json`（`settings-updaters`），不碰笔记。
+	menu.addSeparator();
+	let appearanceFlatten = false;
+	menu.addItem((item) => {
+		item.setTitle(
+			t('view.iotoTaskView.noteMenu.appearanceWithValue', [
+				getTaskViewAppearanceStyleOptions()[options.appearanceStyle],
+			]),
+		).setIcon('palette');
+		if (typeof item.setSubmenu !== 'function') {
+			appearanceFlatten = true;
+			item.setDisabled(true);
+			return;
+		}
+		try {
+			appendAppearanceItems(item.setSubmenu(), options, defer);
+		} catch {
+			appearanceFlatten = true;
+			item.setDisabled(true);
+		}
+	});
+	if (appearanceFlatten) {
+		// 🔴 **就地**平铺（不能照抄优先级的 append 到菜单尾）：本组后面只剩删除，
+		//    append 会把 5 档排到「删除当前任务」之后，破坏「删除恒居末位」。
+		appendAppearanceItems(menu, options, defer);
+	}
+
+	// ⑦ 分隔线 + 删除当前任务（破坏性动作隔离，恒居末位）
 	menu.addSeparator();
 	menu.addItem((item) =>
 		item
@@ -245,6 +287,27 @@ function appendPriorityItems(
 			item
 				.setTitle(formatPriorityMenuTitle(value, options.priority === value))
 				.onClick(() => defer(() => options.onSetPriority(value))),
+		);
+	}
+}
+
+function appendAppearanceItems(
+	target: Menu,
+	options: NoteContextMenuOptions,
+	defer: (run: () => void) => void,
+): void {
+	const labels = getTaskViewAppearanceStyleOptions();
+	// 顺序 = `getTaskViewAppearanceStyleOptions()` 的字面量顺序 = 设置页下拉顺序。
+	for (const [value, label] of Object.entries(labels)) {
+		if (!isTaskViewAppearanceStyle(value)) continue;
+		const title =
+			value === options.appearanceStyle
+				? `${label}${t('menu.currentSuffix')}`
+				: label;
+		target.addItem((item) =>
+			item
+				.setTitle(title)
+				.onClick(() => defer(() => options.onSetAppearanceStyle(value))),
 		);
 	}
 }
@@ -305,11 +368,13 @@ export function showNoteContextMenu(
 		exporting: view.isExporting,
 		canInsertEntryTemplate: view.canInsertEntryTemplate(),
 		canMarkAllTasksDone: view.canMarkAllTasksDone(),
+		appearanceStyle: view.appearanceStyleProvider(),
 		onExportImage: () => void view.exportAsImage(),
 		onCopyImage: () => void view.copyImageToClipboard(),
 		onInsertEntryTemplate: () => void view.insertEntryTemplate(),
 		onMarkAllTasksDone: () => void view.markAllTasksDone(),
 		onSearchTasks: () => view.revealSearch(),
+		onSetAppearanceStyle: (style) => void setAppearanceStyle(view, style),
 		onDelete: () => void deleteCurrentTask(view),
 	});
 	menu.showAtMouseEvent(event);

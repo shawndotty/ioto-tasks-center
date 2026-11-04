@@ -49,6 +49,15 @@ export interface TaskViewHost extends Component {
 	// ---- 只读 provider / 稳定引用（与 barrel 既有 readonly 口径一致）----
 	readonly supportsInlineEdit: () => boolean;
 	readonly appearanceStyleProvider: () => TaskViewAppearanceStyle;
+	/**
+	 * 落盘 + 广播外观设置（= `plugin.updateAppearanceStyle`）；
+	 * **≠ `applyAppearanceStyle`**（那个只切 `contentEl` 的类）。
+	 * 子模块只拿到「设置一档」这一个窄口，不接触整个 settings
+	 * （[[Plan-20261104-130657]] §三.C2）。
+	 */
+	readonly setAppearanceStyleSetting: (
+		style: TaskViewAppearanceStyle,
+	) => void;
 	readonly recentTaskCountProvider: () => number;
 	readonly exportOptionsProvider: () => TaskViewExportOptions;
 	readonly entryTemplateProvider: () => EntryTemplateConfig;
