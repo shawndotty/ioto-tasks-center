@@ -4,6 +4,7 @@ import { Notice, setIcon } from 'obsidian';
 import { t } from '../../lang/helpter';
 import {
 	buildSiblingTaskLine,
+	flattenTitleLineBreaks,
 	insertSoftBreak,
 	replaceTaskBody,
 	setTaskIndent,
@@ -127,8 +128,8 @@ export function onEditorEnter(
 	// Enter：光标处拆分（语义不变），拆出的兄弟同样落到整块之后
 	const selection = cm.state.selection.main;
 	const head = Math.min(Math.max(selection.head, 0), text.length);
-	const before = text.slice(0, head);
-	const after = text.slice(head);
+	const before = flattenTitleLineBreaks(text.slice(0, head));
+	const after = flattenTitleLineBreaks(text.slice(head));
 
 	// 延后一拍执行，避免在核心编辑器自己的 keymap 回调里同步卸载它。
 	window.setTimeout(() => {

@@ -267,6 +267,8 @@ const zhCN = {
 	'taskLinks.empty.external': '暂无外部链接',
 	'taskLinks.external.inVault': '库内',
 	'taskLinks.external.hostFile': '本地文件',
+	'taskLinks.external.localFileMobileUnsupported':
+		'手机端不支持用系统默认应用打开本地文件。',
 	'taskLinks.emptySearch': '当前搜索条件下没有匹配的笔记',
 	'taskLinks.empty.narrowed': '已收窄：{0}',
 	'taskLinks.empty.relaxHint': '关闭「{0}」后有 {1} 条结果',
@@ -854,8 +856,6 @@ const zhCN = {
 	'notice.iotoTaskView.repeatRemoved': '已取消重复标记。',
 	'notice.iotoTaskView.inlineEditUnavailable':
 		'当前 Obsidian 版本不支持内联编辑，请在 Markdown 中编辑。',
-	'notice.iotoTaskView.bodyMultilineRejected':
-		'任务正文不支持换行。可用 <br> 在标题内换行，或用 Shift+Enter 写补充说明。',
 	'notice.iotoTaskView.runTaskUnavailable': '未启用 IOTO Settings 插件，无法执行任务。',
 	'notice.exportTaskViewImage.generating': '正在生成图片…',
 	'notice.exportTaskViewImage.saved': '任务视图已导出到 {0}',

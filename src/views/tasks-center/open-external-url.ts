@@ -1,9 +1,13 @@
 /**
  * 把外部条目真正打开（[[Plan-20261102-113642]] §4.7）。
  *
- * 顺序固定：核心 Web viewer（需其「打开外部链接」设置开启）→ `window.open` 兜底。
- * - Web viewer 优先：真正的浏览器视图（地址栏 / 前进后退 / 缩放），且**不挑 scheme**，
- *   `file:` 也能进（[[Research-20261102-103251]] §3.2 实测）。
+ * 顺序固定：`file:` 前置分流 → 核心 Web viewer（需其「打开外部链接」设置开启）
+ * → `window.open` 兜底。
+ * - `file:` 前置分流：一律交系统默认应用（[[Plan-20261111-204341]] 方案 A），
+ *   不进 Web viewer / `<webview>`；手机端给 Notice，不静默失败。
+ * - Web viewer 优先：真正的浏览器视图（地址栏 / 前进后退 / 缩放）；Web viewer 本身
+ *   **不挑 scheme**、`file:` 也能进（[[Research-20261102-103251]] §3.2 实测），
+ *   但 `file:` 已被上面的前置分流截走，这里实际只处理 `http(s)`。
  *   但只在该插件的 `openExternalURLs` 设置开启时可用（[[Plan-20261102-192630]] §2.1）：
  *   核心 `openUrl()` 本体不检查该设置，必须我们自己设门禁；设置关闭时核心的
  *   `handleOpenUrl` 不截走 `window.open`，天然落系统浏览器。
@@ -15,8 +19,10 @@
  * 但没必要赌那个时序（§3.2 / R7）。设置关闭时无截走路径，兜底直达系统浏览器。
  */
 
-import type { App } from 'obsidian';
+import { Notice, Platform, type App } from 'obsidian';
 
+import { t } from '../../lang/helpter';
+import { isLocalFileUrl } from '../../tasks-center/external-links';
 import { toExternalOpenUrl } from '../ioto-task/external-link-url';
 
 /** Web viewer 不是公共 API（`app.internalPlugins` 不在 d.ts），只声明用到的那一小块。 */
@@ -37,6 +43,17 @@ export function isWebViewerOpenAllowed(
 }
 
 export function openExternalUrl(app: App, url: string): void {
+	// file: 一律交系统默认应用：主进程把 file: 交给 shell.openPath（macOS/Windows），
+	// 且 Web viewer 只拦截 http/https 的 open-url 事件，不会截走它。
+	if (isLocalFileUrl(url)) {
+		if (!Platform.isDesktopApp) {
+			new Notice(t('taskLinks.external.localFileMobileUnsupported'));
+			return;
+		}
+		window.open(toExternalOpenUrl(url));
+		return;
+	}
+
 	const viewer = getWebViewer(app);
 	if (viewer) {
 		try {
@@ -70,7 +87,7 @@ function getWebViewer(app: App): WebViewerPlugin | null {
 	if (!viewer || typeof (viewer as WebViewerPlugin).openUrl !== 'function') {
 		return null;
 	}
-	if (!isWebViewerOpenAllowed(viewer as WebViewerPlugin)) {
+	if (!isWebViewerOpenAllowed(viewer)) {
 		return null;
 	}
 	return viewer as WebViewerPlugin;

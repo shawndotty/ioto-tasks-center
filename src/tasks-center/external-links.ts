@@ -106,6 +106,11 @@ export function normalizeFileUrl(url: string): string {
 	return `file:${url.slice('file:'.length).replace(/\\/g, '/')}`;
 }
 
+/** `file:` 协议判据；解析层已归一化为 `file:///…` / `file:////…`，这里只需识别 scheme。 */
+export function isLocalFileUrl(url: string): boolean {
+	return /^file:/i.test(url);
+}
+
 /**
  * 解析正文里的外部链接：按**出现顺序**返回，同 URL 只留第一处（label 取第一次的）。
  *

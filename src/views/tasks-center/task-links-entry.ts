@@ -8,12 +8,15 @@
 
 import {
 	FileView,
+	Notice,
+	Platform,
 	TFile,
 	parseLinktext,
 	type App,
 	type WorkspaceLeaf,
 } from 'obsidian';
 
+import { t } from '../../lang/helpter';
 import type { IOTOTasksCenterView } from '../iotoTasksCenterView';
 import type {
 	IOTOTasksCenterSettings,
@@ -23,6 +26,7 @@ import type {
 	TaskLinkEntry,
 	TaskLinksRoots,
 } from '../../tasks-center/types';
+import { isLocalFileUrl } from '../../tasks-center/external-links';
 import {
 	isTaskNoteFile,
 	isTaskSwitchTargetFile,
@@ -168,7 +172,12 @@ function createPreviewLinkHooks(
 			};
 		},
 		openExternalLink: (href) => {
-			window.open(toExternalOpenUrl(href));
+			const url = toExternalOpenUrl(href);
+			if (isLocalFileUrl(url) && !Platform.isDesktopApp) {
+				new Notice(t('taskLinks.external.localFileMobileUnsupported'));
+				return;
+			}
+			window.open(url);
 		},
 	};
 }
@@ -176,7 +185,7 @@ function createPreviewLinkHooks(
 /**
  * 外部条目的打开路由（四个分支，顺序不能换）：
  * 1. `targetPath` 命中库内文件 → 与其它 tab 完全一致的打开（视图内预览 / 标签页）；
- * 2. 网页 / 库外 `file://` → Web viewer；
+ * 2. 网页 → Web viewer；`file:` → 系统默认应用（[[Plan-20261111-204341]] 方案 A）；
  * 3. Web viewer 不可用（关着 / 手机）→ 系统浏览器。
  * 映射命中但文件已不在（改名 / 移出库）→ 落到 2，不弹错。
  */

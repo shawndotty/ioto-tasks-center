@@ -29,6 +29,7 @@ import {
 	EXCALIDRAW_PLUGIN_ID,
 	isExcalidrawFile,
 } from '../tasks-center/excalidraw-target';
+import { isLocalFileUrl } from '../tasks-center/external-links';
 import { stripFrontmatter } from '../tasks-center/markdown-body';
 import { syncHeadingColorVars } from '../tasks-center/preview-theme-vars';
 import { resolveHitLine } from '../tasks-center/search-hit-line';
@@ -1321,15 +1322,15 @@ export class TaskLinksModal extends Modal {
 
 	/**
 	 * 这条外链能不能在这扇窗里看（§1.1 D1/D4）：
-	 * - 库内 `file://`（有 `targetPath`）不进网页帧：它属于库，内部预览（pdf.js /
-	 *   图片嵌入）本来就更好，且 V279 已真机验收过「单击直接打开」；
+	 * - 所有 `file:` 都不进网页帧，交系统默认应用（[[Plan-20261111-204341]] 方案 A）；
+	 *   库内文件仍先经 `targetPath` 分支走内部预览，不经过这里；
 	 * - 手机 / 无 `webview` 标签的宿主一票否决（`canEmbedWeb`，判据取预览体自己的 document）。
 	 */
 	private canPreviewExternal(entry: TaskLinkEntry): boolean {
 		const doc = this.previewBodyEl?.ownerDocument;
 		return (
 			entry.kind === 'external' &&
-			entry.targetPath === undefined &&
+			!isLocalFileUrl(entry.path) &&
 			Platform.isDesktopApp &&
 			doc !== undefined &&
 			canEmbedWeb(this.app, doc)

@@ -9,13 +9,19 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createJiti } from 'jiti';
 
-const jiti = createJiti(import.meta.url, { moduleCache: false });
+const jiti = createJiti(import.meta.url, {
+	moduleCache: false,
+	alias: {
+		obsidian: new URL('./stubs/obsidian.mjs', import.meta.url).pathname,
+	},
+});
 const {
 	parseExternalLinks,
 	normalizeFileUrl,
 	fileUrlToVaultPath,
 	getExternalHost,
 	getExternalFileName,
+	isLocalFileUrl,
 } = await jiti.import('../src/tasks-center/external-links.ts');
 const { filterTaskLinks } = await jiti.import(
 	'../src/tasks-center/task-links-index.ts',
@@ -127,6 +133,19 @@ test('去重：同 URL 只留第一条，label 取第一次出现的那处，顺
 		// 不排序：笔记里的先后有叙事价值。
 		['https://b.example.com', 'https://a.example.com'],
 	);
+});
+
+test('isLocalFileUrl：只有 file: 协议为真，大小写不敏感', () => {
+	assert.equal(isLocalFileUrl('file:///Users/a.docx'), true);
+	assert.equal(isLocalFileUrl('file:////server/share/a.docx'), true);
+	assert.equal(isLocalFileUrl('FILE:///D:/a.docx'), true);
+
+	assert.equal(isLocalFileUrl('https://example.com/a'), false);
+	assert.equal(isLocalFileUrl('http://example.com/a'), false);
+	assert.equal(isLocalFileUrl('mailto:a@b.com'), false);
+	assert.equal(isLocalFileUrl('obsidian://open?vault=x'), false);
+	assert.equal(isLocalFileUrl('C:/a.docx'), false);
+	assert.equal(isLocalFileUrl(''), false);
 });
 
 test('normalizeFileUrl：只把 file: 的反斜杠改成正斜杠', () => {

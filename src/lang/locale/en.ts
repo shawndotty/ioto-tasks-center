@@ -289,6 +289,8 @@ const en = {
 	'taskLinks.empty.external': 'No external links',
 	'taskLinks.external.inVault': 'In vault',
 	'taskLinks.external.hostFile': 'Local file',
+	'taskLinks.external.localFileMobileUnsupported':
+		'Opening local files with the system default app isn’t supported on mobile.',
 	'taskLinks.emptySearch': 'No notes match the current search',
 	'taskLinks.empty.narrowed': 'Narrowed: {0}',
 	'taskLinks.empty.relaxHint': 'Turn off “{0}” to see {1} results',
@@ -930,8 +932,6 @@ const en = {
 	'notice.iotoTaskView.repeatRemoved': 'Repeat mark removed.',
 	'notice.iotoTaskView.inlineEditUnavailable':
 		'Inline editing is unavailable in this Obsidian version. Edit in Markdown instead.',
-	'notice.iotoTaskView.bodyMultilineRejected':
-		'Task text does not support line breaks. Use <br> to break the title, or Shift+Enter for a continuation.',
 	'notice.iotoTaskView.runTaskUnavailable':
 		'The IOTO Settings plugin is not enabled; cannot run tasks.',
 	'notice.exportTaskViewImage.generating': 'Generating image…',

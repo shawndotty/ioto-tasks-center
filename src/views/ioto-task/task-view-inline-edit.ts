@@ -2,6 +2,7 @@ import { MarkdownRenderer, Notice } from 'obsidian';
 
 import { t } from '../../lang/helpter';
 import {
+	flattenTitleLineBreaks,
 	parseChecklistItems,
 	parseSections,
 	splitTaskLine,
@@ -241,16 +242,8 @@ export async function doCommitEdit(view: TaskViewHost): Promise<void> {
 		return;
 	}
 
-	const nextBody = handle.getValue();
+	const nextBody = flattenTitleLineBreaks(handle.getValue());
 	view.destroyActiveEditor();
-
-	if (nextBody.includes('\n')) {
-		new Notice(t('notice.iotoTaskView.bodyMultilineRejected'));
-		view.editingLine = null;
-		await view.reloadFromVault();
-		view.renderNote(view.data);
-		return;
-	}
 
 	const outcome = await commitTaskText(view.app, file, {
 		line,
@@ -387,11 +380,7 @@ export async function autosaveEdit(view: TaskViewHost): Promise<void> {
 		return;
 	}
 
-	const nextBody = handle.getValue();
-	// 与 `doCommitEdit` 同一守卫：换行会破坏任务行结构，交给最终提交去弹提示
-	if (nextBody.includes('\n')) {
-		return;
-	}
+	const nextBody = flattenTitleLineBreaks(handle.getValue());
 
 	view.autosaveRunning = true;
 	try {

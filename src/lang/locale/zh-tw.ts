@@ -267,6 +267,8 @@ const zhTW = {
 	'taskLinks.empty.external': '暫無外部連結',
 	'taskLinks.external.inVault': '庫內',
 	'taskLinks.external.hostFile': '本機檔案',
+	'taskLinks.external.localFileMobileUnsupported':
+		'手機端不支援用系統預設應用程式開啟本機檔案。',
 	'taskLinks.emptySearch': '目前搜尋條件下沒有符合的筆記',
 	'taskLinks.empty.narrowed': '已收窄：{0}',
 	'taskLinks.empty.relaxHint': '關閉「{0}」後有 {1} 條結果',
@@ -855,8 +857,6 @@ const zhTW = {
 	'notice.iotoTaskView.repeatRemoved': '已取消重複標記。',
 	'notice.iotoTaskView.inlineEditUnavailable':
 		'目前 Obsidian 版本不支援內嵌編輯，請在 Markdown 中編輯。',
-	'notice.iotoTaskView.bodyMultilineRejected':
-		'任務正文不支援換行。可用 <br> 在標題內換行，或用 Shift+Enter 寫補充說明。',
 	'notice.iotoTaskView.runTaskUnavailable': '未啟用 IOTO Settings 外掛，無法執行任務。',
 	'notice.exportTaskViewImage.generating': '正在產生圖片…',
 	'notice.exportTaskViewImage.saved': '任務檢視已匯出到 {0}',

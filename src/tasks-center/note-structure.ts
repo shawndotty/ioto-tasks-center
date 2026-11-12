@@ -74,6 +74,7 @@ export {
 	composeTaskLine,
 	replaceTaskBody,
 	SOFT_BREAK,
+	flattenTitleLineBreaks,
 	insertSoftBreak,
 	toggleTaskMarker,
 	markTaskLineDone,

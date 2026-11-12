@@ -3,9 +3,8 @@ import test from 'node:test';
 import { createJiti } from 'jiti';
 
 const jiti = createJiti(import.meta.url, { moduleCache: false });
-const { insertSoftBreak, replaceTaskBody, SOFT_BREAK } = await jiti.import(
-	'../src/tasks-center/note-structure.ts',
-);
+const { flattenTitleLineBreaks, insertSoftBreak, replaceTaskBody, SOFT_BREAK } =
+	await jiti.import('../src/tasks-center/note-structure.ts');
 
 test('SOFT_BREAK 是不带自闭合斜杠的字面 <br>', () => {
 	assert.equal(SOFT_BREAK, '<br>');
@@ -70,4 +69,26 @@ test('空串插入', () => {
 test('回归：replaceTaskBody 放行不含换行的 <br>，仍拒绝裸 \\n', () => {
 	assert.notEqual(replaceTaskBody('- [ ] a', 'a<br>b'), null);
 	assert.equal(replaceTaskBody('- [ ] a', 'a\nb'), null);
+});
+
+test('flattenTitleLineBreaks：裸换行 → 单个 <br>', () => {
+	assert.equal(flattenTitleLineBreaks('a\nb'), 'a<br>b');
+	assert.equal(flattenTitleLineBreaks('a\r\nb'), 'a<br>b');
+	assert.equal(flattenTitleLineBreaks('a\rb'), 'a<br>b');
+	assert.equal(flattenTitleLineBreaks('\na\n'), 'a');
+	assert.equal(flattenTitleLineBreaks('a\n\nb'), 'a<br>b');
+	assert.equal(flattenTitleLineBreaks('  a  \n  b  '), 'a<br>b');
+	assert.equal(flattenTitleLineBreaks('a<br>b'), 'a<br>b');
+	assert.equal(flattenTitleLineBreaks('a<br>\nb'), 'a<br><br>b');
+	assert.equal(flattenTitleLineBreaks(''), '');
+	assert.equal(flattenTitleLineBreaks('\n'), '');
+});
+
+test('flattenTitleLineBreaks：结果必然通过 replaceTaskBody 守卫', () => {
+	for (const input of ['a\nb', 'a\r\nb', '\na\n', 'a\n\nb', 'a<br>\nb']) {
+		assert.notEqual(
+			replaceTaskBody('- [ ] x', flattenTitleLineBreaks(input)),
+			null,
+		);
+	}
 });

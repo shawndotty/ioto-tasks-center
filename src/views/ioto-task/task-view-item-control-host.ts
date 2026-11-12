@@ -1,6 +1,7 @@
 import type { TFile } from 'obsidian';
 
 import {
+	flattenTitleLineBreaks,
 	replaceTaskBody,
 	taskBodyForEditor,
 } from '../../tasks-center/note-structure';
@@ -38,7 +39,8 @@ export function getItemControlHost(
 		line,
 		originalLine,
 		readBridgeLine: () =>
-			replaceTaskBody(originalLine, handle.getValue()) ?? originalLine,
+			replaceTaskBody(originalLine, flattenTitleLineBreaks(handle.getValue())) ??
+			originalLine,
 		readDiskLine: (index) => diskLines[index] ?? '',
 		commitBridgeLine: (nextLine) =>
 			commitFromItemControl(view, line, originalLine, nextLine),

@@ -169,6 +169,24 @@ export function replaceTaskBody(line: string, nextBody: string): string | null {
 export const SOFT_BREAK = '<br>';
 
 /**
+ * 单行标题的「裸换行 → `<br>`」归一化：语音听写 / 多行粘贴会把 `\n` 直接写进
+ * 标题编辑器（`Enter` / `Mod+Enter` 都被 keymap 接管，键盘输入不会产生裸换行）。
+ *
+ * 规则：CRLF/CR → LF；逐行 trim；丢空行；用 `<br>` 连接。已是 `<br>` 的文本原样保留。
+ */
+export function flattenTitleLineBreaks(value: string): string {
+	if (!value.includes('\n') && !value.includes('\r')) {
+		return value;
+	}
+	return value
+		.replace(/\r\n?/g, '\n')
+		.split('\n')
+		.map((line) => line.trim())
+		.filter((line) => line.length > 0)
+		.join(SOFT_BREAK);
+}
+
+/**
  * 在 `[from, to)` 处用 `<br>` 替换选区，返回新文本与新光标位。
  * 纯函数：零 obsidian / 零 DOM，`tests/` 直接 jiti 导入断言。
  *
