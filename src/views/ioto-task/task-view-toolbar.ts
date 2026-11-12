@@ -158,6 +158,12 @@ export function buildToolbar(view: TaskViewHost): void {
 
 	view.bodyEl = view.contentEl.createDiv({ cls: 'ioto-task-view__body' });
 	view.toolbarEl = toolbarEl;
+	// onOpen / setViewData 顺序不保证：建栏时按当前关键词回填输入框与展开态
+	// （[[Plan-20261112-153653]] Step 6；展开态不单独存，非空关键词即可推导）。
+	if (view.searchQuery !== '') {
+		input.value = view.searchQuery;
+		searchbarEl.removeClass('is-hidden');
+	}
 	refreshToolbarState(view);
 	view.refreshSearchNavState();
 }

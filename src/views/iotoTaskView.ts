@@ -91,6 +91,7 @@ import {
 import {
 	closeSearch,
 	highlightMatch,
+	hydrateSearchQuery,
 	isSearchOpen,
 	onSearchInput,
 	refreshSearchNavState,
@@ -495,8 +496,9 @@ export class IOTOTaskView extends TextFileView {
 	/** 工具栏「删除」入口（[[Plan-20261007-194826]]）：仅在有选中卡且未编辑时可见。 */
 	deleteTaskEl: HTMLButtonElement | null = null;
 	/**
-	 * 搜索关键词：**瞬态**，不进 `getState` / 不写 frontmatter / 关闭即归零
-	 * （[[Plan-20261006-161121]] §2.3a、§三.3）。
+	 * 搜索关键词：**按笔记路径镜像到 localStorage**（[[Plan-20261112-153653]]）。
+	 * 换文件 / 卸载保留记录，`closeSearch` 显式关闭才删；仍不进 `getState` / 不写
+	 * frontmatter（[[Plan-20261006-161121]] §三.3 的瞬态决定被 [[任务搜索结果留存]] 部分推翻）。
 	 */
 	searchQuery = '';
 	searchBarEl: HTMLElement | null = null;
@@ -592,6 +594,9 @@ export class IOTOTaskView extends TextFileView {
 			const pending = this.takePendingLeafFolds();
 			hydrateContinuationFolds(this, pending);
 			hydrateSectionFolds(this, pending);
+			// 搜索关键词同属「按笔记路径镜像」：必须在唯一一次 `renderNote` 之前灌回，
+			// 卡片构建期才拿得到正确的过滤词（[[Plan-20261112-153653]] D6）。
+			hydrateSearchQuery(this);
 		}
 		this.renderNote(data);
 	}

@@ -4,6 +4,12 @@ import { hasLiveEditor } from './task-view-editing-state';
 import { SEARCH_DEBOUNCE_MS } from './task-view-constants';
 import { queryCard } from './task-view-helpers';
 import { isCardInZoomedSection } from './task-view-section-zoom';
+import { createFoldStorage } from './task-view-fold-store';
+import {
+	dropSearchQuery,
+	loadSearchQuery,
+	saveSearchQuery,
+} from './task-view-search-store';
 import type { SearchHost } from './search-scope';
 
 /** Mod+F / 命令入口：显示搜索条并聚焦输入框（Q6 移动端复用它）。 */
@@ -80,10 +86,11 @@ export async function applySearchQuery(
 	await view.commitContinuationEdit();
 	await view.commitSectionTitleEdit();
 	view.searchQuery = value;
+	persistSearchQuery(view);
 	view.renderNote(view.data, { resetScroll: true });
 }
 
-/** 关闭 + 清空（`关闭` 按钮与 `Esc` 共用）。 */
+/** 关闭 + 清空 + **删持久化记录**（`关闭` 按钮与 `Esc` 共用）。 */
 export function closeSearch(view: TaskViewHost): void {
 	if (view.searchDebounce !== null) {
 		window.clearTimeout(view.searchDebounce);
@@ -91,6 +98,8 @@ export function closeSearch(view: TaskViewHost): void {
 	}
 	view.searchBarEl?.addClass('is-hidden');
 	view.refreshSearchToggleState();
+	// 显式关闭 = 唯一的删记录入口（换文件 / 卸载不删，见 `resetSearchState`）。
+	forgetSearchQuery(view);
 	if (view.searchQuery !== '' || (view.searchInputEl?.value ?? '') !== '') {
 		view.searchQuery = '';
 		if (view.searchInputEl) {
@@ -182,6 +191,9 @@ export function refreshSearchNavState(view: TaskViewHost): void {
 /**
  * 释放搜索瞬态：清 debounce 计时器、归零关键词、清输入框、收起搜索条。
  * **不重绘**（调用方按需决定）；用于销毁 / 清空视图（[[Plan-20261006-161121]] §2.3f）。
+ *
+ * 🔴 **不删持久化记录**：换文件 / 卸载 / 关视图都要保留，删键只在 `closeSearch`
+ * （[[Plan-20261112-153653]] D4）。
  */
 export function resetSearchState(view: TaskViewHost): void {
 	if (view.searchDebounce !== null) {
@@ -194,6 +206,44 @@ export function resetSearchState(view: TaskViewHost): void {
 	}
 	view.searchBarEl?.addClass('is-hidden');
 	view.refreshSearchToggleState();
+}
+
+/**
+ * 装载时按路径灌回关键词（`setViewData` 的 `clear === true` 分支、`renderNote` 之前）。
+ *
+ * 只碰状态与**已存在**的 DOM：工具栏可能还没建（`onOpen` 与 `setViewData` 的顺序不保证），
+ * 那种情况由 `buildToolbar` 末尾按 `searchQuery` 回填兜底（[[Plan-20261112-153653]] R2）。
+ */
+export function hydrateSearchQuery(view: TaskViewHost): void {
+	const storage = createFoldStorage(view.app);
+	const path = view.file?.path ?? '';
+	const query = storage && path ? (loadSearchQuery(storage, path) ?? '') : '';
+	view.searchQuery = query;
+	if (view.searchInputEl) {
+		view.searchInputEl.value = query;
+	}
+	if (query !== '') {
+		view.searchBarEl?.removeClass('is-hidden');
+	}
+	view.refreshSearchToggleState();
+}
+
+/** 关键词变更后落盘（无 localStorage API / 无文件路径 → 静默跳过）。 */
+export function persistSearchQuery(view: TaskViewHost): void {
+	const storage = createFoldStorage(view.app);
+	const path = view.file?.path;
+	if (storage && path) {
+		saveSearchQuery(storage, path, view.searchQuery);
+	}
+}
+
+/** 显式关闭（× / Esc）专用：删持久化记录。 */
+export function forgetSearchQuery(view: TaskViewHost): void {
+	const storage = createFoldStorage(view.app);
+	const path = view.file?.path;
+	if (storage && path) {
+		dropSearchQuery(storage, path);
+	}
 }
 
 /**

@@ -86,6 +86,10 @@ import {
 	renameContinuationFolds,
 	resolveAppId,
 } from './views/ioto-task/task-view-fold-store';
+import {
+	pruneSearchQueries,
+	renameSearchRecord,
+} from './views/ioto-task/task-view-search-store';
 import { installItemControlBridge } from './views/ioto-task/item-control-bridge';
 import {
 	IOTO_TASK_VIEW_HOVER_SOURCE_ID,
@@ -1262,10 +1266,11 @@ export default class IOTOTasksCenter extends Plugin {
 	}
 
 	/**
-	 * 续写折叠态 store 的两项生命周期维护（[[Plan-20261023-001403]] S4）：
-	 * 笔记重命名跟着搬记录（否则折叠态「丢在旧路径」），以及启动后清掉文件已不存在的死键。
+	 * 续写折叠态 / 搜索关键词 store 的两项生命周期维护（[[Plan-20261023-001403]] S4、
+	 * [[Plan-20261112-153653]] Step 7）：笔记重命名跟着搬记录（否则状态「丢在旧路径」），
+	 * 以及启动后清掉文件已不存在的死键。两类记录共用这一套维护。
 	 *
-	 * 清理放 `onLayoutReady`：别和首屏装载抢；`appId` 取不到就跳过（只是留死键，不影响折叠）。
+	 * 清理放 `onLayoutReady`：别和首屏装载抢；`appId` 取不到就跳过（只是留死键，不影响状态）。
 	 */
 	private registerFoldStoreMaintenance(): void {
 		this.registerEvent(
@@ -1273,6 +1278,7 @@ export default class IOTOTasksCenter extends Plugin {
 				const storage = createFoldStorage(this.app);
 				if (storage) {
 					renameContinuationFolds(storage, oldPath, file.path);
+					renameSearchRecord(storage, oldPath, file.path);
 				}
 			}),
 		);
@@ -1282,14 +1288,13 @@ export default class IOTOTasksCenter extends Plugin {
 			if (!storage || !appId || typeof window === 'undefined') {
 				return;
 			}
+			const storageKeys = Object.keys(window.localStorage);
+			const fileExists = (path: string): boolean =>
+				this.app.vault.getAbstractFileByPath(path) !== null;
 			// 🔴 必须先按本库 appId 过滤：同机 localStorage 里同时存在多个库的记录，
 			// 不筛会误删别的库（[[Plan-20261023-001403]] §0.1）。
-			pruneContinuationFolds(
-				storage,
-				appId,
-				Object.keys(window.localStorage),
-				(path) => this.app.vault.getAbstractFileByPath(path) !== null,
-			);
+			pruneContinuationFolds(storage, appId, storageKeys, fileExists);
+			pruneSearchQueries(storage, appId, storageKeys, fileExists);
 		});
 	}
 
