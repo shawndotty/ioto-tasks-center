@@ -55,6 +55,7 @@ import {
 } from './ioto-task/task-view-editing-state';
 import type {
 	TaskContinuationFold,
+	TaskHierarchyFold,
 	TaskNoteEditing,
 	TaskNoteFilters,
 	TaskNoteLinks,
@@ -123,6 +124,12 @@ import {
 	hydrateContinuationFolds,
 	toggleAllContinuationFolds as toggleAllContinuationFoldsFn,
 } from './ioto-task/task-view-continuation-fold';
+import {
+	buildSubtaskFoldController,
+	hasSubtaskFolds,
+	hydrateSubtaskFolds,
+	toggleAllSubtaskFolds as toggleAllSubtaskFoldsFn,
+} from './ioto-task/task-view-subtask-fold';
 import {
 	hasSectionFolds,
 	hydrateSectionFolds,
@@ -301,6 +308,11 @@ export class IOTOTaskView extends TextFileView {
 	 * 叶子态归零，「同一叶子换文件」的串态由 hydrate 的按路径取数挡住。
 	 */
 	continuationCollapsed = new Set<string>();
+	/**
+	 * 子任务层级折叠态（键 = `h:<indent>:<hash>:<ordinal>`，[[Plan-20261114-203739]] S3）。
+	 * **内存真源**；每次装载由 `hydrateSubtaskFolds` 按笔记路径从 store 灌回。
+	 */
+	subtasksCollapsed = new Set<string>();
 	/**
 	 * `state` 里带来的叶子级折叠键，等 hydrate 认领（一次性迁移用）。
 	 * 🔴 不能直接写进 `continuationCollapsed` / `collapsedSections`：`setState` 早于
@@ -594,6 +606,7 @@ export class IOTOTaskView extends TextFileView {
 			const pending = this.takePendingLeafFolds();
 			hydrateContinuationFolds(this, pending);
 			hydrateSectionFolds(this, pending);
+			hydrateSubtaskFolds(this);
 			// 搜索关键词同属「按笔记路径镜像」：必须在唯一一次 `renderNote` 之前灌回，
 			// 卡片构建期才拿得到正确的过滤词（[[Plan-20261112-153653]] D6）。
 			hydrateSearchQuery(this);
@@ -633,6 +646,7 @@ export class IOTOTaskView extends TextFileView {
 		this.lastLoadedText = '';
 		this.collapsedSections.clear();
 		this.continuationCollapsed.clear();
+		this.subtasksCollapsed.clear();
 	}
 
 	onunload(): void {
@@ -765,6 +779,13 @@ export class IOTOTaskView extends TextFileView {
 	getContinuationFold(): TaskContinuationFold {
 		return buildContinuationFoldController(this);
 	}
+	getSubtaskFold(): TaskHierarchyFold {
+		return buildSubtaskFoldController(this);
+	}
+	/** 当前笔记是否有任何「有子孙」的父任务（命令门禁，纯 `data` 解析不扫 DOM）。 */
+	canToggleAllSubtaskFolds(): boolean { return hasSubtaskFolds(this); }
+	/** 二态切换全文件全部子任务父卡；`false` = 无父任务（正常路径下门禁已挡）。 */
+	toggleAllSubtaskFolds(): boolean { return toggleAllSubtaskFoldsFn(this); }
 	/**
 	 * 当前笔记是否有任何续写区（命令门禁用，纯 `data` 解析不扫 DOM）。
 	 * 空集 → 命令从面板隐藏，而不是点了没反应（[[Plan-20261024-060243]] D7）。

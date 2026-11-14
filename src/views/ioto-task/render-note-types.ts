@@ -242,6 +242,18 @@ export interface TaskContinuationFold {
 	toggle(key: string, continuationEl: HTMLElement): void;
 }
 
+/**
+ * 子任务层级折叠控制器（由 `IOTOTaskView` 注入；缺省 = 不出箭头、不折叠）。
+ *
+ * 契约与 `TaskContinuationFold` 同构，只是作用对象是**父卡及其子孙卡**：
+ * 切换后由实现把结果写回 DOM（类 + aria + 隐藏集合，**不重绘**）。
+ */
+export interface TaskHierarchyFold {
+	isCollapsed(key: string): boolean;
+	/** 切换并把结果写回该父卡及其子孙（纯 DOM；不重绘）。 */
+	toggle(key: string, cardEl: HTMLElement): void;
+}
+
 /** 链接交互回调（由 `IOTOTaskView` 注入；只读态同样生效）。 */
 export interface TaskNoteLinks {
 	/** 打开双链：`newLeaf` = 核心同款叶子类型（`Keymap.isModEvent` 的结果） */

@@ -625,6 +625,22 @@ export default class IOTOTasksCenter extends Plugin {
 				return true;
 			},
 		});
+		// 批量折叠 / 展开当前任务笔记的全部子任务父卡（[[Plan-20261114-203739]] S6）。
+		// 二态一条命令；没有「有子孙」的父任务时从面板隐藏。
+		this.addCommand({
+			id: 'itc-toggle-all-subtask-folds',
+			name: t('command.toggleAllSubtaskFolds'),
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(IOTOTaskView);
+				if (!view?.canToggleAllSubtaskFolds()) {
+					return false;
+				}
+				if (!checking) {
+					view.toggleAllSubtaskFolds();
+				}
+				return true;
+			},
+		});
 		// 批量折叠 / 展开当前任务笔记的全部 Section（[[Plan-20261024-065930]]）。
 		// 二态一条命令；无 Section 时 `checkCallback` 返回 false → 命令从面板隐藏。
 		this.addCommand({

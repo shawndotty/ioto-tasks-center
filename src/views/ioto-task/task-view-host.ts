@@ -27,6 +27,7 @@ import type { SectionTitleEditorHandle } from './task-view-section-title-edit';
 import type { EditingKind } from './task-view-editing-state';
 import type {
 	TaskContinuationFold,
+	TaskHierarchyFold,
 	TaskNoteEditing,
 	TaskNoteFilters,
 } from './render-note-types';
@@ -88,6 +89,11 @@ export interface TaskViewHost extends Component {
 	 * （`task-view-fold-store.ts`），`clear()` 只负责把叶子态归零。
 	 */
 	continuationCollapsed: Set<string>;
+	/**
+	 * 子任务层级折叠态（键 = `h:<indent>:<hash>:<ordinal>`，见 `task-hierarchy-fold.ts`）。
+	 * **内存真源**；每次装载由 `hydrateSubtaskFolds` 按笔记路径从 store 灌回。
+	 */
+	subtasksCollapsed: Set<string>;
 	/**
 	 * `setState` 暂存的叶子级折叠键（一次性迁移），由两个 hydrate 认领后清空。
 	 * `path` = `state.file`，与当前文件不符时丢弃（防叶子复用串态）。
@@ -246,6 +252,8 @@ export interface TaskViewHost extends Component {
 	buildEditingController(): TaskNoteEditing;
 	/** 续写区折叠控制器（薄代理；缺省不作为 = 全展开且不渲染箭头）。 */
 	getContinuationFold(): TaskContinuationFold;
+	/** 子任务层级折叠控制器（薄代理；缺省不作为 = 不出箭头、不折叠）。 */
+	getSubtaskFold(): TaskHierarchyFold;
 	/** 取走 `setState` 暂存的叶子级折叠键（一次性迁移用）。 */
 	takePendingLeafFolds(): {
 		path: string;
@@ -281,10 +289,13 @@ export interface TaskViewHost extends Component {
 	 */
 	canToggleAllSectionFolds(): boolean;
 	canToggleAllContinuationFolds(): boolean;
+	canToggleAllSubtaskFolds(): boolean;
 	/** 二态切换全文件全部 Section（async：flush + 退聚焦 + 落盘 + 重绘）。 */
 	toggleAllSectionFolds(): Promise<boolean>;
 	/** 二态切换全文件全部续写区（同步：不重绘，只改集合与已渲染节点）。 */
 	toggleAllContinuationFolds(): boolean;
+	/** 二态切换全文件全部子任务父卡（同步：不重绘，只改集合与已渲染节点）。 */
+	toggleAllSubtaskFolds(): boolean;
 
 	// ---- 薄代理方法：命令就绪补偿 ----
 	canDispatch(commandId: string): boolean;

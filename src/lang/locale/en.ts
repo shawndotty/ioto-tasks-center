@@ -752,6 +752,7 @@ const en = {
 	'command.searchTaskView': 'Search in task view',
 	'command.toggleAllContinuationFolds':
 		'Collapse / expand all continuations',
+	'command.toggleAllSubtaskFolds': 'Toggle all subtask folds',
 	'command.toggleAllSectionFolds': 'Collapse / expand all sections',
 	'command.exportTaskViewImage': 'Export task view as image',
 	'command.copyTaskViewImage': 'Copy task view image to clipboard',
@@ -785,6 +786,9 @@ const en = {
 	'view.iotoTaskView.continuationCollapse': 'Collapse continuation',
 	'view.iotoTaskView.continuationExpand': 'Expand continuation',
 	'view.iotoTaskView.continuationCollapsedSummary': 'Continuation · {0} lines',
+	'view.iotoTaskView.subtaskCollapse': 'Collapse subtasks ({0} items)',
+	'view.iotoTaskView.subtaskExpand': 'Expand subtasks ({0} items)',
+	'view.iotoTaskView.subtaskCount': '{0} items',
 	'view.iotoTaskView.selectedHint':
 		'Selected: Enter to edit · Del to delete · ↑↓ to move · Cmd+Enter to toggle · Cmd+↑↓ to jump',
 	'view.iotoTaskView.selectedHintMobile':

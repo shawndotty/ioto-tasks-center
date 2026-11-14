@@ -39,6 +39,8 @@ export type FoldRecord = {
 	v: number;
 	continuations: string[];
 	sections?: string[];
+	/** 子任务折叠键（`h:<indent>:<hash>:<ordinal>`）。optional 且不补空，理由同 `sections`。 */
+	tasks?: string[];
 };
 
 export function foldStoreKey(path: string): string {
@@ -83,6 +85,7 @@ export function readFoldRecordFull(raw: unknown): FoldRecord | null {
 		v?: unknown;
 		continuations?: unknown;
 		sections?: unknown;
+		tasks?: unknown;
 	};
 	if (record.v !== FOLD_STORE_VERSION || !Array.isArray(record.continuations)) {
 		return null;
@@ -93,6 +96,9 @@ export function readFoldRecordFull(raw: unknown): FoldRecord | null {
 	};
 	if (Array.isArray(record.sections)) {
 		full.sections = normalizeKeys(record.sections);
+	}
+	if (Array.isArray(record.tasks)) {
+		full.tasks = normalizeKeys(record.tasks);
 	}
 	return full;
 }
@@ -113,6 +119,11 @@ export function readFoldSections(raw: unknown): string[] | null {
 	return readFoldRecordFull(raw)?.sections ?? null;
 }
 
+/** 只取子任务键；缺 `tasks` 字段返回 `null`（= 无记录，理由同 `readFoldSections`）。 */
+export function readFoldTasks(raw: unknown): string[] | null {
+	return readFoldRecordFull(raw)?.tasks ?? null;
+}
+
 /** 读一个笔记的续写区记录；`null` = 从没写过。 */
 export function loadContinuationFolds(
 	storage: FoldStorageLike,
@@ -127,6 +138,14 @@ export function loadSectionFolds(
 	path: string,
 ): string[] | null {
 	return readFoldSections(loadRawRecord(storage, path));
+}
+
+/** 读一个笔记的子任务记录；`null` = 从没写过。 */
+export function loadSubtaskFolds(
+	storage: FoldStorageLike,
+	path: string,
+): string[] | null {
+	return readFoldTasks(loadRawRecord(storage, path));
 }
 
 /** 整条记录落盘（写失败静默吞掉：只影响持久化，不影响本次折叠）。 */
@@ -152,7 +171,11 @@ function writeFoldRecord(
 function patchFoldRecord(
 	storage: FoldStorageLike,
 	path: string,
-	patch: { continuations?: readonly string[]; sections?: readonly string[] },
+	patch: {
+		continuations?: readonly string[];
+		sections?: readonly string[];
+		tasks?: readonly string[];
+	},
 ): void {
 	const full = readFoldRecordFull(loadRawRecord(storage, path));
 	const base: FoldRecord = full ?? {
@@ -164,6 +187,9 @@ function patchFoldRecord(
 	}
 	if (patch.sections !== undefined) {
 		base.sections = normalizeKeys(patch.sections);
+	}
+	if (patch.tasks !== undefined) {
+		base.tasks = normalizeKeys(patch.tasks);
 	}
 	writeFoldRecord(storage, path, base);
 }
@@ -186,6 +212,29 @@ export function saveSectionFolds(
 	keys: readonly string[],
 ): void {
 	patchFoldRecord(storage, path, { sections: keys });
+}
+
+/** 整份子任务镜像落盘（同上：显式展开要留下 `[]`，不是删键）。 */
+export function saveSubtaskFolds(
+	storage: FoldStorageLike,
+	path: string,
+	keys: readonly string[],
+): void {
+	patchFoldRecord(storage, path, { tasks: keys });
+}
+
+/**
+ * 子任务折叠态的 hydrate 取数口（无 legacy，无交集清理）：
+ * - 有记录（含 `[]`）→ 以记录为准；
+ * - 无记录 → `[]` 且**不写键**。
+ *
+ * 改父任务标题会换键，旧键成为无引用数据；无害，且下次 rename / prune 一并清理。
+ */
+export function resolveSubtaskFolds(
+	storage: FoldStorageLike,
+	path: string,
+): string[] {
+	return loadSubtaskFolds(storage, path) ?? [];
 }
 
 /**

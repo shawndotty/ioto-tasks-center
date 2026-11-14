@@ -41,8 +41,16 @@ import {
 import type {
 	TaskCardDrag,
 	TaskContinuationFold,
+	TaskHierarchyFold,
 	TaskNoteEditing,
 } from './render-note-types';
+import {
+	SUBTASK_COLLAPSED_CLASS,
+	SUBTASK_COUNT_CLASS,
+	SUBTASK_HIDDEN_CLASS,
+	SUBTASK_TOGGLE_CLASS,
+	type SubtaskRenderNode,
+} from './task-hierarchy-fold';
 
 function truncateLabel(text: string, maxLength = 40): string {
 	const trimmed = text.trim();
@@ -77,6 +85,15 @@ export function renderChecklistGroup(options: {
 	 * 缺省语义让旧调用 / 单测与「折叠前」零差异（[[Plan-20261022-232148]] §0-8）。
 	 */
 	continuationFold?: TaskContinuationFold;
+	/**
+	 * 子任务折叠数据：行号 → 本次渲染的父卡节点（只有「可见且有可见子孙」才出现）。
+	 * 缺省 = 不出箭头、不加隐藏类（旧调用零差异）。
+	 */
+	subtaskNodes?: Map<number, SubtaskRenderNode>;
+	/** 本次渲染需要隐藏的子孙行号（由折叠态父卡派生）。 */
+	hiddenSubtaskLines?: Set<number>;
+	/** 子任务折叠控制器（缺省 = 不出箭头、不折叠）。 */
+	hierarchyFold?: TaskHierarchyFold;
 }): void {
 	const {
 		app,
@@ -91,6 +108,9 @@ export function renderChecklistGroup(options: {
 		cardDrag,
 		scrollEl,
 		continuationFold,
+		subtaskNodes,
+		hiddenSubtaskLines,
+		hierarchyFold,
 	} = options;
 	const listEl = bodyEl.createEl('ul', { cls: 'ioto-task-view__checklist' });
 
@@ -112,6 +132,7 @@ export function renderChecklistGroup(options: {
 		) {
 			continue;
 		}
+		const subtaskNode = subtaskNodes?.get(item.line);
 		const cardEl = listEl.createEl('li', {
 			cls: 'ioto-task-view__card',
 			attr: {
@@ -120,10 +141,32 @@ export function renderChecklistGroup(options: {
 				'data-indent': String(item.indentLevel),
 				// 身份键（源码文本，非渲染产物）：供最近任务进出场 diff。
 				'data-task-key': item.text,
+				// 子任务折叠契约（attr 只在建元素时生效，事后补要走 setAttribute）。
+				'data-fold-key': subtaskNode?.key ?? null,
+				'data-subtask-count': subtaskNode
+					? String(subtaskNode.count)
+					: null,
+				'data-sub-lines': subtaskNode
+					? subtaskNode.lines.join(',')
+					: null,
+				'data-sub-force': subtaskNode
+					? subtaskNode.forced
+						? '1'
+						: '0'
+					: null,
 				// 只读态不参与焦点：否则方向键会在别的视图里也响应
 				tabindex: editing.enabled ? '-1' : null,
 			},
 		});
+		if (subtaskNode) {
+			cardEl.addClass('has-subtasks');
+			if (subtaskNode.effectiveCollapsed) {
+				cardEl.addClass(SUBTASK_COLLAPSED_CLASS);
+			}
+		}
+		if (hiddenSubtaskLines?.has(item.line) === true) {
+			cardEl.addClass(SUBTASK_HIDDEN_CLASS);
+		}
 		// 首绘选中态：锚点 + 多选成员（[[Plan-20261101-054951]] §四.3d）
 		if (
 			editing.selectedLine === item.line ||
@@ -195,6 +238,48 @@ export function renderChecklistGroup(options: {
 		// （[[Discuss-20261006-183552]] §一.2），同步跑即可命中；入参直接取已透传到卡片层的
 		// `visibilityCtx.queryTokens`——与过滤判据同源，无需新增透传字段。
 		applySearchHighlight(textEl, visibilityCtx.queryTokens);
+
+		// 子任务折叠：父卡左槽位箭头 + 折叠态「N 项」计数条。
+		// 箭头必须绝对定位、落在卡片第一个子元素（`prepend`）；计数条建在
+		// `textEl` 之后，靠 CSS `order: 0` 排在正文与勾选框之间。
+		if (subtaskNode && hierarchyFold) {
+			const countLabel = String(subtaskNode.count);
+			const labelCollapsed = t('view.iotoTaskView.subtaskExpand', [countLabel]);
+			const labelExpanded = t('view.iotoTaskView.subtaskCollapse', [countLabel]);
+			const expandedLabel = subtaskNode.effectiveCollapsed
+				? labelCollapsed
+				: labelExpanded;
+
+			cardEl.createEl('span', {
+				cls: SUBTASK_COUNT_CLASS,
+				text: t('view.iotoTaskView.subtaskCount', [countLabel]),
+				attr: { 'aria-hidden': 'true' },
+			});
+
+			const toggleEl = cardEl.createEl('button', {
+				cls: SUBTASK_TOGGLE_CLASS,
+				attr: {
+					type: 'button',
+					'aria-expanded': subtaskNode.effectiveCollapsed ? 'false' : 'true',
+					'aria-label': expandedLabel,
+					title: expandedLabel,
+					// 两条文案都预先挂在 DOM 上，供纯模块切换（避免纯模块引 i18n）
+					'data-label-collapsed': labelCollapsed,
+					'data-label-expanded': labelExpanded,
+				},
+			});
+			setIcon(toggleEl, 'right-triangle');
+			// 🔴 不 preventDefault 会让焦点落到按钮上，卡片选中态的 ↑↓ / Enter 失灵。
+			toggleEl.addEventListener('mousedown', (event) => {
+				event.preventDefault();
+			});
+			toggleEl.addEventListener('click', (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				hierarchyFold.toggle(subtaskNode.key, cardEl);
+			});
+			cardEl.prepend(toggleEl);
+		}
 
 		// 编辑入口挂在卡片本体（li）而非正文区：空条目正文区高度为 0，挂正文区会命中不到
 		// （[[Research-20261003-091331]] §四，[[Plan-20261003-094145]] §5.5）。整张卡片

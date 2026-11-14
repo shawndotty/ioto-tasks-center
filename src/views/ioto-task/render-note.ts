@@ -32,11 +32,13 @@ import {
 import type {
 	TaskCardDrag,
 	TaskContinuationFold,
+	TaskHierarchyFold,
 	TaskNoteEditing,
 	TaskNoteFilters,
 	TaskNoteLinks,
 	TaskSectionDrag,
 } from './render-note-types';
+import { buildSubtaskKeyIndex } from './task-hierarchy-fold';
 
 export interface RenderTaskNoteOptions {
 	app: App;
@@ -71,6 +73,10 @@ export interface RenderTaskNoteOptions {
 	 * 续写区折叠控制器。缺省 = 全展开且不渲染箭头（旧调用 / 只读降级零差异）。
 	 */
 	continuationFold?: TaskContinuationFold;
+	/**
+	 * 子任务层级折叠控制器。缺省 = 不出箭头、不折叠（旧调用零差异）。
+	 */
+	hierarchyFold?: TaskHierarchyFold;
 }
 
 export function renderTaskNote(options: RenderTaskNoteOptions): void {
@@ -83,6 +89,8 @@ export function renderTaskNote(options: RenderTaskNoteOptions): void {
 	const recentTaskCount = options.recentTaskCount ?? 3;
 	const searchQuery = options.searchQuery ?? '';
 	const sections = parseSections(content);
+	// 全文算一次：层级 / 键与过滤开关无关，渲染期只做可见性门控。
+	const subtaskIndex = buildSubtaskKeyIndex(content);
 	const scrollEl = containerEl.createDiv({ cls: 'ioto-task-view__scroll' });
 	reportScrollToMobileNavbar(options.app, scrollEl);
 	attachTaskNoteLinkDelegates(scrollEl, options.links);
@@ -102,6 +110,8 @@ export function renderTaskNote(options: RenderTaskNoteOptions): void {
 			filters,
 			recentTaskCount,
 			searchQuery,
+			subIndex: subtaskIndex,
+			hierarchyFold: options.hierarchyFold,
 		});
 	}
 

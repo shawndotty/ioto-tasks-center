@@ -35,11 +35,16 @@ import { renderChecklistGroup, renderMarkdownChunk } from './render-checklist-ca
 import type {
 	TaskCardDrag,
 	TaskContinuationFold,
+	TaskHierarchyFold,
 	TaskNoteEditing,
 	TaskNoteFilters,
 	TaskNoteLinks,
 	TaskSectionDrag,
 } from './render-note-types';
+import type {
+	SubtaskKeyIndex,
+	SubtaskRenderNode,
+} from './task-hierarchy-fold';
 
 interface RenderSectionOptions {
 	app: App;
@@ -62,6 +67,10 @@ interface RenderSectionOptions {
 	cardDrag?: TaskCardDrag;
 	/** 续写区折叠控制器（缺省 = 全展开且不渲染箭头） */
 	continuationFold?: TaskContinuationFold;
+	/** 子任务层级折叠控制器（缺省 = 不出箭头、不折叠） */
+	hierarchyFold?: TaskHierarchyFold;
+	/** 全文层级索引（缺省 = 不出箭头） */
+	subIndex?: SubtaskKeyIndex;
 }
 
 /**
@@ -243,6 +252,8 @@ export function renderSection(options: RenderSectionOptions): void {
 		searchQuery: options.searchQuery,
 		cardDrag: options.cardDrag,
 		continuationFold: options.continuationFold,
+		hierarchyFold: options.hierarchyFold,
+		subIndex: options.subIndex,
 	});
 }
 
@@ -482,6 +493,10 @@ function renderSectionBody(options: {
 	cardDrag?: TaskCardDrag;
 	/** 续写区折叠控制器（缺省 = 全展开且不渲染箭头） */
 	continuationFold?: TaskContinuationFold;
+	/** 子任务层级折叠控制器（缺省 = 不出箭头、不折叠） */
+	hierarchyFold?: TaskHierarchyFold;
+	/** 全文层级索引（缺省 = 不出箭头） */
+	subIndex?: SubtaskKeyIndex;
 }): void {
 	const {
 		app,
@@ -497,6 +512,8 @@ function renderSectionBody(options: {
 		searchQuery,
 		cardDrag,
 		continuationFold,
+		hierarchyFold,
+		subIndex,
 	} = options;
 	const lines = content.split(/\r?\n/);
 	const bodyStartLine =
@@ -577,6 +594,51 @@ function renderSectionBody(options: {
 		return;
 	}
 
+	// 子任务折叠：键来自全文索引，本层只做**可见性门控** —— 只有「可见且有可见子孙」
+	// 的父卡出箭头，隐藏只从这些父卡派生（父卡被过滤时不出现悬空隐藏）。
+	const subtaskNodes = new Map<number, SubtaskRenderNode>();
+	const hiddenSubtaskLines = new Set<number>();
+	if (subIndex && hierarchyFold) {
+		const visibleLines = new Set(
+			items
+				.filter((item) => isCardVisible(toVisibility(item), visibilityCtx))
+				.map((item) => item.line),
+		);
+		for (const item of items) {
+			if (!visibleLines.has(item.line)) {
+				continue;
+			}
+			const node = subIndex.nodeByLine.get(item.line);
+			if (!node) {
+				continue;
+			}
+			// 被过滤掉的子卡不能算进计数 / 折叠集合，否则箭头数与折叠效果对不上。
+			const lines = node.descendants.filter((line) => visibleLines.has(line));
+			if (lines.length === 0) {
+				continue;
+			}
+			const forced =
+				queryActive ||
+				(editing.keepVisibleLine != null &&
+					lines.includes(editing.keepVisibleLine));
+			const effectiveCollapsed =
+				!forced && hierarchyFold.isCollapsed(node.key);
+			subtaskNodes.set(item.line, {
+				line: item.line,
+				key: node.key,
+				lines,
+				count: lines.length,
+				effectiveCollapsed,
+				forced,
+			});
+			if (effectiveCollapsed) {
+				for (const line of lines) {
+					hiddenSubtaskLines.add(line);
+				}
+			}
+		}
+	}
+
 	let lineIndex = bodyStartLine;
 	while (lineIndex <= section.endLine) {
 		const item = itemByLine.get(lineIndex);
@@ -609,6 +671,9 @@ function renderSectionBody(options: {
 				cardDrag,
 				scrollEl,
 				continuationFold,
+				subtaskNodes,
+				hiddenSubtaskLines,
+				hierarchyFold,
 			});
 			continue;
 		}

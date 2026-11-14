@@ -217,6 +217,8 @@ const TRANSIENT_CLASSES = [
 	'is-zoomed', // 新增：还原被抬高的高度
 	'is-section-zoomed', // 「只看本节」：导出仍拍全部章节（与卡片放大同口径）
 	'is-continuation-collapsed', // 续写区折叠：导出图里正文自动可见、占位条自动隐藏
+	'is-subtasks-hidden', // 子任务折叠：导出图里子孙卡全部展开
+	'is-subtasks-collapsed', // 子任务折叠：导出图里箭头回到展开、计数条自动隐藏
 	'is-marquee', // 框选期禁选类（[[Plan-20261101-054951]] §四.步骤 7）
 	'is-selection-anchor', // 多选锚点描边：导出不进图（与 `is-selected` 同口径）
 ];

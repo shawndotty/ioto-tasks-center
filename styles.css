@@ -3835,7 +3835,7 @@ button.ioto-task-view__section-add-btn:not(.clickable-icon) {
 	padding: var(--ioto-tv-pad-y) var(--ioto-tv-pad-x);
 	/* 正文左缘 = Section 标题左缘（[[Report-20261017-110130]]）。
 	   手柄绝对定位居中在这段留白里，不再额外占位，故这里只留 text-start 一份。 */
-	padding-inline-start: var(--ioto-tv-card-text-start);
+	padding-inline-start: var(--ioto-tv-card-pad-start, var(--ioto-tv-card-text-start));
 	background: var(--ioto-tv-bg);
 	border: 1px solid var(--ioto-tv-border);
 	border-inline-start: 3px solid var(--ioto-tv-accent);
@@ -4520,6 +4520,162 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 	}
 }
 
+/* ── 子任务层级折叠（[[Plan-20261114-203739]]）────────────────────────
+   父卡左槽位箭头 + 折叠态「N 项」计数条；折叠 = 纯 DOM `display:none` 子孙卡。
+   槽位令牌 `--ioto-tv-card-pad-start` 只在有子任务的行抬高，数值 / 几何见计划 S5。
+   箭头旋转口径**逐字照抄续写区**：`right-triangle` 原生朝下，0° = 展开，
+   `-90°` = 朝右 = 折叠（RTL 由 `--direction` 翻转）。 */
+
+.ioto-task-view {
+	--ioto-tv-sub-fold-size: 14px;
+}
+
+/* 父行：槽位取「主题原值」与「箭头 + 手柄」的较大者。只在有子任务的行生效。 */
+.ioto-task-view__card.has-subtasks {
+	--ioto-tv-card-pad-start: max(var(--ioto-tv-card-text-start), 32px);
+}
+
+/* 手机：箭头 18 + 手柄 30 = 48。写在卡片自身（0,3,0），压过上面的 0,2,0。 */
+.is-phone .ioto-task-view__card.has-subtasks {
+	--ioto-tv-card-pad-start: max(var(--ioto-tv-card-text-start), 48px);
+}
+
+/* 手柄在父行右移：起点 = pad-start − grip-size；特异性 (0,3,0) > 基线 (0,2,1)。 */
+.ioto-task-view__card.has-subtasks .ioto-task-view__card-drag-handle {
+	inset-inline-start: calc(
+		var(--ioto-tv-card-pad-start, var(--ioto-tv-card-text-start))
+		- var(--ioto-tv-grip-size)
+	);
+}
+
+.ioto-task-view__card > .ioto-task-view__subtask-toggle {
+	position: absolute;
+	inset-inline-start: 0; /* 绝对定位的包含块是卡片 padding box，正好在 3px 强调条内侧 */
+	width: var(--ioto-tv-sub-fold-size);
+	height: var(--ioto-tv-sub-fold-size);
+	/* 与手柄同轴：把图标中心对到首行行盒中心 */
+	top: calc(
+		var(--ioto-tv-pad-y)
+		+ (max(1lh, var(--ioto-tv-card-row-min)) - var(--ioto-tv-sub-fold-size)) / 2
+	);
+	left: 5px;
+	padding: 0;
+	border: none;
+	background: transparent;
+	box-shadow: none;
+	color: var(--nav-collapse-icon-color, var(--text-faint));
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0.35; /* 弱化常显：需求起点就是「看不到箭头」 */
+	cursor: pointer;
+	font-size: inherit;
+	line-height: inherit;
+	transition: opacity 100ms ease-in-out;
+}
+
+/* 空正文父卡：与手柄的 `:empty` 覆盖同口径 */
+.ioto-task-view__card:has(> .ioto-task-view__card-text:empty).has-subtasks
+	> .ioto-task-view__subtask-toggle {
+	top: calc(
+		var(--ioto-tv-pad-y)
+		+ (var(--ioto-tv-card-row-min) - var(--ioto-tv-sub-fold-size)) / 2
+	);
+}
+
+.ioto-task-view__subtask-toggle svg {
+	width: 10px;
+	height: 10px;
+	stroke-width: 4px;
+	transition: transform 100ms ease-in-out;
+	/* 展开 = 朝下；折叠 = 朝右（right-triangle 原生朝下，-90° 转右） */
+	transform: rotate(0deg);
+}
+
+/* hover / 聚焦 / 折叠态提亮 */
+@media (hover: hover) {
+	.ioto-task-view__card:hover .ioto-task-view__subtask-toggle,
+	.ioto-task-view__card:focus-within .ioto-task-view__subtask-toggle {
+		opacity: 1;
+	}
+}
+
+.ioto-task-view__card.is-subtasks-collapsed > .ioto-task-view__subtask-toggle {
+	opacity: 1;
+}
+
+.ioto-task-view__card.is-subtasks-collapsed
+	> .ioto-task-view__subtask-toggle
+	svg {
+	transform: rotate(calc(var(--direction, 1) * -90deg));
+}
+
+.is-phone .ioto-task-view {
+	--ioto-tv-sub-fold-size: 18px; /* 无 hover：常显 + 18px 热区 */
+}
+
+.is-phone .ioto-task-view__card > .ioto-task-view__subtask-toggle {
+	opacity: 0.55;
+}
+
+.is-phone .ioto-task-view__card.is-subtasks-collapsed
+	> .ioto-task-view__subtask-toggle {
+	opacity: 1;
+}
+
+/* 计数条：只在折叠态出现；DOM 常驻，不重建、不改行高 */
+.ioto-task-view__subtask-count {
+	display: none;
+	order: 0;
+	flex: 0 0 auto;
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+	white-space: nowrap;
+}
+
+.ioto-task-view__card.is-subtasks-collapsed > .ioto-task-view__subtask-count {
+	display: inline-flex;
+}
+
+/* 隐藏子孙卡：特异性 (0,4,0)，压过各皮肤在卡片上的 display（同 .is-zoom-hidden 口径） */
+.ioto-task-view .ioto-task-view__body .ioto-task-view__card.is-subtasks-hidden {
+	display: none;
+}
+
+/* 编辑 / 放大 / 本节源码编辑 / 导出态隐藏箭头（与手柄同口径） */
+.ioto-task-view__card.is-editing .ioto-task-view__subtask-toggle,
+.ioto-task-view__card.is-zoomed .ioto-task-view__subtask-toggle,
+.ioto-task-view__scroll:has(> .ioto-task-view__section.is-editing)
+	.ioto-task-view__subtask-toggle,
+.ioto-task-view.is-exporting .ioto-task-view__subtask-toggle {
+	display: none;
+}
+
+/* 窄容器降级：12px 热区 + 隐藏计数条（classic 父行只多 2px）。
+   `.is-phone .ioto-task-view`（0,2,0）优先于本条的 `.ioto-task-view`（0,1,0），
+   手机端保持 18px 触控热区，只有桌面窄容器会降到 12px。 */
+@container ioto-task-view (max-width: 420px) {
+	.ioto-task-view {
+		--ioto-tv-sub-fold-size: 12px;
+	}
+
+	.ioto-task-view__card.has-subtasks {
+		--ioto-tv-card-pad-start: max(var(--ioto-tv-card-text-start), 30px);
+	}
+
+	.ioto-task-view__card.is-subtasks-collapsed
+		> .ioto-task-view__subtask-count {
+		display: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ioto-task-view__subtask-toggle,
+	.ioto-task-view__subtask-toggle svg {
+		transition: none;
+	}
+}
+
 .is-phone .ioto-task-view {
 	--ioto-tv-indent: 1.5em;
 	--ioto-tv-pad-x: 10px;
@@ -4660,7 +4816,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 	padding: var(--ioto-tv-pad-y) var(--ioto-tv-pad-x);
 	/* 简写会覆盖基线的 padding-inline-start，必须在此重新声明左侧留白，
 	   否则手机端编辑态 / 普通态文字左缘不同（[[Report-20261017-110130]]） */
-	padding-inline-start: var(--ioto-tv-card-text-start);
+	padding-inline-start: var(--ioto-tv-card-pad-start, var(--ioto-tv-card-text-start));
 }
 
 .is-phone .ioto-task-view__scroll {
@@ -4930,7 +5086,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 	padding: var(--ioto-tv-pad-y) calc(var(--ioto-tv-pad-x) + 4px);
 	/* 正文与 Section 标题同左缘（[[Report-20261017-110130]]）；
 	   左侧发光条由 ::before 绝对定位绘制，不占内容空间 */
-	padding-inline-start: var(--ioto-tv-card-text-start);
+	padding-inline-start: var(--ioto-tv-card-pad-start, var(--ioto-tv-card-text-start));
 	background: color-mix(in srgb, var(--text-normal) 5%, transparent);
 	border: 1px solid color-mix(in srgb, var(--text-normal) 7%, transparent);
 	border-radius: var(--ioto-tv-radius-inner);
@@ -5243,7 +5399,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 	padding: var(--ioto-tv-pad-y) 12px;
 	/* 正文与 Section 标题同左缘（[[Report-20261017-110130]]）；
 	   左侧强调胶囊由 ::before 绝对定位绘制，不占内容空间 */
-	padding-inline-start: var(--ioto-tv-card-text-start);
+	padding-inline-start: var(--ioto-tv-card-pad-start, var(--ioto-tv-card-text-start));
 	background: color-mix(in srgb, var(--text-normal) 3.5%, transparent);
 	border: none;
 	border-inline-start-width: 0;
@@ -5492,7 +5648,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 	padding: 10px 14px;
 	/* 正文与 Section 标题同左缘（[[Report-20261017-110130]]）：简明风格无左强调条，
 	   左侧留白只服务手柄图标 */
-	padding-inline-start: var(--ioto-tv-card-text-start);
+	padding-inline-start: var(--ioto-tv-card-pad-start, var(--ioto-tv-card-text-start));
 	background: transparent;
 	border: none;
 	border-inline-start-width: 0;
@@ -5786,7 +5942,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 	gap: 10px;
 	padding: var(--ioto-tv-pad-y) var(--ioto-tv-pad-x);
 	/* 正文与 Section 标题同左缘（[[Report-20261017-110130]]）：左侧 1px 描边已计入 text-start */
-	padding-inline-start: var(--ioto-tv-card-text-start);
+	padding-inline-start: var(--ioto-tv-card-pad-start, var(--ioto-tv-card-text-start));
 	background: var(--ioto-tv-m-row);
 	border: 1px solid var(--ioto-tv-m-border);
 	border-inline-start-width: 1px;                 /* 归零基线的 3px 强调线 */

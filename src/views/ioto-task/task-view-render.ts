@@ -160,6 +160,7 @@ export function renderNote(
 			recentTaskCount: view.recentTaskCountProvider(),
 			searchQuery: view.searchQuery,
 			continuationFold: view.getContinuationFold(),
+			hierarchyFold: view.getSubtaskFold(),
 		});
 		// 空白框选（[[Plan-20261101-054951]] §四.5a）：挂在渲染层之后而不是
 		// `render-note.ts`——那一层是纯渲染层（只拿 `TaskNoteEditing`，拿不到 view）。

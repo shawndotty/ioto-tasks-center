@@ -17,12 +17,16 @@ const {
 	foldStoreKey,
 	readFoldRecord,
 	readFoldSections,
+	readFoldTasks,
 	loadContinuationFolds,
 	saveContinuationFolds,
 	resolveContinuationFolds,
 	loadSectionFolds,
 	saveSectionFolds,
 	resolveSectionFolds,
+	loadSubtaskFolds,
+	saveSubtaskFolds,
+	resolveSubtaskFolds,
 	renameContinuationFolds,
 	listStoredFoldPaths,
 	pruneContinuationFolds,
@@ -413,4 +417,57 @@ test('resolveSectionFolds：无记录 + legacy → 认领并落盘；无 legacy 
 		[],
 	);
 	assert.equal(empty.map.size, 0);
+});
+
+test('tasks：写读往返，且与 continuations / sections 互不覆盖', () => {
+	const { app, map } = makeStorage();
+	saveContinuationFolds(app, 'A.md', ['c1']);
+	saveSectionFolds(app, 'A.md', ['s:1:目标']);
+	saveSubtaskFolds(app, 'A.md', ['h:0:1a2b3c4d:0', 'h:1:deadbeef:1']);
+	assert.deepEqual(loadSubtaskFolds(app, 'A.md'), [
+		'h:0:1a2b3c4d:0',
+		'h:1:deadbeef:1',
+	]);
+	assert.deepEqual(loadContinuationFolds(app, 'A.md'), ['c1']);
+	assert.deepEqual(loadSectionFolds(app, 'A.md'), ['s:1:目标']);
+
+	// 再写 empty 只清 tasks，另两份保持
+	saveSubtaskFolds(app, 'A.md', []);
+	assert.equal('tasks' in map.get(rawKey('aaa', 'A.md')), true);
+	assert.deepEqual(loadSubtaskFolds(app, 'A.md'), []);
+	assert.deepEqual(loadContinuationFolds(app, 'A.md'), ['c1']);
+	assert.deepEqual(loadSectionFolds(app, 'A.md'), ['s:1:目标']);
+});
+
+test('tasks：坏数据当无记录；旧记录读写后不凭空多出 tasks: []', () => {
+	const { app, map } = makeStorage();
+	const key = rawKey('aaa', 'A.md');
+	map.set(key, { v: 1, continuations: ['c1'], tasks: 'x' });
+	assert.equal(loadSubtaskFolds(app, 'A.md'), null);
+	assert.equal(readFoldTasks({ v: 1, continuations: [], tasks: 'x' }), null);
+
+	// 旧记录（无 tasks）：写一次续写区后仍没有 tasks 字段
+	map.set(key, { v: 1, continuations: ['c1'] });
+	saveContinuationFolds(app, 'A.md', ['c2']);
+	assert.equal('tasks' in map.get(key), false);
+	assert.equal(loadSubtaskFolds(app, 'A.md'), null);
+});
+
+test('resolveSubtaskFolds：有记录用记录；无记录 → [] 且不写键', () => {
+	const { app, map } = makeStorage();
+	assert.deepEqual(resolveSubtaskFolds(app, 'A.md'), []);
+	assert.equal(map.size, 0);
+
+	saveSubtaskFolds(app, 'B.md', []);
+	assert.deepEqual(resolveSubtaskFolds(app, 'B.md'), []);
+	saveSubtaskFolds(app, 'C.md', ['h:0:deadbeef:0']);
+	assert.deepEqual(resolveSubtaskFolds(app, 'C.md'), ['h:0:deadbeef:0']);
+});
+
+test('rename 搬整条记录：tasks 跟着走', () => {
+	const { app, map } = makeStorage();
+	saveSubtaskFolds(app, 'old.md', ['h:0:deadbeef:0']);
+	renameContinuationFolds(app, 'old.md', 'new.md');
+	assert.equal(map.has(rawKey('aaa', 'old.md')), false);
+	assert.deepEqual(loadSubtaskFolds(app, 'new.md'), ['h:0:deadbeef:0']);
 });

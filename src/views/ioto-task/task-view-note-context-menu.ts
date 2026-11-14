@@ -50,12 +50,15 @@ export interface NoteContextMenuOptions {
 	hasSections: boolean;
 	/** 有续写区（= `view.canToggleAllContinuationFolds()`）才出第二项 */
 	hasContinuations: boolean;
+	/** 有「有子孙」的父任务（= `view.canToggleAllSubtaskFolds()`）才出第三项 */
+	hasSubtasks: boolean;
 	onShowLinks: () => void;
 	onSetPriority: (value: TaskPriorityValue) => void;
 	onClearPriority: () => void;
 	onToggleStarred: () => void;
 	onToggleAllSections: () => void;
 	onToggleAllContinuations: () => void;
+	onToggleAllSubtasks: () => void;
 	/** 导出进行中（= `view.isExporting`）→ 导出 / 复制两项置灰 */
 	exporting: boolean;
 	/** 与命令面板 `itc-insert-entry-template` 同一门禁（= `view.canInsertEntryTemplate()`） */
@@ -145,6 +148,13 @@ export function buildNoteContextMenu(
 			title: t('command.toggleAllContinuationFolds'),
 			icon: 'fold-vertical',
 			run: options.onToggleAllContinuations,
+		});
+	}
+	if (options.hasSubtasks) {
+		foldItems.push({
+			title: t('command.toggleAllSubtaskFolds'),
+			icon: 'list-collapse',
+			run: options.onToggleAllSubtasks,
 		});
 	}
 	if (foldItems.length > 0) {
@@ -359,12 +369,14 @@ export function showNoteContextMenu(
 		canDelete: isTaskNoteFile(file, tasksRootPath),
 		hasSections: view.canToggleAllSectionFolds(),
 		hasContinuations: view.canToggleAllContinuationFolds(),
+		hasSubtasks: view.canToggleAllSubtaskFolds(),
 		onShowLinks: () => view.openTaskLinks(file.path),
 		onSetPriority: (value) => void setNotePriority(view, value),
 		onClearPriority: () => void clearNotePriority(view),
 		onToggleStarred: () => void toggleNoteStarred(view),
 		onToggleAllSections: () => void view.toggleAllSectionFolds(),
 		onToggleAllContinuations: () => void view.toggleAllContinuationFolds(),
+		onToggleAllSubtasks: () => void view.toggleAllSubtaskFolds(),
 		exporting: view.isExporting,
 		canInsertEntryTemplate: view.canInsertEntryTemplate(),
 		canMarkAllTasksDone: view.canMarkAllTasksDone(),
