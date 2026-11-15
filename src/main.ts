@@ -79,6 +79,8 @@ import {
 	IOTO_TASK_VIEW_TYPE,
 	IOTOTaskView,
 } from './views/iotoTaskView';
+import { IOTOPriorityQuadrantView } from './views/priorityQuadrantView';
+import { IOTO_PRIORITY_QUADRANT_VIEW_TYPE } from './views/quadrant/constants';
 import { probeEmbeddedEditorSupport } from './views/ioto-task/embedded-editor';
 import {
 	createFoldStorage,
@@ -153,6 +155,7 @@ import {
 import {
 	activateIOTOProjectCenterView,
 	activateIOTOTasksCenterView,
+	activatePriorityQuadrantView,
 	appendTaskViewMenuItems,
 	getTasksCenterView,
 	openFileAsIOTOTask,
@@ -270,6 +273,23 @@ export default class IOTOTasksCenter extends Plugin {
 					(path) => this.openTaskLinksForPath(path),
 					(style) => void this.updateAppearanceStyle(style),
 				),
+		);
+		this.registerView(
+			IOTO_PRIORITY_QUADRANT_VIEW_TYPE,
+			(leaf) =>
+				new IOTOPriorityQuadrantView(leaf, {
+					getTasksRootPath: () => this.settings.tasksRootPath,
+					getHiddenProjectNames: () =>
+						this.settings.hiddenProjectNames,
+					getShowTaskPriority: () =>
+						this.settings.showTaskPriority,
+					getColorTaskTitleByPriority: () =>
+						this.settings.colorTaskTitleByPriority,
+					getShowProjectNameInTaskList: () =>
+						this.settings.showProjectNameInTaskList,
+					getUseIOTOTaskViewAsDefault: () =>
+						this.settings.useIOTOTaskViewAsDefault,
+				}),
 		);
 
 		this.addCommand({
@@ -727,6 +747,11 @@ export default class IOTOTasksCenter extends Plugin {
 			id: 'open-project-center-view',
 			name: t('command.openProjectCenterView'),
 			callback: () => this.activateIOTOProjectCenterView(),
+		});
+		this.addCommand({
+			id: 'open-priority-quadrant-view',
+			name: t('command.openPriorityQuadrantView'),
+			callback: () => this.activatePriorityQuadrantView(),
 		});
 
 		this.addCommand({
@@ -1195,6 +1220,10 @@ export default class IOTOTasksCenter extends Plugin {
 		await activateIOTOProjectCenterView(this.app);
 	}
 
+	async activatePriorityQuadrantView(): Promise<void> {
+		await activatePriorityQuadrantView(this.app);
+	}
+
 	private getTasksCenterView(): IOTOTasksCenterView | null {
 		return getTasksCenterView(this.app);
 	}
@@ -1397,6 +1426,8 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		await this.refreshProjectCountsOnly(projectNames);
+		// 象限是跨项目聚合，单项目角标刷新替代不了，定向分支也要刷。
+		await this.refreshPriorityQuadrantViews();
 	}
 
 	/** 只更新项目角标：改动的不是当前项目时，任务列表无需跟着重载。 */
@@ -1528,6 +1559,15 @@ export default class IOTOTasksCenter extends Plugin {
 			}
 		}
 
+		for (const leaf of this.app.workspace.getLeavesOfType(
+			IOTO_PRIORITY_QUADRANT_VIEW_TYPE,
+		)) {
+			const view = leaf.view;
+			if (view instanceof IOTOPriorityQuadrantView) {
+				void view.handleSettingsChange();
+			}
+		}
+
 		// 设置开关即时生效：改根目录 / 关开关都靠这一行刷悬浮按钮（§3.9）。
 		this.scheduleViewToggleSync();
 	}
@@ -1547,6 +1587,19 @@ export default class IOTOTasksCenter extends Plugin {
 		)) {
 			const view = leaf.view;
 			if (view instanceof IOTOProjectCenterView) {
+				await view.refreshFromVaultChange();
+			}
+		}
+
+		await this.refreshPriorityQuadrantViews();
+	}
+
+	private async refreshPriorityQuadrantViews(): Promise<void> {
+		for (const leaf of this.app.workspace.getLeavesOfType(
+			IOTO_PRIORITY_QUADRANT_VIEW_TYPE,
+		)) {
+			const view = leaf.view;
+			if (view instanceof IOTOPriorityQuadrantView) {
 				await view.refreshFromVaultChange();
 			}
 		}

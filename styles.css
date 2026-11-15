@@ -7178,3 +7178,373 @@ button[aria-pressed='true']
 .ioto-task-view__scroll.is-marquee * {
 	user-select: none;
 }
+
+/* ===== Priority Quadrant View ===== */
+
+.ioto-pq-view {
+	container: ioto-pq / inline-size;
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+	gap: 10px;
+	padding: 12px;
+	overflow: hidden;
+}
+
+.ioto-pq-header {
+	flex: 0 0 auto;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.ioto-pq-header__title-row {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+	min-width: 0;
+}
+
+.ioto-pq-header__title {
+	margin: 0;
+	font-size: var(--font-ui-large);
+}
+
+.ioto-pq-header__summary {
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}
+
+.ioto-pq-filterbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 12px;
+}
+
+.ioto-pq-filterbar__scope {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.ioto-pq-scope-select {
+	max-width: 260px;
+}
+
+.ioto-pq-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.ioto-pq-chip,
+.ioto-pq-sidebar-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 10px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 999px;
+	background: var(--background-primary);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	cursor: pointer;
+}
+
+.ioto-pq-chip.is-active,
+.ioto-pq-sidebar-toggle.is-active {
+	border-color: var(--interactive-accent);
+	color: var(--text-normal);
+	background: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+}
+
+.ioto-pq-chip__count {
+	color: var(--text-faint);
+	font-variant-numeric: tabular-nums;
+}
+
+.ioto-pq-body {
+	position: relative; /* 窄屏抽屉的包含块：抽屉只覆盖象限区，不盖住 header 的开关 */
+	flex: 1 1 auto;
+	min-height: 0;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 320px;
+	gap: 12px;
+}
+
+.ioto-pq-view[data-sidebar-open='false'] .ioto-pq-body {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.ioto-pq-view[data-sidebar-open='false'] .ioto-pq-sidebar {
+	display: none;
+}
+
+.ioto-pq-grid {
+	min-height: 0;
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	grid-template-rows: repeat(2, minmax(0, 1fr));
+	gap: 12px;
+}
+
+.ioto-pq-quadrant {
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: var(--background-secondary);
+	overflow: hidden;
+}
+
+.ioto-pq-quadrant__header {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.ioto-pq-quadrant__dot {
+	flex: 0 0 auto;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: var(--ioto-task-priority-color, var(--text-muted));
+}
+
+.ioto-pq-quadrant__title {
+	margin: 0;
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+}
+
+.ioto-pq-quadrant__count,
+.ioto-pq-sidebar__count {
+	margin-inline-start: auto;
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+	font-variant-numeric: tabular-nums;
+}
+
+.ioto-pq-quadrant__list,
+.ioto-pq-sidebar__list {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	padding: 8px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.ioto-pq-quadrant__empty,
+.ioto-pq-sidebar__empty {
+	margin: 0;
+	padding: 8px;
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}
+
+.ioto-pq-sidebar {
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: var(--background-secondary);
+	overflow: hidden;
+}
+
+.ioto-pq-sidebar__header {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.ioto-pq-sidebar__title {
+	margin: 0;
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+}
+
+.ioto-pq-card {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	grid-template-areas:
+		'priority title more'
+		'priority meta  more';
+	gap: 2px 8px;
+	padding: 8px 10px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background: var(--background-primary);
+	cursor: pointer;
+	text-align: start;
+}
+
+.ioto-pq-card.is-unlabeled {
+	grid-template-columns: minmax(0, 1fr) auto;
+	grid-template-areas:
+		'title more'
+		'meta  more';
+	border-style: dashed;
+}
+
+.ioto-pq-card:hover {
+	border-color: var(--interactive-accent);
+}
+
+.ioto-pq-card:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 1px;
+}
+
+.ioto-pq-card.is-busy {
+	opacity: 0.6;
+	pointer-events: none;
+}
+
+.ioto-pq-card__priority {
+	grid-area: priority;
+	align-self: start;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 26px;
+	padding: 1px 6px;
+	border-radius: 999px;
+	border: 1px solid
+		color-mix(
+			in srgb,
+			var(--ioto-task-priority-color, var(--text-muted)) 55%,
+			transparent
+		);
+	color: var(--ioto-task-priority-color, var(--text-muted));
+	font-size: var(--font-ui-smaller);
+	font-variant-numeric: tabular-nums;
+}
+
+.ioto-pq-card__title {
+	grid-area: title;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ioto-pq-card__title.is-priority-colored {
+	color: var(--ioto-task-priority-color, var(--text-normal));
+}
+
+.ioto-pq-card__meta {
+	grid-area: meta;
+	display: flex;
+	gap: 6px;
+	min-width: 0;
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}
+
+.ioto-pq-card__project {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ioto-pq-card__star {
+	flex: 0 0 auto;
+}
+
+.ioto-pq-card__more {
+	grid-area: more;
+	align-self: center;
+	padding: 2px 6px;
+	border: none;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+.ioto-pq-card__more:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.ioto-pq-sidebar .ioto-pq-card {
+	border-style: dashed;
+}
+
+/* 遮罩只在窄容器（抽屉态）出现；桌面端侧栏是常驻列，不能盖住象限。 */
+.ioto-pq-scrim {
+	display: none;
+}
+
+.ioto-pq-state {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 24px;
+	text-align: center;
+}
+
+.ioto-pq-state__title {
+	color: var(--text-normal);
+	font-size: var(--font-ui-medium);
+}
+
+.ioto-pq-state__desc {
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}
+
+@container ioto-pq (max-width: 720px) {
+	.ioto-pq-body {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.ioto-pq-grid {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-rows: none;
+		overflow-y: auto;
+	}
+
+	.ioto-pq-quadrant {
+		max-height: 320px;
+	}
+
+	.ioto-pq-sidebar {
+		position: absolute;
+		inset-block: 0;
+		inset-inline-end: 0;
+		width: min(320px, 85vw);
+		z-index: 20;
+		box-shadow: var(--shadow-l);
+	}
+
+	.ioto-pq-view[data-sidebar-open='false'] .ioto-pq-sidebar {
+		display: none;
+	}
+
+	.ioto-pq-scrim:not([hidden]) {
+		display: block;
+		position: absolute;
+		inset: 0;
+		z-index: 19;
+		background: rgba(0, 0, 0, 0.35);
+	}
+}

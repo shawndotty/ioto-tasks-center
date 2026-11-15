@@ -24,6 +24,7 @@ import {
 } from './views/iotoTasksCenterView';
 import { IOTO_PROJECT_CENTER_VIEW_TYPE } from './views/iotoProjectCenterView';
 import { IOTOTaskView } from './views/iotoTaskView';
+import { IOTO_PRIORITY_QUADRANT_VIEW_TYPE } from './views/quadrant/constants';
 import { setLeafToTaskView } from './views/ioto-task/task-file-link-open';
 
 /**
@@ -161,6 +162,14 @@ export async function activateIOTOProjectCenterView(app: App): Promise<void> {
 	});
 }
 
+export async function activatePriorityQuadrantView(app: App): Promise<void> {
+	const leaf = getOrCreatePriorityQuadrantLeaf(app);
+	await leaf.setViewState({
+		type: IOTO_PRIORITY_QUADRANT_VIEW_TYPE,
+		active: true,
+	});
+}
+
 export function getOrCreateIOTOTasksCenterLeaf(app: App): WorkspaceLeaf {
 	const existingLeaf = app.workspace.getLeavesOfType(
 		IOTO_TASKS_CENTER_VIEW_TYPE,
@@ -171,6 +180,13 @@ export function getOrCreateIOTOTasksCenterLeaf(app: App): WorkspaceLeaf {
 export function getOrCreateIOTOProjectCenterLeaf(app: App): WorkspaceLeaf {
 	const existingLeaf = app.workspace.getLeavesOfType(
 		IOTO_PROJECT_CENTER_VIEW_TYPE,
+	)[0];
+	return existingLeaf ?? app.workspace.getLeaf(true);
+}
+
+export function getOrCreatePriorityQuadrantLeaf(app: App): WorkspaceLeaf {
+	const existingLeaf = app.workspace.getLeavesOfType(
+		IOTO_PRIORITY_QUADRANT_VIEW_TYPE,
 	)[0];
 	return existingLeaf ?? app.workspace.getLeaf(true);
 }
