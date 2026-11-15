@@ -289,6 +289,7 @@ export default class IOTOTasksCenter extends Plugin {
 						this.settings.showProjectNameInTaskList,
 					getUseIOTOTaskViewAsDefault: () =>
 						this.settings.useIOTOTaskViewAsDefault,
+					getAppearanceStyle: () => this.settings.appearanceStyle,
 				}),
 		);
 

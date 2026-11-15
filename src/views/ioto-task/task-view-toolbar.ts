@@ -2,6 +2,7 @@ import { Platform, setIcon } from 'obsidian';
 
 import { t } from '../../lang/helpter';
 import { isTemplateAvailableForProject } from '../../tasks-center/batch-task-template';
+import { applyAppearanceStyleClasses } from '../appearance-style';
 import type { TaskViewHost } from './task-view-host';
 import { hasLiveEditor } from './task-view-editing-state';
 import type { ToolbarButtonClickContext } from './task-view-constants';
@@ -390,11 +391,10 @@ function hasAvailableEntryTemplate(view: TaskViewHost): boolean {
  * 见 [[Plan-20261003-215547]] §7.1、[[Plan-20261005-200436]]、[[Plan-20261005-230336]]、[[Plan-20261007-063658]]。
  */
 export function applyAppearanceStyle(view: TaskViewHost): void {
-	const style = view.appearanceStyleProvider();
-	view.contentEl.toggleClass('is-glass', style === 'glass');
-	view.contentEl.toggleClass('is-modern', style === 'modern');
-	view.contentEl.toggleClass('is-simple', style === 'simple');
-	view.contentEl.toggleClass('is-morandi', style === 'morandi');
+	applyAppearanceStyleClasses(
+		view.contentEl,
+		view.appearanceStyleProvider(),
+	);
 }
 
 /**

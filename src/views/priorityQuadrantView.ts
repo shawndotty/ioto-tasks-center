@@ -9,6 +9,7 @@
 import { ItemView, Menu, Notice, TFile, type WorkspaceLeaf } from 'obsidian';
 
 import { t } from '../lang/helpter';
+import type { TaskViewAppearanceStyle } from '../settings-types';
 import {
 	buildQuadrantModel,
 	type QuadrantModel,
@@ -21,6 +22,7 @@ import {
 	type TaskPriorityValue,
 } from '../tasks-center/task-priority';
 import type { TaskFileEntry } from '../tasks-center/types';
+import { applyAppearanceStyleClasses } from './appearance-style';
 import { buildQuadrantFilterBar, encodeQuadrantScope, updateQuadrantFilterBar } from './quadrant/filter-bar';
 import {
 	IOTO_PRIORITY_QUADRANT_VIEW_TYPE,
@@ -49,6 +51,7 @@ export interface PriorityQuadrantDeps {
 	getColorTaskTitleByPriority(): boolean;
 	getShowProjectNameInTaskList(): boolean;
 	getUseIOTOTaskViewAsDefault(): boolean;
+	getAppearanceStyle(): TaskViewAppearanceStyle;
 }
 
 export class IOTOPriorityQuadrantView
@@ -97,6 +100,8 @@ export class IOTOPriorityQuadrantView
 	async onOpen(): Promise<void> {
 		this.contentEl.addClass('ioto-pq-view');
 		this.contentEl.setAttr('data-view', 'priority-quadrant');
+		// 首帧前就位，避免先闪 card 基线（[[Plan-20261116-052507]] §3.2）。
+		this.applyAppearanceStyle();
 		this.render();
 		// 窄容器默认收起侧栏（E3）；首帧布局完成后再量宽度。
 		window.requestAnimationFrame(() => {
@@ -120,9 +125,21 @@ export class IOTOPriorityQuadrantView
 		this.contentEl.empty();
 	}
 
-	// 设置变更（隐藏项目 / 根目录 / 显示优先级 / 按优先级着色 / 显示项目名）
+	// 设置变更：外观档位先切类，再按数据类设置（隐藏项目 / 根目录 / 显示优先级等）重载
 	async handleSettingsChange(): Promise<void> {
+		this.applyAppearanceStyle();
 		await this.reload();
+	}
+
+	/**
+	 * 跟随 TaskView 的外观档位（同一份 `data.json` 的 `appearanceStyle`）。
+	 * 类挂在 `contentEl`：`render()` / `clearShell()` 不摘根类，重绘后主题自然保留。
+	 */
+	applyAppearanceStyle(): void {
+		applyAppearanceStyleClasses(
+			this.contentEl,
+			this.deps.getAppearanceStyle(),
+		);
 	}
 
 	// vault 外部变更（create / delete / modify / rename 的去抖后刷新）

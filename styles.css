@@ -4877,7 +4877,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
    - 参考图：深色 Aurora 渐变 + 玻璃卡 + 图标徽章 + 大标题 + 内嵌面板。
    ============================================================ */
 
-.ioto-task-view.is-glass {
+:is(.ioto-task-view, .ioto-pq-view).is-glass {
 	/* 玻璃面 */
 	--ioto-tv-glass-bg: color-mix(in srgb, var(--background-primary) 62%, transparent);
 	--ioto-tv-glass-border: color-mix(in srgb, var(--text-normal) 12%, transparent);
@@ -4919,7 +4919,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 }
 
 /* Aurora 背景层：固定在视图根，不随滚动；内容在其上方滑动 */
-.ioto-task-view.is-glass::before {
+:is(.ioto-task-view, .ioto-pq-view).is-glass::before {
 	content: "";
 	position: absolute;
 	inset: 0;
@@ -5226,11 +5226,11 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 
 /* 主题适配 / 降级 / 移动端 */
 /* 浅色主题：玻璃面提高不透明度、光斑降强度，保证文字对比度 */
-.theme-light .ioto-task-view.is-glass {
+.theme-light :is(.ioto-task-view, .ioto-pq-view).is-glass {
 	--ioto-tv-glass-bg: color-mix(in srgb, var(--background-primary) 78%, transparent);
 	--ioto-tv-glass-border: color-mix(in srgb, var(--text-normal) 10%, transparent);
 }
-.theme-light .ioto-task-view.is-glass::before { opacity: 0.5; }
+.theme-light :is(.ioto-task-view, .ioto-pq-view).is-glass::before { opacity: 0.5; }
 
 /* 不支持 backdrop-filter：退回不透明面（仍保留圆角/阴影/强调条） */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -5267,12 +5267,12 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 }
 
 /* 移动端：降 blur / 间距，保性能与触控热区（沿用既有 .is-phone 触控改动） */
-.is-phone .ioto-task-view.is-glass {
+.is-phone :is(.ioto-task-view, .ioto-pq-view).is-glass {
 	--ioto-tv-blur: 12px;
 	--ioto-tv-section-gap: 14px;
 	--ioto-tv-scroll-pad: 12px;
 }
-.is-phone .ioto-task-view.is-glass::before { filter: blur(18px) saturate(115%); }
+.is-phone :is(.ioto-task-view, .ioto-pq-view).is-glass::before { filter: blur(18px) saturate(115%); }
 
 /* ============================================================
    IOTOTask 视图 · 现代风格（`.is-modern`）
@@ -5285,7 +5285,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
    - 注意：`modern` 命中既有 `:not(.is-glass)` 的勾选框规则，故下方对勾选框显式覆盖。
    ============================================================ */
 
-.ioto-task-view.is-modern {
+:is(.ioto-task-view, .ioto-pq-view).is-modern {
 	/* 几何：更圆、更舒展 */
 	--ioto-tv-radius: 14px;          /* Section 外层卡 */
 	--ioto-tv-radius-inner: 10px;    /* 任务行内嵌面板 */
@@ -5501,7 +5501,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 }
 
 /* 浅色主题：投影与分层略增强，保证白底上分层可辨 */
-.theme-light .ioto-task-view.is-modern {
+.theme-light :is(.ioto-task-view, .ioto-pq-view).is-modern {
 	--ioto-tv-canvas: color-mix(in srgb, var(--background-secondary) 35%, var(--background-primary));
 	--ioto-tv-elev-1: 0 1px 2px rgb(0 0 0 / 6%), 0 2px 6px -2px rgb(0 0 0 / 6%);
 }
@@ -5516,7 +5516,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 }
 
 /* 移动端：收紧间距与圆角（沿用既有 .is-phone 触控改动） */
-.is-phone .ioto-task-view.is-modern {
+.is-phone :is(.ioto-task-view, .ioto-pq-view).is-modern {
 	--ioto-tv-section-gap: 12px;
 	--ioto-tv-radius: 12px;
 }
@@ -5533,7 +5533,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
    - Johnny 确认：Section 标题不弱化（沿用基线样式）；行取「轻量留缝」（非通栏 flush）。
    ============================================================ */
 
-.ioto-task-view.is-simple {
+:is(.ioto-task-view, .ioto-pq-view).is-simple {
 	/* 几何：克制的小圆角 + 行间轻量留缝 */
 	--ioto-tv-radius: 12px;          /* Section 外层卡 */
 	--ioto-tv-radius-row: 6px;       /* 任务行 */
@@ -5763,7 +5763,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 .ioto-task-view.is-simple .ioto-task-view__badge[data-kind="pin"]     { --ink: #be123c; }
 
 /* 深浅自适应：深色下画布收一点混比、选中态提高 accent alpha（暗底低 alpha 不够醒目） */
-.theme-dark .ioto-task-view.is-simple {
+.theme-dark :is(.ioto-task-view, .ioto-pq-view).is-simple {
 	--ioto-tv-canvas: color-mix(in srgb, var(--background-secondary) 55%, var(--background-primary));
 }
 
@@ -5787,7 +5787,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 }
 
 /* 移动端：收紧 Section 间距与行距，略增行内边距保触控热区 */
-.is-phone .ioto-task-view.is-simple {
+.is-phone :is(.ioto-task-view, .ioto-pq-view).is-simple {
 	--ioto-tv-section-gap: 12px;
 	--ioto-tv-radius: 12px;
 	--ioto-tv-pad-x: 12px;
@@ -5811,7 +5811,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
    ============================================================ */
 
 /* ── 莫兰迪 · 亮色（基段，跟随 .theme-light）── */
-.ioto-task-view.is-morandi {
+:is(.ioto-task-view, .ioto-pq-view).is-morandi {
 	/* (1) 接管插件正文 / 续写 / 内嵌编辑器实际读取的核心语义变量 */
 	--background-primary: #FCFAF6;        /* 卡片面 / 编辑器面（暖白，非纯白） */
 	--background-secondary: #F7F4EF;      /* 画布（暖米白，替代纯白） */
@@ -5870,12 +5870,12 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
    这一层分层失效（其余四套外观在根节点同样被盖，但它们的画布差异极小、不易察觉；
    morandi 的画布是核心设计元素，故显式提高特指度夺回）。此处用 (0,4,0) 的作用域，
    只作用于 morandi 视图，不影响其它外观与桥接到 document.body 的浮层。 */
-.workspace-leaf-content .view-content.ioto-task-view.is-morandi {
+.workspace-leaf-content .view-content:is(.ioto-task-view, .ioto-pq-view).is-morandi {
 	background: var(--background-secondary);
 }
 
 /* ── 莫兰迪 · 暗色（跟随 .theme-dark）── */
-.theme-dark .ioto-task-view.is-morandi {
+.theme-dark :is(.ioto-task-view, .ioto-pq-view).is-morandi {
 	--background-primary: #252528;
 	--background-secondary: #1C1C1E;
 	--background-secondary-alt: #2E2E32;
@@ -6144,21 +6144,21 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 
 /* 系统「增加对比度」兜底：增强文字 / 边框对比（媒体查询内不再嵌媒体查询，故拆两段） */
 @media (prefers-contrast: more) {
-	.ioto-task-view.is-morandi {
+	:is(.ioto-task-view, .ioto-pq-view).is-morandi {
 		--text-normal: #1A1A1A;
 		--ioto-tv-m-border: #B0A89C;
 	}
 }
 
 @media (prefers-contrast: more) {
-	.theme-dark .ioto-task-view.is-morandi {
+	.theme-dark :is(.ioto-task-view, .ioto-pq-view).is-morandi {
 		--text-normal: #F0F0F0;
 		--ioto-tv-m-border: #5A5A60;
 	}
 }
 
 /* 移动端：收紧 Section 间距与行内边距 */
-.is-phone .ioto-task-view.is-morandi {
+.is-phone :is(.ioto-task-view, .ioto-pq-view).is-morandi {
 	--ioto-tv-section-gap: 12px;
 	--ioto-tv-radius: 10px;
 	--ioto-tv-pad-x: 12px;
@@ -7182,15 +7182,55 @@ button[aria-pressed='true']
 /* ===== Priority Quadrant View ===== */
 
 .ioto-pq-view {
+	/* 外观别名层：默认值逐项等于 card 档改动前的计算值 → card 零回归。
+	   各风格档只覆盖这些别名，结构规则只写一遍（[[Plan-20261116-052507]] §3.4）。 */
+	--ioto-pq-frame-gap: 10px;
+	--ioto-pq-pad: 12px;
+	/* 底边沿用核心 `.view-content` 的计算值，保住 iOS 安全区兜底 */
+	--ioto-pq-pad-bottom: var(--size-4-8, 32px);
+	--ioto-pq-body-gap: 12px;
+	--ioto-pq-grid-gap: 12px;
+	--ioto-pq-panel: var(--background-secondary);
+	--ioto-pq-panel-border: 1px solid var(--background-modifier-border);
+	--ioto-pq-panel-radius: 8px;
+	--ioto-pq-panel-shadow: none;
+	--ioto-pq-separator: 1px solid var(--background-modifier-border);
+	--ioto-pq-list-pad: 8px;
+	--ioto-pq-list-gap: 6px;
+	--ioto-pq-card: var(--background-primary);
+	--ioto-pq-card-border: 1px solid var(--background-modifier-border);
+	--ioto-pq-card-radius: 6px;
+	--ioto-pq-card-pad: 8px 10px;
+	--ioto-pq-card-shadow: none;
+	--ioto-pq-card-hover-border: var(--interactive-accent);
+	--ioto-pq-card-hover-shadow: none;
+	--ioto-pq-chip-bg: var(--background-primary);
+	--ioto-pq-chip-border: 1px solid var(--background-modifier-border);
+	--ioto-pq-chip-radius: 999px;
+	--ioto-pq-chip-pad: 4px 10px;
+	--ioto-pq-motion: 0ms;
+	--ioto-pq-line-height: inherit;
+	--ioto-pq-letter-spacing: inherit;
+
 	container: ioto-pq / inline-size;
 	position: relative;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
 	min-height: 0;
-	gap: 10px;
-	padding: 12px;
+	gap: var(--ioto-pq-frame-gap);
+	padding: var(--ioto-pq-pad);
 	overflow: hidden;
+}
+
+/* 核心 `.workspace-leaf-content .view-content` 的 padding 会盖过 `.ioto-pq-view`；
+   这里以同特指度夺回，card 档的默认值与核心计算值一致（零回归）。 */
+.workspace-leaf-content .view-content.ioto-pq-view {
+	padding: var(--ioto-pq-pad);
+	padding-bottom: max(
+		var(--safe-area-inset-bottom),
+		var(--ioto-pq-pad-bottom)
+	);
 }
 
 .ioto-pq-header {
@@ -7247,13 +7287,17 @@ button[aria-pressed='true']
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	padding: 4px 10px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 999px;
-	background: var(--background-primary);
+	padding: var(--ioto-pq-chip-pad);
+	border: var(--ioto-pq-chip-border);
+	border-radius: var(--ioto-pq-chip-radius);
+	background: var(--ioto-pq-chip-bg);
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
 	cursor: pointer;
+	transition:
+		background-color var(--ioto-pq-motion),
+		border-color var(--ioto-pq-motion),
+		color var(--ioto-pq-motion);
 }
 
 .ioto-pq-chip.is-active,
@@ -7274,7 +7318,7 @@ button[aria-pressed='true']
 	min-height: 0;
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) 320px;
-	gap: 12px;
+	gap: var(--ioto-pq-body-gap);
 }
 
 .ioto-pq-view[data-sidebar-open='false'] .ioto-pq-body {
@@ -7290,16 +7334,17 @@ button[aria-pressed='true']
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	grid-template-rows: repeat(2, minmax(0, 1fr));
-	gap: 12px;
+	gap: var(--ioto-pq-grid-gap);
 }
 
 .ioto-pq-quadrant {
 	min-height: 0;
 	display: flex;
 	flex-direction: column;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	background: var(--background-secondary);
+	border: var(--ioto-pq-panel-border);
+	border-radius: var(--ioto-pq-panel-radius);
+	background: var(--ioto-pq-panel);
+	box-shadow: var(--ioto-pq-panel-shadow);
 	overflow: hidden;
 }
 
@@ -7309,7 +7354,7 @@ button[aria-pressed='true']
 	align-items: center;
 	gap: 8px;
 	padding: 8px 12px;
-	border-bottom: 1px solid var(--background-modifier-border);
+	border-bottom: var(--ioto-pq-separator);
 }
 
 .ioto-pq-quadrant__dot {
@@ -7339,10 +7384,10 @@ button[aria-pressed='true']
 	flex: 1 1 auto;
 	min-height: 0;
 	overflow-y: auto;
-	padding: 8px;
+	padding: var(--ioto-pq-list-pad);
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
+	gap: var(--ioto-pq-list-gap);
 }
 
 .ioto-pq-quadrant__empty,
@@ -7357,9 +7402,10 @@ button[aria-pressed='true']
 	min-height: 0;
 	display: flex;
 	flex-direction: column;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	background: var(--background-secondary);
+	border: var(--ioto-pq-panel-border);
+	border-radius: var(--ioto-pq-panel-radius);
+	background: var(--ioto-pq-panel);
+	box-shadow: var(--ioto-pq-panel-shadow);
 	overflow: hidden;
 }
 
@@ -7369,13 +7415,23 @@ button[aria-pressed='true']
 	align-items: center;
 	gap: 8px;
 	padding: 8px 12px;
-	border-bottom: 1px solid var(--background-modifier-border);
+	border-bottom: var(--ioto-pq-separator);
 }
 
 .ioto-pq-sidebar__title {
 	margin: 0;
 	font-size: var(--font-ui-small);
 	color: var(--text-normal);
+}
+
+/* 排版别名：morandi 消费宽行高 / 字距；card 默认 `inherit` 不改变既有继承值 */
+.ioto-pq-header__title,
+.ioto-pq-quadrant__title,
+.ioto-pq-sidebar__title,
+.ioto-pq-card__title,
+.ioto-pq-card__meta {
+	line-height: var(--ioto-pq-line-height);
+	letter-spacing: var(--ioto-pq-letter-spacing);
 }
 
 .ioto-pq-card {
@@ -7385,12 +7441,16 @@ button[aria-pressed='true']
 		'priority title more'
 		'priority meta  more';
 	gap: 2px 8px;
-	padding: 8px 10px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 6px;
-	background: var(--background-primary);
+	padding: var(--ioto-pq-card-pad);
+	border: var(--ioto-pq-card-border);
+	border-radius: var(--ioto-pq-card-radius);
+	background: var(--ioto-pq-card);
+	box-shadow: var(--ioto-pq-card-shadow);
 	cursor: pointer;
 	text-align: start;
+	transition:
+		border-color var(--ioto-pq-motion),
+		box-shadow var(--ioto-pq-motion);
 }
 
 .ioto-pq-card.is-unlabeled {
@@ -7402,7 +7462,8 @@ button[aria-pressed='true']
 }
 
 .ioto-pq-card:hover {
-	border-color: var(--interactive-accent);
+	border-color: var(--ioto-pq-card-hover-border);
+	box-shadow: var(--ioto-pq-card-hover-shadow);
 }
 
 .ioto-pq-card:focus-visible {
@@ -7484,6 +7545,167 @@ button[aria-pressed='true']
 
 .ioto-pq-sidebar .ioto-pq-card {
 	border-style: dashed;
+}
+
+/* ── 外观档位：只覆盖别名变量，结构规则共用（[[Plan-20261116-052507]] §3.5）── */
+
+/* glass：Aurora 由第 1 层根块 `::before` 提供；面板 / 侧栏模糊，卡片不模糊（E3） */
+.ioto-pq-view.is-glass {
+	--ioto-pq-frame-gap: 14px;
+	--ioto-pq-pad: 20px;
+	--ioto-pq-pad-bottom: 20px;
+	--ioto-pq-body-gap: 14px;
+	--ioto-pq-grid-gap: 14px;
+	--ioto-pq-panel: var(--ioto-tv-glass-bg);
+	--ioto-pq-panel-border: 1px solid var(--ioto-tv-glass-border);
+	--ioto-pq-panel-radius: var(--ioto-tv-radius-outer);
+	--ioto-pq-panel-shadow: var(--ioto-tv-shadow);
+	--ioto-pq-separator: 1px solid var(--ioto-tv-glass-border);
+	--ioto-pq-card: color-mix(in srgb, var(--background-primary) 55%, transparent);
+	--ioto-pq-card-border: 1px solid var(--ioto-tv-glass-border);
+	--ioto-pq-card-radius: var(--ioto-tv-radius-inner);
+	--ioto-pq-card-hover-shadow: var(--ioto-tv-shadow);
+	--ioto-pq-chip-bg: var(--ioto-tv-glass-bg);
+	--ioto-pq-chip-border: 1px solid var(--ioto-tv-glass-border);
+	--ioto-pq-motion: 180ms ease;
+}
+
+.ioto-pq-view.is-glass > * {
+	position: relative;
+	z-index: 1;
+}
+
+.ioto-pq-view.is-glass .ioto-pq-quadrant,
+.ioto-pq-view.is-glass .ioto-pq-sidebar {
+	-webkit-backdrop-filter: blur(var(--ioto-tv-blur))
+		saturate(var(--ioto-tv-saturate));
+	backdrop-filter: blur(var(--ioto-tv-blur)) saturate(var(--ioto-tv-saturate));
+}
+
+/* modern：画布 / 表面分层，无边框 + 大圆角 + 浅投影 */
+.ioto-pq-view.is-modern {
+	--ioto-pq-frame-gap: 12px;
+	--ioto-pq-pad: 14px;
+	--ioto-pq-pad-bottom: 14px;
+	--ioto-pq-panel: var(--ioto-tv-surface);
+	--ioto-pq-panel-border: 1px solid transparent;
+	--ioto-pq-panel-radius: var(--ioto-tv-radius);
+	--ioto-pq-panel-shadow: var(--ioto-tv-elev-1);
+	--ioto-pq-separator: 1px solid var(--ioto-tv-line);
+	--ioto-pq-card: var(--background-primary);
+	--ioto-pq-card-border: 1px solid transparent;
+	--ioto-pq-card-radius: var(--ioto-tv-radius-inner);
+	--ioto-pq-card-hover-border: transparent;
+	--ioto-pq-card-hover-shadow: var(--ioto-tv-elev-2);
+	--ioto-pq-chip-bg: color-mix(in srgb, var(--text-normal) 4%, transparent);
+	--ioto-pq-chip-border: 1px solid transparent;
+	--ioto-pq-motion: var(--ioto-tv-motion);
+}
+
+/* simple：白卡 + 发丝线，靠明度差分层的克制外观 */
+.ioto-pq-view.is-simple {
+	--ioto-pq-frame-gap: 12px;
+	--ioto-pq-pad: 14px;
+	--ioto-pq-pad-bottom: 14px;
+	--ioto-pq-panel: var(--ioto-tv-surface);
+	--ioto-pq-panel-border: 1px solid var(--ioto-tv-hairline);
+	--ioto-pq-panel-radius: var(--ioto-tv-radius);
+	--ioto-pq-separator: 1px solid var(--ioto-tv-hairline);
+	--ioto-pq-card: var(--background-primary);
+	--ioto-pq-card-border: 1px solid var(--ioto-tv-hairline);
+	--ioto-pq-card-radius: var(--ioto-tv-radius-row);
+	--ioto-pq-card-hover-border: var(--background-modifier-border);
+	--ioto-pq-chip-bg: var(--ioto-tv-surface);
+	--ioto-pq-chip-border: 1px solid var(--ioto-tv-hairline);
+	--ioto-pq-motion: var(--ioto-tv-motion);
+}
+
+/* morandi：核心变量已由第 1 层重映射为暖色板，这里只补几何与排版 */
+.ioto-pq-view.is-morandi {
+	--ioto-pq-frame-gap: 14px;
+	--ioto-pq-pad: 16px;
+	--ioto-pq-pad-bottom: 16px;
+	--ioto-pq-panel: var(--background-primary);
+	--ioto-pq-panel-radius: var(--ioto-tv-radius);
+	--ioto-pq-card: var(--background-secondary-alt);
+	--ioto-pq-card-radius: var(--ioto-tv-radius-row);
+	--ioto-pq-chip-bg: var(--background-secondary-alt);
+	--ioto-pq-motion: var(--ioto-tv-m-motion);
+	--ioto-pq-line-height: var(--ioto-tv-m-line);
+	--ioto-pq-letter-spacing: var(--ioto-tv-m-track);
+}
+
+/* morandi 自带的 --text-faint 在暖白 / 深灰底上达不到 AA，计数与弱文字提到 muted 一档 */
+.ioto-pq-view.is-morandi .ioto-pq-quadrant__count,
+.ioto-pq-view.is-morandi .ioto-pq-sidebar__count,
+.ioto-pq-view.is-morandi .ioto-pq-quadrant__empty,
+.ioto-pq-view.is-morandi .ioto-pq-sidebar__empty,
+.ioto-pq-view.is-morandi .ioto-pq-card__meta {
+	color: var(--text-muted);
+}
+
+/* ── 无障碍 / 移动端兜底（S6）：玻璃在不支持模糊 / 降低透明度时退回实底 ── */
+@supports not (
+	(backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+	.ioto-pq-view.is-glass {
+		--ioto-pq-panel: var(--background-primary);
+		--ioto-pq-card: var(--background-primary);
+		--ioto-pq-chip-bg: var(--background-primary);
+	}
+
+	.ioto-pq-view.is-glass .ioto-pq-quadrant,
+	.ioto-pq-view.is-glass .ioto-pq-sidebar {
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
+}
+
+@media (prefers-reduced-transparency: reduce) {
+	.ioto-pq-view.is-glass {
+		--ioto-pq-panel: var(--background-primary);
+		--ioto-pq-card: var(--background-primary);
+		--ioto-pq-chip-bg: var(--background-primary);
+	}
+
+	.ioto-pq-view.is-glass .ioto-pq-quadrant,
+	.ioto-pq-view.is-glass .ioto-pq-sidebar {
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ioto-pq-card,
+	.ioto-pq-chip,
+	.ioto-pq-sidebar-toggle {
+		transition: none;
+	}
+}
+
+/* 移动端：收紧间距；玻璃面板降低模糊半径（沿用 TaskView 的 .is-phone 策略） */
+.is-phone .ioto-pq-view.is-glass {
+	--ioto-pq-frame-gap: 12px;
+	--ioto-pq-pad: 14px;
+	--ioto-pq-pad-bottom: 14px;
+	--ioto-pq-body-gap: 12px;
+	--ioto-pq-grid-gap: 12px;
+}
+
+.is-phone .ioto-pq-view.is-glass .ioto-pq-quadrant,
+.is-phone .ioto-pq-view.is-glass .ioto-pq-sidebar {
+	-webkit-backdrop-filter: blur(12px) saturate(var(--ioto-tv-saturate));
+	backdrop-filter: blur(12px) saturate(var(--ioto-tv-saturate));
+}
+
+.is-phone .ioto-pq-view.is-modern,
+.is-phone .ioto-pq-view.is-simple,
+.is-phone .ioto-pq-view.is-morandi {
+	--ioto-pq-frame-gap: 10px;
+	--ioto-pq-pad: 12px;
+	--ioto-pq-pad-bottom: 12px;
+	--ioto-pq-body-gap: 10px;
+	--ioto-pq-grid-gap: 10px;
 }
 
 /* 遮罩只在窄容器（抽屉态）出现；桌面端侧栏是常驻列，不能盖住象限。 */

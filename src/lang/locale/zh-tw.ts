@@ -444,9 +444,9 @@ const zhTW = {
 	'settings.showTaskViewShortcutHelpButton.name': '顯示任務檢視快速鍵說明按鈕',
 	'settings.showTaskViewShortcutHelpButton.desc':
 		'在桌面端 IOTO 任務檢視左下角顯示問號按鈕，點擊查看內建快速鍵；關閉後立即隱藏，命令面板中的「顯示任務檢視快速鍵」仍可用。',
-	'settings.appearanceStyle.name': 'IOTOTask 視圖外觀',
+	'settings.appearanceStyle.name': '任務視圖與四象限外觀',
 	'settings.appearanceStyle.desc':
-		'選擇 IOTOTask 視圖的視覺風格：玻璃（深色 Aurora 漸變 + 玻璃擬態，預設）、現代（無邊框分層 + 大圓角 + 柔和投影，克制耐看）、簡潔（白卡 + 淺灰表頭帶 + 髮絲分隔線 + 藥丸按鈕）、卡片（經典扁平卡片）或莫蘭迪（自帶低飽和暖色板 + 寬行高，對乾眼 / 散光更友好的無障礙外觀）。',
+		'選擇 IOTOTask 視圖的視覺風格：玻璃（深色 Aurora 漸變 + 玻璃擬態，預設）、現代（無邊框分層 + 大圓角 + 柔和投影，克制耐看）、簡潔（白卡 + 淺灰表頭帶 + 髮絲分隔線 + 藥丸按鈕）、卡片（經典扁平卡片）或莫蘭迪（自帶低飽和暖色板 + 寬行高，對乾眼 / 散光更友好的無障礙外觀）。同時作用於優先級四象限視圖。',
 	'settings.appearanceStyle.glass': '玻璃',
 	'settings.appearanceStyle.modern': '現代（Modern）',
 	'settings.appearanceStyle.simple': '簡潔（Simple）',
@@ -847,7 +847,7 @@ const zhTW = {
 	'view.iotoTaskView.noteMenu.insertEntryTemplate': '插入條目模板',
 	'view.iotoTaskView.noteMenu.markAllTasksDone': '將所有任務標記為完成',
 	'view.iotoTaskView.noteMenu.searchTasks': '搜尋任務',
-	'view.iotoTaskView.noteMenu.appearanceWithValue': '任務視圖主題：{0}',
+	'view.iotoTaskView.noteMenu.appearanceWithValue': '任務視圖與四象限主題：{0}',
 	'view.iotoTaskView.deleteConfirm.confirm': '確認刪除',
 	'view.iotoTaskView.deleteConfirm.cancel': '取消',
 	'view.iotoTaskView.deleteConfirm.aria': '刪除確認',
