@@ -98,7 +98,9 @@ export function renderQuadrantTaskCard(
 		);
 	}
 
-	const moreEl = cardEl.createEl('button', { cls: 'ioto-pq-card__more' });
+	const moreEl = cardEl.createEl('button', {
+		cls: 'clickable-icon ioto-pq-card__more',
+	});
 	moreEl.type = 'button';
 	moreEl.setText('⋯');
 	moreEl.ariaLabel = t('priorityQuadrant.card.moreAria');

@@ -7767,20 +7767,60 @@ button:not(.clickable-icon).ioto-pq-time-panel__action {
 	flex: 0 0 auto;
 }
 
+/* ⋯：静止无底，只在自身 hover / 键盘聚焦时显底（[[Plan-20261116-105140]]）。
+   按钮带 `clickable-icon`，核心 `button:not(.clickable-icon)` 的灰底、
+   input-shadow 与平板 padding 基线都不再命中，无需再打特异性补丁。 */
 .ioto-pq-card__more {
 	grid-area: more;
 	align-self: center;
-	padding: 2px 6px;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
 	border: none;
 	border-radius: 4px;
 	background: transparent;
-	color: var(--text-muted);
+	color: var(--text-faint);
 	cursor: pointer;
+	transition:
+		background-color var(--ioto-pq-motion),
+		color var(--ioto-pq-motion);
 }
 
-.ioto-pq-card__more:hover {
-	background: var(--background-modifier-hover);
+/* hover 只认「指针在 ⋯ 上」；卡片其它区域悬停不点亮，避免一列卡片出现一排灰块 */
+@media (hover: hover) {
+	.ioto-pq-card:hover :where(.ioto-pq-card__more) {
+		color: var(--text-muted);
+	}
+
+	.ioto-pq-card__more:hover {
+		background: color-mix(in srgb, var(--text-normal) 6%, transparent);
+		color: var(--text-normal);
+	}
+
+	.ioto-pq-card__more:active {
+		background: color-mix(in srgb, var(--text-normal) 10%, transparent);
+	}
+}
+
+/* 键盘：聚焦即显底；核心 3px 焦点环仍保留 */
+.ioto-pq-card__more:focus-visible {
+	background: color-mix(in srgb, var(--text-normal) 8%, transparent);
 	color: var(--text-normal);
+}
+
+/* 触屏没有 hover：字形常显为 muted，靠底色兜底之外也能被发现 */
+@media (hover: none) {
+	.ioto-pq-card__more {
+		color: var(--text-muted);
+	}
+}
+
+@media (pointer: coarse) {
+	.ioto-pq-card__more {
+		width: 28px;
+		height: 28px;
+	}
 }
 
 .ioto-pq-sidebar .ioto-pq-card {
