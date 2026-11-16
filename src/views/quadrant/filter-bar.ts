@@ -1,10 +1,14 @@
 /**
- * 四象限顶部过滤条：标题 / 汇总、项目范围下拉、状态 chip、侧栏开关
- * （[[Plan-20261115-201917]] §3.5 / §3.6）。
+ * 四象限顶部过滤条：标题 / 汇总、项目范围下拉、状态 chip / 状态菜单、侧栏开关
+ * （[[Plan-20261115-201917]] §3.5 / §3.6，页头网格化见 [[Plan-20261116-061758]] §3）。
  *
- * 结构只建一次；切换 chip / 范围后由 `updateQuadrantFilterBar` 原地更新
- * `aria-pressed`、计数与 `data-*`，避免 `<select>` 因整块重建而失焦。
+ * 结构只建一次；标题、摘要、过滤条、开关是 `headerEl` 的直接子节点，
+ * 由 CSS 命名区域排布（宽屏一行 / 窄屏两行），断点切换不重建 DOM。
+ * 切换 chip / 范围后由 `updateQuadrantFilterBar` 原地更新 `aria-pressed`、
+ * 计数与 `data-*`，避免 `<select>` 因整块重建而失焦。
  */
+
+import { Menu } from 'obsidian';
 
 import { t } from '../../lang/helpter';
 import type {
@@ -56,14 +60,11 @@ export function buildQuadrantFilterBar(
 ): HTMLElement {
 	const headerEl = container.createDiv({ cls: 'ioto-pq-header' });
 
-	const titleRowEl = headerEl.createDiv({
-		cls: 'ioto-pq-header__title-row',
-	});
-	titleRowEl.createEl('h2', {
+	headerEl.createEl('h2', {
 		cls: 'ioto-pq-header__title',
 		text: t('priorityQuadrant.title'),
 	});
-	titleRowEl.createSpan({ cls: 'ioto-pq-header__summary' });
+	headerEl.createSpan({ cls: 'ioto-pq-header__summary' });
 
 	const barEl = headerEl.createDiv({ cls: 'ioto-pq-filterbar' });
 
@@ -96,16 +97,67 @@ export function buildQuadrantFilterBar(
 		chipEl.addEventListener('click', () => ctx.toggleStatusKey(key));
 	}
 
-	const toggleEl = barEl.createEl('button', {
-		cls: 'ioto-pq-sidebar-toggle',
+	// 窄屏把 chip 收进菜单；宽屏由 CSS 隐藏。两个入口都只读 `ctx.getStatusKeys()`，
+	// chips 不 `remove()`，隐藏后 `aria-pressed` 仍继续回写（[[Plan-20261116-061758]] §3.4）。
+	const statusBtnEl = barEl.createEl('button', { cls: 'ioto-pq-status-menu' });
+	statusBtnEl.type = 'button';
+	statusBtnEl.setAttribute('aria-haspopup', 'menu');
+	statusBtnEl.createSpan({
+		cls: 'ioto-pq-status-menu__label',
+		text: t('priorityQuadrant.status.groupLabel'),
+	});
+	statusBtnEl.createSpan({ cls: 'ioto-pq-status-menu__count' });
+	statusBtnEl.addEventListener('click', (event: MouseEvent) => {
+		const menu = new Menu();
+		buildQuadrantStatusMenu(menu, ctx);
+		menu.showAtMouseEvent(event);
+	});
+
+	// 开关放在 header 最右（[[Plan-20261116-060249]] §3.4）：过滤条里**只此一个**，
+	// `updateQuadrantFilterBar` 在 `headerEl` 上按类名回写状态，作用域已覆盖此处。
+	const toggleEl = headerEl.createEl('button', {
+		cls: 'ioto-pq-sidebar-toggle ioto-pq-header__toggle',
 	});
 	toggleEl.type = 'button';
 	toggleEl.setAttribute('aria-controls', 'ioto-pq-sidebar');
+	toggleEl.setAttribute(
+		'aria-label',
+		t('priorityQuadrant.sidebar.toggleAria'),
+	);
 	toggleEl.createSpan({ text: t('priorityQuadrant.sidebar.toggle') });
 	toggleEl.createSpan({ cls: 'ioto-pq-chip__count' });
 	toggleEl.addEventListener('click', () => ctx.toggleSidebar());
 
 	return headerEl;
+}
+
+/**
+ * 窄屏状态菜单：分组标题 + 三个状态项（含计数、当前项打勾）。
+ * 每次点击时按 `ctx` 现状重建，不缓存；`toggleStatusKey` 是纯内存翻转 + 重绘。
+ */
+export function buildQuadrantStatusMenu(
+	menu: Menu,
+	ctx: QuadrantViewContext,
+): void {
+	const model = ctx.getModel();
+	const activeKeys = ctx.getStatusKeys();
+	menu.addItem((item) => {
+		item.setTitle(t('priorityQuadrant.status.groupLabel')).setIsLabel(
+			true,
+		);
+	});
+	for (const key of STATUS_CHIP_ORDER) {
+		menu.addItem((item) => {
+			item.setTitle(
+				t('view.taskFilterSwitcher.menuItem', [
+					statusChipLabel(key),
+					String(model?.statusCounts[key] ?? 0),
+				]),
+			)
+				.setChecked(activeKeys.has(key))
+				.onClick(() => ctx.toggleStatusKey(key));
+		});
+	}
 }
 
 function optionSignature(ctx: QuadrantViewContext): string {
@@ -203,5 +255,24 @@ export function updateQuadrantFilterBar(
 		if (countEl) {
 			countEl.setText(String(model?.counts.unlabeled ?? 0));
 		}
+	}
+
+	const statusBtnEl = headerEl.querySelector<HTMLElement>(
+		'.ioto-pq-status-menu',
+	);
+	if (statusBtnEl) {
+		const included = [...statusKeys].reduce(
+			(sum, key) => sum + (model?.statusCounts[key] ?? 0),
+			0,
+		);
+		statusBtnEl
+			.querySelector<HTMLElement>('.ioto-pq-status-menu__count')
+			?.setText(String(included));
+		const label = t('view.taskFilterSwitcher.current', [
+			t('priorityQuadrant.status.groupLabel'),
+			String(included),
+		]);
+		statusBtnEl.setAttribute('aria-label', label);
+		statusBtnEl.setAttribute('title', label);
 	}
 }

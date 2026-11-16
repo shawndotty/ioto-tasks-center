@@ -17,6 +17,7 @@ const zhCN = {
 	'priorityQuadrant.scope.unarchived': '未归档项目',
 	'priorityQuadrant.sidebar.title': '未标注优先级',
 	'priorityQuadrant.sidebar.toggle': '未标注',
+	'priorityQuadrant.sidebar.toggleAria': '显示或隐藏未标注优先级的任务',
 	'priorityQuadrant.state.loadingDesc': '正在汇总 {0} 下的任务文件。',
 	'priorityQuadrant.state.loadingTitle': '正在加载任务',
 	'priorityQuadrant.state.rootMissingDesc': '请先在 vault 中创建 {0} 目录。',

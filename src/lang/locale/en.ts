@@ -18,6 +18,8 @@ const en = {
 	'priorityQuadrant.scope.unarchived': 'Unarchived projects',
 	'priorityQuadrant.sidebar.title': 'Unlabeled priority',
 	'priorityQuadrant.sidebar.toggle': 'Unlabeled',
+	'priorityQuadrant.sidebar.toggleAria':
+		'Show or hide tasks without priority',
 	'priorityQuadrant.state.loadingDesc': 'Collecting task files under {0}.',
 	'priorityQuadrant.state.loadingTitle': 'Loading tasks',
 	'priorityQuadrant.state.rootMissingDesc':

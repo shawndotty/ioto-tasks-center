@@ -7,10 +7,22 @@
 
 export const IOTO_PRIORITY_QUADRANT_VIEW_TYPE = 'IOTOPriorityQuadrant';
 
-export const QUADRANT_COMPACT_BREAKPOINT = 720;
-
 export const QUADRANT_LOADING_RENDER_DELAY_MS = 120;
 
 export const QUADRANT_BODY_CLASS = 'ioto-pq-body';
 
 export const QUADRANT_CARD_CLASS = 'ioto-pq-card';
+
+/**
+ * 叶子视图状态里的显隐位（[[Plan-20261116-060249]] §3.2）。
+ * 只认 boolean：老 / 脏 `workspace.json` 里的字符串一律忽略，回到默认隐藏。
+ */
+export function parseQuadrantViewState(state: unknown): {
+	sidebarOpen?: boolean;
+} {
+	if (!state || typeof state !== 'object') return {};
+	const candidate = state as Record<string, unknown>;
+	return typeof candidate.sidebarOpen === 'boolean'
+		? { sidebarOpen: candidate.sidebarOpen }
+		: {};
+}

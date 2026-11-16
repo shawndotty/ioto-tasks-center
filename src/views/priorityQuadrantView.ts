@@ -26,8 +26,8 @@ import { applyAppearanceStyleClasses } from './appearance-style';
 import { buildQuadrantFilterBar, encodeQuadrantScope, updateQuadrantFilterBar } from './quadrant/filter-bar';
 import {
 	IOTO_PRIORITY_QUADRANT_VIEW_TYPE,
+	parseQuadrantViewState,
 	QUADRANT_BODY_CLASS,
-	QUADRANT_COMPACT_BREAKPOINT,
 	QUADRANT_LOADING_RENDER_DELAY_MS,
 } from './quadrant/constants';
 import type { QuadrantViewContext } from './quadrant/context';
@@ -60,7 +60,7 @@ export class IOTOPriorityQuadrantView
 {
 	private statusKeys = new Set<QuadrantStatusKey>(['in-progress', 'todo']);
 	private projectScope: QuadrantProjectScope = { kind: 'unarchived' };
-	private sidebarOpen = true;
+	private sidebarOpen = false;
 	private model: QuadrantModel | null = null;
 	private lastTasks: TaskFileEntry[] = [];
 	private projectOptions: QuadrantProjectOption[] = [];
@@ -97,25 +97,22 @@ export class IOTOPriorityQuadrantView
 		return 'layout-grid';
 	}
 
+	getState(): Record<string, unknown> {
+		return { ...super.getState(), sidebarOpen: this.sidebarOpen };
+	}
+
+	async setState(state: unknown): Promise<void> {
+		this.sidebarOpen = parseQuadrantViewState(state).sidebarOpen ?? false;
+		// `setState` 可能早于 `onOpen`（同 iotoTaskView.ts:681）：只落内存，首帧渲染会读到。
+		if (this.contentEl.isConnected) this.render();
+	}
+
 	async onOpen(): Promise<void> {
 		this.contentEl.addClass('ioto-pq-view');
 		this.contentEl.setAttr('data-view', 'priority-quadrant');
 		// 首帧前就位，避免先闪 card 基线（[[Plan-20261116-052507]] §3.2）。
 		this.applyAppearanceStyle();
 		this.render();
-		// 窄容器默认收起侧栏（E3）；首帧布局完成后再量宽度。
-		window.requestAnimationFrame(() => {
-			if (!this.contentEl.isConnected) return;
-			const width = this.contentEl.clientWidth;
-			if (
-				width > 0 &&
-				width < QUADRANT_COMPACT_BREAKPOINT &&
-				this.sidebarOpen
-			) {
-				this.sidebarOpen = false;
-				this.render();
-			}
-		});
 		await this.reload();
 	}
 
@@ -198,6 +195,8 @@ export class IOTOPriorityQuadrantView
 	toggleSidebar(): void {
 		this.sidebarOpen = !this.sidebarOpen;
 		this.render();
+		// `getState` 在保存工作区时读取该字段，改完需主动请求落盘（[[Plan-20261116-060249]] E1）。
+		this.app.workspace.requestSaveLayout();
 	}
 
 	setPriority(path: string, priority: TaskPriorityValue | undefined): void {

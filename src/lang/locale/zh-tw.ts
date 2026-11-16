@@ -17,6 +17,7 @@ const zhTW = {
 	'priorityQuadrant.scope.unarchived': '未封存專案',
 	'priorityQuadrant.sidebar.title': '未標註優先級',
 	'priorityQuadrant.sidebar.toggle': '未標註',
+	'priorityQuadrant.sidebar.toggleAria': '顯示或隱藏未標註優先級的任務',
 	'priorityQuadrant.state.loadingDesc': '正在彙總 {0} 下的任務檔案。',
 	'priorityQuadrant.state.loadingTitle': '正在載入任務',
 	'priorityQuadrant.state.rootMissingDesc': '請先在 vault 中建立 {0} 目錄。',

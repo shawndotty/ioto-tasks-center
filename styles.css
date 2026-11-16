@@ -7208,6 +7208,7 @@ button[aria-pressed='true']
 	--ioto-pq-chip-border: 1px solid var(--background-modifier-border);
 	--ioto-pq-chip-radius: 999px;
 	--ioto-pq-chip-pad: 4px 10px;
+	--ioto-pq-control-h: 26px;
 	--ioto-pq-motion: 0ms;
 	--ioto-pq-line-height: inherit;
 	--ioto-pq-letter-spacing: inherit;
@@ -7233,53 +7234,119 @@ button[aria-pressed='true']
 	);
 }
 
+/* 页头网格：宽屏一行（标题 | 摘要 | 过滤 | 开关），窄屏两行，
+   断点只改 grid-area，不重建 DOM、不丢焦点（[[Plan-20261116-061758]] §3.2）。 */
 .ioto-pq-header {
 	flex: 0 0 auto;
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-}
-
-.ioto-pq-header__title-row {
-	display: flex;
-	align-items: baseline;
-	gap: 10px;
-	min-width: 0;
+	display: grid;
+	grid-template-columns: auto minmax(0, auto) minmax(0, 1fr) auto;
+	grid-template-areas: 'title summary filters toggle';
+	align-items: center;
+	column-gap: 10px;
+	row-gap: 6px;
 }
 
 .ioto-pq-header__title {
+	grid-area: title;
 	margin: 0;
-	font-size: var(--font-ui-large);
+	font-size: var(--font-ui-small);
+	font-weight: 600;
 }
 
 .ioto-pq-header__summary {
+	grid-area: summary;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 	color: var(--text-faint);
 	font-size: var(--font-ui-smaller);
 }
 
+.ioto-pq-header__toggle {
+	grid-area: toggle;
+	align-self: center;
+	height: var(--ioto-pq-control-h);
+	padding-block: 0;
+}
+
 .ioto-pq-filterbar {
+	grid-area: filters;
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: 8px 12px;
+	gap: 6px;
+	min-width: 0;
 }
 
 .ioto-pq-filterbar__scope {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
+	gap: 0;
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
 }
 
-.ioto-pq-scope-select {
-	max-width: 260px;
+/* 标签只做视觉隐藏：可访问名来自 select 的 ariaLabel，DOM 保留语义。 */
+.ioto-pq-filterbar__scope > span {
+	display: none;
 }
 
+.ioto-pq-scope-select {
+	max-width: min(200px, 45vw);
+	height: var(--ioto-pq-control-h);
+	padding-block: 0;
+	font-size: var(--font-ui-smaller);
+	border-radius: var(--ioto-pq-chip-radius);
+	background: var(--ioto-pq-chip-bg);
+}
+
+/* 三个状态 chip 拼成一个分段控件（[[Plan-20261116-061758]] §3.3）。 */
 .ioto-pq-chips {
-	display: flex;
-	flex-wrap: wrap;
+	display: inline-flex;
+	flex-wrap: nowrap;
+	/* 4px 而非 0：两 chip 同时激活时，间隙露出轨道底色，避免内描边连成一条线。 */
+	gap: 4px;
+	padding: 2px;
+	border: var(--ioto-pq-chip-border);
+	border-radius: var(--ioto-pq-chip-radius);
+	background: var(--ioto-pq-chip-bg);
+}
+
+.ioto-pq-chips .ioto-pq-chip {
+	border: 0;
+	border-radius: calc(var(--ioto-pq-chip-radius) - 2px);
+	background: transparent;
+	padding: 0 10px;
+	/* 核心 `button` 的固定 30px 高度会撑高分段控件；减掉 2px 内边距 + 2px 外框得 26px。 */
+	height: calc(var(--ioto-pq-control-h) - 6px);
+	min-height: 0;
+}
+
+.ioto-pq-chips .ioto-pq-chip.is-active {
+	box-shadow: inset 0 0 0 1px var(--interactive-accent);
+	background: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+	color: var(--text-normal);
+}
+
+/* 窄屏状态菜单：宽屏隐藏，720 查询里与 chips 互换显示（二者都留在 DOM）。 */
+.ioto-pq-status-menu {
+	display: none;
+	align-items: center;
 	gap: 6px;
+	min-height: var(--ioto-pq-control-h);
+	padding: 0 10px;
+	border: var(--ioto-pq-chip-border);
+	border-radius: var(--ioto-pq-chip-radius);
+	background: var(--ioto-pq-chip-bg);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	cursor: pointer;
+}
+
+.ioto-pq-status-menu__count {
+	color: var(--text-faint);
+	font-variant-numeric: tabular-nums;
 }
 
 .ioto-pq-chip,
@@ -7735,6 +7802,59 @@ button[aria-pressed='true']
 }
 
 @container ioto-pq (max-width: 720px) {
+	/* 窄屏单行：项目范围 + 状态 ｜ 未标注；标题与摘要不占视觉位置。 */
+	.ioto-pq-header {
+		grid-template-columns: minmax(0, 1fr) auto;
+		grid-template-areas: 'filters toggle';
+		align-items: start;
+	}
+
+	/* 视觉隐藏，保留 h2 语义（读屏仍可获知视图名）。 */
+	.ioto-pq-header__title {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		border: 0;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		clip-path: inset(50%);
+		white-space: nowrap;
+	}
+
+	.ioto-pq-header__summary {
+		display: none;
+	}
+
+	.ioto-pq-header__toggle {
+		align-self: start;
+	}
+
+	/* 手机端状态按钮的系统 44px 触控高会撑高过滤组，顶部对齐才能与开关同基线。 */
+	.ioto-pq-filterbar {
+		align-items: flex-start;
+	}
+
+	.ioto-pq-scope-select {
+		max-width: min(200px, 40vw);
+	}
+
+	.ioto-pq-chips {
+		display: none;
+	}
+
+	.ioto-pq-status-menu {
+		display: inline-flex;
+	}
+
+	/* 窄屏触摸热区 ≥32px（视觉密度由宽屏保持）。 */
+	.ioto-pq-scope-select,
+	.ioto-pq-header__toggle,
+	.ioto-pq-status-menu {
+		min-height: 32px;
+	}
+
 	.ioto-pq-body {
 		grid-template-columns: minmax(0, 1fr);
 	}
