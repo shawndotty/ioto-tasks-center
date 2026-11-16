@@ -56,6 +56,7 @@ import {
 	readQuadrantFilterFallback,
 	writeQuadrantFilterFallback,
 } from './quadrant/filter-storage';
+import { attachQuadrantDrag } from './quadrant/drag-controller';
 import { buildQuadrantPriorityMenu } from './quadrant/menus';
 import {
 	captureQuadrantScroll,
@@ -102,6 +103,7 @@ export class IOTOPriorityQuadrantView
 	private sidebarEl: HTMLElement | null = null;
 	private scrimEl: HTMLElement | null = null;
 	private timeRangePopover: QuadrantTimeRangePopover | null = null;
+	private dragDispose: (() => void) | null = null;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -173,6 +175,8 @@ export class IOTOPriorityQuadrantView
 	}
 
 	async onClose(): Promise<void> {
+		this.dragDispose?.();
+		this.dragDispose = null;
 		this.clearLoadingTimer();
 		this.pendingPriorityPaths.clear();
 		this.timeRangePopover?.destroy();
@@ -564,19 +568,35 @@ export class IOTOPriorityQuadrantView
 	private buildBody(): void {
 		const root = this.contentEl;
 		this.bodyEl = root.createDiv({ cls: QUADRANT_BODY_CLASS });
-		this.gridEl = this.bodyEl.createDiv({ cls: 'ioto-pq-grid' });
-		this.sidebarEl = this.bodyEl.createEl('aside', {
+		const gridEl = this.bodyEl.createDiv({ cls: 'ioto-pq-grid' });
+		const sidebarEl = this.bodyEl.createEl('aside', {
 			cls: 'ioto-pq-sidebar',
 		});
-		this.sidebarEl.id = 'ioto-pq-sidebar';
-		this.scrimEl = this.bodyEl.createDiv({ cls: 'ioto-pq-scrim' });
-		this.scrimEl.hidden = !this.sidebarOpen;
-		this.scrimEl.addEventListener('click', () => {
+		sidebarEl.id = 'ioto-pq-sidebar';
+		const scrimEl = this.bodyEl.createDiv({ cls: 'ioto-pq-scrim' });
+		scrimEl.hidden = !this.sidebarOpen;
+		scrimEl.addEventListener('click', () => {
 			if (this.sidebarOpen) this.toggleSidebar();
+		});
+		this.gridEl = gridEl;
+		this.sidebarEl = sidebarEl;
+		this.scrimEl = scrimEl;
+
+		// 手势挂容器（事件委托）：`render()` 重建象限与卡片不影响监听。
+		this.dragDispose?.();
+		this.dragDispose = attachQuadrantDrag({
+			gridEl,
+			sidebarEl,
+			isCardBusy: (path) => this.isCardBusy(path),
+			setPriority: (path, priority) => this.setPriority(path, priority),
+			// P1 换成侧栏真实可见性判定。
+			isSidebarDropEnabled: () => false,
 		});
 	}
 
 	private clearShell(): void {
+		this.dragDispose?.();
+		this.dragDispose = null;
 		if (this.headerEl) {
 			this.headerEl.remove();
 			this.headerEl = null;

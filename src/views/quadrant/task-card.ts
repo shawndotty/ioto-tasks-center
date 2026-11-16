@@ -112,6 +112,11 @@ export function renderQuadrantTaskCard(
 	}
 
 	cardEl.addEventListener('click', (event) => {
+		// 拖拽松手后的首个 click 只用于消费抑制标志，不打开任务。
+		if (cardEl.dataset.iotoSuppressClick === '1') {
+			delete cardEl.dataset.iotoSuppressClick;
+			return;
+		}
 		if (options.busy) return;
 		const target = event.target;
 		if (
