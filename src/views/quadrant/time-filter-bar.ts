@@ -19,6 +19,10 @@ import {
 	type TaskTimeField,
 } from '../../tasks-center/task-time-range';
 import type { QuadrantViewContext } from './context';
+import {
+	QUADRANT_CONTROL_ICONS,
+	createQuadrantControlIcon,
+} from './control-icon';
 
 const PRESET_LABEL_KEYS: Record<QuadrantTimePreset, TranslationKey> = {
 	'created-week': 'priorityQuadrant.time.presetWeek',
@@ -171,6 +175,11 @@ export function buildQuadrantTimeControls(
 	const menuBtnEl = barEl.createEl('button', { cls: 'ioto-pq-time-menu' });
 	menuBtnEl.type = 'button';
 	menuBtnEl.setAttribute('aria-haspopup', 'menu');
+	createQuadrantControlIcon(
+		menuBtnEl,
+		'ioto-pq-time-menu__icon',
+		QUADRANT_CONTROL_ICONS.time,
+	);
 	menuBtnEl.createSpan({
 		cls: 'ioto-pq-time-menu__label',
 		text: t('priorityQuadrant.time.label'),

@@ -7273,7 +7273,9 @@ button[aria-pressed='true']
 .ioto-pq-filterbar {
 	grid-area: filters;
 	display: flex;
-	flex-wrap: wrap;
+	/* 任何宽度都不折行：空间不足时由项目下拉收缩吸收，避免出现第二排
+	   （[[Plan-20261116-103424]] §4.2）。 */
+	flex-wrap: nowrap;
 	align-items: center;
 	gap: 6px;
 	min-width: 0;
@@ -7309,10 +7311,37 @@ button[aria-pressed='true']
 	max-width: min(180px, 42vw);
 }
 
+/* 页头五个控件共用同一高度：核心 `button:not(.clickable-icon)` 的固定 30px
+   会撑高菜单按钮，普通类选择器盖不住，这里连同前缀一起提到 (0,2,1)
+   （[[Plan-20261116-103424]] §4.1）。 */
+button:not(.clickable-icon).ioto-pq-status-menu,
+button:not(.clickable-icon).ioto-pq-time-menu,
+button:not(.clickable-icon).ioto-pq-header__toggle {
+	box-sizing: border-box;
+	height: var(--ioto-pq-control-h);
+	min-height: var(--ioto-pq-control-h);
+}
+
+/* 项目下拉与其余控件同一视觉语言，并允许收缩吸收多余宽度。 */
+.ioto-pq-filterbar__scope {
+	flex: 0 1 auto;
+	min-width: 0;
+}
+
+.ioto-pq-scope-select {
+	flex: 0 1 auto;
+	min-width: 72px;
+	border: var(--ioto-pq-chip-border);
+	color: var(--text-muted);
+}
+
 /* 三个状态 chip 拼成一个分段控件（[[Plan-20261116-061758]] §3.3）。 */
 .ioto-pq-chips {
 	display: inline-flex;
 	flex-wrap: nowrap;
+	/* 与 select / 菜单共用同一高度：不靠子项自然撑高，消除子像素差。 */
+	box-sizing: border-box;
+	height: var(--ioto-pq-control-h);
 	/* 4px 而非 0：两 chip 同时激活时，间隙露出轨道底色，避免内描边连成一条线。 */
 	gap: 4px;
 	padding: 2px;
@@ -7370,6 +7399,22 @@ button[aria-pressed='true']
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	color: var(--text-faint);
+}
+
+/* 窄屏图标化（[[Plan-20261116-095729]] §3.4）：图标默认隐藏，断点内与文字互换。 */
+.ioto-pq-status-menu__icon,
+.ioto-pq-time-menu__icon,
+.ioto-pq-sidebar-toggle__icon {
+	display: none;
+	align-items: center;
+	justify-content: center;
+}
+
+.ioto-pq-status-menu__icon svg,
+.ioto-pq-time-menu__icon svg,
+.ioto-pq-sidebar-toggle__icon svg {
+	width: 16px;
+	height: 16px;
 }
 
 /* 自定义时间区间：浮层 / 面板 / Modal（[[Plan-20261116-083330]] §3.5 / §3.8）。 */
@@ -7879,6 +7924,13 @@ button:not(.clickable-icon).ioto-pq-time-panel__action {
 	}
 }
 
+/* 触屏兜底：宽屏平板/手机（容器可能 >1024px）也统一 32px 触控高度，
+   避免「宽屏平板按钮偏矮」（[[Plan-20261116-103424]] §4.6）。 */
+.is-tablet .ioto-pq-view,
+.is-phone .ioto-pq-view {
+	--ioto-pq-control-h: 32px;
+}
+
 /* 移动端：收紧间距；玻璃面板降低模糊半径（沿用 TaskView 的 .is-phone 策略） */
 .is-phone .ioto-pq-view.is-glass {
 	--ioto-pq-frame-gap: 12px;
@@ -7930,26 +7982,17 @@ button:not(.clickable-icon).ioto-pq-time-panel__action {
 	font-size: var(--font-ui-smaller);
 }
 
-/* 中等宽度：时间下拉换成菜单按钮，状态 chips 仍保留（[[Plan-20261116-083330]] §3.3）。 */
-@container ioto-pq (max-width: 900px) {
-	.ioto-pq-time-select {
-		display: none;
-	}
-
-	.ioto-pq-time-menu {
-		display: inline-flex;
-	}
-}
-
-@container ioto-pq (max-width: 720px) {
-	/* 窄屏单行：项目范围 + 状态 ｜ 未标注；标题与摘要不占视觉位置。 */
+/* 紧凑档（≤1024px）：页头收敛为单行「项目范围 + 图标过滤 ｜ 未标注」。
+   标题与摘要退出视觉，过滤控件与开关统一为图标（保留计数），避免全文字
+   形态在中等宽度折行、混排（[[Plan-20261116-103424]] §4.3）。 */
+@container ioto-pq (max-width: 1024px) {
 	.ioto-pq-header {
 		grid-template-columns: minmax(0, 1fr) auto;
 		grid-template-areas: 'filters toggle';
-		align-items: start;
+		align-items: center;
 	}
 
-	/* 视觉隐藏，保留 h2 语义（读屏仍可获知视图名）。 */
+	/* 视觉隐藏，保留 h2 语义（读屏仍能获知视图名）。 */
 	.ioto-pq-header__title {
 		position: absolute;
 		width: 1px;
@@ -7967,8 +8010,67 @@ button:not(.clickable-icon).ioto-pq-time-panel__action {
 		display: none;
 	}
 
+	.ioto-pq-chips,
+	.ioto-pq-time-select,
+	/* 时间下拉的 label 包裹层：只含隐藏元素，留着会白占一个 flex gap。 */
+	.ioto-pq-filterbar__time {
+		display: none;
+	}
+
+	.ioto-pq-status-menu,
+	.ioto-pq-time-menu {
+		display: inline-flex;
+	}
+
+	.ioto-pq-status-menu__icon,
+	.ioto-pq-time-menu__icon,
+	.ioto-pq-sidebar-toggle__icon {
+		display: inline-flex;
+	}
+
+	.ioto-pq-status-menu__label,
+	.ioto-pq-time-menu__label,
+	.ioto-pq-time-menu__value,
+	.ioto-pq-sidebar-toggle__label {
+		display: none;
+	}
+
+	.ioto-pq-status-menu,
+	.ioto-pq-time-menu,
 	.ioto-pq-header__toggle {
-		align-self: start;
+		min-width: 36px;
+		justify-content: center;
+		gap: 4px;
+		padding-inline: 8px;
+	}
+
+	/* 平板核心 padding 提权（原只在 ≤720px 写，紧凑档同样需要）。 */
+	.is-tablet button:not(.clickable-icon).ioto-pq-status-menu,
+	.is-tablet button:not(.clickable-icon).ioto-pq-time-menu,
+	.is-tablet button:not(.clickable-icon).ioto-pq-header__toggle {
+		padding-inline: 8px;
+	}
+
+	/* 时间过滤激活：在计数位放同尺寸圆点，与另两个按钮的「图标 + 数值」同节奏。
+	   完整值仍在 aria-label / title 与菜单勾选里。 */
+	.ioto-pq-time-menu.is-active::after {
+		content: '';
+		flex: 0 0 auto;
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: var(--interactive-accent);
+	}
+}
+
+@container ioto-pq (max-width: 720px) {
+	/* 触控高度统一由 token 抬到 32px（图标形态已在 ≤1024 档生效）。 */
+	.ioto-pq-header {
+		--ioto-pq-control-h: 32px;
+	}
+
+	.ioto-pq-header__toggle {
+		align-self: center;
 	}
 
 	/* 手机端状态按钮的系统 44px 触控高会撑高过滤组，顶部对齐才能与开关同基线。 */
@@ -7978,30 +8080,6 @@ button:not(.clickable-icon).ioto-pq-time-panel__action {
 
 	.ioto-pq-scope-select {
 		max-width: min(200px, 40vw);
-	}
-
-	.ioto-pq-chips {
-		display: none;
-	}
-
-	.ioto-pq-status-menu {
-		display: inline-flex;
-	}
-
-	.ioto-pq-time-menu {
-		display: inline-flex;
-	}
-
-	.ioto-pq-time-menu__value {
-		max-width: 100px;
-	}
-
-	/* 窄屏触摸热区 ≥32px（视觉密度由宽屏保持）。 */
-	.ioto-pq-scope-select,
-	.ioto-pq-header__toggle,
-	.ioto-pq-status-menu,
-	.ioto-pq-time-menu {
-		min-height: 32px;
 	}
 
 	.ioto-pq-body {
@@ -8037,5 +8115,25 @@ button:not(.clickable-icon).ioto-pq-time-panel__action {
 		inset: 0;
 		z-index: 19;
 		background: rgba(0, 0, 0, 0.35);
+	}
+}
+
+/* 极窄微调（≤420px）：只压缩项目下拉与按钮内边距，保证仍单行
+   （[[Plan-20261116-103424]] §4.5）。 */
+@container ioto-pq (max-width: 420px) {
+	.ioto-pq-filterbar {
+		gap: 4px;
+	}
+
+	.ioto-pq-scope-select {
+		min-width: 64px;
+		max-width: min(160px, 32vw);
+	}
+
+	.ioto-pq-status-menu,
+	.ioto-pq-time-menu,
+	.ioto-pq-header__toggle {
+		min-width: 32px;
+		padding-inline: 6px;
 	}
 }

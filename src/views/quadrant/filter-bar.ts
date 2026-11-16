@@ -17,6 +17,10 @@ import type {
 } from '../../tasks-center/quadrant-data';
 import type { QuadrantViewContext } from './context';
 import {
+	QUADRANT_CONTROL_ICONS,
+	createQuadrantControlIcon,
+} from './control-icon';
+import {
 	buildQuadrantTimeControls,
 	updateQuadrantTimeControls,
 } from './time-filter-bar';
@@ -106,6 +110,11 @@ export function buildQuadrantFilterBar(
 	const statusBtnEl = barEl.createEl('button', { cls: 'ioto-pq-status-menu' });
 	statusBtnEl.type = 'button';
 	statusBtnEl.setAttribute('aria-haspopup', 'menu');
+	createQuadrantControlIcon(
+		statusBtnEl,
+		'ioto-pq-status-menu__icon',
+		QUADRANT_CONTROL_ICONS.status,
+	);
 	statusBtnEl.createSpan({
 		cls: 'ioto-pq-status-menu__label',
 		text: t('priorityQuadrant.status.groupLabel'),
@@ -132,7 +141,16 @@ export function buildQuadrantFilterBar(
 		'aria-label',
 		t('priorityQuadrant.sidebar.toggleAria'),
 	);
-	toggleEl.createSpan({ text: t('priorityQuadrant.sidebar.toggle') });
+	toggleEl.setAttribute('title', t('priorityQuadrant.sidebar.toggleAria'));
+	createQuadrantControlIcon(
+		toggleEl,
+		'ioto-pq-sidebar-toggle__icon',
+		QUADRANT_CONTROL_ICONS.unlabeled,
+	);
+	toggleEl.createSpan({
+		cls: 'ioto-pq-sidebar-toggle__label',
+		text: t('priorityQuadrant.sidebar.toggle'),
+	});
 	toggleEl.createSpan({ cls: 'ioto-pq-chip__count' });
 	toggleEl.addEventListener('click', () => ctx.toggleSidebar());
 

@@ -1,0 +1,134 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { createJiti } from 'jiti';
+
+// 四象限过滤设备级兜底单测（[[Plan-20261116-102615]] §3.4 / §6.2）。
+// `filter-storage.ts` 零 obsidian 运行时依赖，照 `quadrant-view-state.test.mjs` 的 jiti 直载范式。
+const jiti = createJiti(import.meta.url, { moduleCache: false });
+const {
+	QUADRANT_FILTER_STORAGE_KEY,
+	readQuadrantFilterFallback,
+	writeQuadrantFilterFallback,
+} = await jiti.import('../src/views/quadrant/filter-storage.ts');
+
+function createApp(options = {}) {
+	const store = new Map();
+	return {
+		store,
+		loadLocalStorage(key) {
+			if (options.loadThrows) throw new Error('load failed');
+			return store.has(key) ? store.get(key) : null;
+		},
+		saveLocalStorage(key, data) {
+			if (options.saveThrows) throw new Error('save failed');
+			store.set(key, data);
+		},
+	};
+}
+
+test('read：非对象或缺少 API 的 app 一律回 {}', () => {
+	for (const app of [
+		null,
+		undefined,
+		0,
+		'x',
+		{},
+		{ loadLocalStorage: () => ({}) },
+		{ saveLocalStorage: () => {} },
+	]) {
+		assert.deepEqual(readQuadrantFilterFallback(app), {});
+	}
+});
+
+test('read：无记录（null）回 {}', () => {
+	assert.deepEqual(readQuadrantFilterFallback(createApp()), {});
+});
+
+test('read：合法记录解码 statusKeys 与 timeFilter', () => {
+	const app = createApp();
+	app.store.set(QUADRANT_FILTER_STORAGE_KEY, {
+		statusKeys: ['completed'],
+		timeFilter: 'preset:created-two-weeks',
+	});
+	assert.deepEqual(readQuadrantFilterFallback(app), {
+		statusKeys: ['completed'],
+		timeFilter: { kind: 'preset', value: 'created-two-weeks' },
+	});
+});
+
+test('read：statusKeys 空数组读回 []（不当作无记录）', () => {
+	const app = createApp();
+	app.store.set(QUADRANT_FILTER_STORAGE_KEY, { statusKeys: [] });
+	const result = readQuadrantFilterFallback(app);
+	assert.deepEqual(result.statusKeys, []);
+	assert.equal(result.timeFilter, undefined);
+});
+
+test('read：全脏记录 → 对应字段 undefined；脏 timeFilter 回落 none', () => {
+	const app = createApp();
+	app.store.set(QUADRANT_FILTER_STORAGE_KEY, {
+		statusKeys: ['bogus'],
+		timeFilter: 42,
+	});
+	const result = readQuadrantFilterFallback(app);
+	assert.equal(result.statusKeys, undefined);
+	assert.deepEqual(result.timeFilter, { kind: 'none' });
+});
+
+test('read：loadLocalStorage 抛错回 {}', () => {
+	assert.deepEqual(readQuadrantFilterFallback(createApp({ loadThrows: true })), {});
+});
+
+test('write：缺 API 或非对象 app 不抛错', () => {
+	for (const app of [null, undefined, {}, { loadLocalStorage: () => null }]) {
+		assert.doesNotThrow(() =>
+			writeQuadrantFilterFallback(app, {
+				statusKeys: new Set(['todo']),
+				timeFilter: { kind: 'none' },
+			}),
+		);
+	}
+});
+
+test('write：key 固定、timeFilter 编码为字符串、statusKeys 为普通数组', () => {
+	const app = createApp();
+	writeQuadrantFilterFallback(app, {
+		statusKeys: new Set(['completed', 'todo']),
+		timeFilter: {
+			kind: 'custom',
+			field: 'created',
+			start: '2026-10-01',
+			end: '2026-10-31',
+		},
+	});
+	assert.deepEqual(app.store.get(QUADRANT_FILTER_STORAGE_KEY), {
+		statusKeys: ['completed', 'todo'],
+		timeFilter: 'custom:created:2026-10-01:2026-10-31',
+	});
+	assert.equal(QUADRANT_FILTER_STORAGE_KEY, 'ioto-pq-filter-v1');
+});
+
+test('write：空 Set 写成 []，读回仍为全不选', () => {
+	const app = createApp();
+	writeQuadrantFilterFallback(app, {
+		statusKeys: new Set(),
+		timeFilter: { kind: 'none' },
+	});
+	assert.deepEqual(app.store.get(QUADRANT_FILTER_STORAGE_KEY), {
+		statusKeys: [],
+		timeFilter: 'none',
+	});
+	assert.deepEqual(readQuadrantFilterFallback(app), {
+		statusKeys: [],
+		timeFilter: { kind: 'none' },
+	});
+});
+
+test('write：saveLocalStorage 抛错不向上抛', () => {
+	assert.doesNotThrow(() =>
+		writeQuadrantFilterFallback(createApp({ saveThrows: true }), {
+			statusKeys: new Set(['todo']),
+			timeFilter: { kind: 'none' },
+		}),
+	);
+});

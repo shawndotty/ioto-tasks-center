@@ -5,7 +5,7 @@ import { createJiti } from 'jiti';
 // 四象限视图状态解析单测（[[Plan-20261116-060249]] §四 S1）。
 // `constants.ts` 无 obsidian 运行时依赖，照 `quadrant-model.test.mjs` 的 jiti 直载范式。
 const jiti = createJiti(import.meta.url, { moduleCache: false });
-const { parseQuadrantViewState } = await jiti.import(
+const { mergeQuadrantViewState, parseQuadrantViewState } = await jiti.import(
 	'../src/views/quadrant/constants.ts',
 );
 const { encodeQuadrantTimeFilter, decodeQuadrantTimeFilter } = await jiti.import(
@@ -168,4 +168,62 @@ test('parseQuadrantViewState：statusKeys getState(数组) → parse 往返一�
 		const state = { statusKeys: keys };
 		assert.deepEqual(parseQuadrantViewState(state).statusKeys, keys);
 	}
+});
+
+// mergeQuadrantViewState（[[Plan-20261116-102615]] §3.1 / §6.1）。
+const CURRENT_STATE = {
+	sidebarOpen: true,
+	timeFilter: { kind: 'preset', value: 'updated-week' },
+	statusKeys: ['in-progress', 'todo'],
+};
+
+test('mergeQuadrantViewState：空 parsed → 字段原样保留且为新引用', () => {
+	const merged = mergeQuadrantViewState(CURRENT_STATE, {});
+	assert.deepEqual(merged, CURRENT_STATE);
+	assert.notEqual(merged.statusKeys, CURRENT_STATE.statusKeys);
+});
+
+test('mergeQuadrantViewState：statusKeys 空数组保留（全不选）', () => {
+	assert.deepEqual(mergeQuadrantViewState(CURRENT_STATE, { statusKeys: [] }), {
+		...CURRENT_STATE,
+		statusKeys: [],
+	});
+});
+
+test('mergeQuadrantViewState：statusKeys 显式值覆盖当前', () => {
+	assert.deepEqual(
+		mergeQuadrantViewState(CURRENT_STATE, { statusKeys: ['completed'] }),
+		{ ...CURRENT_STATE, statusKeys: ['completed'] },
+	);
+});
+
+test('mergeQuadrantViewState：sidebarOpen=false 显式覆盖 true', () => {
+	assert.equal(
+		mergeQuadrantViewState(CURRENT_STATE, { sidebarOpen: false }).sidebarOpen,
+		false,
+	);
+});
+
+test('mergeQuadrantViewState：timeFilter none 覆盖旧预设，缺失保留', () => {
+	assert.deepEqual(
+		mergeQuadrantViewState(CURRENT_STATE, { timeFilter: { kind: 'none' } })
+			.timeFilter,
+		{ kind: 'none' },
+	);
+	assert.deepEqual(
+		mergeQuadrantViewState(CURRENT_STATE, {}).timeFilter,
+		CURRENT_STATE.timeFilter,
+	);
+});
+
+test('mergeQuadrantViewState：与 parse 组合，全不选 + 全部时间不被默认回填', () => {
+	const parsed = parseQuadrantViewState({
+		statusKeys: [],
+		timeFilter: 'none',
+	});
+	assert.deepEqual(mergeQuadrantViewState(CURRENT_STATE, parsed), {
+		sidebarOpen: true,
+		timeFilter: { kind: 'none' },
+		statusKeys: [],
+	});
 });

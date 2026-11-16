@@ -42,6 +42,7 @@ import { buildQuadrantFilterBar, encodeQuadrantScope, updateQuadrantFilterBar } 
 import {
 	DEFAULT_QUADRANT_STATUS_KEYS,
 	IOTO_PRIORITY_QUADRANT_VIEW_TYPE,
+	mergeQuadrantViewState,
 	parseQuadrantViewState,
 	QUADRANT_BODY_CLASS,
 	QUADRANT_LOADING_RENDER_DELAY_MS,
@@ -51,6 +52,10 @@ import {
 	scanQuadrantTasks,
 	type QuadrantProjectOption,
 } from './quadrant/data-loader';
+import {
+	readQuadrantFilterFallback,
+	writeQuadrantFilterFallback,
+} from './quadrant/filter-storage';
 import { buildQuadrantPriorityMenu } from './quadrant/menus';
 import {
 	captureQuadrantScroll,
@@ -129,12 +134,30 @@ export class IOTOPriorityQuadrantView
 
 	async setState(state: unknown): Promise<void> {
 		const parsed = parseQuadrantViewState(state);
-		this.sidebarOpen = parsed.sidebarOpen ?? false;
-		this.timeFilter = parsed.timeFilter ?? { kind: 'none' };
-		// 缺省 / 全脏值不改字段，保留构造期默认（[[Plan-20261116-091927]] §3.2）。
-		if (parsed.statusKeys) this.statusKeys = new Set(parsed.statusKeys);
-		// `setState` 可能早于 `onOpen`（同 iotoTaskView.ts:681）：只落内存，首帧渲染会读到。
-		if (this.contentEl.isConnected) this.render();
+		// 方案 B：叶子状态缺失时用设备级最近值作基线（`[]` 合法，不可真值判断）。
+		const fallback = readQuadrantFilterFallback(this.app);
+		const merged = mergeQuadrantViewState(
+			{
+				sidebarOpen: this.sidebarOpen,
+				timeFilter: fallback.timeFilter ?? this.timeFilter,
+				statusKeys: fallback.statusKeys ?? [...this.statusKeys],
+			},
+			parsed,
+		);
+		this.sidebarOpen = merged.sidebarOpen;
+		this.timeFilter = merged.timeFilter;
+		this.statusKeys = new Set(merged.statusKeys);
+		// 叶子状态落地即镜像到设备级，保持「最近值」新鲜（工作区切换 / 复制标签也走这里）。
+		writeQuadrantFilterFallback(this.app, {
+			statusKeys: this.statusKeys,
+			timeFilter: this.timeFilter,
+		});
+
+		// 早于 `onOpen`（同 iotoTaskView.ts:681）：字段已就位，首轮 `reload` 会读到。
+		if (!this.contentEl.isConnected) return;
+		// 晚于 `onOpen`：扫描已就绪时用内存结果重建，零额外 IO。
+		if (this.scanStatus === 'ready') this.rebuildModel();
+		this.render();
 	}
 
 	async onOpen(): Promise<void> {
@@ -143,7 +166,10 @@ export class IOTOPriorityQuadrantView
 		// 首帧前就位，避免先闪 card 基线（[[Plan-20261116-052507]] §3.2）。
 		this.applyAppearanceStyle();
 		this.render();
-		await this.reload();
+		// 方案 A+：不阻塞 Obsidian 工作区恢复（leaf 复原外层 10s 超时）。
+		void this.reload().catch((error: unknown) => {
+			console.error('[IOTO Task Center] 优先级四象限首轮扫描失败', error);
+		});
 	}
 
 	async onClose(): Promise<void> {
@@ -219,6 +245,10 @@ export class IOTOPriorityQuadrantView
 		else this.statusKeys.add(key);
 		this.rebuildModel();
 		this.render();
+		writeQuadrantFilterFallback(this.app, {
+			statusKeys: this.statusKeys,
+			timeFilter: this.timeFilter,
+		});
 		this.app.workspace.requestSaveLayout();
 	}
 
@@ -240,6 +270,10 @@ export class IOTOPriorityQuadrantView
 		this.timeFilter = filter;
 		this.rebuildModel();
 		this.render();
+		writeQuadrantFilterFallback(this.app, {
+			statusKeys: this.statusKeys,
+			timeFilter: this.timeFilter,
+		});
 		this.app.workspace.requestSaveLayout();
 	}
 

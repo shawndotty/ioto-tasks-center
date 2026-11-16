@@ -37,6 +37,29 @@ function isQuadrantStatusKey(value: unknown): value is QuadrantStatusKey {
 	);
 }
 
+export interface QuadrantViewFilterState {
+	sidebarOpen: boolean;
+	timeFilter: QuadrantTimeFilter;
+	statusKeys: QuadrantStatusKey[];
+}
+
+/**
+ * 叶子状态合并（[[Plan-20261116-102615]] §3.1）：
+ * 缺失（undefined）保留当前值；`statusKeys: []` 是合法「全不选」，必须保留。
+ */
+export function mergeQuadrantViewState(
+	current: QuadrantViewFilterState,
+	parsed: ReturnType<typeof parseQuadrantViewState>,
+): QuadrantViewFilterState {
+	return {
+		sidebarOpen: parsed.sidebarOpen ?? current.sidebarOpen,
+		timeFilter: parsed.timeFilter ?? current.timeFilter,
+		statusKeys: parsed.statusKeys
+			? [...parsed.statusKeys]
+			: [...current.statusKeys],
+	};
+}
+
 /**
  * 叶子视图状态（[[Plan-20261116-060249]] §3.2、[[Plan-20261116-083330]] §3.6、
  * [[Plan-20261116-091927]] §3.2）。
