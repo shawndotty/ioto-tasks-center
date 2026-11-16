@@ -19,6 +19,8 @@ import { t } from '../lang/helpter';
 import type { TaskViewAppearanceStyle } from '../settings-types';
 import {
 	buildQuadrantModel,
+	QUADRANT_KEYS,
+	type QuadrantKey,
 	type QuadrantModel,
 	type QuadrantProjectScope,
 	type QuadrantStatusKey,
@@ -37,6 +39,10 @@ import {
 	type TaskPriorityValue,
 } from '../tasks-center/task-priority';
 import type { TaskFileEntry } from '../tasks-center/types';
+import type {
+	TaskCreationType,
+	TaskTemplateConfig,
+} from '../tasks-center/task-template-config';
 import { applyAppearanceStyleClasses } from './appearance-style';
 import { buildQuadrantFilterBar, encodeQuadrantScope, updateQuadrantFilterBar } from './quadrant/filter-bar';
 import {
@@ -57,7 +63,12 @@ import {
 	writeQuadrantFilterFallback,
 } from './quadrant/filter-storage';
 import { attachQuadrantDrag } from './quadrant/drag-controller';
-import { buildQuadrantPriorityMenu } from './quadrant/menus';
+import {
+	buildQuadrantPriorityMenu,
+	runAfterMenuCloses,
+} from './quadrant/menus';
+import { createTaskInQuadrant as runQuadrantTaskCreation } from './quadrant/create-task';
+import { resolveQuadrantTaskTypeOptions } from './quadrant/create-task-type-options';
 import {
 	captureQuadrantScroll,
 	renderQuadrantGrid,
@@ -77,6 +88,10 @@ export interface PriorityQuadrantDeps {
 	getShowProjectNameInTaskList(): boolean;
 	getUseIOTOTaskViewAsDefault(): boolean;
 	getAppearanceStyle(): TaskViewAppearanceStyle;
+	getEnabledTaskCreationTypes(): TaskCreationType[];
+	getTaskTemplateConfig(type: TaskCreationType): TaskTemplateConfig;
+	getDateTaskDateFormat(): string;
+	resolveTargetLeaf(): WorkspaceLeaf | null;
 }
 
 export class IOTOPriorityQuadrantView
@@ -95,6 +110,7 @@ export class IOTOPriorityQuadrantView
 	private loadingTimer: number | null = null;
 	private loadingVisible = false;
 	private pendingPriorityPaths = new Set<string>();
+	private readonly creatingQuadrants = new Set<QuadrantKey>();
 	private projectMissingNotified = false;
 
 	private headerEl: HTMLElement | null = null;
@@ -388,6 +404,90 @@ export class IOTOPriorityQuadrantView
 
 	isCardBusy(path: string): boolean {
 		return this.pendingPriorityPaths.has(path);
+	}
+
+	createTaskInQuadrant(
+		key: QuadrantKey,
+		event: MouseEvent,
+		anchor: HTMLElement,
+	): void {
+		if (this.creatingQuadrants.size > 0) {
+			new Notice(t('priorityQuadrant.create.busy'));
+			return;
+		}
+
+		const options = resolveQuadrantTaskTypeOptions(
+			this.deps.getEnabledTaskCreationTypes(),
+		);
+		const [onlyOption] = options;
+		if (!onlyOption) return;
+		if (options.length === 1) {
+			this.startQuadrantTaskCreation(key, onlyOption.key);
+			return;
+		}
+
+		// 与任务中心一致：菜单在 click 的同步路径里打开，且不被 await。
+		const menu = new Menu();
+		menu.setUseNativeMenu(false);
+		for (const option of options) {
+			menu.addItem((item) =>
+				item.setTitle(option.label).onClick(() =>
+					runAfterMenuCloses(menu, () =>
+						this.startQuadrantTaskCreation(key, option.key),
+					),
+				),
+			);
+		}
+
+		// 键盘触发的合成 click 没有指针坐标，回退到按钮矩形。
+		if (event.detail === 0) {
+			const rect = anchor.getBoundingClientRect();
+			menu.showAtPosition({ x: rect.left, y: rect.bottom });
+			return;
+		}
+		menu.showAtMouseEvent(event);
+	}
+
+	private startQuadrantTaskCreation(
+		key: QuadrantKey,
+		type: TaskCreationType,
+	): void {
+		void runQuadrantTaskCreation(key, type, {
+			app: this.app,
+			getTasksRootPath: () => this.deps.getTasksRootPath(),
+			getProjectScope: () => this.projectScope,
+			getProjectOptions: () => this.projectOptions,
+			getTaskTemplateConfig: (typeConfig) =>
+				this.deps.getTaskTemplateConfig(typeConfig),
+			getDateTaskDateFormat: () => this.deps.getDateTaskDateFormat(),
+			resolveTargetLeaf: () => this.deps.resolveTargetLeaf(),
+			sourceLeaf: this.leaf,
+			isTaskVisible: (path) => this.isTaskVisibleInModel(path),
+			beginCreating: (targetKey) =>
+				this.setCreatingInQuadrant(targetKey, true),
+			endCreating: (targetKey) =>
+				this.setCreatingInQuadrant(targetKey, false),
+			reload: () => this.reload(),
+		});
+	}
+
+	isCreatingInQuadrant(key: QuadrantKey): boolean {
+		return this.creatingQuadrants.has(key);
+	}
+
+	private setCreatingInQuadrant(key: QuadrantKey, creating: boolean): void {
+		if (creating) this.creatingQuadrants.add(key);
+		else this.creatingQuadrants.delete(key);
+		this.render();
+	}
+
+	private isTaskVisibleInModel(path: string): boolean {
+		const model = this.model;
+		if (!model) return false;
+		if (model.unlabeled.some((task) => task.path === path)) return true;
+		return QUADRANT_KEYS.some((key) =>
+			model.buckets[key].some((task) => task.path === path),
+		);
 	}
 
 	// --- 加载与状态 ---

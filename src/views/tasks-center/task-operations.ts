@@ -45,6 +45,7 @@ import {
 } from '../../ui/batchTaskModals';
 import { CreateProjectModal } from '../../ui/createProjectModal';
 import { collectCategoryOptions } from '../project-center-types';
+import { applyCreatedTaskFileSettings } from './created-task-settings';
 import { t, type TranslationKey } from '../../lang/helpter';
 
 // Function 1
@@ -637,33 +638,7 @@ export async function applyCreatedTaskSettings(
     file: TFile,
     settings: { priority: TaskPriorityValue | null; starred: boolean },
 ): Promise<void> {
-    try {
-        if (settings.priority === null) {
-            await clearTaskFilePriority(view.app, file);
-        } else {
-            await setTaskFilePriority(view.app, file, settings.priority);
-        }
-    } catch (error) {
-        const message =
-            error instanceof Error
-                ? error.message
-                : t('view.notice.updateTaskPriorityFailed');
-        new Notice(message);
-    }
-
-    try {
-        if (settings.starred) {
-            await setTaskFileStarred(view.app, file);
-        } else {
-            await clearTaskFileStarred(view.app, file);
-        }
-    } catch (error) {
-        const message =
-            error instanceof Error
-                ? error.message
-                : t('view.notice.updateTaskCoreFailed');
-        new Notice(message);
-    }
+    return applyCreatedTaskFileSettings(view.app, file, settings);
 }
 
 async function applyCreatedSubtaskProperties(

@@ -137,6 +137,12 @@ export const setIcon = () => {};
 // 这些弹窗继承 / 实例化 obsidian 的 UI 组件；测试只需 import 成功，不触发其运行路径。
 class FakeElement {
 	empty() {}
+	setText(text) {
+		this.text = text;
+	}
+	addClass(cls) {
+		(this.classes ??= []).push(cls);
+	}
 	createEl() {
 		return new FakeElement();
 	}
@@ -152,9 +158,16 @@ export class Modal {
 	constructor(app) {
 		this.app = app;
 		this.contentEl = new FakeElement();
+		this.titleEl = new FakeElement();
 	}
-	open() {}
-	close() {}
+	open() {
+		this.isOpen = true;
+		this.onOpen?.();
+	}
+	close() {
+		this.isOpen = false;
+		this.onClose?.();
+	}
 	setTitle() {}
 }
 
@@ -189,9 +202,19 @@ export class Setting {
 	}
 }
 
+const buttonInstances = (globalThis.__iotoButtonInstances ??= []);
+
 export class ButtonComponent {
-	constructor() {}
-	setButtonText() {
+	static instances = buttonInstances;
+
+	constructor(containerEl) {
+		this.containerEl = containerEl;
+		this.buttonText = '';
+		this.click = null;
+		buttonInstances.push(this);
+	}
+	setButtonText(text) {
+		this.buttonText = text;
 		return this;
 	}
 	setCta() {
@@ -200,7 +223,8 @@ export class ButtonComponent {
 	setClass() {
 		return this;
 	}
-	onClick() {
+	onClick(handler) {
+		this.click = handler;
 		return this;
 	}
 }

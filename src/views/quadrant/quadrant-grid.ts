@@ -5,6 +5,8 @@
  * 重建后恢复，避免写优先级后列表跳回顶部。
  */
 
+import { setIcon } from 'obsidian';
+
 import { t } from '../../lang/helpter';
 import {
 	QUADRANT_KEYS,
@@ -70,6 +72,24 @@ export function renderQuadrantGrid(
 			cls: 'ioto-pq-quadrant__count',
 			text: String(model.counts[key]),
 		});
+
+		const addButtonEl = headerEl.createEl('button', {
+			cls: 'clickable-icon ioto-pq-quadrant__add',
+			attr: {
+				type: 'button',
+				'aria-label': t('priorityQuadrant.create.buttonAria', [
+					String(index),
+				]),
+				title: t('priorityQuadrant.create.buttonAria', [
+					String(index),
+				]),
+			},
+		});
+		setIcon(addButtonEl, 'plus');
+		addButtonEl.disabled = ctx.isCreatingInQuadrant(key);
+		addButtonEl.addEventListener('click', (event) =>
+			ctx.createTaskInQuadrant(key, event, addButtonEl),
+		);
 
 		const listEl = sectionEl.createDiv({
 			cls: 'ioto-pq-quadrant__list',

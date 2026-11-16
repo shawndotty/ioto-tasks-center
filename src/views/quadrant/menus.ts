@@ -16,7 +16,7 @@ import { formatPriorityMenuTitle } from '../tasks-center/helpers';
 // 本次点按会穿透到下方元素，且写盘触发的 modify 会销毁锚点卡片 → 浮层卸不掉。
 const MENU_ACTION_DEFER_DELAY_MS = 50;
 
-function runAfterMenuCloses(menu: Menu, run: () => void): void {
+export function runAfterMenuCloses(menu: Menu, run: () => void): void {
 	window.setTimeout(() => {
 		if (typeof menu.hide === 'function') {
 			menu.hide();

@@ -7,6 +7,7 @@
 import type { App } from 'obsidian';
 
 import type {
+	QuadrantKey,
 	QuadrantModel,
 	QuadrantProjectScope,
 	QuadrantStatusKey,
@@ -41,4 +42,11 @@ export interface QuadrantViewContext {
 		anchor: HTMLElement,
 	): void;
 	isCardBusy(path: string): boolean;
+	/** 在指定象限创建任务；`event` 用于菜单定位，`anchor` 是键盘触发时的回退锚点。 */
+	createTaskInQuadrant(
+		key: QuadrantKey,
+		event: MouseEvent,
+		anchor: HTMLElement,
+	): void;
+	isCreatingInQuadrant(key: QuadrantKey): boolean;
 }

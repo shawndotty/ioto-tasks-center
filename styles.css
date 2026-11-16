@@ -7619,6 +7619,58 @@ button:not(.clickable-icon).ioto-pq-time-panel__action {
 	font-variant-numeric: tabular-nums;
 }
 
+/* 象限 header 的「+」：接在计数之后，静止无底，只在自身 hover / 聚焦时显底 */
+.ioto-pq-quadrant__add {
+	flex: 0 0 auto;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: none;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--text-faint);
+	cursor: pointer;
+	transition:
+		background-color var(--ioto-pq-motion),
+		color var(--ioto-pq-motion);
+}
+
+@media (hover: hover) {
+	.ioto-pq-quadrant__add:hover {
+		background: color-mix(in srgb, var(--text-normal) 6%, transparent);
+		color: var(--text-normal);
+	}
+
+	.ioto-pq-quadrant__add:active {
+		background: color-mix(in srgb, var(--text-normal) 10%, transparent);
+	}
+}
+
+.ioto-pq-quadrant__add:focus-visible {
+	background: color-mix(in srgb, var(--text-normal) 8%, transparent);
+	color: var(--text-normal);
+}
+
+@media (hover: none) {
+	.ioto-pq-quadrant__add {
+		color: var(--text-muted);
+	}
+}
+
+@media (pointer: coarse) {
+	.ioto-pq-quadrant__add {
+		width: 28px;
+		height: 28px;
+	}
+}
+
+.ioto-pq-quadrant__add:disabled {
+	opacity: 0.5;
+	cursor: default;
+	background: transparent;
+}
+
 .ioto-pq-quadrant__list,
 .ioto-pq-sidebar__list {
 	flex: 1 1 auto;

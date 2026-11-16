@@ -14,6 +14,8 @@ interface TaskCreationModalOptions {
 	descriptionText?: string;
 	confirmButtonText?: string;
 	includeNameInput?: boolean;
+	/** 传入后优先级固定为该值，弹窗只读展示，不再渲染下拉框。 */
+	lockedPriority?: TaskPriorityValue;
 }
 
 export interface TaskCreationModalResult {
@@ -28,6 +30,7 @@ export class TaskCreationModal extends Modal {
 	private readonly descriptionText: string;
 	private readonly confirmButtonText: string;
 	private readonly includeNameInput: boolean;
+	private readonly lockedPriority: TaskPriorityValue | null;
 	private nameInput: TextComponent | null = null;
 	private priority: TaskPriorityValue | null = null;
 	private starred = false;
@@ -49,6 +52,7 @@ export class TaskCreationModal extends Modal {
 			options.descriptionText ?? t('modal.defaultDescription');
 		this.confirmButtonText = options.confirmButtonText ?? t('modal.confirm');
 		this.includeNameInput = options.includeNameInput ?? true;
+		this.lockedPriority = options.lockedPriority ?? null;
 	}
 
 	openAndGetValue(): Promise<TaskCreationModalResult | null> {
@@ -79,21 +83,30 @@ export class TaskCreationModal extends Modal {
 			});
 		}
 
-		new Setting(this.contentEl)
-			.setName(t('menu.category.priority'))
-			.addDropdown((dropdown) => {
-				dropdown.addOption('', t('modal.taskSettings.priority.none'));
-				for (const priority of TASK_PRIORITY_VALUES) {
-					dropdown.addOption(`${priority}`, `P${priority}`);
-				}
-				dropdown.setValue('');
-				dropdown.onChange((value) => {
-					this.priority =
-						value.trim().length > 0
-							? (Number(value) as TaskPriorityValue)
-							: null;
+		if (this.lockedPriority === null) {
+			new Setting(this.contentEl)
+				.setName(t('menu.category.priority'))
+				.addDropdown((dropdown) => {
+					dropdown.addOption('', t('modal.taskSettings.priority.none'));
+					for (const priority of TASK_PRIORITY_VALUES) {
+						dropdown.addOption(`${priority}`, `P${priority}`);
+					}
+					dropdown.setValue('');
+					dropdown.onChange((value) => {
+						this.priority =
+							value.trim().length > 0
+								? (Number(value) as TaskPriorityValue)
+								: null;
+					});
 				});
+		} else {
+			this.contentEl.createEl('p', {
+				cls: 'ioto-tasks-center__modal-locked-priority',
+				text: t('modal.taskSettings.lockedPriority', [
+					String(this.lockedPriority),
+				]),
 			});
+		}
 
 		new Setting(this.contentEl)
 			.setName(t('view.taskCoreBadge.label'))
@@ -134,7 +147,7 @@ export class TaskCreationModal extends Modal {
 
 		this.resolve({
 			name: this.includeNameInput ? nameValue : null,
-			priority: this.priority,
+			priority: this.lockedPriority ?? this.priority,
 			starred: this.starred,
 		});
 		this.close();

@@ -6,6 +6,17 @@ const en = {
 	'priorityQuadrant.card.openAria': 'Open task: {0}',
 	'priorityQuadrant.card.priorityAria': 'Priority P{0}',
 	'priorityQuadrant.card.starAria': 'Core task',
+	'priorityQuadrant.create.buttonAria': 'Create a task in P{0}',
+	'priorityQuadrant.create.busy':
+		'A task is already being created. Finish or cancel it first.',
+	'priorityQuadrant.create.created': 'Task created: {0}',
+	'priorityQuadrant.create.hiddenByFilter':
+		'The task was created but is hidden by the current filters: {0}',
+	'priorityQuadrant.create.noProjects':
+		'No projects available. Create a project first.',
+	'priorityQuadrant.create.projectPickerPlaceholder':
+		'Select a project to create a task in',
+	'priorityQuadrant.create.projectPickerTitle': 'Select project',
 	'priorityQuadrant.notice.projectMissing':
 		'The selected project no longer exists; switched to unarchived projects.',
 	'priorityQuadrant.notice.taskMissing':
@@ -620,6 +631,7 @@ const en = {
 	'modal.newNormalTask.title': 'New normal task',
 	'modal.newNormalTask.placeholder': 'Enter task name',
 	'modal.newTask.desc': 'Please enter a name for the new task file.',
+	'modal.taskSettings.lockedPriority': 'Priority: P{0}',
 	'modal.taskSettings.priority.none': 'None',
 	'command.batchCreateTasksFromTemplate': 'Batch create tasks from template',
 	'settings.batchTemplates.heading': 'Batch Task Templates',
