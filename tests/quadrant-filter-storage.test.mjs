@@ -44,16 +44,44 @@ test('read：无记录（null）回 {}', () => {
 	assert.deepEqual(readQuadrantFilterFallback(createApp()), {});
 });
 
-test('read：合法记录解码 statusKeys 与 timeFilter', () => {
+test('read：合法记录解码 statusKeys、timeFilter 与 projectScope', () => {
 	const app = createApp();
 	app.store.set(QUADRANT_FILTER_STORAGE_KEY, {
 		statusKeys: ['completed'],
 		timeFilter: 'preset:created-two-weeks',
+		projectScope: 'project:IOTO Task Center',
 	});
 	assert.deepEqual(readQuadrantFilterFallback(app), {
 		statusKeys: ['completed'],
 		timeFilter: { kind: 'preset', value: 'created-two-weeks' },
+		projectScope: { kind: 'project', projectName: 'IOTO Task Center' },
 	});
+});
+
+test('read：旧记录（无 projectScope）仍读出其它字段，projectScope 为 undefined', () => {
+	const app = createApp();
+	app.store.set(QUADRANT_FILTER_STORAGE_KEY, {
+		statusKeys: ['todo'],
+		timeFilter: 'none',
+	});
+	const result = readQuadrantFilterFallback(app);
+	assert.deepEqual(result.statusKeys, ['todo']);
+	assert.deepEqual(result.timeFilter, { kind: 'none' });
+	assert.equal(result.projectScope, undefined);
+	assert.equal('projectScope' in result, false);
+});
+
+test('read：脏 projectScope 不污染其它字段', () => {
+	const app = createApp();
+	app.store.set(QUADRANT_FILTER_STORAGE_KEY, {
+		statusKeys: ['todo'],
+		timeFilter: 'none',
+		projectScope: 'project:',
+	});
+	const result = readQuadrantFilterFallback(app);
+	assert.deepEqual(result.statusKeys, ['todo']);
+	assert.deepEqual(result.timeFilter, { kind: 'none' });
+	assert.equal(result.projectScope, undefined);
 });
 
 test('read：statusKeys 空数组读回 []（不当作无记录）', () => {
@@ -85,12 +113,13 @@ test('write：缺 API 或非对象 app 不抛错', () => {
 			writeQuadrantFilterFallback(app, {
 				statusKeys: new Set(['todo']),
 				timeFilter: { kind: 'none' },
+				projectScope: { kind: 'unarchived' },
 			}),
 		);
 	}
 });
 
-test('write：key 固定、timeFilter 编码为字符串、statusKeys 为普通数组', () => {
+test('write：key 固定、timeFilter / projectScope 编码为字符串、statusKeys 为普通数组', () => {
 	const app = createApp();
 	writeQuadrantFilterFallback(app, {
 		statusKeys: new Set(['completed', 'todo']),
@@ -100,12 +129,31 @@ test('write：key 固定、timeFilter 编码为字符串、statusKeys 为普通�
 			start: '2026-10-01',
 			end: '2026-10-31',
 		},
+		projectScope: { kind: 'project', projectName: 'IOTO Task Center' },
 	});
 	assert.deepEqual(app.store.get(QUADRANT_FILTER_STORAGE_KEY), {
 		statusKeys: ['completed', 'todo'],
 		timeFilter: 'custom:created:2026-10-01:2026-10-31',
+		projectScope: 'project:IOTO Task Center',
 	});
 	assert.equal(QUADRANT_FILTER_STORAGE_KEY, 'ioto-pq-filter-v1');
+});
+
+test('write：三种 projectScope 往返一致', () => {
+	const scopes = [
+		{ kind: 'all' },
+		{ kind: 'unarchived' },
+		{ kind: 'project', projectName: 'IOTO Task Center' },
+	];
+	for (const projectScope of scopes) {
+		const app = createApp();
+		writeQuadrantFilterFallback(app, {
+			statusKeys: new Set(['todo']),
+			timeFilter: { kind: 'none' },
+			projectScope,
+		});
+		assert.deepEqual(readQuadrantFilterFallback(app).projectScope, projectScope);
+	}
 });
 
 test('write：空 Set 写成 []，读回仍为全不选', () => {
@@ -113,14 +161,17 @@ test('write：空 Set 写成 []，读回仍为全不选', () => {
 	writeQuadrantFilterFallback(app, {
 		statusKeys: new Set(),
 		timeFilter: { kind: 'none' },
+		projectScope: { kind: 'unarchived' },
 	});
 	assert.deepEqual(app.store.get(QUADRANT_FILTER_STORAGE_KEY), {
 		statusKeys: [],
 		timeFilter: 'none',
+		projectScope: 'unarchived',
 	});
 	assert.deepEqual(readQuadrantFilterFallback(app), {
 		statusKeys: [],
 		timeFilter: { kind: 'none' },
+		projectScope: { kind: 'unarchived' },
 	});
 });
 
@@ -129,6 +180,7 @@ test('write：saveLocalStorage 抛错不向上抛', () => {
 		writeQuadrantFilterFallback(createApp({ saveThrows: true }), {
 			statusKeys: new Set(['todo']),
 			timeFilter: { kind: 'none' },
+			projectScope: { kind: 'unarchived' },
 		}),
 	);
 });

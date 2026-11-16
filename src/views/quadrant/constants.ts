@@ -9,7 +9,11 @@ import {
 	decodeQuadrantTimeFilter,
 	type QuadrantTimeFilter,
 } from '../../tasks-center/task-time-range';
-import type { QuadrantStatusKey } from '../../tasks-center/quadrant-data';
+import type {
+	QuadrantProjectScope,
+	QuadrantStatusKey,
+} from '../../tasks-center/quadrant-data';
+import { parseQuadrantProjectScope } from './scope-codec';
 
 export const IOTO_PRIORITY_QUADRANT_VIEW_TYPE = 'IOTOPriorityQuadrant';
 
@@ -41,11 +45,13 @@ export interface QuadrantViewFilterState {
 	sidebarOpen: boolean;
 	timeFilter: QuadrantTimeFilter;
 	statusKeys: QuadrantStatusKey[];
+	projectScope: QuadrantProjectScope;
 }
 
 /**
- * 叶子状态合并（[[Plan-20261116-102615]] §3.1）：
+ * 叶子状态合并（[[Plan-20261116-102615]] §3.1、[[Plan-20261116-161225]] §三 步骤 2）：
  * 缺失（undefined）保留当前值；`statusKeys: []` 是合法「全不选」，必须保留。
+ * `projectScope` 以对象引用传递即可（`quadrant-data.ts` 侧只读）。
  */
 export function mergeQuadrantViewState(
 	current: QuadrantViewFilterState,
@@ -57,19 +63,24 @@ export function mergeQuadrantViewState(
 		statusKeys: parsed.statusKeys
 			? [...parsed.statusKeys]
 			: [...current.statusKeys],
+		projectScope: parsed.projectScope ?? current.projectScope,
 	};
 }
 
 /**
  * 叶子视图状态（[[Plan-20261116-060249]] §3.2、[[Plan-20261116-083330]] §3.6、
- * [[Plan-20261116-091927]] §3.2）。
+ * [[Plan-20261116-091927]] §3.2、[[Plan-20261116-155634]] §5.4）。
  * `sidebarOpen` 只认 boolean；`timeFilter` 走白名单解码，脏数据回落「全部时间」；
- * `statusKeys` 只收白名单键并去重——键缺失或全脏回落默认，空数组合法表示「全不选」。
+ * `statusKeys` 只收白名单键并去重——键缺失或全脏回落默认，空数组合法表示「全不选」；
+ * `projectScope` 走严格解析，缺失 / 脏值一律 `undefined`（**不**回落「未归档」，否则会覆盖兜底值）；
+ * `previewLeafId` 只认非空字符串，且**不**参与 `mergeQuadrantViewState`。
  */
 export function parseQuadrantViewState(state: unknown): {
 	sidebarOpen?: boolean;
 	timeFilter?: QuadrantTimeFilter;
 	statusKeys?: QuadrantStatusKey[];
+	projectScope?: QuadrantProjectScope;
+	previewLeafId?: string;
 } {
 	if (!state || typeof state !== 'object') return {};
 	const candidate = state as Record<string, unknown>;
@@ -77,6 +88,8 @@ export function parseQuadrantViewState(state: unknown): {
 		sidebarOpen?: boolean;
 		timeFilter?: QuadrantTimeFilter;
 		statusKeys?: QuadrantStatusKey[];
+		projectScope?: QuadrantProjectScope;
+		previewLeafId?: string;
 	} = {};
 	if (typeof candidate.sidebarOpen === 'boolean') {
 		parsed.sidebarOpen = candidate.sidebarOpen;
@@ -90,6 +103,16 @@ export function parseQuadrantViewState(state: unknown): {
 		if (valid.length > 0 || raw.length === 0) {
 			parsed.statusKeys = [...new Set(valid)];
 		}
+	}
+	if ('projectScope' in candidate) {
+		const scope = parseQuadrantProjectScope(candidate.projectScope);
+		if (scope) parsed.projectScope = scope;
+	}
+	if (
+		typeof candidate.previewLeafId === 'string' &&
+		candidate.previewLeafId.length > 0
+	) {
+		parsed.previewLeafId = candidate.previewLeafId;
 	}
 	return parsed;
 }

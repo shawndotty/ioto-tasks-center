@@ -1,4 +1,9 @@
-import { FileView, type Workspace, WorkspaceLeaf } from 'obsidian';
+import {
+	FileView,
+	type App,
+	type Workspace,
+	WorkspaceLeaf,
+} from 'obsidian';
 import type { IOTOTasksCenterView } from '../iotoTasksCenterView';
 import { resolveActiveTaskPath } from '../task-preview-state';
 import { getWorkspaceLeafId } from './constants';
@@ -67,15 +72,28 @@ export function resolvePreviewLeafPlacement(
 	return { kind: 'split', anchor };
 }
 
+/**
+ * 预览叶宿主（[[Plan-20261116-155634]] §5.1）：任务中心视图与优先级四象限视图
+ * 都满足该结构，放置算法因此只需一份。
+ */
+export interface PreviewLeafHost {
+	readonly app: App;
+	readonly leaf: WorkspaceLeaf;
+	previewLeaf: WorkspaceLeaf | null;
+	isLeafAvailable(leaf: WorkspaceLeaf): boolean;
+	/** 可选：按「最近打开的任务」回捞；四象限不实现。 */
+	findReusablePreviewLeaf?(): WorkspaceLeaf | null;
+}
+
 /** 侧栏叶一律不可作预览锚点（含缓存 / 回捞两种来源）。 */
 function isUsablePreviewLeaf(
-	view: IOTOTasksCenterView,
+	host: PreviewLeafHost,
 	leaf: WorkspaceLeaf | null,
 ): leaf is WorkspaceLeaf {
 	return (
 		leaf !== null &&
-		view.isLeafAvailable(leaf) &&
-		!isLeafInSidebar(view.app.workspace, leaf)
+		host.isLeafAvailable(leaf) &&
+		!isLeafInSidebar(host.app.workspace, leaf)
 	);
 }
 
@@ -93,35 +111,46 @@ function applyPlacement(
 	}
 }
 
-export function ensurePreviewLeaf(view: IOTOTasksCenterView): WorkspaceLeaf {
-	const cachedLeaf = view.previewLeaf;
-	if (isUsablePreviewLeaf(view, cachedLeaf)) {
+export function ensurePreviewLeafFor(host: PreviewLeafHost): WorkspaceLeaf {
+	const cachedLeaf = host.previewLeaf;
+	if (isUsablePreviewLeaf(host, cachedLeaf)) {
 		return cachedLeaf;
 	}
 
-	const recoveredLeaf = view.findReusablePreviewLeaf();
-	if (isUsablePreviewLeaf(view, recoveredLeaf)) {
-		view.previewLeaf = recoveredLeaf;
+	const recoveredLeaf = host.findReusablePreviewLeaf?.() ?? null;
+	if (isUsablePreviewLeaf(host, recoveredLeaf)) {
+		host.previewLeaf = recoveredLeaf;
 		return recoveredLeaf;
 	}
 
-	const ws = view.app.workspace;
+	const ws = host.app.workspace;
 	const previewLeaf = applyPlacement(
 		ws,
-		resolvePreviewLeafPlacement(ws, view.leaf),
+		resolvePreviewLeafPlacement(ws, host.leaf),
 	);
-	view.previewLeaf = previewLeaf;
+	host.previewLeaf = previewLeaf;
 	return previewLeaf;
 }
 
-export function isLeafAvailable(view: IOTOTasksCenterView, targetLeaf: WorkspaceLeaf): boolean {
+export function ensurePreviewLeaf(view: IOTOTasksCenterView): WorkspaceLeaf {
+	return ensurePreviewLeafFor(view);
+}
+
+export function isLeafAvailableIn(
+	app: App,
+	targetLeaf: WorkspaceLeaf,
+): boolean {
 	let exists = false;
-	view.app.workspace.iterateAllLeaves((leaf) => {
+	app.workspace.iterateAllLeaves((leaf) => {
 		if (leaf === targetLeaf) {
 			exists = true;
 		}
 	});
 	return exists;
+}
+
+export function isLeafAvailable(view: IOTOTasksCenterView, targetLeaf: WorkspaceLeaf): boolean {
+	return isLeafAvailableIn(view.app, targetLeaf);
 }
 
 export function findLeafByFilePath(view: IOTOTasksCenterView, filePath: string): WorkspaceLeaf | null {
@@ -141,10 +170,10 @@ export function findLeafByFilePath(view: IOTOTasksCenterView, filePath: string):
 	return matchedLeaf;
 }
 
-export function findLeafById(view: IOTOTasksCenterView, leafId: string): WorkspaceLeaf | null {
+export function findLeafByIdIn(app: App, leafId: string): WorkspaceLeaf | null {
 	let matchedLeaf: WorkspaceLeaf | null = null;
 
-	view.app.workspace.iterateAllLeaves((leaf) => {
+	app.workspace.iterateAllLeaves((leaf) => {
 		if (matchedLeaf) {
 			return;
 		}
@@ -155,4 +184,8 @@ export function findLeafById(view: IOTOTasksCenterView, leafId: string): Workspa
 	});
 
 	return matchedLeaf;
+}
+
+export function findLeafById(view: IOTOTasksCenterView, leafId: string): WorkspaceLeaf | null {
+	return findLeafByIdIn(view.app, leafId);
 }

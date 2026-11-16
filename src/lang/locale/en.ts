@@ -1,7 +1,7 @@
 const en = {
 	'command.openTasksCenterView': 'Open tasks center view',
 	'command.openProjectCenterView': 'Open project center view',
-	'command.openPriorityQuadrantView': 'Open priority quadrant',
+	'command.openPriorityQuadrantView': 'Open priority matrix',
 	'priorityQuadrant.card.moreAria': 'Set priority',
 	'priorityQuadrant.card.openAria': 'Open task: {0}',
 	'priorityQuadrant.card.priorityAria': 'Priority P{0}',
@@ -67,7 +67,7 @@ const en = {
 	'priorityQuadrant.time.presetTwoWeeks': 'Last 2 weeks',
 	'priorityQuadrant.time.presetWeek': 'Last 7 days',
 	'priorityQuadrant.time.start': 'Start date',
-	'priorityQuadrant.title': 'Priority quadrant',
+	'priorityQuadrant.title': 'Priority matrix',
 	'command.convertSelectedTextToSubtask': 'Convert selected text to subtask',
 	'projectCenter.title': 'Project center',
 	'projectCenter.action.search': 'Search',
@@ -510,9 +510,9 @@ const en = {
 		'Show shortcut help button in task view',
 	'settings.showTaskViewShortcutHelpButton.desc':
 		'Show a question-mark button in the bottom-left corner of the IOTO task view on desktop. Click it to open the built-in task view shortcuts; the command palette command stays available either way.',
-	'settings.appearanceStyle.name': 'Task view & quadrant appearance',
+	'settings.appearanceStyle.name': 'Task view & priority matrix appearance',
 	'settings.appearanceStyle.desc':
-		'Choose the visual style of the IOTOTask view: Glass (dark aurora + glassmorphism, default), Modern (borderless layered surfaces with large radii and soft shadows), Simple (white surface + tinted header band + hairline separators + pill buttons), Card (classic flat cards), or Morandi (built-in low-saturation warm palette + generous line height, an accessibility-first look easier on dry eyes / astigmatism). Also applies to the priority quadrant view.',
+		'Choose the visual style of the IOTOTask view: Glass (dark aurora + glassmorphism, default), Modern (borderless layered surfaces with large radii and soft shadows), Simple (white surface + tinted header band + hairline separators + pill buttons), Card (classic flat cards), or Morandi (built-in low-saturation warm palette + generous line height, an accessibility-first look easier on dry eyes / astigmatism). Also applies to the priority matrix view.',
 	'settings.appearanceStyle.glass': 'Glass',
 	'settings.appearanceStyle.modern': 'Modern',
 	'settings.appearanceStyle.simple': 'Simple',
@@ -959,7 +959,7 @@ const en = {
 	'view.iotoTaskView.noteMenu.insertEntryTemplate': 'Insert entry template',
 	'view.iotoTaskView.noteMenu.markAllTasksDone': 'Mark all tasks as done',
 	'view.iotoTaskView.noteMenu.searchTasks': 'Search tasks',
-	'view.iotoTaskView.noteMenu.appearanceWithValue': 'Task view & quadrant theme: {0}',
+	'view.iotoTaskView.noteMenu.appearanceWithValue': 'Task view & priority matrix theme: {0}',
 	'view.iotoTaskView.deleteConfirm.confirm': 'Confirm delete',
 	'view.iotoTaskView.deleteConfirm.cancel': 'Cancel',
 	'view.iotoTaskView.deleteConfirm.aria': 'Delete confirmation',

@@ -44,7 +44,7 @@ import type {
 	TaskTemplateConfig,
 } from '../tasks-center/task-template-config';
 import { applyAppearanceStyleClasses } from './appearance-style';
-import { buildQuadrantFilterBar, encodeQuadrantScope, updateQuadrantFilterBar } from './quadrant/filter-bar';
+import { buildQuadrantFilterBar, updateQuadrantFilterBar } from './quadrant/filter-bar';
 import {
 	DEFAULT_QUADRANT_STATUS_KEYS,
 	IOTO_PRIORITY_QUADRANT_VIEW_TYPE,
@@ -62,7 +62,15 @@ import {
 	readQuadrantFilterFallback,
 	writeQuadrantFilterFallback,
 } from './quadrant/filter-storage';
+import { encodeQuadrantScope } from './quadrant/scope-codec';
 import { attachQuadrantDrag } from './quadrant/drag-controller';
+import { getWorkspaceLeafId } from './tasks-center/constants';
+import {
+	ensurePreviewLeafFor,
+	findLeafByIdIn,
+	isLeafAvailableIn,
+} from './tasks-center/preview-leaf';
+import { openCreatedTaskNote } from './tasks-center/task-note-opening';
 import {
 	buildQuadrantPriorityMenu,
 	runAfterMenuCloses,
@@ -91,13 +99,14 @@ export interface PriorityQuadrantDeps {
 	getEnabledTaskCreationTypes(): TaskCreationType[];
 	getTaskTemplateConfig(type: TaskCreationType): TaskTemplateConfig;
 	getDateTaskDateFormat(): string;
-	resolveTargetLeaf(): WorkspaceLeaf | null;
 }
 
 export class IOTOPriorityQuadrantView
 	extends ItemView
 	implements QuadrantViewContext
 {
+	/** 四象限自持的预览叶（[[Plan-20261116-155634]] §5.5），可跨会话恢复。 */
+	previewLeaf: WorkspaceLeaf | null = null;
 	private statusKeys = new Set<QuadrantStatusKey>(DEFAULT_QUADRANT_STATUS_KEYS);
 	private projectScope: QuadrantProjectScope = { kind: 'unarchived' };
 	private sidebarOpen = false;
@@ -147,6 +156,8 @@ export class IOTOPriorityQuadrantView
 			sidebarOpen: this.sidebarOpen,
 			timeFilter: encodeQuadrantTimeFilter(this.timeFilter),
 			statusKeys: [...this.statusKeys],
+			projectScope: encodeQuadrantScope(this.projectScope),
+			previewLeafId: getWorkspaceLeafId(this.previewLeaf) ?? undefined,
 		};
 	}
 
@@ -159,17 +170,27 @@ export class IOTOPriorityQuadrantView
 				sidebarOpen: this.sidebarOpen,
 				timeFilter: fallback.timeFilter ?? this.timeFilter,
 				statusKeys: fallback.statusKeys ?? [...this.statusKeys],
+				projectScope: fallback.projectScope ?? this.projectScope,
 			},
 			parsed,
 		);
+		const previousScope = this.projectScope;
 		this.sidebarOpen = merged.sidebarOpen;
 		this.timeFilter = merged.timeFilter;
 		this.statusKeys = new Set(merged.statusKeys);
+		this.projectScope = merged.projectScope;
+		// 恢复了不同的项目范围（尤其是一个已被删除的项目）时，允许再次提示一次。
+		if (
+			this.projectScope.kind !== previousScope.kind ||
+			this.projectScope.projectName !== previousScope.projectName
+		) {
+			this.projectMissingNotified = false;
+		}
 		// 叶子状态落地即镜像到设备级，保持「最近值」新鲜（工作区切换 / 复制标签也走这里）。
-		writeQuadrantFilterFallback(this.app, {
-			statusKeys: this.statusKeys,
-			timeFilter: this.timeFilter,
-		});
+		this.writeFilterFallback();
+		this.previewLeaf = parsed.previewLeafId
+			? findLeafByIdIn(this.app, parsed.previewLeafId)
+			: null;
 
 		// 早于 `onOpen`（同 iotoTaskView.ts:681）：字段已就位，首轮 `reload` 会读到。
 		if (!this.contentEl.isConnected) return;
@@ -265,10 +286,7 @@ export class IOTOPriorityQuadrantView
 		else this.statusKeys.add(key);
 		this.rebuildModel();
 		this.render();
-		writeQuadrantFilterFallback(this.app, {
-			statusKeys: this.statusKeys,
-			timeFilter: this.timeFilter,
-		});
+		this.writeFilterFallback();
 		this.app.workspace.requestSaveLayout();
 	}
 
@@ -277,6 +295,8 @@ export class IOTOPriorityQuadrantView
 		this.projectMissingNotified = false;
 		this.rebuildModel();
 		this.render();
+		this.writeFilterFallback();
+		this.app.workspace.requestSaveLayout();
 	}
 
 	toggleSidebar(): void {
@@ -290,10 +310,7 @@ export class IOTOPriorityQuadrantView
 		this.timeFilter = filter;
 		this.rebuildModel();
 		this.render();
-		writeQuadrantFilterFallback(this.app, {
-			statusKeys: this.statusKeys,
-			timeFilter: this.timeFilter,
-		});
+		this.writeFilterFallback();
 		this.app.workspace.requestSaveLayout();
 	}
 
@@ -448,6 +465,27 @@ export class IOTOPriorityQuadrantView
 		menu.showAtMouseEvent(event);
 	}
 
+	isLeafAvailable(targetLeaf: WorkspaceLeaf): boolean {
+		return isLeafAvailableIn(this.app, targetLeaf);
+	}
+
+	ensurePreviewLeaf(): WorkspaceLeaf {
+		return ensurePreviewLeafFor(this);
+	}
+
+	async openCreatedTask(
+		file: TFile,
+		cursorOffset: number | null,
+	): Promise<void> {
+		const leaf = this.ensurePreviewLeaf();
+		this.previewLeaf = leaf;
+		await openCreatedTaskNote(this.app, leaf, file, {
+			tasksRootPath: this.deps.getTasksRootPath(),
+			preferTaskView: this.deps.getUseIOTOTaskViewAsDefault(),
+			cursorOffset,
+		});
+	}
+
 	private startQuadrantTaskCreation(
 		key: QuadrantKey,
 		type: TaskCreationType,
@@ -460,7 +498,9 @@ export class IOTOPriorityQuadrantView
 			getTaskTemplateConfig: (typeConfig) =>
 				this.deps.getTaskTemplateConfig(typeConfig),
 			getDateTaskDateFormat: () => this.deps.getDateTaskDateFormat(),
-			resolveTargetLeaf: () => this.deps.resolveTargetLeaf(),
+			ensurePreviewLeaf: () => this.ensurePreviewLeaf(),
+			openCreatedTask: (file, cursorOffset) =>
+				this.openCreatedTask(file, cursorOffset),
 			sourceLeaf: this.leaf,
 			isTaskVisible: (path) => this.isTaskVisibleInModel(path),
 			beginCreating: (targetKey) =>
@@ -491,6 +531,15 @@ export class IOTOPriorityQuadrantView
 	}
 
 	// --- 加载与状态 ---
+
+	/** 过滤状态的唯一落盘点：三字段同写，避免后续新增字段再漏（[[Plan-20261116-161225]] 步骤 4.5）。 */
+	private writeFilterFallback(): void {
+		writeQuadrantFilterFallback(this.app, {
+			statusKeys: this.statusKeys,
+			timeFilter: this.timeFilter,
+			projectScope: this.projectScope,
+		});
+	}
 
 	private async reload(): Promise<void> {
 		const token = ++this.loadToken;
@@ -533,6 +582,9 @@ export class IOTOPriorityQuadrantView
 			)
 		) {
 			this.projectScope = { kind: 'unarchived' };
+			// 回退结果立即落盘，避免每次启动重复弹 Notice（[[Plan-20261116-161225]] 步骤 4.4）。
+			this.writeFilterFallback();
+			this.app.workspace.requestSaveLayout();
 			if (!this.projectMissingNotified) {
 				this.projectMissingNotified = true;
 				new Notice(t('priorityQuadrant.notice.projectMissing'));

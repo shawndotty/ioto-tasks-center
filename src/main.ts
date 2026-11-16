@@ -81,7 +81,6 @@ import {
 } from './views/iotoTaskView';
 import { IOTOPriorityQuadrantView } from './views/priorityQuadrantView';
 import { IOTO_PRIORITY_QUADRANT_VIEW_TYPE } from './views/quadrant/constants';
-import { ensurePreviewLeaf } from './views/tasks-center/preview-leaf';
 import { probeEmbeddedEditorSupport } from './views/ioto-task/embedded-editor';
 import {
 	createFoldStorage,
@@ -297,11 +296,6 @@ export default class IOTOTasksCenter extends Plugin {
 						this.settings.taskTemplateConfigs[type],
 					getDateTaskDateFormat: () =>
 						this.settings.dateTaskDateFormat,
-					resolveTargetLeaf: () => {
-						const tasksCenter = this.getTasksCenterView();
-						if (tasksCenter) return ensurePreviewLeaf(tasksCenter);
-						return this.app.workspace.getLeaf('tab');
-					},
 				}),
 		);
 

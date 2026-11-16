@@ -1,7 +1,7 @@
 const zhTW = {
 	'command.openTasksCenterView': '打開任務中心視圖',
 	'command.openProjectCenterView': '打開專案中心視圖',
-	'command.openPriorityQuadrantView': '打開優先級四象限',
+	'command.openPriorityQuadrantView': '打開優先級矩陣',
 	'priorityQuadrant.card.moreAria': '設定優先級',
 	'priorityQuadrant.card.openAria': '打開任務：{0}',
 	'priorityQuadrant.card.priorityAria': '優先級 P{0}',
@@ -58,7 +58,7 @@ const zhTW = {
 	'priorityQuadrant.time.presetTwoWeeks': '最近兩週',
 	'priorityQuadrant.time.presetWeek': '最近一週',
 	'priorityQuadrant.time.start': '開始日期',
-	'priorityQuadrant.title': '優先級四象限',
+	'priorityQuadrant.title': '優先級矩陣',
 	'command.convertSelectedTextToSubtask': '將選中文本轉為子任務',
 	'projectCenter.title': '專案中心',
 	'projectCenter.action.search': '搜尋',
@@ -475,9 +475,9 @@ const zhTW = {
 	'settings.showTaskViewShortcutHelpButton.name': '顯示任務檢視快速鍵說明按鈕',
 	'settings.showTaskViewShortcutHelpButton.desc':
 		'在桌面端 IOTO 任務檢視左下角顯示問號按鈕，點擊查看內建快速鍵；關閉後立即隱藏，命令面板中的「顯示任務檢視快速鍵」仍可用。',
-	'settings.appearanceStyle.name': '任務視圖與四象限外觀',
+	'settings.appearanceStyle.name': '任務視圖與優先級矩陣外觀',
 	'settings.appearanceStyle.desc':
-		'選擇 IOTOTask 視圖的視覺風格：玻璃（深色 Aurora 漸變 + 玻璃擬態，預設）、現代（無邊框分層 + 大圓角 + 柔和投影，克制耐看）、簡潔（白卡 + 淺灰表頭帶 + 髮絲分隔線 + 藥丸按鈕）、卡片（經典扁平卡片）或莫蘭迪（自帶低飽和暖色板 + 寬行高，對乾眼 / 散光更友好的無障礙外觀）。同時作用於優先級四象限視圖。',
+		'選擇 IOTOTask 視圖的視覺風格：玻璃（深色 Aurora 漸變 + 玻璃擬態，預設）、現代（無邊框分層 + 大圓角 + 柔和投影，克制耐看）、簡潔（白卡 + 淺灰表頭帶 + 髮絲分隔線 + 藥丸按鈕）、卡片（經典扁平卡片）或莫蘭迪（自帶低飽和暖色板 + 寬行高，對乾眼 / 散光更友好的無障礙外觀）。同時作用於優先級矩陣視圖。',
 	'settings.appearanceStyle.glass': '玻璃',
 	'settings.appearanceStyle.modern': '現代（Modern）',
 	'settings.appearanceStyle.simple': '簡潔（Simple）',
@@ -879,7 +879,7 @@ const zhTW = {
 	'view.iotoTaskView.noteMenu.insertEntryTemplate': '插入條目模板',
 	'view.iotoTaskView.noteMenu.markAllTasksDone': '將所有任務標記為完成',
 	'view.iotoTaskView.noteMenu.searchTasks': '搜尋任務',
-	'view.iotoTaskView.noteMenu.appearanceWithValue': '任務視圖與四象限主題：{0}',
+	'view.iotoTaskView.noteMenu.appearanceWithValue': '任務視圖與優先級矩陣主題：{0}',
 	'view.iotoTaskView.deleteConfirm.confirm': '確認刪除',
 	'view.iotoTaskView.deleteConfirm.cancel': '取消',
 	'view.iotoTaskView.deleteConfirm.aria': '刪除確認',

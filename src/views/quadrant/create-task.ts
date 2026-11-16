@@ -1,13 +1,15 @@
 /**
- * 四象限「创建任务」的入口编排（[[Plan-20261116-154231]] §5.5）。
+ * 四象限「创建任务」的入口编排（[[Plan-20261116-154231]] §5.5、
+ * [[Plan-20261116-155634]] §5.6）。
  *
  * 链路：类型（视图层菜单选定）→ 解析项目 → 名称弹窗（非 date）
- * → `createTaskFile()` → 写 Priority / Starred → `reload()` → 可见性提示。
+ * → 预览叶 → `createTaskFile()` → 写 Priority / Starred → `reload()`
+ * → 在预览叶打开并落 `%%Cursor%%` → 可见性提示。
  * 挂载、扫描与写盘能力全部由调用方注入，本模块不直接持有视图实例。
  */
 
 import { Notice } from 'obsidian';
-import type { App, WorkspaceLeaf } from 'obsidian';
+import type { App, TFile, WorkspaceLeaf } from 'obsidian';
 
 import { t } from '../../lang/helpter';
 import {
@@ -36,7 +38,10 @@ export interface QuadrantCreateDeps {
 	getProjectOptions(): readonly QuadrantProjectOption[];
 	getTaskTemplateConfig(type: TaskCreationType): TaskTemplateConfig;
 	getDateTaskDateFormat(): string;
-	resolveTargetLeaf(): WorkspaceLeaf | null;
+	/** 预览叶（含放置策略）；必须在名称弹窗之后调用，取消路径不留空分栏。 */
+	ensurePreviewLeaf(): WorkspaceLeaf;
+	/** 打开刚创建（或已存在）的任务并落到 %%Cursor%% 位置。 */
+	openCreatedTask(file: TFile, cursorOffset: number | null): Promise<void>;
 	sourceLeaf: WorkspaceLeaf;
 	isTaskVisible(path: string): boolean;
 	beginCreating(key: QuadrantKey): void;
@@ -76,6 +81,7 @@ export async function createTaskInQuadrant(
 			starred = modalResult.starred;
 		}
 
+		const previewLeaf = deps.ensurePreviewLeaf();
 		const result = await createTaskFile({
 			app: deps.app,
 			tasksRootPath: deps.getTasksRootPath(),
@@ -84,13 +90,15 @@ export async function createTaskInQuadrant(
 			customName,
 			templateConfig: deps.getTaskTemplateConfig(type),
 			dateTaskDateFormat: deps.getDateTaskDateFormat(),
-			resolveTargetLeaf: () => deps.resolveTargetLeaf(),
+			targetLeaf: previewLeaf,
 			sourceLeaf: deps.sourceLeaf,
 		});
 
-		// 同名文件已存在：`createTaskFile()` 已提示，不覆盖旧任务的优先级与星标。
+		// 同名文件已存在：`createTaskFile()` 已提示，打开旧文件但不覆盖
+		// 旧任务的优先级与星标（[[Plan-20261116-155634]] §2 #6）。
 		if (!result.created) {
 			await deps.reload();
+			await deps.openCreatedTask(result.file, null);
 			return;
 		}
 
@@ -99,6 +107,7 @@ export async function createTaskInQuadrant(
 			starred,
 		});
 		await deps.reload();
+		await deps.openCreatedTask(result.file, result.cursorOffset);
 
 		if (!deps.isTaskVisible(result.file.path)) {
 			new Notice(

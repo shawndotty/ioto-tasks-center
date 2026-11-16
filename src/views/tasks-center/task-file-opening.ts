@@ -1,6 +1,7 @@
 import {
 	MarkdownView,
 	TFile,
+	type App,
 	type WorkspaceParent,
 	WorkspaceLeaf,
 } from 'obsidian';
@@ -14,8 +15,12 @@ import type {
 import { shouldSkipOpeningTask } from '../task-preview-state';
 import { isTaskNoteFile } from '../../tasks-center/task-note-menu';
 import { IOTO_TASK_VIEW_TYPE } from '../iotoTaskView';
-import { resolveCursorMarkerSearchStart } from '../../tasks-center/cursor-marker';
 import { PROJECT_METADATA_FILE_NAME } from '../../tasks-center/project-metadata';
+import {
+	focusTaskNoteEditorAtOffset,
+	openTaskNoteInLeaf,
+	resolveTaskNoteOpenMode,
+} from './task-note-opening';
 import { type TaskOpenTarget } from './constants';
 import { isLeafInSidebar } from './preview-leaf';
 
@@ -177,41 +182,21 @@ export async function openFileInPreview(
 	try {
 		const leaf = view.ensurePreviewLeaf();
 		const query = view.taskSearchQuery.trim();
-		const cursorOffset = options?.cursorOffset;
-		const hasCursorOffset = typeof cursorOffset === 'number';
+		const cursorOffset =
+			typeof options?.cursorOffset === 'number'
+				? options.cursorOffset
+				: null;
 		const line = options?.line;
 		const hasLine = typeof line === 'number';
-		// 有搜索词或精确定位行时强制 markdown source：滚动 / 落光标都依赖
-		// MarkdownView 的 CodeMirror，任务视图没有编辑器。
-		if (query || hasLine) {
-			await leaf.setViewState({
-				type: 'markdown',
-				active: true,
-				state: {
-					file: file.path,
-					mode: 'source',
-				},
-			});
-		} else if (
-			view.getUseIOTOTaskViewAsDefault() &&
-			!hasCursorOffset &&
-			isTaskNoteFile(file, view.getTasksRootPath())
-		) {
-			// 任务笔记「打开即任务视图」；受 useIOTOTaskViewAsDefault 设置门控，
-			// 带搜索词或光标标记时仍走 markdown，
-			// 因为滚动到命中与落光标都依赖 MarkdownView 的 CodeMirror。
-			await leaf.setViewState({
-				type: IOTO_TASK_VIEW_TYPE,
-				active: true,
-				state: {
-					file: file.path,
-				},
-			});
-		} else {
-			await leaf.openFile(file, {
-				active: true,
-			});
-		}
+		const mode = resolveTaskNoteOpenMode({
+			hasSearchQuery: query.length > 0,
+			hasLine,
+			cursorOffset,
+			preferTaskView: view.getUseIOTOTaskViewAsDefault(),
+			isTaskNote: isTaskNoteFile(file, view.getTasksRootPath()),
+		});
+
+		await openTaskNoteInLeaf(leaf, file, mode);
 		view.previewLeaf = leaf;
 		view.openedTaskPath = file.path;
 		if (view.selectedProject) {
@@ -222,12 +207,12 @@ export async function openFileInPreview(
 		}
 
 		if (query) {
-			await scrollPreviewToFirstMatch(view, leaf, file, query);
+			await scrollPreviewToFirstMatch(leaf, file, query);
 		}
 
-		if (hasCursorOffset) {
-			await focusPreviewEditorAtOffset(
-				view,
+		if (cursorOffset !== null) {
+			await focusTaskNoteEditorAtOffset(
+				view.app,
 				leaf,
 				file,
 				cursorOffset,
@@ -235,7 +220,7 @@ export async function openFileInPreview(
 		}
 
 		if (hasLine) {
-			await focusPreviewEditorAtLine(view, leaf, file, line);
+			await focusPreviewEditorAtLine(view.app, leaf, file, line);
 		}
 	} finally {
 		view.openingTaskPath = null;
@@ -257,61 +242,6 @@ export function findReusablePreviewLeaf(
 }
 
 /**
- * 把预览叶子切到源码模式并把光标落到正文指定偏移。
- *
- * `bodyOffset` 是相对正文起始（frontmatter 之后）的偏移；打开时用当前内容的
- * frontmatter 长度折算成绝对位置，因此创建后 frontmatter 再变长也不会漂移。
- * 仅在创建任务笔记命中 `%%Cursor%%` 且该文件会留给用户时调用；无标记时
- * 完全不触发，因此默认打开模式不受影响（见方案 §3.5、§5.3）。
- */
-async function focusPreviewEditorAtOffset(
-	view: IOTOTasksCenterView,
-	leaf: WorkspaceLeaf,
-	file: TFile,
-	bodyOffset: number,
-): Promise<void> {
-	try {
-		let leafView: MarkdownView | null =
-			leaf.view instanceof MarkdownView ? leaf.view : null;
-		const needsSourceMode =
-			!leafView ||
-			leafView.file?.path !== file.path ||
-			leafView.getMode() !== 'source';
-		if (needsSourceMode) {
-			await leaf.setViewState({
-				type: 'markdown',
-				active: true,
-				state: {
-					file: file.path,
-					mode: 'source',
-				},
-			});
-			leafView = leaf.view instanceof MarkdownView ? leaf.view : null;
-		}
-
-		if (!leafView || leafView.file?.path !== file.path) {
-			return;
-		}
-
-		view.app.workspace.setActiveLeaf(leaf, { focus: true });
-		const editor = leafView.editor;
-		const content = editor.getValue();
-		const absoluteOffset =
-			resolveCursorMarkerSearchStart(content) + bodyOffset;
-		const clampedOffset = Math.max(
-			0,
-			Math.min(absoluteOffset, content.length),
-		);
-		const position = editor.offsetToPos(clampedOffset);
-		editor.setCursor(position);
-		editor.scrollIntoView({ from: position, to: position }, true);
-		editor.focus();
-	} catch {
-		// 标记已在创建阶段被剥离，聚焦失败不应影响创建流程。
-	}
-}
-
-/**
  * 把预览叶子切到源码模式并把光标落到全文指定行（[[Plan-20261030-060126]] §三 S4）。
  *
  * `line` 是**全文 0 基行号（含 frontmatter）**——frontmatter 折算已在
@@ -320,7 +250,7 @@ async function focusPreviewEditorAtOffset(
  * 定位失败按普通打开处理（静默降级，零新增文案）。
  */
 async function focusPreviewEditorAtLine(
-	view: IOTOTasksCenterView,
+	app: App,
 	leaf: WorkspaceLeaf,
 	file: TFile,
 	line: number,
@@ -348,7 +278,7 @@ async function focusPreviewEditorAtLine(
 			return;
 		}
 
-		view.app.workspace.setActiveLeaf(leaf, { focus: true });
+		app.workspace.setActiveLeaf(leaf, { focus: true });
 		const editor = leafView.editor;
 		const clampedLine = Math.max(0, Math.min(line, editor.lastLine()));
 		const position = { line: clampedLine, ch: 0 };
@@ -545,7 +475,6 @@ function findLeafInCurrentTabGroupByFilePath(
 }
 
 async function scrollPreviewToFirstMatch(
-	view: IOTOTasksCenterView,
 	leaf: WorkspaceLeaf,
 	file: TFile,
 	query: string,

@@ -137,7 +137,7 @@ test('未标记、无优先级：顶层 12 项 + 5 分隔线（含折叠组、�
 			'Insert entry template',
 			'Mark all tasks as done',
 			'Search tasks',
-			'Task view & quadrant theme: Glass',
+			'Task view & priority matrix theme: Glass',
 			'Delete current task note',
 		],
 	);
@@ -218,7 +218,7 @@ test('无 setSubmenu 且无优先级：标题项禁用 + 平铺 4 档', () => {
 			'Insert entry template',
 			'Mark all tasks as done',
 			'Search tasks',
-			'Task view & quadrant theme: Glass',
+			'Task view & priority matrix theme: Glass',
 			'Glass (current)',
 			'Modern',
 			'Simple',
@@ -255,7 +255,7 @@ test('无 setSubmenu 且已设优先级：平铺取消项与 4 档', () => {
 			'Insert entry template',
 			'Mark all tasks as done',
 			'Search tasks',
-			'Task view & quadrant theme: Glass',
+			'Task view & priority matrix theme: Glass',
 			'Glass (current)',
 			'Modern',
 			'Simple',
@@ -361,7 +361,7 @@ test('两者都不可用：折叠组整组消失、视图动作组与主题组�
 		'Mark all tasks as done',
 		'Search tasks',
 		'---',
-		'Task view & quadrant theme: Glass',
+		'Task view & priority matrix theme: Glass',
 		'---',
 		'Delete current task note',
 	]);
@@ -410,7 +410,7 @@ test('折叠组后紧跟视图动作组：折叠组夹在核心任务与视图�
 	assert.equal(titles[continuationsIndex + 1], '---');
 	// 主题组夹在「搜索任务」与删除之间（上下各一条分隔线）
 	assert.equal(titles[searchIndex + 1], '---');
-	assert.equal(titles[searchIndex + 2], 'Task view & quadrant theme: Glass');
+	assert.equal(titles[searchIndex + 2], 'Task view & priority matrix theme: Glass');
 	assert.equal(deleteIndex, searchIndex + 4);
 });
 
@@ -448,7 +448,7 @@ test('N2 视图动作组：图标分别为 image-down / clipboard-copy / layout-
 		'check',
 	);
 	assert.equal(entryByTitle(menu, 'Search tasks').item.icon, 'search');
-	assert.equal(entryByTitle(menu, 'Task view & quadrant theme: Glass').item.icon, 'palette');
+	assert.equal(entryByTitle(menu, 'Task view & priority matrix theme: Glass').item.icon, 'palette');
 });
 
 test('N3 canInsertEntryTemplate=false：插入项隐藏，其余三项仍在且只有一条前置分隔线', () => {
@@ -484,7 +484,7 @@ test('N4 exporting 置灰：导出 / 复制随 exporting 翻转，插入 / 标�
 	assert.equal(entryByTitle(busy, 'Mark all tasks as done').item.disabled, false);
 	assert.equal(entryByTitle(busy, 'Search tasks').item.disabled, false);
 	// 主题组与 exporting 无关（本菜单唯一的无条件项）
-	assert.equal(entryByTitle(busy, 'Task view & quadrant theme: Glass').item.disabled, false);
+	assert.equal(entryByTitle(busy, 'Task view & priority matrix theme: Glass').item.disabled, false);
 
 	const idle = createFakeMenu();
 	buildNoteContextMenu(idle, baseOptions({ exporting: false }));
@@ -494,7 +494,7 @@ test('N4 exporting 置灰：导出 / 复制随 exporting 翻转，插入 / 标�
 		'Insert entry template',
 		'Mark all tasks as done',
 		'Search tasks',
-		'Task view & quadrant theme: Glass',
+		'Task view & priority matrix theme: Glass',
 	]) {
 		assert.equal(entryByTitle(idle, title).item.disabled, false, title);
 	}
@@ -572,7 +572,7 @@ test('N7 位置约束：新项紧跟插入模板，「搜索任务」仍压视�
 	const rawTitles = titlesOf(menu);
 	const searchIndex = rawTitles.indexOf('Search tasks');
 	assert.equal(rawTitles[searchIndex + 1], '---');
-	assert.equal(rawTitles[searchIndex + 2], 'Task view & quadrant theme: Glass');
+	assert.equal(rawTitles[searchIndex + 2], 'Task view & priority matrix theme: Glass');
 	assert.equal(rawTitles[rawTitles.length - 1], 'Delete current task note');
 });
 
@@ -584,7 +584,7 @@ test('T1 主题子菜单：5 档顺序与设置页一致，当前档带 (current
 
 	const themeEntry = entryByTitle(
 		menu,
-		'Task view & quadrant theme: Morandi (low-glare)',
+		'Task view & priority matrix theme: Morandi (low-glare)',
 	);
 	assert.equal(themeEntry.item.icon, 'palette');
 	assert.deepEqual(titlesOf(themeEntry.item.submenu), [
@@ -607,7 +607,7 @@ test('T2 点击主题档位：回调收到对应值恰好一次（延迟执行�
 		}),
 	);
 
-	const submenu = entryByTitle(menu, 'Task view & quadrant theme: Glass').item.submenu;
+	const submenu = entryByTitle(menu, 'Task view & priority matrix theme: Glass').item.submenu;
 	entryByTitle(submenu, 'Morandi (low-glare)').item.click();
 	entryByTitle(submenu, 'Glass (current)').item.click();
 	assert.deepEqual(received, []);
@@ -620,9 +620,9 @@ test('T3 无 setSubmenu：父项禁用 + 5 档就地平铺，删除仍居末位'
 	buildNoteContextMenu(menu, baseOptions());
 
 	const rawTitles = titlesOf(menu);
-	const themeIndex = rawTitles.indexOf('Task view & quadrant theme: Glass');
+	const themeIndex = rawTitles.indexOf('Task view & priority matrix theme: Glass');
 	assert.equal(
-		entryByTitle(menu, 'Task view & quadrant theme: Glass').item.disabled,
+		entryByTitle(menu, 'Task view & priority matrix theme: Glass').item.disabled,
 		true,
 	);
 	assert.equal(rawTitles[themeIndex - 1], '---');
@@ -651,7 +651,7 @@ test('T4 无条件性：全部门禁关闭 + 导出中 → 主题组与 5 档仍
 		}),
 	);
 
-	const themeEntry = entryByTitle(menu, 'Task view & quadrant theme: Glass');
+	const themeEntry = entryByTitle(menu, 'Task view & priority matrix theme: Glass');
 	assert.equal(themeEntry.item.disabled, false);
 	const styles = entriesOf(themeEntry.item.submenu);
 	assert.equal(styles.length, 5);

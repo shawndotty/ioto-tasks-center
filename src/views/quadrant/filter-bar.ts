@@ -11,15 +11,13 @@
 import { Menu } from 'obsidian';
 
 import { t } from '../../lang/helpter';
-import type {
-	QuadrantProjectScope,
-	QuadrantStatusKey,
-} from '../../tasks-center/quadrant-data';
+import type { QuadrantStatusKey } from '../../tasks-center/quadrant-data';
 import type { QuadrantViewContext } from './context';
 import {
 	QUADRANT_CONTROL_ICONS,
 	createQuadrantControlIcon,
 } from './control-icon';
+import { decodeQuadrantScope, encodeQuadrantScope } from './scope-codec';
 import {
 	buildQuadrantTimeControls,
 	updateQuadrantTimeControls,
@@ -40,26 +38,6 @@ function statusChipLabel(key: QuadrantStatusKey): string {
 		case 'completed':
 			return t('priorityQuadrant.status.completed');
 	}
-}
-
-export function encodeQuadrantScope(scope: QuadrantProjectScope): string {
-	if (scope.kind === 'project') {
-		return `project:${scope.projectName ?? ''}`;
-	}
-	return scope.kind;
-}
-
-export function decodeQuadrantScope(value: string): QuadrantProjectScope {
-	if (value === 'all' || value === 'unarchived') {
-		return { kind: value };
-	}
-	if (value.startsWith('project:')) {
-		return {
-			kind: 'project',
-			projectName: value.slice('project:'.length),
-		};
-	}
-	return { kind: 'unarchived' };
 }
 
 export function buildQuadrantFilterBar(

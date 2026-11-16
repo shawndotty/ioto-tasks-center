@@ -175,6 +175,7 @@ const CURRENT_STATE = {
 	sidebarOpen: true,
 	timeFilter: { kind: 'preset', value: 'updated-week' },
 	statusKeys: ['in-progress', 'todo'],
+	projectScope: { kind: 'project', projectName: 'IOTO Task Center' },
 };
 
 test('mergeQuadrantViewState：空 parsed → 字段原样保留且为新引用', () => {
@@ -225,5 +226,139 @@ test('mergeQuadrantViewState：与 parse 组合，全不选 + 全部时间不被
 		sidebarOpen: true,
 		timeFilter: { kind: 'none' },
 		statusKeys: [],
+		projectScope: CURRENT_STATE.projectScope,
 	});
 });
+
+// projectScope 持久化（[[Plan-20261116-161225]] §三 步骤 2 / 步骤 5）。
+test('parseQuadrantViewState：projectScope 三种 kind 原样还原', () => {
+	assert.deepEqual(parseQuadrantViewState({ projectScope: 'all' }), {
+		projectScope: { kind: 'all' },
+	});
+	assert.deepEqual(parseQuadrantViewState({ projectScope: 'unarchived' }), {
+		projectScope: { kind: 'unarchived' },
+	});
+	assert.deepEqual(
+		parseQuadrantViewState({ projectScope: 'project:IOTO Task Center' }),
+		{ projectScope: { kind: 'project', projectName: 'IOTO Task Center' } },
+	);
+});
+
+test('parseQuadrantViewState：含冒号的 projectName 原样还原', () => {
+	assert.deepEqual(
+		parseQuadrantViewState({ projectScope: 'project:a:b:c' }),
+		{ projectScope: { kind: 'project', projectName: 'a:b:c' } },
+	);
+});
+
+test('parseQuadrantViewState：缺 projectScope 键 → 不带该字段', () => {
+	assert.deepEqual(parseQuadrantViewState({}), {});
+	assert.deepEqual(parseQuadrantViewState({ sidebarOpen: true }), {
+		sidebarOpen: true,
+	});
+});
+
+test('parseQuadrantViewState：脏 projectScope 一律丢弃（不回落未归档）', () => {
+	for (const value of [42, '', 'bogus', 'project:', null, {}, true, []]) {
+		const parsed = parseQuadrantViewState({ projectScope: value });
+		assert.equal('projectScope' in parsed, false);
+	}
+});
+
+test('parseQuadrantViewState：projectScope 与其它字段共存', () => {
+	assert.deepEqual(
+		parseQuadrantViewState({
+			sidebarOpen: false,
+			timeFilter: 'preset:updated-week',
+			statusKeys: ['todo'],
+			projectScope: 'project:IOTO Task Center',
+		}),
+		{
+			sidebarOpen: false,
+			timeFilter: { kind: 'preset', value: 'updated-week' },
+			statusKeys: ['todo'],
+			projectScope: { kind: 'project', projectName: 'IOTO Task Center' },
+		},
+	);
+});
+
+test('mergeQuadrantViewState：projectScope 缺失保留当前，给出时覆盖', () => {
+	assert.deepEqual(
+		mergeQuadrantViewState(CURRENT_STATE, {}).projectScope,
+		CURRENT_STATE.projectScope,
+	);
+	assert.deepEqual(
+		mergeQuadrantViewState(CURRENT_STATE, {
+			projectScope: { kind: 'all' },
+		}).projectScope,
+		{ kind: 'all' },
+	);
+	assert.deepEqual(
+		mergeQuadrantViewState(CURRENT_STATE, {
+			projectScope: { kind: 'unarchived' },
+		}).projectScope,
+		{ kind: 'unarchived' },
+	);
+});
+
+test('mergeQuadrantViewState：projectScope 与 statusKeys 空数组共存', () => {
+	const merged = mergeQuadrantViewState(CURRENT_STATE, { statusKeys: [] });
+	assert.deepEqual(merged.statusKeys, []);
+	assert.deepEqual(merged.projectScope, CURRENT_STATE.projectScope);
+});
+
+test('mergeQuadrantViewState：脏 parsed.projectScope 不存在时保留兜底', () => {
+	const parsed = parseQuadrantViewState({ projectScope: 42 });
+	const merged = mergeQuadrantViewState(CURRENT_STATE, parsed);
+	assert.deepEqual(merged.projectScope, CURRENT_STATE.projectScope);
+});
+
+test('parseQuadrantViewState：projectScope getState(encode) → parse 往返一致', () => {
+	const scopes = [
+		{ kind: 'all' },
+		{ kind: 'unarchived' },
+		{ kind: 'project', projectName: 'IOTO Task Center' },
+		{ kind: 'project', projectName: '含:冒号的 项目' },
+	];
+	for (const scope of scopes) {
+		const encoded =
+			scope.kind === 'project'
+				? `project:${scope.projectName}`
+				: scope.kind;
+		assert.deepEqual(
+			parseQuadrantViewState({ projectScope: encoded }).projectScope,
+			scope,
+		);
+	}
+});
+
+// previewLeafId（[[Plan-20261116-155634]] §5.4 / §6.3）：与筛选状态分开解析。
+test('parseQuadrantViewState：合法 previewLeafId 保留', () => {
+	assert.deepEqual(parseQuadrantViewState({ previewLeafId: 'leaf-1' }), {
+		previewLeafId: 'leaf-1',
+	});
+});
+
+test('parseQuadrantViewState：空串 / 非字符串 previewLeafId 一律丢弃', () => {
+	for (const value of ['', 42, null, undefined, [], {}, true]) {
+		assert.deepEqual(parseQuadrantViewState({ previewLeafId: value }), {});
+	}
+});
+
+test('parseQuadrantViewState：previewLeafId 与筛选字段共存', () => {
+	assert.deepEqual(
+		parseQuadrantViewState({
+			sidebarOpen: true,
+			statusKeys: ['todo'],
+			previewLeafId: 'leaf-1',
+		}),
+		{ sidebarOpen: true, statusKeys: ['todo'], previewLeafId: 'leaf-1' },
+	);
+});
+
+test('mergeQuadrantViewState：previewLeafId 不进入筛选合并', () => {
+	const merged = mergeQuadrantViewState(CURRENT_STATE, { previewLeafId: 'x' });
+	assert.deepEqual(merged, CURRENT_STATE);
+	assert.equal('previewLeafId' in merged, false);
+});
+

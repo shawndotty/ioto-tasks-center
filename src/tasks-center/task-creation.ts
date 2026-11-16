@@ -27,11 +27,6 @@ export interface CreateTaskFileOptions {
 	dateTaskDateFormat: string;
 	targetLeaf?: WorkspaceLeaf | null;
 	sourceLeaf?: WorkspaceLeaf | null;
-	/**
-	 * 文件模板的懒求值目标叶：仅在模板来源为 `file` 且未显式传 `targetLeaf` 时调用，
-	 * 避免无模板 / 内联模板时凭空创建标签页（[[Plan-20261116-145111]] §4.5）。
-	 */
-	resolveTargetLeaf?: () => WorkspaceLeaf | null;
 }
 
 export interface CreateTaskFileResult {
@@ -326,7 +321,6 @@ export async function createTaskFile(
 		dateTaskDateFormat,
 		targetLeaf,
 		sourceLeaf,
-		resolveTargetLeaf,
 	} = options;
 	const normalizedCustomName = customName
 		? normalizeCustomTaskName(customName)
@@ -387,9 +381,7 @@ export async function createTaskFile(
 	}
 
 	const templaterTargetLeaf =
-		resolvedTemplateSource.kind === 'file'
-			? (targetLeaf ?? resolveTargetLeaf?.() ?? null)
-			: null;
+		resolvedTemplateSource.kind === 'file' ? (targetLeaf ?? null) : null;
 	const templaterApplied =
 		resolvedTemplateSource.kind === 'inline'
 			? await applyInlineTemplateToFile(
