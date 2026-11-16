@@ -8,6 +8,11 @@
 
 import { TASK_PRIORITY_VALUES, type TaskPriorityValue } from './task-priority';
 import { getTaskProjectNameFromPath } from './task-display-title';
+import {
+	isTaskInTimeBounds,
+	resolveTaskTimeBounds,
+	type QuadrantTimeFilter,
+} from './task-time-range';
 import type { TaskFileEntry } from './types';
 
 export const QUADRANT_KEYS = ['p0', 'p1', 'p2', 'p3'] as const;
@@ -29,6 +34,7 @@ export interface QuadrantFilterState {
 	statusKeys: ReadonlySet<QuadrantStatusKey>;
 	projectScope: QuadrantProjectScope;
 	hiddenProjectNames: ReadonlySet<string>;
+	timeFilter: QuadrantTimeFilter;
 }
 
 export interface QuadrantModel {
@@ -36,9 +42,9 @@ export interface QuadrantModel {
 	unlabeled: TaskFileEntry[];
 	/** 当前状态过滤下的各桶计数（象限标题 / 侧栏标题用） */
 	counts: Record<QuadrantBucketKey, number>;
-	/** 项目范围后、状态过滤前的三态计数（chip 用） */
+	/** 项目范围 + 时间过滤后、状态过滤前的三态计数（chip 用） */
 	statusCounts: Record<QuadrantStatusKey, number>;
-	/** 项目范围后、状态过滤前的总数 */
+	/** 项目范围 + 时间过滤后、状态过滤前的总数 */
 	scopedTotal: number;
 	/** 最终参与象限 + 侧栏的任务数 */
 	total: number;
@@ -96,6 +102,7 @@ function compareQuadrantTasks(
 export function buildQuadrantModel(
 	tasks: readonly TaskFileEntry[],
 	filter: QuadrantFilterState,
+	nowMs: number = Date.now(),
 ): QuadrantModel {
 	const buckets: Record<QuadrantKey, TaskFileEntry[]> = {
 		p0: [],
@@ -110,6 +117,7 @@ export function buildQuadrantModel(
 		todo: 0,
 	};
 	let scopedTotal = 0;
+	const timeBounds = resolveTaskTimeBounds(filter.timeFilter, nowMs);
 
 	for (const task of tasks) {
 		if (
@@ -121,6 +129,7 @@ export function buildQuadrantModel(
 		) {
 			continue;
 		}
+		if (timeBounds && !isTaskInTimeBounds(task, timeBounds)) continue;
 		scopedTotal += 1;
 		const statusKey = toQuadrantStatusKey(task.status.key);
 		statusCounts[statusKey] += 1;

@@ -16,6 +16,10 @@ import type {
 	QuadrantStatusKey,
 } from '../../tasks-center/quadrant-data';
 import type { QuadrantViewContext } from './context';
+import {
+	buildQuadrantTimeControls,
+	updateQuadrantTimeControls,
+} from './time-filter-bar';
 
 const STATUS_CHIP_ORDER: QuadrantStatusKey[] = [
 	'in-progress',
@@ -112,6 +116,10 @@ export function buildQuadrantFilterBar(
 		buildQuadrantStatusMenu(menu, ctx);
 		menu.showAtMouseEvent(event);
 	});
+
+	// 时间范围：宽屏下拉 / 窄屏菜单，二者都在 DOM，显示切换交给 CSS
+	// （[[Plan-20261116-083330]] §3.3 / §3.4）。
+	buildQuadrantTimeControls(barEl, ctx);
 
 	// 开关放在 header 最右（[[Plan-20261116-060249]] §3.4）：过滤条里**只此一个**，
 	// `updateQuadrantFilterBar` 在 `headerEl` 上按类名回写状态，作用域已覆盖此处。
@@ -275,4 +283,6 @@ export function updateQuadrantFilterBar(
 		statusBtnEl.setAttribute('aria-label', label);
 		statusBtnEl.setAttribute('title', label);
 	}
+
+	updateQuadrantTimeControls(headerEl, ctx);
 }

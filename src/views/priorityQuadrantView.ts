@@ -6,7 +6,14 @@
  * 渲染细节拆在 `views/quadrant/*`。
  */
 
-import { ItemView, Menu, Notice, TFile, type WorkspaceLeaf } from 'obsidian';
+import {
+	ItemView,
+	Menu,
+	Notice,
+	Platform,
+	TFile,
+	type WorkspaceLeaf,
+} from 'obsidian';
 
 import { t } from '../lang/helpter';
 import type { TaskViewAppearanceStyle } from '../settings-types';
@@ -17,6 +24,14 @@ import {
 	type QuadrantStatusKey,
 } from '../tasks-center/quadrant-data';
 import {
+	encodeQuadrantTimeFilter,
+	resolveTaskTimeBounds,
+	toLocalDateString,
+	type QuadrantTimeFilter,
+	type TaskTimeField,
+} from '../tasks-center/task-time-range';
+import { QuadrantTimeRangeModal } from '../ui/quadrantTimeRangeModal';
+import {
 	clearTaskFilePriority,
 	setTaskFilePriority,
 	type TaskPriorityValue,
@@ -25,6 +40,7 @@ import type { TaskFileEntry } from '../tasks-center/types';
 import { applyAppearanceStyleClasses } from './appearance-style';
 import { buildQuadrantFilterBar, encodeQuadrantScope, updateQuadrantFilterBar } from './quadrant/filter-bar';
 import {
+	DEFAULT_QUADRANT_STATUS_KEYS,
 	IOTO_PRIORITY_QUADRANT_VIEW_TYPE,
 	parseQuadrantViewState,
 	QUADRANT_BODY_CLASS,
@@ -43,6 +59,9 @@ import {
 import { renderQuadrantSidebar } from './quadrant/sidebar';
 import { renderQuadrantState } from './quadrant/states';
 import { openQuadrantTask } from './quadrant/task-open';
+import { QuadrantTimeRangePopover } from './quadrant/time-range-popover';
+
+const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
 
 export interface PriorityQuadrantDeps {
 	getTasksRootPath(): string;
@@ -58,9 +77,10 @@ export class IOTOPriorityQuadrantView
 	extends ItemView
 	implements QuadrantViewContext
 {
-	private statusKeys = new Set<QuadrantStatusKey>(['in-progress', 'todo']);
+	private statusKeys = new Set<QuadrantStatusKey>(DEFAULT_QUADRANT_STATUS_KEYS);
 	private projectScope: QuadrantProjectScope = { kind: 'unarchived' };
 	private sidebarOpen = false;
+	private timeFilter: QuadrantTimeFilter = { kind: 'none' };
 	private model: QuadrantModel | null = null;
 	private lastTasks: TaskFileEntry[] = [];
 	private projectOptions: QuadrantProjectOption[] = [];
@@ -76,6 +96,7 @@ export class IOTOPriorityQuadrantView
 	private gridEl: HTMLElement | null = null;
 	private sidebarEl: HTMLElement | null = null;
 	private scrimEl: HTMLElement | null = null;
+	private timeRangePopover: QuadrantTimeRangePopover | null = null;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -98,11 +119,20 @@ export class IOTOPriorityQuadrantView
 	}
 
 	getState(): Record<string, unknown> {
-		return { ...super.getState(), sidebarOpen: this.sidebarOpen };
+		return {
+			...super.getState(),
+			sidebarOpen: this.sidebarOpen,
+			timeFilter: encodeQuadrantTimeFilter(this.timeFilter),
+			statusKeys: [...this.statusKeys],
+		};
 	}
 
 	async setState(state: unknown): Promise<void> {
-		this.sidebarOpen = parseQuadrantViewState(state).sidebarOpen ?? false;
+		const parsed = parseQuadrantViewState(state);
+		this.sidebarOpen = parsed.sidebarOpen ?? false;
+		this.timeFilter = parsed.timeFilter ?? { kind: 'none' };
+		// 缺省 / 全脏值不改字段，保留构造期默认（[[Plan-20261116-091927]] §3.2）。
+		if (parsed.statusKeys) this.statusKeys = new Set(parsed.statusKeys);
 		// `setState` 可能早于 `onOpen`（同 iotoTaskView.ts:681）：只落内存，首帧渲染会读到。
 		if (this.contentEl.isConnected) this.render();
 	}
@@ -119,6 +149,8 @@ export class IOTOPriorityQuadrantView
 	async onClose(): Promise<void> {
 		this.clearLoadingTimer();
 		this.pendingPriorityPaths.clear();
+		this.timeRangePopover?.destroy();
+		this.timeRangePopover = null;
 		this.contentEl.empty();
 	}
 
@@ -166,6 +198,10 @@ export class IOTOPriorityQuadrantView
 		return this.sidebarOpen;
 	}
 
+	getTimeFilter(): QuadrantTimeFilter {
+		return this.timeFilter;
+	}
+
 	getShowTaskPriority(): boolean {
 		return this.deps.getShowTaskPriority();
 	}
@@ -183,6 +219,7 @@ export class IOTOPriorityQuadrantView
 		else this.statusKeys.add(key);
 		this.rebuildModel();
 		this.render();
+		this.app.workspace.requestSaveLayout();
 	}
 
 	setProjectScope(scope: QuadrantProjectScope): void {
@@ -197,6 +234,86 @@ export class IOTOPriorityQuadrantView
 		this.render();
 		// `getState` 在保存工作区时读取该字段，改完需主动请求落盘（[[Plan-20261116-060249]] E1）。
 		this.app.workspace.requestSaveLayout();
+	}
+
+	setTimeFilter(filter: QuadrantTimeFilter): void {
+		this.timeFilter = filter;
+		this.rebuildModel();
+		this.render();
+		this.app.workspace.requestSaveLayout();
+	}
+
+	openTimeRangeEditor(anchorEl: HTMLElement): void {
+		const seed = this.timeRangeEditorSeed();
+		const onApply = (
+			field: TaskTimeField,
+			start: string,
+			end: string,
+		): void => {
+			this.setTimeFilter({ kind: 'custom', field, start, end });
+		};
+		const onClear = (): void => this.setTimeFilter({ kind: 'none' });
+
+		if (Platform.isPhone) {
+			new QuadrantTimeRangeModal(this.app, {
+				...seed,
+				onApply,
+				onClear,
+				onAfterClose: () => anchorEl.focus(),
+			}).open();
+			return;
+		}
+
+		this.timeRangePopover?.destroy();
+		const popover = new QuadrantTimeRangePopover(
+			this.contentEl.ownerDocument,
+		);
+		this.timeRangePopover = popover;
+		popover.open({
+			hostEl: this.contentEl,
+			anchorEl,
+			...seed,
+			onApply,
+			onClear,
+			onAfterClose: () => {
+				if (this.timeRangePopover === popover) {
+					this.timeRangePopover = null;
+				}
+			},
+		});
+	}
+
+	/** 自定义编辑器初值：当前自定义 → 预设换算 → 默认最近 14 天（§2.2-2）。 */
+	private timeRangeEditorSeed(): {
+		field: TaskTimeField;
+		start: string;
+		end: string;
+	} {
+		const nowMs = Date.now();
+		const filter = this.timeFilter;
+		if (filter.kind === 'custom') {
+			return {
+				field: filter.field,
+				start: filter.start ?? '',
+				end: filter.end ?? '',
+			};
+		}
+		if (filter.kind === 'preset') {
+			const bounds = resolveTaskTimeBounds(filter, nowMs);
+			return {
+				field: bounds?.field ?? 'updated',
+				start:
+					bounds?.startMs === undefined
+						? ''
+						: toLocalDateString(bounds.startMs),
+				end: toLocalDateString(nowMs),
+			};
+		}
+		return {
+			field: 'updated',
+			start: toLocalDateString(nowMs - FOURTEEN_DAYS_MS),
+			end: toLocalDateString(nowMs),
+		};
 	}
 
 	setPriority(path: string, priority: TaskPriorityValue | undefined): void {
@@ -296,6 +413,7 @@ export class IOTOPriorityQuadrantView
 			statusKeys: this.statusKeys,
 			projectScope: this.projectScope,
 			hiddenProjectNames: new Set(this.deps.getHiddenProjectNames()),
+			timeFilter: this.timeFilter,
 		});
 	}
 
@@ -376,6 +494,7 @@ export class IOTOPriorityQuadrantView
 		root.dataset.projectScope = encodeQuadrantScope(this.projectScope);
 		root.dataset.statusFilter = [...this.statusKeys].join(',');
 		root.dataset.sidebarOpen = this.sidebarOpen ? 'true' : 'false';
+		root.dataset.timeFilter = encodeQuadrantTimeFilter(this.timeFilter);
 
 		if (this.scanStatus === 'root-missing') {
 			this.clearShell();

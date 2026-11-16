@@ -7279,7 +7279,8 @@ button[aria-pressed='true']
 	min-width: 0;
 }
 
-.ioto-pq-filterbar__scope {
+.ioto-pq-filterbar__scope,
+.ioto-pq-filterbar__time {
 	display: inline-flex;
 	align-items: center;
 	gap: 0;
@@ -7288,17 +7289,24 @@ button[aria-pressed='true']
 }
 
 /* 标签只做视觉隐藏：可访问名来自 select 的 ariaLabel，DOM 保留语义。 */
-.ioto-pq-filterbar__scope > span {
+.ioto-pq-filterbar__scope > span,
+.ioto-pq-filterbar__time > span {
 	display: none;
 }
 
-.ioto-pq-scope-select {
+.ioto-pq-scope-select,
+.ioto-pq-time-select {
 	max-width: min(200px, 45vw);
 	height: var(--ioto-pq-control-h);
 	padding-block: 0;
 	font-size: var(--font-ui-smaller);
 	border-radius: var(--ioto-pq-chip-radius);
 	background: var(--ioto-pq-chip-bg);
+}
+
+/* 时间下拉自带字段前缀（组名），比项目范围略宽一点但不抢 chips。 */
+.ioto-pq-time-select {
+	max-width: min(180px, 42vw);
 }
 
 /* 三个状态 chip 拼成一个分段控件（[[Plan-20261116-061758]] §3.3）。 */
@@ -7329,8 +7337,9 @@ button[aria-pressed='true']
 	color: var(--text-normal);
 }
 
-/* 窄屏状态菜单：宽屏隐藏，720 查询里与 chips 互换显示（二者都留在 DOM）。 */
-.ioto-pq-status-menu {
+/* 窄屏状态菜单 / 时间菜单：宽屏隐藏，断点查询里再与对应控件互换显示。 */
+.ioto-pq-status-menu,
+.ioto-pq-time-menu {
 	display: none;
 	align-items: center;
 	gap: 6px;
@@ -7347,6 +7356,125 @@ button[aria-pressed='true']
 .ioto-pq-status-menu__count {
 	color: var(--text-faint);
 	font-variant-numeric: tabular-nums;
+}
+
+.ioto-pq-time-menu.is-active {
+	border-color: var(--interactive-accent);
+	color: var(--text-normal);
+	background: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+}
+
+.ioto-pq-time-menu__value {
+	max-width: 140px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--text-faint);
+}
+
+/* 自定义时间区间：浮层 / 面板 / Modal（[[Plan-20261116-083330]] §3.5 / §3.8）。 */
+.ioto-pq-time-popover {
+	position: absolute;
+	z-index: 30;
+	width: min(300px, calc(100% - 24px));
+	padding: 10px;
+	border: var(--ioto-pq-panel-border);
+	border-radius: var(--ioto-pq-panel-radius);
+	background: var(--background-primary);
+	box-shadow: var(--shadow-s);
+}
+
+.ioto-pq-time-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.ioto-pq-time-panel__fields {
+	display: inline-flex;
+	gap: 4px;
+	padding: 2px;
+	border: var(--ioto-pq-chip-border);
+	border-radius: var(--ioto-pq-chip-radius);
+	background: var(--ioto-pq-chip-bg);
+}
+
+/* 核心 button:not(.clickable-icon) 的底色会盖掉普通类选择器，带上同款前缀。 */
+button:not(.clickable-icon).ioto-pq-time-panel__field {
+	flex: 1 1 0;
+	height: calc(var(--ioto-pq-control-h) - 6px);
+	min-height: 0;
+	padding: 0 10px;
+	border: 0;
+	border-radius: calc(var(--ioto-pq-chip-radius) - 2px);
+	background: transparent;
+	box-shadow: none;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+button:not(.clickable-icon).ioto-pq-time-panel__field.is-active {
+	box-shadow: inset 0 0 0 1px var(--interactive-accent);
+	background: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+	color: var(--text-normal);
+}
+
+.ioto-pq-time-panel__dates {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: 8px;
+}
+
+.ioto-pq-time-panel__date {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}
+
+.ioto-pq-time-panel__date input[type='date'] {
+	width: 100%;
+	min-height: var(--ioto-pq-control-h);
+	font-size: var(--font-ui-smaller);
+}
+
+.ioto-pq-time-panel__error {
+	color: var(--text-error);
+	font-size: var(--font-ui-smaller);
+}
+
+.ioto-pq-time-panel__actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 6px;
+}
+
+button:not(.clickable-icon).ioto-pq-time-panel__action {
+	min-height: 28px;
+	padding: 0 10px;
+	border-radius: var(--ioto-pq-chip-radius);
+	font-size: var(--font-ui-smaller);
+}
+
+/* Modal 在视图容器外，`--ioto-pq-*` 不在作用域内，这里补齐用到的别名。 */
+.ioto-pq-time-modal {
+	--ioto-pq-chip-bg: var(--background-primary);
+	--ioto-pq-chip-border: 1px solid var(--background-modifier-border);
+	--ioto-pq-chip-radius: 999px;
+	--ioto-pq-control-h: 32px;
+	--ioto-pq-panel-border: 1px solid var(--background-modifier-border);
+	--ioto-pq-panel-radius: 8px;
+}
+
+.ioto-pq-time-modal .ioto-pq-time-panel {
+	gap: 12px;
+}
+
+.ioto-pq-time-modal .ioto-pq-time-panel__date input[type='date'],
+.ioto-pq-time-modal .ioto-pq-time-panel__field,
+.ioto-pq-time-modal .ioto-pq-time-panel__action {
+	min-height: 32px;
 }
 
 .ioto-pq-chip,
@@ -7637,7 +7765,8 @@ button[aria-pressed='true']
 	--ioto-pq-motion: 180ms ease;
 }
 
-.ioto-pq-view.is-glass > * {
+/* 内容层抬到 Aurora 背景之上；浮层自带 absolute 定位，不参与抬层（[[Plan-20261116-084625]] §3.1） */
+.ioto-pq-view.is-glass > *:not(.ioto-pq-time-popover) {
 	position: relative;
 	z-index: 1;
 }
@@ -7801,6 +7930,17 @@ button[aria-pressed='true']
 	font-size: var(--font-ui-smaller);
 }
 
+/* 中等宽度：时间下拉换成菜单按钮，状态 chips 仍保留（[[Plan-20261116-083330]] §3.3）。 */
+@container ioto-pq (max-width: 900px) {
+	.ioto-pq-time-select {
+		display: none;
+	}
+
+	.ioto-pq-time-menu {
+		display: inline-flex;
+	}
+}
+
 @container ioto-pq (max-width: 720px) {
 	/* 窄屏单行：项目范围 + 状态 ｜ 未标注；标题与摘要不占视觉位置。 */
 	.ioto-pq-header {
@@ -7848,10 +7988,19 @@ button[aria-pressed='true']
 		display: inline-flex;
 	}
 
+	.ioto-pq-time-menu {
+		display: inline-flex;
+	}
+
+	.ioto-pq-time-menu__value {
+		max-width: 100px;
+	}
+
 	/* 窄屏触摸热区 ≥32px（视觉密度由宽屏保持）。 */
 	.ioto-pq-scope-select,
 	.ioto-pq-header__toggle,
-	.ioto-pq-status-menu {
+	.ioto-pq-status-menu,
+	.ioto-pq-time-menu {
 		min-height: 32px;
 	}
 

@@ -5,6 +5,12 @@
  * 避免「routing → view → routing」的值级环。
  */
 
+import {
+	decodeQuadrantTimeFilter,
+	type QuadrantTimeFilter,
+} from '../../tasks-center/task-time-range';
+import type { QuadrantStatusKey } from '../../tasks-center/quadrant-data';
+
 export const IOTO_PRIORITY_QUADRANT_VIEW_TYPE = 'IOTOPriorityQuadrant';
 
 export const QUADRANT_LOADING_RENDER_DELAY_MS = 120;
@@ -13,16 +19,54 @@ export const QUADRANT_BODY_CLASS = 'ioto-pq-body';
 
 export const QUADRANT_CARD_CLASS = 'ioto-pq-card';
 
+const QUADRANT_STATUS_KEYS: readonly QuadrantStatusKey[] = [
+	'completed',
+	'in-progress',
+	'todo',
+];
+
+export const DEFAULT_QUADRANT_STATUS_KEYS: readonly QuadrantStatusKey[] = [
+	'in-progress',
+	'todo',
+];
+
+function isQuadrantStatusKey(value: unknown): value is QuadrantStatusKey {
+	return (
+		typeof value === 'string' &&
+		(QUADRANT_STATUS_KEYS as readonly string[]).includes(value)
+	);
+}
+
 /**
- * 叶子视图状态里的显隐位（[[Plan-20261116-060249]] §3.2）。
- * 只认 boolean：老 / 脏 `workspace.json` 里的字符串一律忽略，回到默认隐藏。
+ * 叶子视图状态（[[Plan-20261116-060249]] §3.2、[[Plan-20261116-083330]] §3.6、
+ * [[Plan-20261116-091927]] §3.2）。
+ * `sidebarOpen` 只认 boolean；`timeFilter` 走白名单解码，脏数据回落「全部时间」；
+ * `statusKeys` 只收白名单键并去重——键缺失或全脏回落默认，空数组合法表示「全不选」。
  */
 export function parseQuadrantViewState(state: unknown): {
 	sidebarOpen?: boolean;
+	timeFilter?: QuadrantTimeFilter;
+	statusKeys?: QuadrantStatusKey[];
 } {
 	if (!state || typeof state !== 'object') return {};
 	const candidate = state as Record<string, unknown>;
-	return typeof candidate.sidebarOpen === 'boolean'
-		? { sidebarOpen: candidate.sidebarOpen }
-		: {};
+	const parsed: {
+		sidebarOpen?: boolean;
+		timeFilter?: QuadrantTimeFilter;
+		statusKeys?: QuadrantStatusKey[];
+	} = {};
+	if (typeof candidate.sidebarOpen === 'boolean') {
+		parsed.sidebarOpen = candidate.sidebarOpen;
+	}
+	if ('timeFilter' in candidate) {
+		parsed.timeFilter = decodeQuadrantTimeFilter(candidate.timeFilter);
+	}
+	if ('statusKeys' in candidate && Array.isArray(candidate.statusKeys)) {
+		const raw = candidate.statusKeys;
+		const valid = raw.filter(isQuadrantStatusKey);
+		if (valid.length > 0 || raw.length === 0) {
+			parsed.statusKeys = [...new Set(valid)];
+		}
+	}
+	return parsed;
 }

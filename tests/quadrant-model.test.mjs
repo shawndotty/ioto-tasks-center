@@ -15,7 +15,7 @@ const {
 
 function task(
 	path,
-	{ priority, statusKey = 'todo', mtime = 0, starred = false } = {},
+	{ priority, statusKey = 'todo', mtime = 0, ctime = 0, starred = false } = {},
 ) {
 	const basename = path.split('/').pop().replace(/\.md$/, '');
 	return {
@@ -24,7 +24,7 @@ function task(
 		title: basename,
 		path,
 		mtime,
-		ctime: 0,
+		ctime,
 		size: 0,
 		starred,
 		priority,
@@ -44,13 +44,20 @@ function filter({
 	statusKeys = ['in-progress', 'todo'],
 	projectScope = { kind: 'unarchived' },
 	hiddenProjectNames = [],
+	timeFilter = { kind: 'none' },
 } = {}) {
 	return {
 		statusKeys: new Set(statusKeys),
 		projectScope,
 		hiddenProjectNames: new Set(hiddenProjectNames),
+		timeFilter,
 	};
 }
+
+// 固定 now：2026-11-11（周三）15:00 本地，时间过滤断言与机器时钟解耦。
+const NOW = new Date(2026, 10, 11, 15, 0, 0).getTime();
+const OCT_15 = new Date(2026, 9, 15, 12, 0, 0).getTime();
+const NOV_05 = new Date(2026, 10, 5, 12, 0, 0).getTime();
 
 const pathsOf = (entries) => entries.map((entry) => entry.path);
 
@@ -241,8 +248,7 @@ test('指定项目不存在：返回全空模型，不抛错', () => {
 	assert.equal(model.scopedTotal, 0);
 });
 
-test('菜单描述：未标注 4 项无 clear；已标注首项 clear + 当前项 active；顺序固定', () => {
-	const unlabeled = buildQuadrantPriorityMenuItems(undefined);
+test('菜单描述：未标注 4 项无 clear；已标注首项 clear + 当前项 active；顺序固定', () => {	const unlabeled = buildQuadrantPriorityMenuItems(undefined);
 	assert.deepEqual(
 		unlabeled.map((item) =>
 			item.kind === 'clear' ? 'clear' : `${item.value}:${item.active}`,
@@ -268,3 +274,81 @@ test('菜单描述：未标注 4 项无 clear；已标注首项 clear + 当前�
 		.map((item) => item.value);
 	assert.deepEqual(fixedOrder, [0, 1, 2, 3]);
 });
+
+test('时间过滤：scopedTotal / statusCounts 只统计窗口内，状态过滤在其后', () => {
+	const tasks = [
+		task('3-任务/A/recent.md', { statusKey: 'todo', mtime: NOV_05 }),
+		task('3-任务/A/old.md', { statusKey: 'in-progress', mtime: OCT_15 }),
+		task('3-任务/A/done.md', { statusKey: 'completed', mtime: NOV_05 }),
+	];
+	const model = buildQuadrantModel(
+		tasks,
+		filter({
+			timeFilter: { kind: 'preset', value: 'updated-calendar-month' },
+		}),
+		NOW,
+	);
+	assert.equal(model.scopedTotal, 2);
+	assert.deepEqual(model.statusCounts, {
+		completed: 1,
+		'in-progress': 0,
+		todo: 1,
+	});
+	assert.equal(model.total, 1);
+	assert.deepEqual(pathsOf(model.unlabeled), ['3-任务/A/recent.md']);
+});
+
+test('时间过滤字段：按创建排除 ctime 在窗口外的任务，未标注侧栏同步', () => {
+	const tasks = [
+		task('3-任务/A/new-created.md', {
+			ctime: NOV_05,
+			mtime: NOV_05,
+		}),
+		task('3-任务/A/old-created.md', {
+			ctime: OCT_15,
+			mtime: NOV_05,
+		}),
+	];
+	const model = buildQuadrantModel(
+		tasks,
+		filter({
+			timeFilter: { kind: 'preset', value: 'created-calendar-month' },
+		}),
+		NOW,
+	);
+	assert.deepEqual(pathsOf(model.unlabeled), ['3-任务/A/new-created.md']);
+	assert.equal(model.scopedTotal, 1);
+});
+
+test('时间 + 项目范围 + 状态组合：total 守恒，scopedTotal 为时间收敛后的总数', () => {
+	const tasks = [
+		task('3-任务/Live/a.md', { priority: 0, mtime: NOV_05 }),
+		task('3-任务/Live/b.md', { priority: 0, statusKey: 'completed', mtime: NOV_05 }),
+		task('3-任务/Live/c.md', { priority: 1, mtime: OCT_15 }),
+		task('3-任务/Archived/d.md', { priority: 2, mtime: NOV_05 }),
+		task('3-任务/Live/e.md', { mtime: NOV_05 }),
+	];
+	const model = buildQuadrantModel(
+		tasks,
+		filter({
+			statusKeys: ['todo'],
+			hiddenProjectNames: ['Archived'],
+			timeFilter: {
+				kind: 'custom',
+				field: 'updated',
+				start: '2026-11-01',
+			},
+		}),
+		NOW,
+	);
+	const bucketSum = QUADRANT_KEYS.reduce(
+		(sum, key) => sum + model.counts[key],
+		0,
+	);
+	assert.equal(bucketSum + model.counts.unlabeled, model.total);
+	assert.equal(model.scopedTotal, 3);
+	assert.equal(model.total, 2);
+	assert.equal(model.counts.p0, 1);
+	assert.equal(model.counts.unlabeled, 1);
+});
+
