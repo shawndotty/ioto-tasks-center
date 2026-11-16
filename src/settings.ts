@@ -25,6 +25,7 @@ export type {
 	TaskViewAppearanceStyle,
 	TaskViewExportOptions,
 	TaskViewExportWidthMode,
+	TasksCenterAppearanceMode,
 } from './settings-types';
 export {
 	DEFAULT_EXPORT_IMAGE_FIXED_WIDTH,
@@ -46,6 +47,7 @@ export {
 	getTaskTemplateSourceModeOptions,
 	getTaskViewAppearanceStyleOptions,
 	getTaskViewExportWidthModeOptions,
+	getTasksCenterAppearanceModeOptions,
 	isProjectListGroupMode,
 	isProjectListSortMode,
 	isTaskFileLinkViewMode,
@@ -56,6 +58,7 @@ export {
 	isTaskTemplateSourceMode,
 	isTaskViewAppearanceStyle,
 	isTaskViewExportWidthMode,
+	isTasksCenterAppearanceMode,
 } from './settings-options';
 
 export {
@@ -74,6 +77,7 @@ export {
 	normalizeTaskLinkBadgeBackgroundMode,
 	normalizeTaskSearchEntryMode,
 	normalizeTaskViewAppearanceStyle,
+	normalizeTasksCenterAppearanceMode,
 } from './settings-normalizers';
 
 export class IOTOTasksCenterSettingTab extends PluginSettingTab {

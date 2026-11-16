@@ -518,6 +518,11 @@ const en = {
 	'settings.appearanceStyle.simple': 'Simple',
 	'settings.appearanceStyle.card': 'Card (classic)',
 	'settings.appearanceStyle.morandi': 'Morandi (low-glare)',
+	'settings.tasksCenterAppearance.name': 'Tasks center appearance',
+	'settings.tasksCenterAppearance.desc':
+		'Whether the tasks center follows the "Task view & priority matrix appearance" above. When set to Follow, switching the appearance in the task view or priority matrix updates the tasks center immediately; "Card (classic)" looks the same as the tasks center default.',
+	'settings.tasksCenterAppearance.default': 'Default (keep current)',
+	'settings.tasksCenterAppearance.follow': 'Follow task view',
 	'settings.subtasks.showCount.name': 'Show subtask count',
 	'settings.subtasks.showCount.desc':
 		'Show direct subtask counts in the task list and display subtasks in a hover popover.',

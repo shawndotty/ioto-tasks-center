@@ -72,6 +72,13 @@ export type TaskViewAppearanceStyle =
 	| 'morandi';
 
 /**
+ * 任务中心外观模式（[[Plan-20261116-183314]] §3.2）：
+ * - `default`：保持任务中心现有外观（默认）；
+ * - `follow`：跟随全局 `appearanceStyle`，切档时已打开的任务中心即时同步。
+ */
+export type TasksCenterAppearanceMode = 'default' | 'follow';
+
+/**
  * 任务视图内部点击任务笔记链接时用哪个视图打开（[[Plan-20261025-103944]] §二）：
  * - `inherit`：沿用任务视图（默认）——同一片叶子就地换成目标任务笔记的任务视图；
  * - `markdown`：回到旧行为——交给核心按 Markdown 打开。
@@ -145,6 +152,8 @@ export interface IOTOTasksCenterSettings {
 	taskFileLinkView: TaskFileLinkViewMode;
 	/** IOTOTask 视图外观风格（glass / modern / simple / card）。 */
 	appearanceStyle: TaskViewAppearanceStyle;
+	/** 任务中心外观模式：`default` 保持现状；`follow` 跟随 `appearanceStyle`。 */
+	tasksCenterAppearanceMode: TasksCenterAppearanceMode;
 	/** Task View「显示最近任务」保留的顶级任务数。 */
 	recentTaskCount: number;
 	/** Task View 导出图片的宽度口径（`view` 跟随视图 / `fixed` 固定 px）。 */
@@ -212,6 +221,7 @@ export const DEFAULT_SETTINGS: IOTOTasksCenterSettings = {
 	useIOTOTaskViewAsDefault: true,
 	taskFileLinkView: 'inherit',
 	appearanceStyle: 'glass',
+	tasksCenterAppearanceMode: 'default',
 	recentTaskCount: 3,
 	exportImageWidthMode: 'view',
 	exportImageFixedWidth: DEFAULT_EXPORT_IMAGE_FIXED_WIDTH,

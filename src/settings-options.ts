@@ -11,6 +11,7 @@ import type {
 	TaskTemplateSourceMode,
 	TaskViewAppearanceStyle,
 	TaskViewExportWidthMode,
+	TasksCenterAppearanceMode,
 } from './settings-types';
 
 export function getProjectListSortModeOptions(): Record<
@@ -205,11 +206,26 @@ export function isTaskViewAppearanceStyle(
 	);
 }
 
-export function getTaskTemplateSourceModeOptions(): Record<
-	TaskTemplateSourceMode,
+export function getTasksCenterAppearanceModeOptions(): Record<
+	TasksCenterAppearanceMode,
 	string
 > {
 	return {
+		default: t('settings.tasksCenterAppearance.default'),
+		follow: t('settings.tasksCenterAppearance.follow'),
+	};
+}
+
+export function isTasksCenterAppearanceMode(
+	value: string,
+): value is TasksCenterAppearanceMode {
+	return value === 'default' || value === 'follow';
+}
+
+export function getTaskTemplateSourceModeOptions(): Record<
+	TaskTemplateSourceMode,
+	string
+> {	return {
 		file: t('task.template.source.file'),
 		inline: t('task.template.source.inline'),
 	};

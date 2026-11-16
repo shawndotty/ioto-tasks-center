@@ -482,6 +482,11 @@ const zhCN = {
 	'settings.appearanceStyle.simple': '简洁（Simple）',
 	'settings.appearanceStyle.card': '卡片（经典）',
 	'settings.appearanceStyle.morandi': '莫兰迪（护眼）',
+	'settings.tasksCenterAppearance.name': '任务中心外观',
+	'settings.tasksCenterAppearance.desc':
+		'任务中心是否跟随上面的「任务视图与优先级矩阵外观」。选择「跟随」后，在任务视图或优先级矩阵切换外观时，任务中心同步变化；「卡片（经典）」与任务中心默认外观一致。',
+	'settings.tasksCenterAppearance.default': '默认（保持现状）',
+	'settings.tasksCenterAppearance.follow': '跟随任务视图',
 	'settings.subtasks.showCount.name': '显示子任务数量',
 	'settings.subtasks.showCount.desc':
 		'在任务列表中显示每个任务的直接子任务数量，并在悬浮时展示子任务列表。',

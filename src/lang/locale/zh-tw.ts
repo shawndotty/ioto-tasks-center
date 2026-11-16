@@ -483,6 +483,11 @@ const zhTW = {
 	'settings.appearanceStyle.simple': '簡潔（Simple）',
 	'settings.appearanceStyle.card': '卡片（經典）',
 	'settings.appearanceStyle.morandi': '莫蘭迪（護眼）',
+	'settings.tasksCenterAppearance.name': '任務中心外觀',
+	'settings.tasksCenterAppearance.desc':
+		'任務中心是否跟隨上面的「任務視圖與優先級矩陣外觀」。選擇「跟隨」後，在任務視圖或優先級矩陣切換外觀時，任務中心同步變化；「卡片（經典）」與任務中心預設外觀一致。',
+	'settings.tasksCenterAppearance.default': '預設（保持現狀）',
+	'settings.tasksCenterAppearance.follow': '跟隨任務檢視',
 	'settings.subtasks.showCount.name': '顯示子任務數量',
 	'settings.subtasks.showCount.desc':
 		'在任務列表中顯示每個任務的直接子任務數量，並在懸浮時顯示子任務列表。',

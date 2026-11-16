@@ -170,9 +170,9 @@
 	display: grid;
 	flex: 1 1 auto;
 	grid-template-columns: minmax(220px, 20%) minmax(0, 1fr);
-	gap: 16px;
+	gap: var(--ioto-tc-gap);
 	min-height: 0;
-	padding: 16px 8px;
+	padding: var(--ioto-tc-pad);
 	box-sizing: border-box;
 }
 
@@ -180,10 +180,13 @@
 	display: flex;
 	flex-direction: column;
 	min-height: 0;
-	padding: 16px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 12px;
-	background: var(--background-primary);
+	padding: var(--ioto-tc-pane-pad);
+	border: var(--ioto-tc-pane-border);
+	border-radius: var(--ioto-tc-pane-radius);
+	background: var(--ioto-tc-pane-bg);
+	box-shadow: var(--ioto-tc-pane-shadow);
+	backdrop-filter: var(--ioto-tc-pane-blur);
+	-webkit-backdrop-filter: var(--ioto-tc-pane-blur);
 }
 
 .ioto-tasks-center__pane--projects {
@@ -231,17 +234,9 @@
 	padding: 8px 12px;
 	margin-bottom: 6px;
 	margin-top: 10px;
-	border: 1px solid color-mix(
-		in srgb,
-		var(--interactive-accent) 35%,
-		var(--background-modifier-border)
-	);
-	border-radius: 8px;
-	background: color-mix(
-		in srgb,
-		var(--interactive-accent) 8%,
-		var(--background-secondary)
-	);
+	border: var(--ioto-tc-batch-border);
+	border-radius: var(--ioto-tc-batch-radius);
+	background: var(--ioto-tc-batch-bg);
 }
 
 /* 窄栏（手机 / 面板 ≤720px）：计数占一整行，按钮行只剩 [全选] [操作 ▾]。 */
@@ -315,7 +310,7 @@
 	gap: 4px;
 	padding: 4px 10px;
 	border: 1px solid var(--background-modifier-border);
-	border-radius: 6px;
+	border-radius: var(--ioto-tc-small-control-radius);
 	background: var(--background-primary);
 	color: var(--text-normal);
 	font-size: var(--font-ui-small);
@@ -421,17 +416,17 @@ button:not(.clickable-icon).ioto-tasks-center__batch-bar-button--danger:hover:no
 .ioto-tasks-center__add-task-button {
 	appearance: none;
 	padding: 6px 12px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	background: var(--background-secondary);
-	color: var(--text-normal);
+	border: var(--ioto-tc-button-border);
+	border-radius: var(--ioto-tc-control-radius);
+	background: var(--ioto-tc-button-bg);
+	color: var(--ioto-tc-button-color);
 	font-size: var(--font-ui-small);
 	font-weight: 600;
 	cursor: pointer;
 	transition:
-		background-color 120ms ease,
-		border-color 120ms ease,
-		color 120ms ease;
+		background-color var(--ioto-tc-row-motion) ease,
+		border-color var(--ioto-tc-row-motion) ease,
+		color var(--ioto-tc-row-motion) ease;
 }
 
 .ioto-tasks-center__add-task-button:hover:not(:disabled) {
@@ -721,17 +716,17 @@ button:not(.clickable-icon).ioto-tasks-center__tab-batch-edit-button.is-active {
 	justify-content: space-between;
 	gap: 8px;
 	padding: 6px 12px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 999px;
-	background: var(--background-secondary);
+	border: var(--ioto-tc-tab-border);
+	border-radius: var(--ioto-tc-tab-radius);
+	background: var(--ioto-tc-tab-bg);
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 	font-weight: 600;
 	cursor: pointer;
 	transition:
-		background-color 120ms ease,
-		border-color 120ms ease,
-		color 120ms ease;
+		background-color var(--ioto-tc-row-motion) ease,
+		border-color var(--ioto-tc-row-motion) ease,
+		color var(--ioto-tc-row-motion) ease;
 }
 
 .ioto-tasks-center__tab:hover {
@@ -1045,7 +1040,7 @@ button:not(.clickable-icon).ioto-tasks-center__tab-batch-edit-button.is-active {
 .ioto-tasks-center__task-list {
 	gap: 0;
 
-	background: var(--background-primary);
+	background: var(--ioto-tc-list-bg);
 }
 
 .ioto-tasks-center__task-group {
@@ -1057,7 +1052,7 @@ button:not(.clickable-icon).ioto-tasks-center__tab-batch-edit-button.is-active {
 /* 这条 (0,2,1) 会恒压过 (0,2,0) 的 hover，所以下面的 hover 必须写到 (0,2,2)。
    不透明是 sticky 的硬要求，不要改成 transparent。 */
 button:not(.clickable-icon).ioto-tasks-center__task-group-header {
-	background: var(--background-secondary);
+	background: var(--ioto-tc-group-btn-bg);
 	/* box-shadow: none; */
 }
 
@@ -1070,11 +1065,7 @@ button:not(.clickable-icon).ioto-tasks-center__task-group-header {
 	gap: 8px;
 	width: 100%;
 	padding: 10px 14px 8px;
-	background: color-mix(
-		in srgb,
-		var(--background-primary) 88%,
-		var(--background-secondary)
-	);
+	background: var(--ioto-tc-group-bg);
 	border-bottom: 1px solid var(--background-modifier-border);
 	border-left: none;
 	border-right: none;
@@ -1276,16 +1267,16 @@ button:not(.clickable-icon).ioto-tasks-center__project-item {
 	gap: 12px;
 	width: 100%;
 	padding: 12px 14px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 10px;
-	background: var(--background-secondary);
+	border: var(--ioto-tc-project-border);
+	border-radius: var(--ioto-tc-project-radius);
+	background: var(--ioto-tc-project-bg);
 	color: var(--text-normal);
 	text-align: left;
 	cursor: pointer;
 	transition:
-		background-color 120ms ease,
-		border-color 120ms ease,
-		transform 120ms ease;
+		background-color var(--ioto-tc-row-motion) ease,
+		border-color var(--ioto-tc-row-motion) ease,
+		transform var(--ioto-tc-row-motion) ease;
 }
 
 .ioto-tasks-center__project-name {
@@ -1348,25 +1339,25 @@ button:not(.clickable-icon).ioto-tasks-center__project-item.is-selected {
 	gap: 16px;
 	align-items: center;
 	width: 100%;
-	padding-top: 20px;
+	padding-top: var(--ioto-tc-row-pad-y);
 	padding-right: 14px;
-	padding-bottom: 20px;
+	padding-bottom: var(--ioto-tc-row-pad-y);
 	padding-left: calc(14px + (var(--ioto-task-indent-level, 0) * 40px));
 	border: 0;
-	border-bottom: 1px solid var(--background-modifier-border);
-	border-radius: 0;
-	background: transparent;
+	border-bottom: var(--ioto-tc-row-border);
+	border-radius: var(--ioto-tc-row-radius);
+	background: var(--ioto-tc-row-bg);
 	color: var(--text-normal);
 	text-align: left;
 	cursor: pointer;
 	transition:
-		background-color 120ms ease,
-		border-color 120ms ease,
-		transform 120ms ease;
+		background-color var(--ioto-tc-row-motion) ease,
+		border-color var(--ioto-tc-row-motion) ease,
+		transform var(--ioto-tc-row-motion) ease;
 }
 
 button:not(.clickable-icon).ioto-tasks-center__task-row {
-	background: transparent;
+	background: var(--ioto-tc-row-bg);
 	box-shadow: none;
 }
 
@@ -1375,7 +1366,7 @@ button:not(.clickable-icon).ioto-tasks-center__task-row {
 }
 
 button:not(.clickable-icon).ioto-tasks-center__task-row:hover {
-	background: var(--background-modifier-hover);
+	background: var(--ioto-tc-row-hover-bg);
 }
 
 .ioto-tasks-center__task-row:active {
@@ -1383,20 +1374,12 @@ button:not(.clickable-icon).ioto-tasks-center__task-row:hover {
 }
 
 button:not(.clickable-icon).ioto-tasks-center__task-row.is-active {
-	background: color-mix(
-		in srgb,
-		var(--interactive-accent) 12%,
-		var(--background-primary)
-	);
+	background: var(--ioto-tc-row-active-bg);
 }
 
 .ioto-tasks-center__task-row.is-selected {
-	background: color-mix(
-		in srgb,
-		var(--interactive-accent) 16%,
-		var(--background-primary)
-	);
-	box-shadow: inset 3px 0 0 var(--interactive-accent);
+	background: var(--ioto-tc-row-selected-bg);
+	box-shadow: var(--ioto-tc-row-selected-shadow);
 }
 
 .ioto-tasks-center__task-select {
@@ -1420,16 +1403,8 @@ button:not(.clickable-icon).ioto-tasks-center__task-row.is-active {
 }
 
 .ioto-tasks-center__task-row.is-drop-target {
-	background: color-mix(
-		in srgb,
-		var(--interactive-accent) 22%,
-		var(--background-primary)
-	);
-	border-color: color-mix(
-		in srgb,
-		var(--interactive-accent) 60%,
-		var(--background-modifier-border)
-	);
+	background: var(--ioto-tc-row-drop-bg);
+	border-color: var(--ioto-tc-row-drop-border);
 	box-shadow:
 		inset 3px 0 0 var(--interactive-accent),
 		inset 0 0 0 1px
@@ -1565,7 +1540,8 @@ button:not(.clickable-icon).ioto-tasks-center__task-row.is-active {
 	font-size: var(--font-ui-small);
 	font-weight: 600;
 	color: var(--text-normal);
-	line-height: 1.4;
+	line-height: var(--ioto-tc-line-height);
+	letter-spacing: var(--ioto-tc-letter-spacing);
 }
 
 .ioto-tasks-center__subtask-toggle-icon {
@@ -4877,7 +4853,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
    - 参考图：深色 Aurora 渐变 + 玻璃卡 + 图标徽章 + 大标题 + 内嵌面板。
    ============================================================ */
 
-:is(.ioto-task-view, .ioto-pq-view).is-glass {
+:is(.ioto-task-view, .ioto-pq-view, .ioto-tasks-center-view).is-glass {
 	/* 玻璃面 */
 	--ioto-tv-glass-bg: color-mix(in srgb, var(--background-primary) 62%, transparent);
 	--ioto-tv-glass-border: color-mix(in srgb, var(--text-normal) 12%, transparent);
@@ -4919,7 +4895,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 }
 
 /* Aurora 背景层：固定在视图根，不随滚动；内容在其上方滑动 */
-:is(.ioto-task-view, .ioto-pq-view).is-glass::before {
+:is(.ioto-task-view, .ioto-pq-view, .ioto-tasks-center-view).is-glass::before {
 	content: "";
 	position: absolute;
 	inset: 0;
@@ -5226,11 +5202,11 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 
 /* 主题适配 / 降级 / 移动端 */
 /* 浅色主题：玻璃面提高不透明度、光斑降强度，保证文字对比度 */
-.theme-light :is(.ioto-task-view, .ioto-pq-view).is-glass {
+.theme-light :is(.ioto-task-view, .ioto-pq-view, .ioto-tasks-center-view).is-glass {
 	--ioto-tv-glass-bg: color-mix(in srgb, var(--background-primary) 78%, transparent);
 	--ioto-tv-glass-border: color-mix(in srgb, var(--text-normal) 10%, transparent);
 }
-.theme-light :is(.ioto-task-view, .ioto-pq-view).is-glass::before { opacity: 0.5; }
+.theme-light :is(.ioto-task-view, .ioto-pq-view, .ioto-tasks-center-view).is-glass::before { opacity: 0.5; }
 
 /* 不支持 backdrop-filter：退回不透明面（仍保留圆角/阴影/强调条） */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -5267,12 +5243,12 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 }
 
 /* 移动端：降 blur / 间距，保性能与触控热区（沿用既有 .is-phone 触控改动） */
-.is-phone :is(.ioto-task-view, .ioto-pq-view).is-glass {
+.is-phone :is(.ioto-task-view, .ioto-pq-view, .ioto-tasks-center-view).is-glass {
 	--ioto-tv-blur: 12px;
 	--ioto-tv-section-gap: 14px;
 	--ioto-tv-scroll-pad: 12px;
 }
-.is-phone :is(.ioto-task-view, .ioto-pq-view).is-glass::before { filter: blur(18px) saturate(115%); }
+.is-phone :is(.ioto-task-view, .ioto-pq-view, .ioto-tasks-center-view).is-glass::before { filter: blur(18px) saturate(115%); }
 
 /* ============================================================
    IOTOTask 视图 · 现代风格（`.is-modern`）
@@ -5285,7 +5261,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
    - 注意：`modern` 命中既有 `:not(.is-glass)` 的勾选框规则，故下方对勾选框显式覆盖。
    ============================================================ */
 
-:is(.ioto-task-view, .ioto-pq-view).is-modern {
+:is(.ioto-task-view, .ioto-pq-view, .ioto-tasks-center-view).is-modern {
 	/* 几何：更圆、更舒展 */
 	--ioto-tv-radius: 14px;          /* Section 外层卡 */
 	--ioto-tv-radius-inner: 10px;    /* 任务行内嵌面板 */
@@ -5501,7 +5477,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 }
 
 /* 浅色主题：投影与分层略增强，保证白底上分层可辨 */
-.theme-light :is(.ioto-task-view, .ioto-pq-view).is-modern {
+.theme-light :is(.ioto-task-view, .ioto-pq-view, .ioto-tasks-center-view).is-modern {
 	--ioto-tv-canvas: color-mix(in srgb, var(--background-secondary) 35%, var(--background-primary));
 	--ioto-tv-elev-1: 0 1px 2px rgb(0 0 0 / 6%), 0 2px 6px -2px rgb(0 0 0 / 6%);
 }
@@ -5516,7 +5492,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 }
 
 /* 移动端：收紧间距与圆角（沿用既有 .is-phone 触控改动） */
-.is-phone :is(.ioto-task-view, .ioto-pq-view).is-modern {
+.is-phone :is(.ioto-task-view, .ioto-pq-view, .ioto-tasks-center-view).is-modern {
 	--ioto-tv-section-gap: 12px;
 	--ioto-tv-radius: 12px;
 }
@@ -5533,7 +5509,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
    - Johnny 确认：Section 标题不弱化（沿用基线样式）；行取「轻量留缝」（非通栏 flush）。
    ============================================================ */
 
-:is(.ioto-task-view, .ioto-pq-view).is-simple {
+:is(.ioto-task-view, .ioto-pq-view, .ioto-tasks-center-view).is-simple {
 	/* 几何：克制的小圆角 + 行间轻量留缝 */
 	--ioto-tv-radius: 12px;          /* Section 外层卡 */
 	--ioto-tv-radius-row: 6px;       /* 任务行 */
@@ -5763,7 +5739,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 .ioto-task-view.is-simple .ioto-task-view__badge[data-kind="pin"]     { --ink: #be123c; }
 
 /* 深浅自适应：深色下画布收一点混比、选中态提高 accent alpha（暗底低 alpha 不够醒目） */
-.theme-dark :is(.ioto-task-view, .ioto-pq-view).is-simple {
+.theme-dark :is(.ioto-task-view, .ioto-pq-view, .ioto-tasks-center-view).is-simple {
 	--ioto-tv-canvas: color-mix(in srgb, var(--background-secondary) 55%, var(--background-primary));
 }
 
@@ -5787,7 +5763,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 }
 
 /* 移动端：收紧 Section 间距与行距，略增行内边距保触控热区 */
-.is-phone :is(.ioto-task-view, .ioto-pq-view).is-simple {
+.is-phone :is(.ioto-task-view, .ioto-pq-view, .ioto-tasks-center-view).is-simple {
 	--ioto-tv-section-gap: 12px;
 	--ioto-tv-radius: 12px;
 	--ioto-tv-pad-x: 12px;
@@ -5811,7 +5787,7 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
    ============================================================ */
 
 /* ── 莫兰迪 · 亮色（基段，跟随 .theme-light）── */
-:is(.ioto-task-view, .ioto-pq-view).is-morandi {
+:is(.ioto-task-view, .ioto-pq-view, .ioto-tasks-center-view).is-morandi {
 	/* (1) 接管插件正文 / 续写 / 内嵌编辑器实际读取的核心语义变量 */
 	--background-primary: #FCFAF6;        /* 卡片面 / 编辑器面（暖白，非纯白） */
 	--background-secondary: #F7F4EF;      /* 画布（暖米白，替代纯白） */
@@ -5870,12 +5846,12 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
    这一层分层失效（其余四套外观在根节点同样被盖，但它们的画布差异极小、不易察觉；
    morandi 的画布是核心设计元素，故显式提高特指度夺回）。此处用 (0,4,0) 的作用域，
    只作用于 morandi 视图，不影响其它外观与桥接到 document.body 的浮层。 */
-.workspace-leaf-content .view-content:is(.ioto-task-view, .ioto-pq-view).is-morandi {
+.workspace-leaf-content .view-content:is(.ioto-task-view, .ioto-pq-view, .ioto-tasks-center-view).is-morandi {
 	background: var(--background-secondary);
 }
 
 /* ── 莫兰迪 · 暗色（跟随 .theme-dark）── */
-.theme-dark :is(.ioto-task-view, .ioto-pq-view).is-morandi {
+.theme-dark :is(.ioto-task-view, .ioto-pq-view, .ioto-tasks-center-view).is-morandi {
 	--background-primary: #252528;
 	--background-secondary: #1C1C1E;
 	--background-secondary-alt: #2E2E32;
@@ -6144,21 +6120,21 @@ button.ioto-task-view__continuation-toggle.mobile-tap {
 
 /* 系统「增加对比度」兜底：增强文字 / 边框对比（媒体查询内不再嵌媒体查询，故拆两段） */
 @media (prefers-contrast: more) {
-	:is(.ioto-task-view, .ioto-pq-view).is-morandi {
+	:is(.ioto-task-view, .ioto-pq-view, .ioto-tasks-center-view).is-morandi {
 		--text-normal: #1A1A1A;
 		--ioto-tv-m-border: #B0A89C;
 	}
 }
 
 @media (prefers-contrast: more) {
-	.theme-dark :is(.ioto-task-view, .ioto-pq-view).is-morandi {
+	.theme-dark :is(.ioto-task-view, .ioto-pq-view, .ioto-tasks-center-view).is-morandi {
 		--text-normal: #F0F0F0;
 		--ioto-tv-m-border: #5A5A60;
 	}
 }
 
 /* 移动端：收紧 Section 间距与行内边距 */
-.is-phone :is(.ioto-task-view, .ioto-pq-view).is-morandi {
+.is-phone :is(.ioto-task-view, .ioto-pq-view, .ioto-tasks-center-view).is-morandi {
 	--ioto-tv-section-gap: 12px;
 	--ioto-tv-radius: 10px;
 	--ioto-tv-pad-x: 12px;
@@ -8269,5 +8245,301 @@ button:not(.clickable-icon).ioto-pq-time-panel__action {
 	.ioto-pq-header__toggle {
 		min-width: 32px;
 		padding-inline: 6px;
+	}
+}
+
+/* ============================================================
+   任务中心 · 跟随 TaskView 外观（[[Plan-20261116-183314]]）
+   - 默认档（`tasksCenterAppearanceMode=default`）不挂任何 `is-*` 类，
+     下面别名块的默认值逐项等于改造前的字面量 → 逐像素一致。
+   - 跟随档由 JS 在视图根挂 `is-glass / is-modern / is-simple / is-morandi`
+     （`card` 不挂类）。第 1 层已把 18 处外观根块选择器扩为
+     `:is(.ioto-task-view, .ioto-pq-view, .ioto-tasks-center-view)`，
+     于是 `--ioto-tv-*` / 核心变量 / Aurora 层在这里白拿。
+   - 本层只做「别名覆盖 + 少量结构附加」：基线声明已改为消费 `--ioto-tc-*`，
+     特异度不再参与，状态类各自换对应别名（[[Plan-20261116-183314]] E2/E6）。
+   ============================================================ */
+
+/* ---------- 别名默认值（= 改造前现值，勿改） ---------- */
+.ioto-tasks-center-view {
+	--ioto-tc-gap: 16px;
+	--ioto-tc-pad: 16px 8px;
+
+	--ioto-tc-pane-bg: var(--background-primary);
+	--ioto-tc-pane-border: 1px solid var(--background-modifier-border);
+	--ioto-tc-pane-radius: 12px;
+	--ioto-tc-pane-pad: 16px;
+	--ioto-tc-pane-shadow: none;
+	--ioto-tc-pane-blur: none;
+
+	--ioto-tc-list-bg: var(--background-primary);
+
+	--ioto-tc-row-bg: transparent;
+	--ioto-tc-row-border: 1px solid var(--background-modifier-border);
+	--ioto-tc-row-radius: 0;
+	--ioto-tc-row-pad-y: 20px;
+	--ioto-tc-row-hover-bg: var(--background-modifier-hover);
+	--ioto-tc-row-active-bg: color-mix(
+		in srgb,
+		var(--interactive-accent) 12%,
+		var(--background-primary)
+	);
+	--ioto-tc-row-selected-bg: color-mix(
+		in srgb,
+		var(--interactive-accent) 16%,
+		var(--background-primary)
+	);
+	--ioto-tc-row-selected-shadow: inset 3px 0 0 var(--interactive-accent);
+	--ioto-tc-row-drop-bg: color-mix(
+		in srgb,
+		var(--interactive-accent) 22%,
+		var(--background-primary)
+	);
+	--ioto-tc-row-drop-border: color-mix(
+		in srgb,
+		var(--interactive-accent) 60%,
+		var(--background-modifier-border)
+	);
+	--ioto-tc-row-motion: 120ms;
+
+	/* 分组头两处背景现值不同，必须各用一个别名（见基线 :1059 / :1064）。 */
+	--ioto-tc-group-bg: color-mix(
+		in srgb,
+		var(--background-primary) 88%,
+		var(--background-secondary)
+	);
+	--ioto-tc-group-btn-bg: var(--background-secondary);
+
+	--ioto-tc-project-bg: var(--background-secondary);
+	--ioto-tc-project-border: 1px solid var(--background-modifier-border);
+	--ioto-tc-project-radius: 10px;
+
+	--ioto-tc-batch-bg: color-mix(
+		in srgb,
+		var(--interactive-accent) 8%,
+		var(--background-secondary)
+	);
+	--ioto-tc-batch-border: 1px solid color-mix(
+		in srgb,
+		var(--interactive-accent) 35%,
+		var(--background-modifier-border)
+	);
+	--ioto-tc-batch-radius: 8px;
+
+	--ioto-tc-button-bg: var(--background-secondary);
+	--ioto-tc-button-border: 1px solid var(--background-modifier-border);
+	--ioto-tc-button-color: var(--text-normal);
+	--ioto-tc-control-radius: 8px;
+	--ioto-tc-small-control-radius: 6px;
+
+	--ioto-tc-tab-bg: var(--background-secondary);
+	--ioto-tc-tab-border: 1px solid var(--background-modifier-border);
+	--ioto-tc-tab-radius: 999px;
+
+	--ioto-tc-line-height: 1.4;
+	--ioto-tc-letter-spacing: inherit;
+}
+
+/* Aurora 层是根上的绝对定位层（z-index: 0），内容层必须抬到 1。 */
+.ioto-tasks-center-view.is-glass > .ioto-tasks-center__shell {
+	position: relative;
+	z-index: 1;
+}
+
+/* ---------- glass ---------- */
+.ioto-tasks-center-view.is-glass {
+	--ioto-tc-gap: 20px;
+	--ioto-tc-pad: 20px;
+
+	--ioto-tc-pane-bg: var(--ioto-tv-glass-bg);
+	--ioto-tc-pane-border: 1px solid var(--ioto-tv-glass-border);
+	--ioto-tc-pane-radius: var(--ioto-tv-radius-outer);
+	--ioto-tc-pane-shadow: var(--ioto-tv-shadow);
+	--ioto-tc-pane-blur: blur(var(--ioto-tv-blur)) saturate(var(--ioto-tv-saturate));
+
+	--ioto-tc-list-bg: transparent;
+
+	--ioto-tc-row-border: 1px solid color-mix(in srgb, var(--text-normal) 8%, transparent);
+	--ioto-tc-row-radius: var(--ioto-tv-radius-inner);
+	--ioto-tc-row-hover-bg: var(--ioto-tv-glass-highlight);
+
+	/* sticky 分组头必须基本不透明，否则滚动时行会透出来。 */
+	--ioto-tc-group-bg: color-mix(in srgb, var(--background-primary) 82%, transparent);
+	--ioto-tc-group-btn-bg: color-mix(in srgb, var(--background-primary) 82%, transparent);
+
+	--ioto-tc-project-bg: var(--ioto-tv-glass-bg);
+	--ioto-tc-project-border: 1px solid var(--ioto-tv-glass-border);
+	--ioto-tc-project-radius: var(--ioto-tv-radius-inner);
+
+	--ioto-tc-batch-bg: var(--ioto-tv-glass-bg);
+	--ioto-tc-batch-border: 1px solid var(--ioto-tv-glass-border);
+	--ioto-tc-batch-radius: var(--ioto-tv-radius-inner);
+
+	--ioto-tc-button-bg: var(--ioto-tv-glass-bg);
+	--ioto-tc-button-border: 1px solid var(--ioto-tv-glass-border);
+	--ioto-tc-control-radius: var(--ioto-tv-radius-inner);
+	--ioto-tc-small-control-radius: var(--ioto-tv-radius-inner);
+
+	--ioto-tc-tab-bg: var(--ioto-tv-glass-bg);
+	--ioto-tc-tab-border: 1px solid var(--ioto-tv-glass-border);
+	--ioto-tc-tab-radius: var(--ioto-tv-radius-pill);
+
+	--ioto-tc-row-motion: 180ms;
+}
+
+.ioto-tasks-center-view.is-glass .ioto-tasks-center__task-group-header {
+	backdrop-filter: blur(var(--ioto-tv-blur));
+	-webkit-backdrop-filter: blur(var(--ioto-tv-blur));
+}
+
+/* ---------- modern ---------- */
+.ioto-tasks-center-view.is-modern {
+	--ioto-tc-pane-bg: var(--ioto-tv-surface);
+	--ioto-tc-pane-border: 1px solid transparent;
+	--ioto-tc-pane-radius: var(--ioto-tv-radius);
+	--ioto-tc-pane-shadow: var(--ioto-tv-elev-1);
+
+	--ioto-tc-list-bg: transparent;
+
+	--ioto-tc-row-border: 1px solid transparent;
+	--ioto-tc-row-radius: var(--ioto-tv-radius-inner);
+	--ioto-tc-row-hover-bg: color-mix(in srgb, var(--text-normal) 6%, transparent);
+
+	--ioto-tc-group-bg: var(--ioto-tv-surface);
+	--ioto-tc-group-btn-bg: var(--ioto-tv-surface);
+
+	--ioto-tc-project-bg: var(--ioto-tv-surface);
+	--ioto-tc-project-border: 1px solid transparent;
+	--ioto-tc-project-radius: var(--ioto-tv-radius);
+
+	--ioto-tc-batch-bg: var(--ioto-tv-surface);
+	--ioto-tc-batch-border: 1px solid var(--ioto-tv-line);
+	--ioto-tc-batch-radius: var(--ioto-tv-radius-inner);
+
+	--ioto-tc-button-bg: var(--ioto-tv-surface);
+	--ioto-tc-button-border: 1px solid transparent;
+	--ioto-tc-control-radius: var(--ioto-tv-radius-inner);
+	--ioto-tc-small-control-radius: var(--ioto-tv-radius-inner);
+
+	--ioto-tc-tab-bg: var(--ioto-tv-surface);
+	--ioto-tc-tab-border: 1px solid transparent;
+	--ioto-tc-tab-radius: var(--ioto-tv-radius-pill);
+
+	--ioto-tc-row-motion: 160ms;
+}
+
+/* 行内留缝不改 DOM / 列表高度：只靠圆角 + hover 浅影。 */
+.ioto-tasks-center-view.is-modern .ioto-tasks-center__task-row:hover {
+	box-shadow: var(--ioto-tv-elev-1);
+}
+
+.ioto-tasks-center-view.is-modern .ioto-tasks-center__add-task-button {
+	box-shadow: var(--ioto-tv-elev-1);
+}
+
+/* ---------- simple ---------- */
+.ioto-tasks-center-view.is-simple {
+	--ioto-tc-pane-bg: var(--ioto-tv-surface);
+	--ioto-tc-pane-border: 1px solid var(--ioto-tv-hairline);
+	--ioto-tc-pane-radius: var(--ioto-tv-radius);
+
+	--ioto-tc-list-bg: transparent;
+
+	--ioto-tc-row-bg: var(--ioto-tv-surface);
+	--ioto-tc-row-border: 1px solid var(--ioto-tv-hairline);
+	--ioto-tc-row-radius: var(--ioto-tv-radius-row);
+	--ioto-tc-row-pad-y: 16px;
+
+	--ioto-tc-group-bg: var(--ioto-tv-header);
+	--ioto-tc-group-btn-bg: var(--ioto-tv-header);
+
+	--ioto-tc-project-bg: var(--ioto-tv-surface);
+	--ioto-tc-project-border: 1px solid var(--ioto-tv-hairline);
+	--ioto-tc-project-radius: var(--ioto-tv-radius-row);
+
+	--ioto-tc-batch-bg: var(--ioto-tv-surface);
+	--ioto-tc-batch-border: 1px solid var(--ioto-tv-hairline);
+
+	--ioto-tc-button-bg: var(--interactive-accent);
+	--ioto-tc-button-border: 1px solid var(--background-primary);
+	--ioto-tc-button-color: var(--text-on-accent);
+
+	--ioto-tc-tab-bg: var(--ioto-tv-surface);
+	--ioto-tc-tab-border: 1px solid var(--ioto-tv-hairline);
+
+	--ioto-tc-row-motion: 120ms;
+}
+
+/* ---------- morandi ---------- */
+.ioto-tasks-center-view.is-morandi {
+	--ioto-tc-pane-radius: 10px;
+
+	--ioto-tc-list-bg: transparent;
+
+	--ioto-tc-row-bg: color-mix(
+		in srgb,
+		var(--background-secondary) 35%,
+		var(--background-primary)
+	);
+	--ioto-tc-row-border: 1px solid var(--background-modifier-border);
+
+	--ioto-tc-group-bg: var(--background-secondary-alt);
+	--ioto-tc-group-btn-bg: var(--background-secondary-alt);
+
+	--ioto-tc-project-bg: var(--background-secondary);
+	--ioto-tc-project-border: 1px solid var(--background-modifier-border);
+
+	--ioto-tc-button-bg: var(--interactive-accent);
+	--ioto-tc-button-border: 1px solid var(--background-modifier-border);
+	--ioto-tc-button-color: var(--text-on-accent);
+
+	--ioto-tc-tab-bg: var(--background-secondary);
+	--ioto-tc-tab-border: 1px solid var(--background-modifier-border);
+
+	--ioto-tc-line-height: 1.75;
+	--ioto-tc-letter-spacing: 0.02em;
+	--ioto-tc-row-motion: 220ms;
+}
+
+/* 莫兰迪：标签触控高度略增，贴合宽行高的节奏。 */
+.ioto-tasks-center-view.is-morandi .ioto-tasks-center__tab {
+	padding-block: 8px;
+}
+
+/* ---------- 无障碍兜底（不改第 1 层原规则） ---------- */
+@supports not (
+	(backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+	.ioto-tasks-center-view.is-glass .ioto-tasks-center__pane {
+		backdrop-filter: none;
+		-webkit-backdrop-filter: none;
+		background: var(--background-primary);
+	}
+}
+
+@media (prefers-reduced-transparency: reduce) {
+	.ioto-tasks-center-view.is-glass .ioto-tasks-center__pane,
+	.ioto-tasks-center-view.is-glass .ioto-tasks-center__task-group-header {
+		backdrop-filter: none;
+		-webkit-backdrop-filter: none;
+	}
+
+	.ioto-tasks-center-view.is-glass .ioto-tasks-center__pane {
+		background: var(--background-primary);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ioto-tasks-center-view:is(.is-glass, .is-modern, .is-simple, .is-morandi) {
+		--ioto-tc-row-motion: 0ms;
+	}
+
+	.ioto-tasks-center-view:is(.is-glass, .is-modern, .is-simple, .is-morandi)
+		.ioto-tasks-center__task-row,
+	.ioto-tasks-center-view:is(.is-glass, .is-modern, .is-simple, .is-morandi)
+		.ioto-tasks-center__project-item,
+	.ioto-tasks-center-view:is(.is-glass, .is-modern, .is-simple, .is-morandi)
+		.ioto-tasks-center__tab {
+		transition: none;
 	}
 }

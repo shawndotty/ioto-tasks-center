@@ -24,8 +24,11 @@ import type {
 	TaskListSortMode,
 	TaskListTimeFilter,
 	TaskSearchEntryMode,
+	TasksCenterAppearanceMode,
+	TaskViewAppearanceStyle,
 } from '../settings';
 import { t } from '../lang/helpter';
+import { applyTasksCenterAppearance } from './appearance-style';
 import { resolveTaskDisplayTitle } from '../tasks-center/task-display-title';
 import type {
 	IncompleteChecklistItem,
@@ -314,6 +317,10 @@ export class IOTOTasksCenterView extends ItemView {
 	readonly getShowProjectNameInTaskList: () => boolean;
 	/** 任务列表筛选标签的隐藏名单（全局偏好，不进 view state）。 */
 	readonly getHiddenTaskFilterTabs: () => string[];
+	/** 跟随哪一档 TaskView 外观（`appearanceStyle` 的只读快照）。 */
+	readonly getAppearanceStyle: () => TaskViewAppearanceStyle;
+	/** 任务中心外观模式（`default` / `follow`）。 */
+	readonly getTasksCenterAppearanceMode: () => TasksCenterAppearanceMode;
 	public readonly taskSearchSession = createTaskSearchSession();
 	public taskFilterCountsCache: {
 		key: string;
@@ -368,6 +375,8 @@ export class IOTOTasksCenterView extends ItemView {
 		addProjectCategoryOption: (category: string) => Promise<void>,
 		getShowProjectNameInTaskList: () => boolean,
 		getHiddenTaskFilterTabs: () => string[],
+		getAppearanceStyle: () => TaskViewAppearanceStyle,
+		getTasksCenterAppearanceMode: () => TasksCenterAppearanceMode,
 	) {
 		super(leaf);
 		this.navigation = true;
@@ -408,6 +417,8 @@ export class IOTOTasksCenterView extends ItemView {
 		this.addProjectCategoryOption = addProjectCategoryOption;
 		this.getShowProjectNameInTaskList = getShowProjectNameInTaskList;
 		this.getHiddenTaskFilterTabs = getHiddenTaskFilterTabs;
+		this.getAppearanceStyle = getAppearanceStyle;
+		this.getTasksCenterAppearanceMode = getTasksCenterAppearanceMode;
 	}
 
 	getViewType(): string {
@@ -425,6 +436,8 @@ export class IOTOTasksCenterView extends ItemView {
 	async onOpen(): Promise<void> {
 		this.contentEl.empty();
 		this.contentEl.addClass('ioto-tasks-center-view');
+		// 首帧前就位，避免先闪默认外观（同四象限 [[Plan-20261116-052507]] §3.2）。
+		this.applyAppearanceStyle();
 		this.outlinkPopover = new TaskOutlinkPopover(
 			this.contentEl.ownerDocument,
 			this.app.workspace,
@@ -530,7 +543,21 @@ export class IOTOTasksCenterView extends ItemView {
 	}
 
 	async handleSettingsChange(): Promise<void> {
+		// 先切外观类再刷新：设置广播的唯一接缝（[[Plan-20261116-183314]] E1）。
+		this.applyAppearanceStyle();
 		await this.refreshFromVaultChange();
+	}
+
+	/**
+	 * 跟随 TaskView / 四象限的外观档位（同一份 `appearanceStyle`）。
+	 * 类挂在 `contentEl`：`render()` 只清子节点，不摘根类，重绘后主题自然保留。
+	 */
+	applyAppearanceStyle(): void {
+		applyTasksCenterAppearance(
+			this.contentEl,
+			this.getTasksCenterAppearanceMode(),
+			this.getAppearanceStyle(),
+		);
 	}
 
 	async loadProjects(preferredProject?: string | null): Promise<void> {

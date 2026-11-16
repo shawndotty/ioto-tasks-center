@@ -11,6 +11,7 @@ import {
 	type TaskSearchEntryMode,
 	type TaskViewAppearanceStyle,
 	type TaskViewExportWidthMode,
+	type TasksCenterAppearanceMode,
 } from './settings-types';
 import {
 	isProjectListGroupMode,
@@ -19,6 +20,7 @@ import {
 	isTaskLinkBadgeBackgroundMode,
 	isTaskViewAppearanceStyle,
 	isTaskViewExportWidthMode,
+	isTasksCenterAppearanceMode,
 } from './settings-options';
 import {
 	normalizeInputRootPath,
@@ -87,6 +89,15 @@ export function normalizeTaskViewAppearanceStyle(
 	return typeof value === 'string' && isTaskViewAppearanceStyle(value)
 		? value
 		: 'glass';
+}
+
+/** 任务中心外观模式：非法值 / 缺键一律回落 `'default'`（保持现状）。 */
+export function normalizeTasksCenterAppearanceMode(
+	value: unknown,
+): TasksCenterAppearanceMode {
+	return typeof value === 'string' && isTasksCenterAppearanceMode(value)
+		? value
+		: 'default';
 }
 
 /** 任务视图内链接打开方式：非 `'markdown'` / `'inherit'` 一律回落 `'inherit'`。 */

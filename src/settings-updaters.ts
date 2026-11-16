@@ -23,6 +23,7 @@ import {
 	type TaskViewAppearanceStyle,
 	type TaskViewExportOptions,
 	type TaskViewExportWidthMode,
+	type TasksCenterAppearanceMode,
 } from './settings';
 
 // 再导出扩展集（需要归一化 / 合并 / 集合比较的复杂更新），保持单一入口。
@@ -252,6 +253,20 @@ export async function updateAppearanceStyle(
 	}
 
 	host.settings.appearanceStyle = style;
+	await host.saveSettings();
+	host.applySettingsToOpenViews();
+}
+
+/** 任务中心外观模式（[[Plan-20261116-183314]] §3.2）：与四象限同走广播。 */
+export async function updateTasksCenterAppearanceMode(
+	host: SettingsUpdaterHost,
+	mode: TasksCenterAppearanceMode,
+): Promise<void> {
+	if (host.settings.tasksCenterAppearanceMode === mode) {
+		return;
+	}
+
+	host.settings.tasksCenterAppearanceMode = mode;
 	await host.saveSettings();
 	host.applySettingsToOpenViews();
 }

@@ -6,9 +6,11 @@ import {
 	getTaskFileLinkViewOptions,
 	getTaskViewAppearanceStyleOptions,
 	getTaskViewExportWidthModeOptions,
+	getTasksCenterAppearanceModeOptions,
 	isTaskFileLinkViewMode,
 	isTaskViewAppearanceStyle,
 	isTaskViewExportWidthMode,
+	isTasksCenterAppearanceMode,
 } from '../../settings-options';
 import type IOTOTasksCenter from '../../main';
 
@@ -138,6 +140,26 @@ function renderAppearanceSection(
 					}
 
 					await plugin.updateAppearanceStyle(value);
+				});
+		});
+
+	new Setting(containerEl)
+		.setName(t('settings.tasksCenterAppearance.name'))
+		.setDesc(t('settings.tasksCenterAppearance.desc'))
+		.addDropdown((dropdown) => {
+			const options = getTasksCenterAppearanceModeOptions();
+			for (const [value, label] of Object.entries(options)) {
+				dropdown.addOption(value, label);
+			}
+
+			dropdown
+				.setValue(plugin.settings.tasksCenterAppearanceMode)
+				.onChange(async (value) => {
+					if (!isTasksCenterAppearanceMode(value)) {
+						return;
+					}
+
+					await plugin.updateTasksCenterAppearanceMode(value);
 				});
 		});
 }

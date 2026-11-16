@@ -40,6 +40,7 @@ import {
 	type TaskViewAppearanceStyle,
 	type TaskViewExportOptions,
 	type TaskViewExportWidthMode,
+	type TasksCenterAppearanceMode,
 	normalizeConfiguredInputRootPath,
 	normalizeConfiguredOutcomeRootPath,
 	normalizeConfiguredOutputRootPath,
@@ -55,6 +56,7 @@ import {
 	normalizeTaskFileLinkView,
 	normalizeTaskLinkBadgeBackgroundMode,
 	normalizeTaskSearchEntryMode,
+	normalizeTasksCenterAppearanceMode,
 } from './settings';
 import { normalizeHiddenTaskFilterTabs } from './views/task-filter-tabs';
 import {
@@ -143,6 +145,7 @@ import {
 	updateTaskListTimeFilter,
 	updateTaskSearchEntryMode,
 	updateTaskTemplateConfig,
+	updateTasksCenterAppearanceMode,
 	updateTasksRootPath,
 	updateUseIOTOTaskViewAsDefault,
 	addProjectCategoryOption,
@@ -236,6 +239,8 @@ export default class IOTOTasksCenter extends Plugin {
 					(category) => this.addProjectCategoryOption(category),
 					() => this.settings.showProjectNameInTaskList,
 					() => this.settings.hiddenTaskFilterTabs,
+					() => this.settings.appearanceStyle,
+					() => this.settings.tasksCenterAppearanceMode,
 				),
 		);
 		this.registerView(
@@ -951,6 +956,10 @@ export default class IOTOTasksCenter extends Plugin {
 		this.settings.taskFileLinkView = normalizeTaskFileLinkView(
 			loadedData?.taskFileLinkView,
 		);
+		this.settings.tasksCenterAppearanceMode =
+			normalizeTasksCenterAppearanceMode(
+				loadedData?.tasksCenterAppearanceMode,
+			);
 		this.settings.recentTaskCount = normalizeRecentTaskCount(
 			this.settings.recentTaskCount,
 		);
@@ -1043,6 +1052,12 @@ export default class IOTOTasksCenter extends Plugin {
 
 	async updateAppearanceStyle(style: TaskViewAppearanceStyle): Promise<void> {
 		await updateAppearanceStyle(this, style);
+	}
+
+	async updateTasksCenterAppearanceMode(
+		mode: TasksCenterAppearanceMode,
+	): Promise<void> {
+		await updateTasksCenterAppearanceMode(this, mode);
 	}
 
 	async updateUseIOTOTaskViewAsDefault(value: boolean): Promise<void> {
