@@ -177,7 +177,7 @@ export function buildQuadrantStatusMenu(
 function optionSignature(ctx: QuadrantViewContext): string {
 	return ctx
 		.getProjectOptions()
-		.map((project) => `${project.name}\u0000${project.archived ? 1 : 0}`)
+		.map((project) => project.name)
 		.join('\u0001');
 }
 
@@ -187,13 +187,10 @@ function rebuildScopeOptions(
 ): void {
 	selectEl.empty();
 
+	// 「全部项目」= 全部未归档（[[Plan-20261117-092238]] §5.1）。
 	selectEl.createEl('option', {
 		text: t('priorityQuadrant.scope.all'),
 		value: 'all',
-	});
-	selectEl.createEl('option', {
-		text: t('priorityQuadrant.scope.unarchived'),
-		value: 'unarchived',
 	});
 
 	const projects = ctx.getProjectOptions();
@@ -204,9 +201,7 @@ function rebuildScopeOptions(
 	});
 	for (const project of projects) {
 		groupEl.createEl('option', {
-			text: project.archived
-				? `${project.name}${t('priorityQuadrant.scope.archivedSuffix')}`
-				: project.name,
+			text: project.name,
 			value: `project:${project.name}`,
 		});
 	}

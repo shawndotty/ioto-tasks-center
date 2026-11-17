@@ -23,10 +23,8 @@ const en = {
 		'The task file no longer exists.',
 	'priorityQuadrant.quadrant.empty': 'No tasks',
 	'priorityQuadrant.scope.all': 'All projects',
-	'priorityQuadrant.scope.archivedSuffix': ' (archived)',
 	'priorityQuadrant.scope.label': 'Project scope',
 	'priorityQuadrant.scope.projectGroup': 'Specific project',
-	'priorityQuadrant.scope.unarchived': 'Unarchived projects',
 	'priorityQuadrant.sidebar.title': 'Unlabeled priority',
 	'priorityQuadrant.sidebar.toggle': 'Unlabeled',
 	'priorityQuadrant.sidebar.toggleAria':

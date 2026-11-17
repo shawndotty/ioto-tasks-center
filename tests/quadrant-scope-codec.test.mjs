@@ -11,9 +11,8 @@ const {
 	parseQuadrantProjectScope,
 } = await jiti.import('../src/views/quadrant/scope-codec.ts');
 
-test('encode：三种 kind 的字符串形状', () => {
+test('encode：两种 kind 的字符串形状', () => {
 	assert.equal(encodeQuadrantScope({ kind: 'all' }), 'all');
-	assert.equal(encodeQuadrantScope({ kind: 'unarchived' }), 'unarchived');
 	assert.equal(
 		encodeQuadrantScope({ kind: 'project', projectName: 'IOTO Task Center' }),
 		'project:IOTO Task Center',
@@ -24,18 +23,19 @@ test('encode：project 缺 projectName 时编码为空的 project:（由严格�
 	const encoded = encodeQuadrantScope({ kind: 'project' });
 	assert.equal(encoded, 'project:');
 	assert.equal(parseQuadrantProjectScope(encoded), undefined);
-	assert.deepEqual(decodeQuadrantScope(encoded), { kind: 'unarchived' });
+	assert.deepEqual(decodeQuadrantScope(encoded), { kind: 'all' });
 });
 
 test('parse：合法值还原为对象', () => {
 	assert.deepEqual(parseQuadrantProjectScope('all'), { kind: 'all' });
-	assert.deepEqual(parseQuadrantProjectScope('unarchived'), {
-		kind: 'unarchived',
-	});
 	assert.deepEqual(parseQuadrantProjectScope('project:IOTO Task Center'), {
 		kind: 'project',
 		projectName: 'IOTO Task Center',
 	});
+});
+
+test('parse：历史值 unarchived 迁移为 all', () => {
+	assert.deepEqual(parseQuadrantProjectScope('unarchived'), { kind: 'all' });
 });
 
 test('parse：非法值一律 undefined', () => {
@@ -60,9 +60,9 @@ test('parse：非法值一律 undefined', () => {
 	}
 });
 
-test('decode：宽松版本对非法值回落 unarchived', () => {
+test('decode：宽松版本对非法值回落 all', () => {
 	for (const value of ['', 'bogus', 'project:', 'PROJECT:x']) {
-		assert.deepEqual(decodeQuadrantScope(value), { kind: 'unarchived' });
+		assert.deepEqual(decodeQuadrantScope(value), { kind: 'all' });
 	}
 	assert.deepEqual(decodeQuadrantScope('all'), { kind: 'all' });
 });
@@ -89,8 +89,8 @@ test('encode → decode 往返：含冒号、空格、中文的项目名', () =>
 	}
 });
 
-test('encode → decode 往返：all / unarchived', () => {
-	for (const kind of ['all', 'unarchived']) {
+test('encode → decode 往返：all', () => {
+	for (const kind of ['all']) {
 		assert.deepEqual(
 			parseQuadrantProjectScope(encodeQuadrantScope({ kind })),
 			{ kind },
@@ -101,15 +101,15 @@ test('encode → decode 往返：all / unarchived', () => {
 test('严格 parse 与宽松 decode 的差异矩阵', () => {
 	const cases = [
 		{ input: 'all', strict: { kind: 'all' }, lenient: { kind: 'all' } },
-		{ input: 'unarchived', strict: { kind: 'unarchived' }, lenient: { kind: 'unarchived' } },
+		{ input: 'unarchived', strict: { kind: 'all' }, lenient: { kind: 'all' } },
 		{
 			input: 'project:IOTO',
 			strict: { kind: 'project', projectName: 'IOTO' },
 			lenient: { kind: 'project', projectName: 'IOTO' },
 		},
-		{ input: 'project:', strict: undefined, lenient: { kind: 'unarchived' } },
-		{ input: 'bogus', strict: undefined, lenient: { kind: 'unarchived' } },
-		{ input: '', strict: undefined, lenient: { kind: 'unarchived' } },
+		{ input: 'project:', strict: undefined, lenient: { kind: 'all' } },
+		{ input: 'bogus', strict: undefined, lenient: { kind: 'all' } },
+		{ input: '', strict: undefined, lenient: { kind: 'all' } },
 	];
 	for (const { input, strict, lenient } of cases) {
 		assert.deepEqual(

@@ -233,17 +233,20 @@ test('mergeQuadrantViewState：与 parse 组合，全不选 + 全部时间不被
 });
 
 // projectScope 持久化（[[Plan-20261116-161225]] §三 步骤 2 / 步骤 5）。
-test('parseQuadrantViewState：projectScope 三种 kind 原样还原', () => {
+test('parseQuadrantViewState：projectScope 两种 kind 原样还原', () => {
 	assert.deepEqual(parseQuadrantViewState({ projectScope: 'all' }), {
 		projectScope: { kind: 'all' },
-	});
-	assert.deepEqual(parseQuadrantViewState({ projectScope: 'unarchived' }), {
-		projectScope: { kind: 'unarchived' },
 	});
 	assert.deepEqual(
 		parseQuadrantViewState({ projectScope: 'project:IOTO Task Center' }),
 		{ projectScope: { kind: 'project', projectName: 'IOTO Task Center' } },
 	);
+});
+
+test('parseQuadrantViewState：历史值 unarchived 迁移为 all', () => {
+	assert.deepEqual(parseQuadrantViewState({ projectScope: 'unarchived' }), {
+		projectScope: { kind: 'all' },
+	});
 });
 
 test('parseQuadrantViewState：含冒号的 projectName 原样还原', () => {
@@ -297,9 +300,9 @@ test('mergeQuadrantViewState：projectScope 缺失保留当前，给出时覆盖
 	);
 	assert.deepEqual(
 		mergeQuadrantViewState(CURRENT_STATE, {
-			projectScope: { kind: 'unarchived' },
+			projectScope: { kind: 'project', projectName: 'Other' },
 		}).projectScope,
-		{ kind: 'unarchived' },
+		{ kind: 'project', projectName: 'Other' },
 	);
 });
 
@@ -318,7 +321,6 @@ test('mergeQuadrantViewState：脏 parsed.projectScope 不存在时保留兜底'
 test('parseQuadrantViewState：projectScope getState(encode) → parse 往返一致', () => {
 	const scopes = [
 		{ kind: 'all' },
-		{ kind: 'unarchived' },
 		{ kind: 'project', projectName: 'IOTO Task Center' },
 		{ kind: 'project', projectName: '含:冒号的 项目' },
 	];

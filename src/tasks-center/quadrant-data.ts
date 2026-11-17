@@ -33,7 +33,7 @@ export type { QuadrantTaskType } from './task-type-infer';
 export type QuadrantStatusKey = 'completed' | 'in-progress' | 'todo';
 
 export interface QuadrantProjectScope {
-	kind: 'all' | 'unarchived' | 'project';
+	kind: 'all' | 'project';
 	/** `kind === 'project'` 时必填 */
 	projectName?: string;
 }
@@ -85,13 +85,12 @@ export function toQuadrantStatusKey(
 	return statusKey === 'empty' ? 'todo' : statusKey;
 }
 
-/** 项目范围判定：未归档 = 不在 `hiddenProjectNames`；指定项目含存档仍可查看。 */
+/** 项目范围判定：全部 = 全部未归档；指定项目 = 名称精确匹配。 */
 export function matchesQuadrantProjectScope(
 	taskPath: string,
 	scope: QuadrantProjectScope,
 	hiddenProjectNames: ReadonlySet<string>,
 ): boolean {
-	if (scope.kind === 'all') return true;
 	const projectName = getTaskProjectNameFromPath(taskPath);
 	if (scope.kind === 'project') return projectName === scope.projectName;
 	return !hiddenProjectNames.has(projectName);

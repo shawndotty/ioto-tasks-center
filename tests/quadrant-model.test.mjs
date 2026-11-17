@@ -42,7 +42,7 @@ function task(
 
 function filter({
 	statusKeys = ['in-progress', 'todo'],
-	projectScope = { kind: 'unarchived' },
+	projectScope = { kind: 'all' },
 	hiddenProjectNames = [],
 	timeFilter = { kind: 'none' },
 } = {}) {
@@ -101,7 +101,7 @@ test('状态过滤：任意组合只收选中态；全关时 total 为 0', () =>
 	assert.equal(none.scopedTotal, 3);
 });
 
-test('项目范围 all：含存档项目任务', () => {
+test('项目范围 all：等价于全部未归档项目', () => {
 	const tasks = [
 		task('3-任务/Live/a.md', { priority: 0 }),
 		task('3-任务/Archived/b.md', { priority: 1 }),
@@ -111,41 +111,21 @@ test('项目范围 all：含存档项目任务', () => {
 		filter({ projectScope: { kind: 'all' }, hiddenProjectNames: ['Archived'] }),
 	);
 	assert.equal(model.counts.p0, 1);
-	assert.equal(model.counts.p1, 1);
-	assert.equal(model.scopedTotal, 2);
-});
-
-test('项目范围 unarchived：排除存档项目', () => {
-	const tasks = [
-		task('3-任务/Live/a.md', { priority: 0 }),
-		task('3-任务/Archived/b.md', { priority: 1 }),
-	];
-	const model = buildQuadrantModel(
-		tasks,
-		filter({
-			projectScope: { kind: 'unarchived' },
-			hiddenProjectNames: ['Archived'],
-		}),
-	);
-	assert.equal(model.counts.p0, 1);
 	assert.equal(model.counts.p1, 0);
 	assert.equal(model.scopedTotal, 1);
 });
 
-test('项目范围 project：只看指定项目，且存档项目仍可见', () => {
+test('项目范围 project：只看指定项目，按名称精确匹配', () => {
 	const tasks = [
-		task('3-任务/Live/a.md', { priority: 0 }),
-		task('3-任务/Archived/b.md', { priority: 1 }),
+		task('3-任务/Alpha/a.md', { priority: 0 }),
+		task('3-任务/Beta/b.md', { priority: 1 }),
 	];
 	const model = buildQuadrantModel(
 		tasks,
-		filter({
-			projectScope: { kind: 'project', projectName: 'Archived' },
-			hiddenProjectNames: ['Archived'],
-		}),
+		filter({ projectScope: { kind: 'project', projectName: 'Alpha' } }),
 	);
-	assert.equal(model.counts.p0, 0);
-	assert.equal(model.counts.p1, 1);
+	assert.equal(model.counts.p0, 1);
+	assert.equal(model.counts.p1, 0);
 	assert.equal(model.scopedTotal, 1);
 });
 

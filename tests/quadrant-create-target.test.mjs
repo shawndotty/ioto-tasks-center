@@ -10,9 +10,9 @@ const { resolveQuadrantCreateProject } = await jiti.import(
 );
 
 const OPTIONS = [
-	{ name: 'Alpha', archived: false },
-	{ name: 'Beta', archived: true },
-	{ name: 'Gamma', archived: false },
+	{ name: 'Alpha' },
+	{ name: 'Beta' },
+	{ name: 'Gamma' },
 ];
 
 test('project 范围且项目存在 → 直接使用该项目', () => {
@@ -42,19 +42,7 @@ test('project 范围缺少项目名 → none', () => {
 	);
 });
 
-test('unarchived 范围过滤掉已存档项目', () => {
-	const resolution = resolveQuadrantCreateProject(
-		{ kind: 'unarchived' },
-		OPTIONS,
-	);
-	assert.equal(resolution.kind, 'pick');
-	assert.deepEqual(
-		resolution.candidates.map((candidate) => candidate.name),
-		['Alpha', 'Gamma'],
-	);
-});
-
-test('all 范围保留已存档项目', () => {
+test('all 范围：列出全部传入候选', () => {
 	const resolution = resolveQuadrantCreateProject({ kind: 'all' }, OPTIONS);
 	assert.equal(resolution.kind, 'pick');
 	assert.deepEqual(
@@ -63,32 +51,16 @@ test('all 范围保留已存档项目', () => {
 	);
 });
 
-test('unarchived 范围全部为已存档 → none', () => {
-	assert.deepEqual(
-		resolveQuadrantCreateProject({ kind: 'unarchived' }, [
-			{ name: 'Archived', archived: true },
-		]),
-		{ kind: 'none' },
-	);
-});
-
 test('无候选项目 → none', () => {
 	assert.deepEqual(
 		resolveQuadrantCreateProject({ kind: 'all' }, []),
-		{ kind: 'none' },
-	);
-	assert.deepEqual(
-		resolveQuadrantCreateProject({ kind: 'unarchived' }, []),
 		{ kind: 'none' },
 	);
 });
 
 test('仅一个候选 → 自动使用，不弹选择器', () => {
 	assert.deepEqual(
-		resolveQuadrantCreateProject({ kind: 'unarchived' }, [
-			{ name: 'Solo', archived: false },
-			{ name: 'Hidden', archived: true },
-		]),
+		resolveQuadrantCreateProject({ kind: 'all' }, [{ name: 'Solo' }]),
 		{ kind: 'project', projectName: 'Solo' },
 	);
 });
@@ -103,10 +75,7 @@ test('pick.candidates 顺序与传入顺序一致', () => {
 });
 
 test('返回候选为副本，不修改输入数组与对象', () => {
-	const options = [
-		{ name: 'Alpha', archived: false },
-		{ name: 'Beta', archived: false },
-	];
+	const options = [{ name: 'Alpha' }, { name: 'Beta' }];
 	const snapshot = JSON.parse(JSON.stringify(options));
 	const resolution = resolveQuadrantCreateProject({ kind: 'all' }, options);
 	assert.equal(resolution.kind, 'pick');

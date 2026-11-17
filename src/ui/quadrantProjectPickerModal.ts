@@ -1,8 +1,8 @@
 /**
  * 四象限「创建任务」的项目选择器（[[Plan-20261116-145111]] §4.2）。
  *
- * 只负责**挑项目**：范围过滤已由 `resolveQuadrantCreateProject` 完成，
- * 这里把候选原样列出，已存档项目追加与范围下拉一致的「已存档」后缀。
+ * 只负责**挑项目**：候选集已由扫描层收敛为未归档项目，这里不做二次过滤，
+ * 名称原样列出（[[Plan-20261117-092238]] §5.6）。
  */
 
 import { FuzzySuggestModal } from 'obsidian';
@@ -44,9 +44,7 @@ export class QuadrantProjectPickerModal extends FuzzySuggestModal<QuadrantProjec
 	}
 
 	getItemText(option: QuadrantProjectOption): string {
-		return option.archived
-			? `${option.name}${t('priorityQuadrant.scope.archivedSuffix')}`
-			: option.name;
+		return option.name;
 	}
 
 	onChooseItem(option: QuadrantProjectOption): void {

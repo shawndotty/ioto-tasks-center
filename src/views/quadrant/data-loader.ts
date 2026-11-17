@@ -1,8 +1,10 @@
 /**
  * 四象限的跨项目轻量扫描（[[Plan-20261115-201917]] §3.3）。
  *
- * 一次扫描**所有**项目（含存档），范围过滤留给纯模型做：切项目范围因此零 IO。
  * 复用 `listProjectTaskFiles` 的 `(mtime, size)` 解析缓存与 `includeContent: false`。
+ * 只扫描**未归档**项目（与任务中心 `filterHiddenProjectEntries` 同口径）：
+ * 归档项目的任务不进入 `tasks`，切项目范围因此仍然零 IO。
+ * 如需在矩阵中查看某个已归档项目，请先在项目中心取消归档。
  */
 
 import type { App } from 'obsidian';
@@ -16,7 +18,6 @@ const QUADRANT_PROJECT_CONCURRENCY = 8;
 
 export interface QuadrantProjectOption {
 	name: string;
-	archived: boolean;
 }
 
 export interface QuadrantScanResult {
@@ -35,13 +36,15 @@ export async function scanQuadrantTasks(
 		return { status: 'root-missing', tasks: [], projects: [] };
 	}
 
-	const projects = listing.projects.map((project) => ({
-		name: project.name,
-		archived: hiddenProjectNames.has(project.name),
-	}));
+	const visibleProjects = listing.projects.filter(
+		(project) => !hiddenProjectNames.has(project.name),
+	);
+	const projects: QuadrantProjectOption[] = visibleProjects.map(
+		(project) => ({ name: project.name }),
+	);
 
 	const perProject = await mapWithConcurrency(
-		listing.projects,
+		visibleProjects,
 		QUADRANT_PROJECT_CONCURRENCY,
 		async (project) => {
 			const result = await listProjectTaskFiles(

@@ -114,7 +114,7 @@ export class IOTOPriorityQuadrantView
 	openedTaskPath: string | null = null;
 	private statusKeys = new Set<QuadrantStatusKey>(DEFAULT_QUADRANT_STATUS_KEYS);
 	private typeKeys = new Set<QuadrantTaskType>(DEFAULT_QUADRANT_TYPE_KEYS);
-	private projectScope: QuadrantProjectScope = { kind: 'unarchived' };
+	private projectScope: QuadrantProjectScope = { kind: 'all' };
 	private sidebarOpen = false;
 	private timeFilter: QuadrantTimeFilter = { kind: 'none' };
 	private model: QuadrantModel | null = null;
@@ -616,7 +616,7 @@ export class IOTOPriorityQuadrantView
 				(project) => project.name === this.projectScope.projectName,
 			)
 		) {
-			this.projectScope = { kind: 'unarchived' };
+			this.projectScope = { kind: 'all' };
 			// 回退结果立即落盘，避免每次启动重复弹 Notice（[[Plan-20261116-161225]] 步骤 4.4）。
 			this.writeFilterFallback();
 			this.app.workspace.requestSaveLayout();
