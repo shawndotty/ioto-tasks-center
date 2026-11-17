@@ -84,6 +84,7 @@ import {
 import { renderQuadrantSidebar } from './quadrant/sidebar';
 import { renderQuadrantState } from './quadrant/states';
 import { openQuadrantTask } from './quadrant/task-open';
+import type { TaskPreviewOpenHost } from './task-preview-open';
 import { QuadrantTimeRangePopover } from './quadrant/time-range-popover';
 
 const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
@@ -103,10 +104,12 @@ export interface PriorityQuadrantDeps {
 
 export class IOTOPriorityQuadrantView
 	extends ItemView
-	implements QuadrantViewContext
+	implements QuadrantViewContext, TaskPreviewOpenHost
 {
 	/** 四象限自持的预览叶（[[Plan-20261116-155634]] §5.5），可跨会话恢复。 */
 	previewLeaf: WorkspaceLeaf | null = null;
+	/** 最近打开的任务路径（[[Plan-20261117-062052]] §5.6）：仅用于「同一任务只激活」判定。 */
+	openedTaskPath: string | null = null;
 	private statusKeys = new Set<QuadrantStatusKey>(DEFAULT_QUADRANT_STATUS_KEYS);
 	private projectScope: QuadrantProjectScope = { kind: 'unarchived' };
 	private sidebarOpen = false;
@@ -158,6 +161,7 @@ export class IOTOPriorityQuadrantView
 			statusKeys: [...this.statusKeys],
 			projectScope: encodeQuadrantScope(this.projectScope),
 			previewLeafId: getWorkspaceLeafId(this.previewLeaf) ?? undefined,
+			openedTaskPath: this.openedTaskPath ?? undefined,
 		};
 	}
 
@@ -188,6 +192,7 @@ export class IOTOPriorityQuadrantView
 		}
 		// 叶子状态落地即镜像到设备级，保持「最近值」新鲜（工作区切换 / 复制标签也走这里）。
 		this.writeFilterFallback();
+		this.openedTaskPath = parsed.openedTaskPath ?? null;
 		this.previewLeaf = parsed.previewLeafId
 			? findLeafByIdIn(this.app, parsed.previewLeafId)
 			: null;
@@ -392,13 +397,7 @@ export class IOTOPriorityQuadrantView
 	}
 
 	openTask(path: string, mods: MouseEvent | null): void {
-		void openQuadrantTask(
-			this.app,
-			this.deps.getTasksRootPath(),
-			path,
-			mods,
-			this.deps.getUseIOTOTaskViewAsDefault(),
-		);
+		void openQuadrantTask(this, path, mods);
 	}
 
 	openPriorityMenu(
@@ -471,6 +470,14 @@ export class IOTOPriorityQuadrantView
 
 	ensurePreviewLeaf(): WorkspaceLeaf {
 		return ensurePreviewLeafFor(this);
+	}
+
+	getTasksRootPath(): string {
+		return this.deps.getTasksRootPath();
+	}
+
+	getUseIOTOTaskViewAsDefault(): boolean {
+		return this.deps.getUseIOTOTaskViewAsDefault();
 	}
 
 	async openCreatedTask(

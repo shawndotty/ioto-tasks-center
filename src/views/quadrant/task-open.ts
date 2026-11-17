@@ -1,41 +1,32 @@
 /**
- * 四象限打开任务的薄封装（[[Plan-20261115-201917]] §3.6）。
+ * 优先级矩阵打开任务的薄封装（[[Research-20261117-061808]] §四 方案 A /
+ * [[Plan-20261117-062052]] §5.7）。
  *
- * 不新增通用 helper：修饰键判定复用 `views/tasks-center/task-open-target.ts`，
- * 任务视图 / Markdown 的实际打开路径 100% 复用 `task-view-routing` 的既有导出。
+ * 打开口径 100% 复用视图中立的 `views/task-preview-open.ts`；本文件只做
+ * 修饰键判定与「文件缺失」提示（矩阵走 i18n Notice，任务中心静默）。
  */
 
-import { Notice, TFile, type App } from 'obsidian';
+import { Notice } from 'obsidian';
 
 import { t } from '../../lang/helpter';
-import { openFileAsIOTOTask } from '../../task-view-routing';
 import { resolveTaskOpenTargetFromMouse } from '../tasks-center/task-open-target';
+import {
+	openTaskInPreviewLeaf,
+	openTaskInTab,
+	type TaskPreviewOpenHost,
+} from '../task-preview-open';
 
 export async function openQuadrantTask(
-	app: App,
-	tasksRootPath: string,
+	host: TaskPreviewOpenHost,
 	path: string,
 	mods: MouseEvent | null,
-	preferTaskView: boolean,
 ): Promise<void> {
-	const file = app.vault.getAbstractFileByPath(path);
-	if (!(file instanceof TFile)) {
+	const target = mods ? resolveTaskOpenTargetFromMouse(mods) : 'adjacent-preview';
+	const result =
+		target === 'adjacent-preview'
+			? await openTaskInPreviewLeaf(host, path)
+			: await openTaskInTab(host, path, target);
+	if (result.status === 'missing') {
 		new Notice(t('priorityQuadrant.notice.taskMissing'));
-		return;
 	}
-
-	const target = mods
-		? resolveTaskOpenTargetFromMouse(mods)
-		: 'adjacent-preview';
-	const leaf =
-		target === 'right-split-tab'
-			? app.workspace.getLeaf('split', 'vertical')
-			: app.workspace.getLeaf(false); // adjacent-preview / current-pane-tab 都退化为当前 tab
-
-	if (preferTaskView) {
-		await openFileAsIOTOTask(app, tasksRootPath, file, leaf);
-		return;
-	}
-
-	await leaf.openFile(file);
 }

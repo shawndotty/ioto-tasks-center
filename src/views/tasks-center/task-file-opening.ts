@@ -2,7 +2,6 @@ import {
 	MarkdownView,
 	TFile,
 	type App,
-	type WorkspaceParent,
 	WorkspaceLeaf,
 } from 'obsidian';
 
@@ -12,17 +11,9 @@ import type {
 	ProjectFolderEntry,
 	TaskFileEntry,
 } from '../../tasks-center/types';
-import { shouldSkipOpeningTask } from '../task-preview-state';
-import { isTaskNoteFile } from '../../tasks-center/task-note-menu';
-import { IOTO_TASK_VIEW_TYPE } from '../iotoTaskView';
 import { PROJECT_METADATA_FILE_NAME } from '../../tasks-center/project-metadata';
-import {
-	focusTaskNoteEditorAtOffset,
-	openTaskNoteInLeaf,
-	resolveTaskNoteOpenMode,
-} from './task-note-opening';
 import { type TaskOpenTarget } from './constants';
-import { isLeafInSidebar } from './preview-leaf';
+import { openTaskInPreviewLeaf, openTaskInTab } from '../task-preview-open';
 
 export async function openTaskFile(
 	view: IOTOTasksCenterView,
@@ -33,32 +24,7 @@ export async function openTaskFile(
 ): Promise<void> {
 	const target = options?.target ?? 'adjacent-preview';
 	if (target === 'current-pane-tab' || target === 'right-split-tab') {
-		const file = view.app.vault.getAbstractFileByPath(task.path);
-		if (!(file instanceof TFile)) {
-			return;
-		}
-
-		if (target === 'current-pane-tab') {
-			await openFileInCurrentPaneTab(view, file);
-		} else {
-			await openFileInRightSplitTab(view, file);
-		}
-		return;
-	}
-
-	const previewLeafAvailable = Boolean(
-		view.previewLeaf && view.isLeafAvailable(view.previewLeaf),
-	);
-	const previewedFilePath = view.getPreviewLeafFilePath();
-	if (
-		shouldSkipOpeningTask({
-			targetTaskPath: task.path,
-			openedTaskPath: view.openedTaskPath,
-			previewLeafAvailable,
-			previewedFilePath,
-		})
-	) {
-		view.activatePreviewLeaf();
+		await openTaskInTab(view, task.path, target);
 		return;
 	}
 
@@ -176,56 +142,21 @@ export async function openFileInPreview(
 	file: TFile,
 	options?: { cursorOffset?: number | null; line?: number | null },
 ): Promise<void> {
-	view.openingTaskPath = file.path;
-	view.render();
+	const result = await openTaskInPreviewLeaf(view, file.path, {
+		cursorOffset: options?.cursorOffset ?? null,
+		line: options?.line ?? null,
+		searchQuery: view.taskSearchQuery,
+	});
+	if (result.status !== 'opened') return;
 
-	try {
-		const leaf = view.ensurePreviewLeaf();
-		const query = view.taskSearchQuery.trim();
-		const cursorOffset =
-			typeof options?.cursorOffset === 'number'
-				? options.cursorOffset
-				: null;
-		const line = options?.line;
-		const hasLine = typeof line === 'number';
-		const mode = resolveTaskNoteOpenMode({
-			hasSearchQuery: query.length > 0,
-			hasLine,
-			cursorOffset,
-			preferTaskView: view.getUseIOTOTaskViewAsDefault(),
-			isTaskNote: isTaskNoteFile(file, view.getTasksRootPath()),
-		});
-
-		await openTaskNoteInLeaf(leaf, file, mode);
-		view.previewLeaf = leaf;
-		view.openedTaskPath = file.path;
-		if (view.selectedProject) {
-			view.lastOpenedTaskByProject.set(
-				view.selectedProject,
-				file.path,
-			);
-		}
-
-		if (query) {
-			await scrollPreviewToFirstMatch(leaf, file, query);
-		}
-
-		if (cursorOffset !== null) {
-			await focusTaskNoteEditorAtOffset(
-				view.app,
-				leaf,
-				file,
-				cursorOffset,
-			);
-		}
-
-		if (hasLine) {
-			await focusPreviewEditorAtLine(view.app, leaf, file, line);
-		}
-	} finally {
-		view.openingTaskPath = null;
-		view.render();
+	const query = view.taskSearchQuery.trim();
+	if (query) {
+		await scrollPreviewToFirstMatch(result.leaf, file, query);
 	}
+	if (typeof options?.line === 'number') {
+		await focusPreviewEditorAtLine(view.app, result.leaf, file, options.line);
+	}
+	// cursorOffset 已由共享函数落点，此处不再重复。
 }
 
 export function findReusablePreviewLeaf(
@@ -288,190 +219,6 @@ async function focusPreviewEditorAtLine(
 	} catch {
 		// 定位是增强不是承诺：失败 = 普通打开，不提示。
 	}
-}
-
-async function openFileInCurrentPaneTab(
-	view: IOTOTasksCenterView,
-	file: TFile,
-): Promise<void> {
-	const tabGroup = resolveTargetTabGroup(view);
-	const existingLeaf =
-		tabGroup === null
-			? null
-			: findLeafInCurrentTabGroupByFilePath(view, file.path, tabGroup);
-	if (existingLeaf) {
-		markTaskOpened(view, file.path);
-		view.app.workspace.setActiveLeaf(existingLeaf, { focus: true });
-		return;
-	}
-
-	view.openingTaskPath = file.path;
-	view.render();
-
-	try {
-		const leaf = view.app.workspace.getLeaf('tab');
-		await leaf.openFile(file, {
-			active: true,
-		});
-		// Alt+点击以前走核心默认视图（Markdown），现在与直接点击同口径：
-		// 门控开启且是任务笔记时转成 IOTOTask 视图。
-		await convertLeafToTaskViewIfDefault(view, leaf, file);
-		markTaskOpened(view, file.path);
-
-		view.app.workspace.setActiveLeaf(leaf, { focus: true });
-	} finally {
-		view.openingTaskPath = null;
-		view.render();
-	}
-}
-
-async function openFileInRightSplitTab(
-	view: IOTOTasksCenterView,
-	file: TFile,
-): Promise<void> {
-	// 同文件已打开就只激活，不重复开分屏（方案 §6-2，Johnny 确认）。
-	const existingLeaf = findLeafShowingTaskFile(view, file.path);
-	if (existingLeaf) {
-		markTaskOpened(view, file.path);
-		view.app.workspace.setActiveLeaf(existingLeaf, { focus: true });
-		return;
-	}
-
-	view.openingTaskPath = file.path;
-	view.render();
-
-	try {
-		// 在活动叶子（即刚被点击的任务中心叶子）右侧新建标签组。
-		const leaf = view.app.workspace.getLeaf('split', 'vertical');
-		await leaf.openFile(file, {
-			active: true,
-		});
-		await convertLeafToTaskViewIfDefault(view, leaf, file);
-		markTaskOpened(view, file.path);
-
-		view.app.workspace.setActiveLeaf(leaf, { focus: true });
-	} finally {
-		view.openingTaskPath = null;
-		view.render();
-	}
-}
-
-/** 记录「该任务已打开」，供预览位状态与项目级最近打开记忆使用。 */
-function markTaskOpened(
-	view: IOTOTasksCenterView,
-	filePath: string,
-): void {
-	view.openedTaskPath = filePath;
-	if (view.selectedProject) {
-		view.lastOpenedTaskByProject.set(view.selectedProject, filePath);
-	}
-}
-
-/**
- * 门控式 TaskView 转换：Alt+点击与右侧分屏两路共用的同一口径——
- * 与 openFileInPreview 的直接点击分支一致，均受 useIOTOTaskViewAsDefault 门控。
- */
-async function convertLeafToTaskViewIfDefault(
-	view: IOTOTasksCenterView,
-	leaf: WorkspaceLeaf,
-	file: TFile,
-): Promise<void> {
-	if (
-		!view.getUseIOTOTaskViewAsDefault() ||
-		!isTaskNoteFile(file, view.getTasksRootPath()) ||
-		!(leaf.view instanceof MarkdownView)
-	) {
-		return;
-	}
-
-	await leaf.setViewState({
-		type: IOTO_TASK_VIEW_TYPE,
-		active: true,
-		state: {
-			file: file.path,
-		},
-	});
-}
-
-/** 组合键打开的「已打开就激活」判据：全工作区找展示该文件的 markdown/IOTOTask 叶。 */
-function findLeafShowingTaskFile(
-	view: IOTOTasksCenterView,
-	filePath: string,
-): WorkspaceLeaf | null {
-	let matchedLeaf: WorkspaceLeaf | null = null;
-
-	view.app.workspace.iterateAllLeaves((leaf) => {
-		if (matchedLeaf || leaf === view.leaf) {
-			return;
-		}
-
-		const viewState = leaf.getViewState();
-		if (
-			viewState.type !== 'markdown' &&
-			viewState.type !== IOTO_TASK_VIEW_TYPE
-		) {
-			return;
-		}
-
-		const candidatePath = viewState.state?.file;
-		if (
-			typeof candidatePath === 'string' &&
-			candidatePath === filePath
-		) {
-			matchedLeaf = leaf;
-		}
-	});
-
-	return matchedLeaf;
-}
-
-/** Alt+点击应该去哪个 tab 组找「已打开的同文件标签」。 */
-function resolveTargetTabGroup(
-	view: IOTOTasksCenterView,
-): WorkspaceParent | null {
-	const ws = view.app.workspace;
-	if (!isLeafInSidebar(ws, view.leaf)) {
-		return view.leaf.parent;
-	}
-	return ws.getMostRecentLeaf(ws.rootSplit)?.parent ?? null;
-}
-
-function findLeafInCurrentTabGroupByFilePath(
-	view: IOTOTasksCenterView,
-	filePath: string,
-	tabGroup: WorkspaceParent,
-): WorkspaceLeaf | null {
-	let matchedLeaf: WorkspaceLeaf | null = null;
-
-	view.app.workspace.iterateAllLeaves((leaf) => {
-		if (
-			matchedLeaf ||
-			leaf === view.leaf ||
-			leaf.parent !== tabGroup
-		) {
-			return;
-		}
-
-		const viewState = leaf.getViewState();
-		// 任务笔记默认以 IOTOTask 视图打开（useIOTOTaskViewAsDefault），
-		// 只认 markdown 会把它当成「没开过」，Alt+点击就会重复新增标签。
-		if (
-			viewState.type !== 'markdown' &&
-			viewState.type !== IOTO_TASK_VIEW_TYPE
-		) {
-			return;
-		}
-
-		const candidatePath = viewState.state?.file;
-		if (
-			typeof candidatePath === 'string' &&
-			candidatePath === filePath
-		) {
-			matchedLeaf = leaf;
-		}
-	});
-
-	return matchedLeaf;
 }
 
 async function scrollPreviewToFirstMatch(

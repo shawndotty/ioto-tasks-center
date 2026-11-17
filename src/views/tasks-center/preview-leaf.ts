@@ -18,13 +18,24 @@ export function getActiveTaskPath(view: IOTOTasksCenterView): string | null {
 	});
 }
 
+/** 叶当前展示的文件路径（markdown / IOTOTask / 普通 FileView 通用）；不看可用性。 */
+export function getLeafFilePath(leaf: WorkspaceLeaf | null): string | null {
+	if (!leaf) {
+		return null;
+	}
+
+	const leafView = leaf.view;
+	return leafView instanceof FileView && leafView.file
+		? leafView.file.path
+		: null;
+}
+
 export function getPreviewLeafFilePath(view: IOTOTasksCenterView): string | null {
 	if (!view.previewLeaf || !view.isLeafAvailable(view.previewLeaf)) {
 		return null;
 	}
 
-	const leafView = view.previewLeaf.view;
-	return leafView instanceof FileView && leafView.file ? leafView.file.path : null;
+	return getLeafFilePath(view.previewLeaf);
 }
 
 export function activatePreviewLeaf(view: IOTOTasksCenterView): void {

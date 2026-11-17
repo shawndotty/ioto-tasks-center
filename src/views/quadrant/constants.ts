@@ -69,11 +69,13 @@ export function mergeQuadrantViewState(
 
 /**
  * 叶子视图状态（[[Plan-20261116-060249]] §3.2、[[Plan-20261116-083330]] §3.6、
- * [[Plan-20261116-091927]] §3.2、[[Plan-20261116-155634]] §5.4）。
+ * [[Plan-20261116-091927]] §3.2、[[Plan-20261116-155634]] §5.4、
+ * [[Plan-20261117-062052]] §5.5）。
  * `sidebarOpen` 只认 boolean；`timeFilter` 走白名单解码，脏数据回落「全部时间」；
  * `statusKeys` 只收白名单键并去重——键缺失或全脏回落默认，空数组合法表示「全不选」；
  * `projectScope` 走严格解析，缺失 / 脏值一律 `undefined`（**不**回落「未归档」，否则会覆盖兜底值）；
- * `previewLeafId` 只认非空字符串，且**不**参与 `mergeQuadrantViewState`。
+ * `previewLeafId` / `openedTaskPath` 只认非空字符串，且**都不**参与 `mergeQuadrantViewState`
+ * （二者描述打开状态而非筛选状态，不能被子模块的筛选合并覆盖或清空）。
  */
 export function parseQuadrantViewState(state: unknown): {
 	sidebarOpen?: boolean;
@@ -81,6 +83,7 @@ export function parseQuadrantViewState(state: unknown): {
 	statusKeys?: QuadrantStatusKey[];
 	projectScope?: QuadrantProjectScope;
 	previewLeafId?: string;
+	openedTaskPath?: string;
 } {
 	if (!state || typeof state !== 'object') return {};
 	const candidate = state as Record<string, unknown>;
@@ -90,6 +93,7 @@ export function parseQuadrantViewState(state: unknown): {
 		statusKeys?: QuadrantStatusKey[];
 		projectScope?: QuadrantProjectScope;
 		previewLeafId?: string;
+		openedTaskPath?: string;
 	} = {};
 	if (typeof candidate.sidebarOpen === 'boolean') {
 		parsed.sidebarOpen = candidate.sidebarOpen;
@@ -113,6 +117,12 @@ export function parseQuadrantViewState(state: unknown): {
 		candidate.previewLeafId.length > 0
 	) {
 		parsed.previewLeafId = candidate.previewLeafId;
+	}
+	if (
+		typeof candidate.openedTaskPath === 'string' &&
+		candidate.openedTaskPath.length > 0
+	) {
+		parsed.openedTaskPath = candidate.openedTaskPath;
 	}
 	return parsed;
 }

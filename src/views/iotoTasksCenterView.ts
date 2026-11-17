@@ -1284,6 +1284,19 @@ export class IOTOTasksCenterView extends ItemView {
 		return findLeafByFilePath(this, filePath);
 	}
 
+	/** 共享打开模块的「打开中」钩子：驱动 is-opening 行样式。 */
+	onOpeningChange(path: string | null): void {
+		this.openingTaskPath = path;
+		this.render();
+	}
+
+	/** 共享打开模块的「已打开」钩子：维护项目级最近打开记忆。 */
+	onTaskOpened(path: string): void {
+		if (this.selectedProject) {
+			this.lastOpenedTaskByProject.set(this.selectedProject, path);
+		}
+	}
+
 	private findLeafById(leafId: string): WorkspaceLeaf | null {
 		return findLeafById(this, leafId);
 	}

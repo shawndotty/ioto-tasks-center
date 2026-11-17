@@ -362,3 +362,47 @@ test('mergeQuadrantViewState：previewLeafId 不进入筛选合并', () => {
 	assert.equal('previewLeafId' in merged, false);
 });
 
+// openedTaskPath（[[Plan-20261117-062052]] §5.5 / §6.2）：与 previewLeafId 同口径。
+test('parseQuadrantViewState：合法 openedTaskPath 保留', () => {
+	assert.deepEqual(
+		parseQuadrantViewState({ openedTaskPath: '3-任务/P/T.md' }),
+		{ openedTaskPath: '3-任务/P/T.md' },
+	);
+});
+
+test('parseQuadrantViewState：空串 / 非字符串 openedTaskPath 一律丢弃', () => {
+	for (const value of ['', 42, null, undefined, [], {}, true]) {
+		assert.deepEqual(parseQuadrantViewState({ openedTaskPath: value }), {});
+	}
+});
+
+test('parseQuadrantViewState：openedTaskPath 与筛选字段及 previewLeafId 共存', () => {
+	assert.deepEqual(
+		parseQuadrantViewState({
+			sidebarOpen: true,
+			statusKeys: ['todo'],
+			previewLeafId: 'leaf-1',
+			openedTaskPath: '3-任务/P/T.md',
+		}),
+		{
+			sidebarOpen: true,
+			statusKeys: ['todo'],
+			previewLeafId: 'leaf-1',
+			openedTaskPath: '3-任务/P/T.md',
+		},
+	);
+});
+
+test('mergeQuadrantViewState：openedTaskPath 不进入筛选合并', () => {
+	const merged = mergeQuadrantViewState(CURRENT_STATE, {
+		openedTaskPath: 'x',
+	});
+	assert.deepEqual(merged, CURRENT_STATE);
+	assert.equal('openedTaskPath' in merged, false);
+});
+
+test('parseQuadrantViewState：openedTaskPath 全空输入保持 {}', () => {
+	assert.deepEqual(parseQuadrantViewState({}), {});
+	assert.deepEqual(parseQuadrantViewState(null), {});
+});
+
