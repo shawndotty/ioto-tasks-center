@@ -1251,7 +1251,11 @@ export class IOTOTasksCenterView extends ItemView {
 
 	async openFileInPreview(
 		file: TFile,
-		options?: { cursorOffset?: number | null; line?: number | null },
+		options?: {
+			cursorOffset?: number | null;
+			line?: number | null;
+			force?: boolean;
+		},
 	): Promise<void> {
 		return openFileInPreviewFn(this, file, options);
 	}

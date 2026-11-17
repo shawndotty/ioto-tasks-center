@@ -140,12 +140,17 @@ export async function openProjectSpecByProject(
 export async function openFileInPreview(
 	view: IOTOTasksCenterView,
 	file: TFile,
-	options?: { cursorOffset?: number | null; line?: number | null },
+	options?: {
+		cursorOffset?: number | null;
+		line?: number | null;
+		force?: boolean;
+	},
 ): Promise<void> {
 	const result = await openTaskInPreviewLeaf(view, file.path, {
 		cursorOffset: options?.cursorOffset ?? null,
 		line: options?.line ?? null,
 		searchQuery: view.taskSearchQuery,
+		force: options?.force,
 	});
 	if (result.status !== 'opened') return;
 

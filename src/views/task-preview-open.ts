@@ -51,6 +51,8 @@ export interface TaskPreviewOpenOptions {
 	cursorOffset?: number | null;
 	line?: number | null;
 	searchQuery?: string;
+	/** 创建后打开：跳过「已打开即激活」去重，强制应用目标视图。 */
+	force?: boolean;
 }
 
 /** 记录「该任务已打开」，供预览位状态与项目级最近打开记忆使用。 */
@@ -64,6 +66,8 @@ function markTaskOpened(host: TaskPreviewOpenHost, taskPath: string): void {
  *
  * `missing` 由调用方决定是否提示（矩阵弹 Notice，任务中心静默）。
  * 文件已在该预览叶且路径未变时只激活叶，返回 `skipped`。
+ * `force: true` 用于创建后首次打开：即使预览叶已展示该文件，也按目标模式
+ * 重新落地，不走去重分支；点击 / 修饰键等既有调用方不传。
  */
 export async function openTaskInPreviewLeaf(
 	host: TaskPreviewOpenHost,
@@ -82,6 +86,7 @@ export async function openTaskInPreviewLeaf(
 		? getLeafFilePath(host.previewLeaf)
 		: null;
 	if (
+		!options?.force &&
 		shouldSkipOpeningTask({
 			targetTaskPath: file.path,
 			openedTaskPath: host.openedTaskPath,

@@ -274,6 +274,125 @@ test('cursorOffset: 0 合法：以 source 模式打开（0 不当缺省）', asy
 	assert.equal(preview.calls.setViewState[0].state.mode, 'source');
 });
 
+test('同任务已预览 + force: 绕过去重，按目标视图重新打开', async () => {
+	const file = makeFile('3-任务/P/T.md');
+	const preview = makeLeaf({ id: 'preview', file });
+	const { ws, calls } = makeWorkspace();
+	const host = makeHost({
+		workspace: ws,
+		leaf: makeLeaf({ id: 'host' }),
+		file,
+		previewLeaf: preview,
+		openedTaskPath: file.path,
+		available: [preview],
+		preferTaskView: true,
+	});
+
+	const result = await openTaskInPreviewLeaf(host, file.path, {
+		force: true,
+	});
+
+	assert.equal(result.status, 'opened');
+	assert.equal(result.leaf, preview);
+	assert.equal(preview.calls.setViewState.length, 1);
+	assert.equal(preview.calls.setViewState[0].type, 'IOTOTask');
+	assert.deepEqual(calls.setActiveLeaf, []);
+});
+
+test('同任务已预览 + 不传 force: 仍 skipped（回归保护）', async () => {
+	const file = makeFile('3-任务/P/T.md');
+	const preview = makeLeaf({ id: 'preview', file });
+	const { ws, calls } = makeWorkspace();
+	const host = makeHost({
+		workspace: ws,
+		leaf: makeLeaf({ id: 'host' }),
+		file,
+		previewLeaf: preview,
+		openedTaskPath: file.path,
+		available: [preview],
+		preferTaskView: true,
+	});
+
+	const result = await openTaskInPreviewLeaf(host, file.path);
+
+	assert.equal(result.status, 'skipped');
+	assert.equal(calls.setActiveLeaf.length, 1);
+	assert.deepEqual(preview.calls.setViewState, []);
+	assert.deepEqual(preview.calls.openFile, []);
+});
+
+test('force + cursorOffset: 0: 模式判定不变，仍走 source', async () => {
+	const file = makeFile('3-任务/P/T.md');
+	const preview = makeLeaf({ id: 'preview', file });
+	const { ws } = makeWorkspace();
+	const host = makeHost({
+		workspace: ws,
+		leaf: makeLeaf({ id: 'host' }),
+		file,
+		previewLeaf: preview,
+		openedTaskPath: file.path,
+		available: [preview],
+		preferTaskView: true,
+	});
+
+	const result = await openTaskInPreviewLeaf(host, file.path, {
+		cursorOffset: 0,
+		force: true,
+	});
+
+	assert.equal(result.status, 'opened');
+	assert.ok(preview.calls.setViewState.length >= 1);
+	assert.equal(preview.calls.setViewState[0].type, 'markdown');
+	assert.equal(preview.calls.setViewState[0].state.mode, 'source');
+});
+
+test('force + 偏好关闭: 回到默认 Markdown 打开', async () => {
+	const file = makeFile('3-任务/P/T.md');
+	const preview = makeLeaf({ id: 'preview', file });
+	const { ws } = makeWorkspace();
+	const host = makeHost({
+		workspace: ws,
+		leaf: makeLeaf({ id: 'host' }),
+		file,
+		previewLeaf: preview,
+		openedTaskPath: file.path,
+		available: [preview],
+		preferTaskView: false,
+	});
+
+	const result = await openTaskInPreviewLeaf(host, file.path, {
+		force: true,
+	});
+
+	assert.equal(result.status, 'opened');
+	assert.equal(preview.calls.openFile.length, 1);
+	assert.deepEqual(preview.calls.setViewState, []);
+});
+
+test('force + 非任务笔记路径: isTaskNote 门控未破，按 default 打开', async () => {
+	const file = makeFile('5-其他/Note.md');
+	const preview = makeLeaf({ id: 'preview', file });
+	const { ws } = makeWorkspace();
+	const host = makeHost({
+		workspace: ws,
+		leaf: makeLeaf({ id: 'host' }),
+		file,
+		previewLeaf: preview,
+		openedTaskPath: file.path,
+		available: [preview],
+		preferTaskView: true,
+		tasksRootPath: '3-任务',
+	});
+
+	const result = await openTaskInPreviewLeaf(host, file.path, {
+		force: true,
+	});
+
+	assert.equal(result.status, 'opened');
+	assert.equal(preview.calls.openFile.length, 1);
+	assert.deepEqual(preview.calls.setViewState, []);
+});
+
 test('Alt 当前标签组已有同文件：只激活，不新建标签', async () => {
 	const file = makeFile('3-任务/P/T.md');
 	const tabGroup = { id: 'tabs' };

@@ -212,6 +212,7 @@ export async function executeBatchCreate(
         if (firstCreatedFile) {
             await view.openFileInPreview(firstCreatedFile, {
                 cursorOffset: firstCursorOffset,
+                force: true,
             });
         }
 
@@ -500,6 +501,7 @@ export async function handleCreateTask(view: IOTOTasksCenterView, type: TaskCrea
         await view.refreshFromVaultChange();
         await view.openFileInPreview(result.file, {
             cursorOffset: result.cursorOffset,
+            force: true,
         });
     } catch (error) {
         const message =
@@ -614,6 +616,7 @@ export async function handleCreateSubtask(
         await view.refreshFromVaultChange();
         await view.openFileInPreview(result.file, {
             cursorOffset: result.cursorOffset,
+            force: true,
         });
     } catch (error) {
         const message =
