@@ -12,6 +12,7 @@ import {
 	encodeQuadrantTimeFilter,
 	type QuadrantTimeFilter,
 } from '../../tasks-center/task-time-range';
+import type { QuadrantTaskType } from '../../tasks-center/task-type-infer';
 import { parseQuadrantViewState } from './constants';
 import { encodeQuadrantScope } from './scope-codec';
 
@@ -43,6 +44,7 @@ function resolveFilterStorage(app: unknown): FilterStorage | null {
 
 export function readQuadrantFilterFallback(app: unknown): {
 	statusKeys?: QuadrantStatusKey[];
+	typeKeys?: QuadrantTaskType[];
 	timeFilter?: QuadrantTimeFilter;
 	projectScope?: QuadrantProjectScope;
 } {
@@ -55,10 +57,12 @@ export function readQuadrantFilterFallback(app: unknown): {
 		);
 		const fallback: {
 			statusKeys?: QuadrantStatusKey[];
+			typeKeys?: QuadrantTaskType[];
 			timeFilter?: QuadrantTimeFilter;
 			projectScope?: QuadrantProjectScope;
 		} = {};
 		if (parsed.statusKeys) fallback.statusKeys = parsed.statusKeys;
+		if (parsed.typeKeys) fallback.typeKeys = parsed.typeKeys;
 		if (parsed.timeFilter) fallback.timeFilter = parsed.timeFilter;
 		// 解析器已承担严格校验，无需二次判断。
 		if (parsed.projectScope) fallback.projectScope = parsed.projectScope;
@@ -72,6 +76,7 @@ export function writeQuadrantFilterFallback(
 	app: unknown,
 	filter: {
 		statusKeys: ReadonlySet<QuadrantStatusKey>;
+		typeKeys: ReadonlySet<QuadrantTaskType>;
 		timeFilter: QuadrantTimeFilter;
 		projectScope: QuadrantProjectScope;
 	},
@@ -81,6 +86,7 @@ export function writeQuadrantFilterFallback(
 	try {
 		storage.saveLocalStorage(QUADRANT_FILTER_STORAGE_KEY, {
 			statusKeys: [...filter.statusKeys],
+			typeKeys: [...filter.typeKeys],
 			timeFilter: encodeQuadrantTimeFilter(filter.timeFilter),
 			projectScope: encodeQuadrantScope(filter.projectScope),
 		});

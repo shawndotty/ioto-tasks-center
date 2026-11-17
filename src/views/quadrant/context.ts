@@ -11,6 +11,7 @@ import type {
 	QuadrantModel,
 	QuadrantProjectScope,
 	QuadrantStatusKey,
+	QuadrantTaskType,
 } from '../../tasks-center/quadrant-data';
 import type { TaskPriorityValue } from '../../tasks-center/task-priority';
 import type { QuadrantTimeFilter } from '../../tasks-center/task-time-range';
@@ -22,6 +23,7 @@ export interface QuadrantViewContext {
 	getModel(): QuadrantModel | null;
 	getProjectOptions(): QuadrantProjectOption[];
 	getStatusKeys(): ReadonlySet<QuadrantStatusKey>;
+	getTypeKeys(): ReadonlySet<QuadrantTaskType>;
 	getProjectScope(): QuadrantProjectScope;
 	isSidebarOpen(): boolean;
 	getTimeFilter(): QuadrantTimeFilter;
@@ -29,6 +31,9 @@ export interface QuadrantViewContext {
 	getColorTaskTitleByPriority(): boolean;
 	getShowProjectNameInTaskList(): boolean;
 	toggleStatusKey(key: QuadrantStatusKey): void;
+	toggleTypeKey(key: QuadrantTaskType): void;
+	/** 「全部类型」用：一次性设值，避免 4 次 toggle 触发 4 轮重建。 */
+	setTypeKeys(keys: readonly QuadrantTaskType[]): void;
 	setProjectScope(scope: QuadrantProjectScope): void;
 	toggleSidebar(): void;
 	setTimeFilter(filter: QuadrantTimeFilter): void;

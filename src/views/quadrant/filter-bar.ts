@@ -6,6 +6,8 @@
  * 由 CSS 命名区域排布（宽屏一行 / 窄屏两行），断点切换不重建 DOM。
  * 切换 chip / 范围后由 `updateQuadrantFilterBar` 原地更新 `aria-pressed`、
  * 计数与 `data-*`，避免 `<select>` 因整块重建而失焦。
+ *
+ * 任务类型控件见 [[Plan-20261117-085118]]，紧随时间范围控件之后。
  */
 
 import { Menu } from 'obsidian';
@@ -22,6 +24,10 @@ import {
 	buildQuadrantTimeControls,
 	updateQuadrantTimeControls,
 } from './time-filter-bar';
+import {
+	buildQuadrantTypeControl,
+	updateQuadrantTypeControl,
+} from './type-filter-bar';
 
 const STATUS_CHIP_ORDER: QuadrantStatusKey[] = [
 	'in-progress',
@@ -107,6 +113,10 @@ export function buildQuadrantFilterBar(
 	// 时间范围：宽屏下拉 / 窄屏菜单，二者都在 DOM，显示切换交给 CSS
 	// （[[Plan-20261116-083330]] §3.3 / §3.4）。
 	buildQuadrantTimeControls(barEl, ctx);
+
+	// 任务类型：常驻菜单按钮，放在时间控件之后、侧栏开关之前
+	// （[[Plan-20261117-085118]] §5.4）。
+	buildQuadrantTypeControl(barEl, ctx);
 
 	// 开关放在 header 最右（[[Plan-20261116-060249]] §3.4）：过滤条里**只此一个**，
 	// `updateQuadrantFilterBar` 在 `headerEl` 上按类名回写状态，作用域已覆盖此处。
@@ -281,4 +291,5 @@ export function updateQuadrantFilterBar(
 	}
 
 	updateQuadrantTimeControls(headerEl, ctx);
+	updateQuadrantTypeControl(headerEl, ctx);
 }

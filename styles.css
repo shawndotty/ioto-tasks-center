@@ -7292,6 +7292,7 @@ button[aria-pressed='true']
    （[[Plan-20261116-103424]] §4.1）。 */
 button:not(.clickable-icon).ioto-pq-status-menu,
 button:not(.clickable-icon).ioto-pq-time-menu,
+button:not(.clickable-icon).ioto-pq-type-menu,
 button:not(.clickable-icon).ioto-pq-header__toggle {
 	box-sizing: border-box;
 	height: var(--ioto-pq-control-h);
@@ -7363,7 +7364,29 @@ button:not(.clickable-icon).ioto-pq-header__toggle {
 	font-variant-numeric: tabular-nums;
 }
 
-.ioto-pq-time-menu.is-active {
+/* 任务类型按钮常显（[[Plan-20261117-085118]] §5.11）：不能并入上面的 `display:none`
+   组，否则宽屏没有入口；其余视觉与状态 / 时间按钮同一组声明。 */
+.ioto-pq-type-menu {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: var(--ioto-pq-control-h);
+	padding: 0 10px;
+	border: var(--ioto-pq-chip-border);
+	border-radius: var(--ioto-pq-chip-radius);
+	background: var(--ioto-pq-chip-bg);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	cursor: pointer;
+}
+
+.ioto-pq-type-menu__count {
+	color: var(--text-faint);
+	font-variant-numeric: tabular-nums;
+}
+
+.ioto-pq-time-menu.is-active,
+.ioto-pq-type-menu.is-active {
 	border-color: var(--interactive-accent);
 	color: var(--text-normal);
 	background: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
@@ -7380,6 +7403,7 @@ button:not(.clickable-icon).ioto-pq-header__toggle {
 /* 窄屏图标化（[[Plan-20261116-095729]] §3.4）：图标默认隐藏，断点内与文字互换。 */
 .ioto-pq-status-menu__icon,
 .ioto-pq-time-menu__icon,
+.ioto-pq-type-menu__icon,
 .ioto-pq-sidebar-toggle__icon {
 	display: none;
 	align-items: center;
@@ -7388,6 +7412,7 @@ button:not(.clickable-icon).ioto-pq-header__toggle {
 
 .ioto-pq-status-menu__icon svg,
 .ioto-pq-time-menu__icon svg,
+.ioto-pq-type-menu__icon svg,
 .ioto-pq-sidebar-toggle__icon svg {
 	width: 16px;
 	height: 16px;
@@ -8132,14 +8157,17 @@ button:not(.clickable-icon).ioto-pq-time-panel__action {
 		display: inline-flex;
 	}
 
+	/* 类型按钮宽屏已常显，这里只切图标形态（[[Plan-20261117-085118]] §5.11）。 */
 	.ioto-pq-status-menu__icon,
 	.ioto-pq-time-menu__icon,
+	.ioto-pq-type-menu__icon,
 	.ioto-pq-sidebar-toggle__icon {
 		display: inline-flex;
 	}
 
 	.ioto-pq-status-menu__label,
 	.ioto-pq-time-menu__label,
+	.ioto-pq-type-menu__label,
 	.ioto-pq-time-menu__value,
 	.ioto-pq-sidebar-toggle__label {
 		display: none;
@@ -8147,6 +8175,7 @@ button:not(.clickable-icon).ioto-pq-time-panel__action {
 
 	.ioto-pq-status-menu,
 	.ioto-pq-time-menu,
+	.ioto-pq-type-menu,
 	.ioto-pq-header__toggle {
 		min-width: 36px;
 		justify-content: center;
@@ -8157,6 +8186,7 @@ button:not(.clickable-icon).ioto-pq-time-panel__action {
 	/* 平板核心 padding 提权（原只在 ≤720px 写，紧凑档同样需要）。 */
 	.is-tablet button:not(.clickable-icon).ioto-pq-status-menu,
 	.is-tablet button:not(.clickable-icon).ioto-pq-time-menu,
+	.is-tablet button:not(.clickable-icon).ioto-pq-type-menu,
 	.is-tablet button:not(.clickable-icon).ioto-pq-header__toggle {
 		padding-inline: 8px;
 	}
@@ -8242,6 +8272,7 @@ button:not(.clickable-icon).ioto-pq-time-panel__action {
 
 	.ioto-pq-status-menu,
 	.ioto-pq-time-menu,
+	.ioto-pq-type-menu,
 	.ioto-pq-header__toggle {
 		min-width: 32px;
 		padding-inline: 6px;

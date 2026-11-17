@@ -352,3 +352,137 @@ test('时间 + 项目范围 + 状态组合：total 守恒，scopedTotal 为时�
 	assert.equal(model.counts.unlabeled, 1);
 });
 
+// 任务类型过滤（[[Plan-20261117-085118]] §5.2 / §6.2）。
+function typedFilter(options = {}) {
+	const base = filter(options);
+	return options.typeKeys === undefined
+		? base
+		: { ...base, typeKeys: new Set(options.typeKeys) };
+}
+
+const TYPED_TASKS = [
+	task('3-任务/A/A-计划-V1.md', { priority: 0, statusKey: 'todo' }),
+	task('3-任务/A/A-计划-V2.md', { priority: 1, statusKey: 'completed' }),
+	task('3-任务/A/A-主题-Dev.md', { priority: 2, statusKey: 'in-progress' }),
+	task('3-任务/A/A-2026-06-24.md', { priority: 3, statusKey: 'todo' }),
+	task('3-任务/A/随意任务.md', { priority: 0, statusKey: 'todo' }),
+];
+
+test('缺省 typeKeys：与改动前逐项一致（全选回归）', () => {
+	const withoutField = buildQuadrantModel(TYPED_TASKS, filter());
+	const allSelected = buildQuadrantModel(
+		TYPED_TASKS,
+		typedFilter({ typeKeys: ['normal', 'date', 'topic', 'plan'] }),
+	);
+	assert.deepEqual(withoutField.counts, allSelected.counts);
+	assert.equal(withoutField.total, 4);
+	assert.equal(withoutField.scopedTotal, 5);
+	assert.deepEqual(withoutField.typeCounts, {
+		normal: 1,
+		date: 1,
+		topic: 1,
+		plan: 2,
+	});
+});
+
+test('仅选 plan：桶内只剩计划任务，total 为计划任务数', () => {
+	const model = buildQuadrantModel(
+		TYPED_TASKS,
+		typedFilter({ typeKeys: ['plan'], statusKeys: ['todo', 'completed'] }),
+	);
+	assert.equal(model.total, 2);
+	assert.equal(model.counts.p0, 1);
+	assert.equal(model.counts.p1, 1);
+	assert.deepEqual(pathsOf(model.buckets.p0), ['3-任务/A/A-计划-V1.md']);
+	assert.deepEqual(pathsOf(model.buckets.p1), ['3-任务/A/A-计划-V2.md']);
+});
+
+test('typeCounts 之和 = 项目 + 时间范围总数，不受类型过滤影响', () => {
+	const model = buildQuadrantModel(
+		TYPED_TASKS,
+		typedFilter({ typeKeys: ['plan'] }),
+	);
+	const sum = Object.values(model.typeCounts).reduce((a, b) => a + b, 0);
+	assert.equal(sum, 5);
+});
+
+test('sum(选中 typeCounts) === scopedTotal 不变式', () => {
+	const tasks = [
+		...TYPED_TASKS,
+		task('3-任务/Archived/A-计划-V3.md', { priority: 0 }),
+	];
+	const model = buildQuadrantModel(
+		tasks,
+		typedFilter({
+			typeKeys: ['plan', 'date'],
+			hiddenProjectNames: ['Archived'],
+		}),
+	);
+	const included =
+		model.typeCounts.plan + model.typeCounts.date;
+	assert.equal(included, model.scopedTotal);
+	assert.equal(model.scopedTotal, 3);
+});
+
+test('类型 + 状态叠加：状态计数只在选中类型内统计', () => {
+	const model = buildQuadrantModel(
+		TYPED_TASKS,
+		typedFilter({ typeKeys: ['plan', 'topic'] }),
+	);
+	assert.deepEqual(model.statusCounts, {
+		completed: 1,
+		'in-progress': 1,
+		todo: 1,
+	});
+});
+
+test('typeKeys 全不选：total / scopedTotal / statusCounts 归零，typeCounts 不变', () => {
+	const model = buildQuadrantModel(TYPED_TASKS, typedFilter({ typeKeys: [] }));
+	assert.equal(model.total, 0);
+	assert.equal(model.scopedTotal, 0);
+	assert.deepEqual(model.statusCounts, {
+		completed: 0,
+		'in-progress': 0,
+		todo: 0,
+	});
+	assert.deepEqual(model.typeCounts, {
+		normal: 1,
+		date: 1,
+		topic: 1,
+		plan: 2,
+	});
+	assert.deepEqual(model.unlabeled, []);
+});
+
+test('状态勾选变化不影响 typeCounts', () => {
+	const a = buildQuadrantModel(
+		TYPED_TASKS,
+		typedFilter({ statusKeys: ['todo'] }),
+	);
+	const b = buildQuadrantModel(
+		TYPED_TASKS,
+		typedFilter({ statusKeys: ['completed', 'in-progress'] }),
+	);
+	assert.deepEqual(a.typeCounts, b.typeCounts);
+});
+
+test('时间过滤在类型计数之前生效', () => {
+	const tasks = [
+		task('3-任务/A/A-计划-recent.md', { mtime: NOV_05 }),
+		task('3-任务/A/A-计划-old.md', { mtime: OCT_15 }),
+	];
+	const model = buildQuadrantModel(
+		tasks,
+		typedFilter({
+			timeFilter: { kind: 'preset', value: 'updated-calendar-month' },
+		}),
+		NOW,
+	);
+	assert.deepEqual(model.typeCounts, {
+		normal: 0,
+		date: 0,
+		topic: 0,
+		plan: 1,
+	});
+});
+

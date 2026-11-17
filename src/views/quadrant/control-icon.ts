@@ -4,6 +4,7 @@ import { setIcon } from 'obsidian';
 export const QUADRANT_CONTROL_ICONS = {
 	status: 'list-checks',
 	time: 'calendar-range',
+	type: 'tags',
 	unlabeled: 'inbox',
 } as const;
 

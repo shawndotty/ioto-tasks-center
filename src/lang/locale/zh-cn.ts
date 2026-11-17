@@ -59,6 +59,8 @@ const zhCN = {
 	'priorityQuadrant.time.presetWeek': '最近一周',
 	'priorityQuadrant.time.start': '开始日期',
 	'priorityQuadrant.title': '优先级矩阵',
+	'priorityQuadrant.type.all': '全部类型',
+	'priorityQuadrant.type.label': '任务类型',
 	'command.convertSelectedTextToSubtask': '将选中文本转为子任务',
 	'projectCenter.title': '项目中心',
 	'projectCenter.action.search': '搜索',

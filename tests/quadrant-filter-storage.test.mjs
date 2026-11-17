@@ -119,10 +119,11 @@ test('write：缺 API 或非对象 app 不抛错', () => {
 	}
 });
 
-test('write：key 固定、timeFilter / projectScope 编码为字符串、statusKeys 为普通数组', () => {
+test('write：key 固定、timeFilter / projectScope 编码为字符串、statusKeys / typeKeys 为普通数组', () => {
 	const app = createApp();
 	writeQuadrantFilterFallback(app, {
 		statusKeys: new Set(['completed', 'todo']),
+		typeKeys: new Set(['normal', 'date', 'topic', 'plan']),
 		timeFilter: {
 			kind: 'custom',
 			field: 'created',
@@ -133,6 +134,7 @@ test('write：key 固定、timeFilter / projectScope 编码为字符串、status
 	});
 	assert.deepEqual(app.store.get(QUADRANT_FILTER_STORAGE_KEY), {
 		statusKeys: ['completed', 'todo'],
+		typeKeys: ['normal', 'date', 'topic', 'plan'],
 		timeFilter: 'custom:created:2026-10-01:2026-10-31',
 		projectScope: 'project:IOTO Task Center',
 	});
@@ -149,6 +151,7 @@ test('write：三种 projectScope 往返一致', () => {
 		const app = createApp();
 		writeQuadrantFilterFallback(app, {
 			statusKeys: new Set(['todo']),
+			typeKeys: new Set(['normal', 'date', 'topic', 'plan']),
 			timeFilter: { kind: 'none' },
 			projectScope,
 		});
@@ -160,16 +163,19 @@ test('write：空 Set 写成 []，读回仍为全不选', () => {
 	const app = createApp();
 	writeQuadrantFilterFallback(app, {
 		statusKeys: new Set(),
+		typeKeys: new Set(['normal', 'date', 'topic', 'plan']),
 		timeFilter: { kind: 'none' },
 		projectScope: { kind: 'unarchived' },
 	});
 	assert.deepEqual(app.store.get(QUADRANT_FILTER_STORAGE_KEY), {
 		statusKeys: [],
+		typeKeys: ['normal', 'date', 'topic', 'plan'],
 		timeFilter: 'none',
 		projectScope: 'unarchived',
 	});
 	assert.deepEqual(readQuadrantFilterFallback(app), {
 		statusKeys: [],
+		typeKeys: ['normal', 'date', 'topic', 'plan'],
 		timeFilter: { kind: 'none' },
 		projectScope: { kind: 'unarchived' },
 	});
@@ -179,8 +185,46 @@ test('write：saveLocalStorage 抛错不向上抛', () => {
 	assert.doesNotThrow(() =>
 		writeQuadrantFilterFallback(createApp({ saveThrows: true }), {
 			statusKeys: new Set(['todo']),
+			typeKeys: new Set(['normal', 'date', 'topic', 'plan']),
 			timeFilter: { kind: 'none' },
 			projectScope: { kind: 'unarchived' },
 		}),
 	);
+});
+
+// typeKeys 字段（[[Plan-20261117-085118]] §6.5）。
+test('read：旧记录（无 typeKeys）不带该字段 → 视图侧回落全选', () => {
+	const app = createApp();
+	app.store.set(QUADRANT_FILTER_STORAGE_KEY, {
+		statusKeys: ['todo'],
+		timeFilter: 'none',
+		projectScope: 'unarchived',
+	});
+	const result = readQuadrantFilterFallback(app);
+	assert.equal('typeKeys' in result, false);
+});
+
+test('typeKeys 往返：写回后再次读回一致，空数组保持', () => {
+	for (const keys of [['plan'], ['normal', 'date', 'topic', 'plan'], []]) {
+		const app = createApp();
+		writeQuadrantFilterFallback(app, {
+			statusKeys: new Set(['todo']),
+			typeKeys: new Set(keys),
+			timeFilter: { kind: 'none' },
+			projectScope: { kind: 'unarchived' },
+		});
+		assert.deepEqual(readQuadrantFilterFallback(app).typeKeys, keys);
+	}
+});
+
+test('read：脏 typeKeys 不污染其它字段', () => {
+	const app = createApp();
+	app.store.set(QUADRANT_FILTER_STORAGE_KEY, {
+		statusKeys: ['todo'],
+		typeKeys: ['bogus'],
+		timeFilter: 'none',
+	});
+	const result = readQuadrantFilterFallback(app);
+	assert.equal(result.typeKeys, undefined);
+	assert.deepEqual(result.statusKeys, ['todo']);
 });

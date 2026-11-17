@@ -24,6 +24,7 @@ import {
 	type QuadrantModel,
 	type QuadrantProjectScope,
 	type QuadrantStatusKey,
+	type QuadrantTaskType,
 } from '../tasks-center/quadrant-data';
 import {
 	encodeQuadrantTimeFilter,
@@ -47,6 +48,7 @@ import { applyAppearanceStyleClasses } from './appearance-style';
 import { buildQuadrantFilterBar, updateQuadrantFilterBar } from './quadrant/filter-bar';
 import {
 	DEFAULT_QUADRANT_STATUS_KEYS,
+	DEFAULT_QUADRANT_TYPE_KEYS,
 	IOTO_PRIORITY_QUADRANT_VIEW_TYPE,
 	mergeQuadrantViewState,
 	parseQuadrantViewState,
@@ -111,6 +113,7 @@ export class IOTOPriorityQuadrantView
 	/** 最近打开的任务路径（[[Plan-20261117-062052]] §5.6）：仅用于「同一任务只激活」判定。 */
 	openedTaskPath: string | null = null;
 	private statusKeys = new Set<QuadrantStatusKey>(DEFAULT_QUADRANT_STATUS_KEYS);
+	private typeKeys = new Set<QuadrantTaskType>(DEFAULT_QUADRANT_TYPE_KEYS);
 	private projectScope: QuadrantProjectScope = { kind: 'unarchived' };
 	private sidebarOpen = false;
 	private timeFilter: QuadrantTimeFilter = { kind: 'none' };
@@ -159,6 +162,7 @@ export class IOTOPriorityQuadrantView
 			sidebarOpen: this.sidebarOpen,
 			timeFilter: encodeQuadrantTimeFilter(this.timeFilter),
 			statusKeys: [...this.statusKeys],
+			typeKeys: [...this.typeKeys],
 			projectScope: encodeQuadrantScope(this.projectScope),
 			previewLeafId: getWorkspaceLeafId(this.previewLeaf) ?? undefined,
 			openedTaskPath: this.openedTaskPath ?? undefined,
@@ -174,6 +178,7 @@ export class IOTOPriorityQuadrantView
 				sidebarOpen: this.sidebarOpen,
 				timeFilter: fallback.timeFilter ?? this.timeFilter,
 				statusKeys: fallback.statusKeys ?? [...this.statusKeys],
+				typeKeys: fallback.typeKeys ?? [...this.typeKeys],
 				projectScope: fallback.projectScope ?? this.projectScope,
 			},
 			parsed,
@@ -182,6 +187,7 @@ export class IOTOPriorityQuadrantView
 		this.sidebarOpen = merged.sidebarOpen;
 		this.timeFilter = merged.timeFilter;
 		this.statusKeys = new Set(merged.statusKeys);
+		this.typeKeys = new Set(merged.typeKeys);
 		this.projectScope = merged.projectScope;
 		// 恢复了不同的项目范围（尤其是一个已被删除的项目）时，允许再次提示一次。
 		if (
@@ -262,6 +268,10 @@ export class IOTOPriorityQuadrantView
 		return this.statusKeys;
 	}
 
+	getTypeKeys(): ReadonlySet<QuadrantTaskType> {
+		return this.typeKeys;
+	}
+
 	getProjectScope(): QuadrantProjectScope {
 		return this.projectScope;
 	}
@@ -289,6 +299,23 @@ export class IOTOPriorityQuadrantView
 	toggleStatusKey(key: QuadrantStatusKey): void {
 		if (this.statusKeys.has(key)) this.statusKeys.delete(key);
 		else this.statusKeys.add(key);
+		this.rebuildModel();
+		this.render();
+		this.writeFilterFallback();
+		this.app.workspace.requestSaveLayout();
+	}
+
+	toggleTypeKey(key: QuadrantTaskType): void {
+		if (this.typeKeys.has(key)) this.typeKeys.delete(key);
+		else this.typeKeys.add(key);
+		this.rebuildModel();
+		this.render();
+		this.writeFilterFallback();
+		this.app.workspace.requestSaveLayout();
+	}
+
+	setTypeKeys(keys: readonly QuadrantTaskType[]): void {
+		this.typeKeys = new Set(keys);
 		this.rebuildModel();
 		this.render();
 		this.writeFilterFallback();
@@ -539,10 +566,11 @@ export class IOTOPriorityQuadrantView
 
 	// --- 加载与状态 ---
 
-	/** 过滤状态的唯一落盘点：三字段同写，避免后续新增字段再漏（[[Plan-20261116-161225]] 步骤 4.5）。 */
+	/** 过滤状态的唯一落盘点：四字段同写，避免后续新增字段再漏（[[Plan-20261116-161225]] 步骤 4.5）。 */
 	private writeFilterFallback(): void {
 		writeQuadrantFilterFallback(this.app, {
 			statusKeys: this.statusKeys,
+			typeKeys: this.typeKeys,
 			timeFilter: this.timeFilter,
 			projectScope: this.projectScope,
 		});
@@ -608,6 +636,7 @@ export class IOTOPriorityQuadrantView
 	private rebuildModel(): void {
 		this.model = buildQuadrantModel(this.lastTasks, {
 			statusKeys: this.statusKeys,
+			typeKeys: this.typeKeys,
 			projectScope: this.projectScope,
 			hiddenProjectNames: new Set(this.deps.getHiddenProjectNames()),
 			timeFilter: this.timeFilter,
@@ -690,6 +719,7 @@ export class IOTOPriorityQuadrantView
 		root.dataset.scanStatus = this.scanStatus;
 		root.dataset.projectScope = encodeQuadrantScope(this.projectScope);
 		root.dataset.statusFilter = [...this.statusKeys].join(',');
+		root.dataset.typeFilter = [...this.typeKeys].join(',');
 		root.dataset.sidebarOpen = this.sidebarOpen ? 'true' : 'false';
 		root.dataset.timeFilter = encodeQuadrantTimeFilter(this.timeFilter);
 

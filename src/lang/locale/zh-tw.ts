@@ -59,6 +59,8 @@ const zhTW = {
 	'priorityQuadrant.time.presetWeek': '最近一週',
 	'priorityQuadrant.time.start': '開始日期',
 	'priorityQuadrant.title': '優先級矩陣',
+	'priorityQuadrant.type.all': '全部類型',
+	'priorityQuadrant.type.label': '任務類型',
 	'command.convertSelectedTextToSubtask': '將選中文本轉為子任務',
 	'projectCenter.title': '專案中心',
 	'projectCenter.action.search': '搜尋',

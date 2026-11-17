@@ -9,6 +9,11 @@
 import { TASK_PRIORITY_VALUES, type TaskPriorityValue } from './task-priority';
 import { getTaskProjectNameFromPath } from './task-display-title';
 import {
+	inferTaskType,
+	QUADRANT_TASK_TYPES,
+	type QuadrantTaskType,
+} from './task-type-infer';
+import {
 	isTaskInTimeBounds,
 	resolveTaskTimeBounds,
 	type QuadrantTimeFilter,
@@ -20,6 +25,9 @@ export const QUADRANT_KEYS = ['p0', 'p1', 'p2', 'p3'] as const;
 export type QuadrantKey = (typeof QUADRANT_KEYS)[number];
 
 export type QuadrantBucketKey = QuadrantKey | 'unlabeled';
+
+/** 便于视图层只从本模块取类型，避免新增额外依赖边。 */
+export type { QuadrantTaskType } from './task-type-infer';
 
 /** 过滤 chip 的三态；`empty` 在模型入口折进 `todo`。 */
 export type QuadrantStatusKey = 'completed' | 'in-progress' | 'todo';
@@ -35,6 +43,8 @@ export interface QuadrantFilterState {
 	projectScope: QuadrantProjectScope;
 	hiddenProjectNames: ReadonlySet<string>;
 	timeFilter: QuadrantTimeFilter;
+	/** 缺省 = 全选，保持既有调用方与测试辅助函数不变。 */
+	typeKeys?: ReadonlySet<QuadrantTaskType>;
 }
 
 export interface QuadrantModel {
@@ -42,9 +52,11 @@ export interface QuadrantModel {
 	unlabeled: TaskFileEntry[];
 	/** 当前状态过滤下的各桶计数（象限标题 / 侧栏标题用） */
 	counts: Record<QuadrantBucketKey, number>;
-	/** 项目范围 + 时间过滤后、状态过滤前的三态计数（chip 用） */
+	/** 项目范围 + 时间 + 类型过滤后、状态过滤前的三态计数（chip 用） */
 	statusCounts: Record<QuadrantStatusKey, number>;
-	/** 项目范围 + 时间过滤后、状态过滤前的总数 */
+	/** 项目范围 + 时间过滤后、类型/状态过滤前的各类型计数（类型菜单用） */
+	typeCounts: Record<QuadrantTaskType, number>;
+	/** 项目范围 + 时间 + 类型过滤后、状态过滤前的总数 */
 	scopedTotal: number;
 	/** 最终参与象限 + 侧栏的任务数 */
 	total: number;
@@ -116,6 +128,14 @@ export function buildQuadrantModel(
 		'in-progress': 0,
 		todo: 0,
 	};
+	const typeKeys: ReadonlySet<QuadrantTaskType> =
+		filter.typeKeys ?? new Set(QUADRANT_TASK_TYPES);
+	const typeCounts: Record<QuadrantTaskType, number> = {
+		normal: 0,
+		date: 0,
+		topic: 0,
+		plan: 0,
+	};
 	let scopedTotal = 0;
 	const timeBounds = resolveTaskTimeBounds(filter.timeFilter, nowMs);
 
@@ -130,6 +150,14 @@ export function buildQuadrantModel(
 			continue;
 		}
 		if (timeBounds && !isTaskInTimeBounds(task, timeBounds)) continue;
+
+		const taskType = inferTaskType(
+			task.basename,
+			getTaskProjectNameFromPath(task.path),
+		);
+		typeCounts[taskType] += 1;
+		if (!typeKeys.has(taskType)) continue;
+
 		scopedTotal += 1;
 		const statusKey = toQuadrantStatusKey(task.status.key);
 		statusCounts[statusKey] += 1;
@@ -157,6 +185,7 @@ export function buildQuadrantModel(
 		unlabeled,
 		counts,
 		statusCounts,
+		typeCounts,
 		scopedTotal,
 		total:
 			counts.p0 + counts.p1 + counts.p2 + counts.p3 + counts.unlabeled,

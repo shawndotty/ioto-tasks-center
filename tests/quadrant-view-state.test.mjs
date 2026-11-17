@@ -175,6 +175,7 @@ const CURRENT_STATE = {
 	sidebarOpen: true,
 	timeFilter: { kind: 'preset', value: 'updated-week' },
 	statusKeys: ['in-progress', 'todo'],
+	typeKeys: ['normal', 'date', 'topic', 'plan'],
 	projectScope: { kind: 'project', projectName: 'IOTO Task Center' },
 };
 
@@ -226,6 +227,7 @@ test('mergeQuadrantViewState：与 parse 组合，全不选 + 全部时间不被
 		sidebarOpen: true,
 		timeFilter: { kind: 'none' },
 		statusKeys: [],
+		typeKeys: CURRENT_STATE.typeKeys,
 		projectScope: CURRENT_STATE.projectScope,
 	});
 });
@@ -404,5 +406,69 @@ test('mergeQuadrantViewState：openedTaskPath 不进入筛选合并', () => {
 test('parseQuadrantViewState：openedTaskPath 全空输入保持 {}', () => {
 	assert.deepEqual(parseQuadrantViewState({}), {});
 	assert.deepEqual(parseQuadrantViewState(null), {});
+});
+
+// typeKeys 持久化（[[Plan-20261117-085118]] §5.6 / §6.4）。
+test('parseQuadrantViewState：typeKeys 白名单数组保留并去重', () => {
+	assert.deepEqual(parseQuadrantViewState({ typeKeys: ['plan'] }), {
+		typeKeys: ['plan'],
+	});
+	assert.deepEqual(
+		parseQuadrantViewState({ typeKeys: ['plan', 'plan', 'date'] }),
+		{ typeKeys: ['plan', 'date'] },
+	);
+});
+
+test('parseQuadrantViewState：typeKeys 空数组合法（全不选）', () => {
+	assert.deepEqual(parseQuadrantViewState({ typeKeys: [] }), { typeKeys: [] });
+});
+
+test('parseQuadrantViewState：typeKeys 脏值被过滤，全脏不带字段', () => {
+	assert.deepEqual(parseQuadrantViewState({ typeKeys: ['plan', 'bogus', 1] }), {
+		typeKeys: ['plan'],
+	});
+	assert.deepEqual(parseQuadrantViewState({ typeKeys: ['bogus'] }), {});
+});
+
+test('parseQuadrantViewState：typeKeys 非数组一律忽略', () => {
+	for (const value of ['plan', 42, null, {}, true]) {
+		assert.deepEqual(parseQuadrantViewState({ typeKeys: value }), {});
+	}
+});
+
+test('parseQuadrantViewState：typeKeys 与四字段共存互不影响', () => {
+	assert.deepEqual(
+		parseQuadrantViewState({
+			sidebarOpen: false,
+			timeFilter: 'preset:updated-week',
+			statusKeys: ['todo'],
+			typeKeys: ['plan'],
+			projectScope: 'project:IOTO Task Center',
+		}),
+		{
+			sidebarOpen: false,
+			timeFilter: { kind: 'preset', value: 'updated-week' },
+			statusKeys: ['todo'],
+			typeKeys: ['plan'],
+			projectScope: { kind: 'project', projectName: 'IOTO Task Center' },
+		},
+	);
+});
+
+test('parseQuadrantViewState：typeKeys getState(数组) → parse 往返一致', () => {
+	for (const keys of [[], ['plan'], ['normal', 'date', 'topic', 'plan']]) {
+		assert.deepEqual(parseQuadrantViewState({ typeKeys: keys }).typeKeys, keys);
+	}
+});
+
+test('mergeQuadrantViewState：typeKeys 缺失保留当前，空数组保留全不选', () => {
+	const merged = mergeQuadrantViewState(CURRENT_STATE, {});
+	assert.deepEqual(merged.typeKeys, CURRENT_STATE.typeKeys);
+	assert.notEqual(merged.typeKeys, CURRENT_STATE.typeKeys);
+	assert.deepEqual(mergeQuadrantViewState(CURRENT_STATE, { typeKeys: [] }).typeKeys, []);
+	assert.deepEqual(
+		mergeQuadrantViewState(CURRENT_STATE, { typeKeys: ['plan'] }).typeKeys,
+		['plan'],
+	);
 });
 

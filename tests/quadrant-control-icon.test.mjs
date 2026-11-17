@@ -36,6 +36,7 @@ test('图标常量与既有 Lucide id 对齐', () => {
 	assert.deepEqual(QUADRANT_CONTROL_ICONS, {
 		status: 'list-checks',
 		time: 'calendar-range',
+		type: 'tags',
 		unlabeled: 'inbox',
 	});
 });

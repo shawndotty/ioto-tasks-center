@@ -68,6 +68,8 @@ const en = {
 	'priorityQuadrant.time.presetWeek': 'Last 7 days',
 	'priorityQuadrant.time.start': 'Start date',
 	'priorityQuadrant.title': 'Priority matrix',
+	'priorityQuadrant.type.all': 'All types',
+	'priorityQuadrant.type.label': 'Task type',
 	'command.convertSelectedTextToSubtask': 'Convert selected text to subtask',
 	'projectCenter.title': 'Project center',
 	'projectCenter.action.search': 'Search',
