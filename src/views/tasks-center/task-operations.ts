@@ -464,6 +464,7 @@ export async function handleCreateTask(view: IOTOTasksCenterView, type: TaskCrea
             {
                 descriptionText: t('modal.newTask.desc'),
                 confirmButtonText: t('modal.create'),
+                initialStarred: view.activeTaskFilterTab === 'core',
             },
         ).openAndGetValue();
         if (!modalResult) {
@@ -560,6 +561,7 @@ export async function handleCreateSubtask(
             {
                 descriptionText: t('modal.newSubtask.desc'),
                 confirmButtonText: t('modal.create'),
+                initialStarred: view.activeTaskFilterTab === 'core',
             },
         ).openAndGetValue();
         if (!modalResult) {

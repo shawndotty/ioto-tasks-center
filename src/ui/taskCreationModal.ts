@@ -16,6 +16,8 @@ interface TaskCreationModalOptions {
 	includeNameInput?: boolean;
 	/** 传入后优先级固定为该值，弹窗只读展示，不再渲染下拉框。 */
 	lockedPriority?: TaskPriorityValue;
+	/** 打开弹窗时「核心任务」开关的初始态；默认 false。 */
+	initialStarred?: boolean;
 }
 
 export interface TaskCreationModalResult {
@@ -31,6 +33,7 @@ export class TaskCreationModal extends Modal {
 	private readonly confirmButtonText: string;
 	private readonly includeNameInput: boolean;
 	private readonly lockedPriority: TaskPriorityValue | null;
+	private readonly initialStarred: boolean;
 	private nameInput: TextComponent | null = null;
 	private priority: TaskPriorityValue | null = null;
 	private starred = false;
@@ -53,6 +56,8 @@ export class TaskCreationModal extends Modal {
 		this.confirmButtonText = options.confirmButtonText ?? t('modal.confirm');
 		this.includeNameInput = options.includeNameInput ?? true;
 		this.lockedPriority = options.lockedPriority ?? null;
+		this.initialStarred = options.initialStarred ?? false;
+		this.starred = this.initialStarred;
 	}
 
 	openAndGetValue(): Promise<TaskCreationModalResult | null> {
@@ -111,7 +116,7 @@ export class TaskCreationModal extends Modal {
 		new Setting(this.contentEl)
 			.setName(t('view.taskCoreBadge.label'))
 			.addToggle((toggle) =>
-				toggle.setValue(false).onChange((value) => {
+				toggle.setValue(this.initialStarred).onChange((value) => {
 					this.starred = value;
 				}),
 			);
