@@ -216,7 +216,7 @@ export function renderChecklistGroup(options: {
 
 		const selected = editing.selectedLine === item.line;
 		const textEl = cardEl.createDiv({
-			cls: 'ioto-task-view__card-text',
+			cls: 'ioto-task-view__card-text markdown-rendered',
 			attr: {
 				title: selected
 					? t(
@@ -559,7 +559,7 @@ export function renderChecklistGroup(options: {
 				});
 			}
 			const mdEl = continuationEl.createDiv({
-				cls: 'ioto-task-view__md',
+				cls: 'ioto-task-view__md markdown-rendered',
 			});
 			void MarkdownRenderer.render(
 				app,
@@ -587,7 +587,7 @@ export function renderMarkdownChunk(options: {
 		return;
 	}
 
-	const markdownEl = bodyEl.createDiv({ cls: 'ioto-task-view__md' });
+	const markdownEl = bodyEl.createDiv({ cls: 'ioto-task-view__md markdown-rendered' });
 	void MarkdownRenderer.render(
 		app,
 		markdown,
