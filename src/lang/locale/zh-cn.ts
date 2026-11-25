@@ -875,7 +875,9 @@ const zhCN = {
 	'polish.description.warnContinuation': '续写区未参与（{0} 行）',
 	'polish.description.warnUnchanged': '未产生改动',
 	'polish.description.warnTooLong': '超过 500 字上限，已禁用应用',
-	'polish.description.warnDeliverablesRemoved': '已移除模型自造的交付物标记',
+	'polish.description.warnDeliverablesRemoved':
+		'已移除模型新增的交付物标记（原文中没有）',
+	'polish.description.warnDeliverablesRestored': '已补回交付物标记：{0}',
 	'polish.description.errNoModel':
 		'未配置模型，请到「设置 → IOTO Settings → AI → API 通道」',
 	'polish.description.errNoKey': '未配置 API 密钥，路径同上',

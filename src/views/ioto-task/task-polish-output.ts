@@ -1,9 +1,11 @@
 /**
- * 任务描述润色的输出清洗与校验（Plan-20261125-210407 §4.3）。
+ * 任务描述润色的输出清洗与校验（Plan-20261125-210407 §4.3；Plan-20261126-063235 §3.3）。
  *
- * 纯函数、UI-free。清洗顺序本身是正确性的一部分：先剥模型包装，再清控制语法 /
- * 幻觉交付物，最后把物理换行折成 `<br>`（保证写回仍是单物理行）。
+ * 纯函数、UI-free。清洗顺序本身是正确性的一部分：先剥模型包装，再清控制语法、
+ * 对账交付物，最后把物理换行折成 `<br>`（保证写回仍是单物理行）。
  */
+
+import { collectDeliverableTokens } from './task-polish-prompt';
 
 export interface PolishSanitizeFlags {
 	fenceStripped: boolean;
@@ -14,9 +16,26 @@ export interface PolishSanitizeFlags {
 	lineBreaksConverted: boolean;
 }
 
+export interface DeliverableReconcileResult {
+	text: string;
+	/** 原文没有、被删掉的 @[[…]]（真幻觉；同一 token 重复出现多次则按次记录） */
+	removedInvented: string[];
+	/** 原文有、模型漏掉后追加到句尾的 @[[…]] */
+	restoredMissing: string[];
+	/** 模型写成 [[X]]、被就地补回 @ 的交付物 */
+	repairedMarker: string[];
+}
+
 export interface PolishText {
 	text: string;
 	flags: PolishSanitizeFlags;
+	/** 传了 originalBody 时非 null；供状态条读取三类结果 */
+	deliverables: DeliverableReconcileResult | null;
+}
+
+export interface PolishSanitizeOptions {
+	/** 整段原文；不传则跳过交付物对账（仅供纯清洗单测） */
+	originalBody?: string;
 }
 
 /** 只剥一层外层三反引号围栏（等价于 ioto-settings 的 stripOuterFence）。 */
@@ -44,9 +63,107 @@ const CONTROL_PATTERNS: readonly RegExp[] = [
 	/\[model::[^\]]*\]/g,
 ];
 
-const HALLUCINATED_DELIVERABLE_PATTERN = /\s*@\[\[[^\]]+\]\]/g;
+const DELIVERABLE_TOKEN_PATTERN = /@\[\[[^\]]+\]\]/g;
 
-export function sanitizePolishedText(raw: string): PolishText {
+/** 扫描「前面不是 `@`」的普通链接出现次数与首个下标。 */
+function scanPlainLink(
+	text: string,
+	plain: string,
+): { count: number; first: number } {
+	let from = 0;
+	let count = 0;
+	let first = -1;
+	for (;;) {
+		const index = text.indexOf(plain, from);
+		if (index < 0) break;
+		if (index === 0 || text[index - 1] !== '@') {
+			count += 1;
+			if (first < 0) first = index;
+		}
+		from = index + plain.length;
+	}
+	return { count, first };
+}
+
+/** 能否把 `[[X]]` 就地补回 `@[[X]]`：原文只以 `@` 形态出现 1 次，且当前唯一出现一次。 */
+function tryRepairMarker(
+	text: string,
+	token: string,
+	originalBody: string,
+	originalCount: number,
+): string | null {
+	if (originalCount !== 1) return null;
+	const plain = token.slice(1);
+	if (scanPlainLink(originalBody, plain).count !== 0) return null;
+	const scan = scanPlainLink(text, plain);
+	if (scan.count !== 1) return null;
+	return (
+		text.slice(0, scan.first) +
+		token +
+		text.slice(scan.first + plain.length)
+	);
+}
+
+export function reconcileDeliverables(
+	text: string,
+	originalBody: string,
+): DeliverableReconcileResult {
+	const originalTokens = collectDeliverableTokens(originalBody);
+	const originalCount = new Map<string, number>();
+	for (const token of originalTokens) {
+		originalCount.set(token, (originalCount.get(token) ?? 0) + 1);
+	}
+	const quota = new Map(originalCount);
+
+	const removedInvented: string[] = [];
+	let reconciled = text.replace(DELIVERABLE_TOKEN_PATTERN, (token) => {
+		const remaining = quota.get(token) ?? 0;
+		if (remaining > 0) {
+			quota.set(token, remaining - 1);
+			return token;
+		}
+		// 原文存在但配额已用尽 = 模型重复，静默删除，不提示。
+		if (!originalCount.has(token)) removedInvented.push(token);
+		return '';
+	});
+
+	reconciled = reconciled.replace(/[ \t]{2,}/g, ' ').trim();
+
+	const restoredMissing: string[] = [];
+	const repairedMarker: string[] = [];
+
+	for (const token of originalTokens) {
+		while ((quota.get(token) ?? 0) > 0) {
+			quota.set(token, (quota.get(token) ?? 0) - 1);
+			const repaired = tryRepairMarker(
+				reconciled,
+				token,
+				originalBody,
+				originalCount.get(token) ?? 0,
+			);
+			if (repaired !== null) {
+				reconciled = repaired;
+				repairedMarker.push(token);
+				continue;
+			}
+			reconciled =
+				reconciled.length > 0 ? `${reconciled} ${token}` : token;
+			restoredMissing.push(token);
+		}
+	}
+
+	return {
+		text: reconciled,
+		removedInvented,
+		restoredMissing,
+		repairedMarker,
+	};
+}
+
+export function sanitizePolishedText(
+	raw: string,
+	options: PolishSanitizeOptions = {},
+): PolishText {
 	const flags: PolishSanitizeFlags = {
 		fenceStripped: false,
 		prefixStripped: false,
@@ -86,10 +203,12 @@ export function sanitizePolishedText(raw: string): PolishText {
 		flags.controlsRemoved = true;
 	}
 
-	const beforeDeliverables = text;
-	text = text.replace(HALLUCINATED_DELIVERABLE_PATTERN, '');
-	if (text !== beforeDeliverables) {
-		flags.hallucinatedDeliverablesRemoved = true;
+	let deliverables: DeliverableReconcileResult | null = null;
+	if (options.originalBody !== undefined) {
+		deliverables = reconcileDeliverables(text, options.originalBody);
+		text = deliverables.text;
+		flags.hallucinatedDeliverablesRemoved =
+			deliverables.removedInvented.length > 0;
 	}
 
 	// 控制语法删除后常留下连续空白：压成单空格（不动换行，交给下一步转换）。
@@ -100,7 +219,7 @@ export function sanitizePolishedText(raw: string): PolishText {
 		flags.lineBreaksConverted = true;
 	}
 
-	return { text, flags };
+	return { text, flags, deliverables };
 }
 
 export type PolishWarning =
@@ -140,6 +259,15 @@ function sameLinkSet(a: Set<string>, b: Set<string>): boolean {
 	return true;
 }
 
+/** 500 字口径只算正文：扣掉 `@[[…]]` 交付物 token。 */
+function effectiveLength(text: string): number {
+	let length = [...text].length;
+	for (const match of text.matchAll(/@\[\[[^\]]+\]\]/g)) {
+		length -= [...(match[0] ?? '')].length;
+	}
+	return length;
+}
+
 function warningsFromFlags(flags?: PolishSanitizeFlags): PolishWarning[] {
 	if (!flags) return [];
 	const warnings: PolishWarning[] = [];
@@ -155,12 +283,12 @@ function warningsFromFlags(flags?: PolishSanitizeFlags): PolishWarning[] {
 }
 
 export function validatePolishedText(input: {
-	originalProse: string;
+	originalBody: string;
 	cleaned: string;
 	maxChars?: number;
 	flags?: PolishSanitizeFlags;
 }): PolishValidation {
-	const { originalProse, cleaned } = input;
+	const { originalBody, cleaned } = input;
 	const maxChars = input.maxChars ?? DEFAULT_MAX_CHARS;
 	const warnings = warningsFromFlags(input.flags);
 
@@ -168,17 +296,15 @@ export function validatePolishedText(input: {
 		return { ok: false, text: cleaned, reasons: ['empty'] };
 	}
 
-	if (
-		!sameLinkSet(collectLinks(originalProse), collectLinks(cleaned))
-	) {
+	if (!sameLinkSet(collectLinks(originalBody), collectLinks(cleaned))) {
 		return { ok: false, text: cleaned, reasons: ['links-changed'] };
 	}
 
-	if ([...cleaned].length > maxChars) {
+	if (effectiveLength(cleaned) > maxChars) {
 		return { ok: false, text: cleaned, reasons: ['too-long'] };
 	}
 
-	if (cleaned === originalProse) {
+	if (cleaned === originalBody) {
 		return { ok: false, text: cleaned, reasons: ['unchanged'] };
 	}
 

@@ -16,7 +16,7 @@ import {
 import { t } from '../lang/helpter';
 
 export interface PolishPreviewState {
-	/** 当前右侧文本（已清洗，不含交付物尾） */
+	/** 当前右侧文本（已对账，交付物随正文保留） */
 	text: string;
 	/** 是否允许应用（校验未通过时为 false） */
 	canApply: boolean;
@@ -31,6 +31,7 @@ export type PolishPreviewResult =
 	| { action: 'cancel' };
 
 export interface PolishPreviewOptions {
+	/** 整段原文（含交付物标记） */
 	original: string;
 	initial: PolishPreviewState;
 	/** 重新生成：沿用同一原文快照，返回最新状态 */

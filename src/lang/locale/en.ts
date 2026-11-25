@@ -961,7 +961,9 @@ const en = {
 	'polish.description.warnTooLong':
 		'Over the 500-character limit, so applying is disabled',
 	'polish.description.warnDeliverablesRemoved':
-		'Model-invented deliverable markers were removed',
+		'Model-added deliverable markers were removed (not in the original)',
+	'polish.description.warnDeliverablesRestored':
+		'Deliverable markers restored: {0}',
 	'polish.description.errNoModel':
 		'No model configured. Go to Settings → IOTO Settings → AI → API channel',
 	'polish.description.errNoKey':

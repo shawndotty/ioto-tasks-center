@@ -1,8 +1,8 @@
 /**
  * 任务描述润色的编排层（Plan-20261125-210407 §5.2）。
  *
- * 读行 → 拆正文 / 交付物尾 → 调 ioto-settings 的纯文本通道 → 清洗 → 预览 →
- * 原子写回。全程不建 TaskRun、不占运行锁、不碰续写区。
+ * 读行 → 整段正文（含交付物）→ 调 ioto-settings 的纯文本通道 → 清洗对账 →
+ * 预览 → 原子写回。全程不建 TaskRun、不占运行锁、不碰续写区。
  */
 
 import { Notice } from 'obsidian';
@@ -23,10 +23,7 @@ import {
 	validatePolishedText,
 	type PolishRejectReason,
 } from './task-polish-output';
-import {
-	buildPolishPrompt,
-	splitDeliverableTail,
-} from './task-polish-prompt';
+import { buildPolishPrompt } from './task-polish-prompt';
 import {
 	clearPolishRunning,
 	refinePolishTaskKey,
@@ -96,8 +93,9 @@ async function executePolish(
 		return;
 	}
 
-	const { prose, trailingDeliverables } = splitDeliverableTail(parts.body);
-	if (prose.trim() === '') {
+	const body = parts.body;
+	const proseOnly = body.replace(/@\[\[[^\]]+\]\]/g, '').trim();
+	if (proseOnly === '') {
 		new Notice(t('polish.description.errNoDescription'));
 		return;
 	}
@@ -121,16 +119,18 @@ async function executePolish(
 
 	const request = async (): Promise<RequestResult> => {
 		const res = await capability.generatePlainText(
-			buildPolishPrompt(prose),
+			buildPolishPrompt(body),
 			{ maxTokens: POLISH_MAX_TOKENS },
 		);
 		if (!res.ok) {
 			return { ok: false, message: rejectMessage(res.reason, res.message) };
 		}
 
-		const sanitized = sanitizePolishedText(res.text);
+		const sanitized = sanitizePolishedText(res.text, {
+			originalBody: body,
+		});
 		const validation = validatePolishedText({
-			originalProse: prose,
+			originalBody: body,
 			cleaned: sanitized.text,
 			flags: sanitized.flags,
 		});
@@ -139,8 +139,19 @@ async function executePolish(
 		if (sanitized.flags.controlsRemoved) {
 			statusLines.push(t('polish.description.warnControlsRemoved'));
 		}
-		if (sanitized.flags.hallucinatedDeliverablesRemoved) {
+		const removed = sanitized.deliverables?.removedInvented.length ?? 0;
+		if (removed > 0) {
 			statusLines.push(t('polish.description.warnDeliverablesRemoved'));
+		}
+		const restored =
+			(sanitized.deliverables?.restoredMissing.length ?? 0) +
+			(sanitized.deliverables?.repairedMarker.length ?? 0);
+		if (restored > 0) {
+			statusLines.push(
+				t('polish.description.warnDeliverablesRestored', [
+					String(restored),
+				]),
+			);
 		}
 		if (res.truncated) {
 			statusLines.push(t('polish.description.warnTruncated'));
@@ -176,7 +187,7 @@ async function executePolish(
 	}
 
 	const modal = new PolishPreviewModal(view.app, {
-		original: prose,
+		original: body,
 		initial: first.state,
 		onRegenerate: async (): Promise<PolishPreviewState> => {
 			setPolishRunning(view, line, currentKey);
@@ -204,9 +215,7 @@ async function executePolish(
 		return;
 	}
 
-	const nextBody = [result.state.text, trailingDeliverables]
-		.filter((part) => part.length > 0)
-		.join(' ');
+	const nextBody = result.state.text;
 
 	const file = view.file;
 	if (!file) {
