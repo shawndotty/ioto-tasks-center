@@ -4,6 +4,7 @@ import { Notice } from 'obsidian';
 import { t } from '../../lang/helpter';
 import type { TaskViewHost } from './task-view-host';
 import { collectCardLines } from './card-navigation';
+import { resolvePolishCapability } from './task-polish-capability';
 import {
 	EDIT_ITEM_CONTROLS_COMMAND_ID,
 	INSERT_OUTGOING_LINK_COMMAND_ID,
@@ -52,6 +53,11 @@ export function areCardActionCommandsReady(view: TaskViewHost): boolean {
 	);
 }
 
+/** 润色能力是否就绪：ioto-settings 已加载且暴露 `aiService.generatePlainText`。 */
+export function isPolishCapabilityReady(view: TaskViewHost): boolean {
+	return resolvePolishCapability(view.app) !== null;
+}
+
 /** 取消在途的命令就绪补偿轮询（幂等；命令已齐 / 视图卸载时收口）。 */
 export function clearCommandReadinessTimer(view: TaskViewHost): void {
 	if (view.commandReadinessTimer !== null) {
@@ -72,7 +78,7 @@ export function clearCommandReadinessTimer(view: TaskViewHost): void {
  * 补建走 `refreshCardActions`（只重建动作区），**不整树重绘**、不打断内联编辑。
  */
 export function awaitCommandReadiness(view: TaskViewHost): void {
-	if (areCardActionCommandsReady(view)) {
+	if (areCardActionCommandsReady(view) && isPolishCapabilityReady(view)) {
 		clearCommandReadinessTimer(view);
 		return;
 	}
@@ -82,7 +88,7 @@ export function awaitCommandReadiness(view: TaskViewHost): void {
 	const deadline = Date.now() + COMMAND_READINESS_TIMEOUT_MS;
 	const tick = (): void => {
 		view.commandReadinessTimer = null;
-		if (areCardActionCommandsReady(view)) {
+		if (areCardActionCommandsReady(view) && isPolishCapabilityReady(view)) {
 			for (const line of collectCardLines(view.contentEl)) {
 				view.refreshCardActions(line);
 			}

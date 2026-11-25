@@ -25,6 +25,8 @@ import {
 	INSERT_OUTGOING_LINK_COMMAND_ID,
 } from './task-view-constants';
 import { queryCard } from './task-view-helpers';
+import { resolvePolishCapability } from './task-polish-capability';
+import { runTaskPolish } from './task-polish-runner';
 import {
 	IOTO_TASK_VIEW_HOVER_SOURCE_ID,
 	type TaskHoverPreviewPayload,
@@ -376,6 +378,8 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 	const inlineEdit = view.supportsInlineEdit();
 	const canInsertLink = view.canDispatch(INSERT_OUTGOING_LINK_COMMAND_ID);
 	const canEditControls = view.canDispatch(EDIT_ITEM_CONTROLS_COMMAND_ID);
+	// 润色走跨插件委托（ioto-settings 的 API 通道）：探测一次，能力缺失即隐藏按钮。
+	const polishCapability = resolvePolishCapability(view.app);
 	return {
 		enabled: inlineEdit,
 		// 🔴 必须是 getter：渲染层在 click / keydown 闭包里读实时值，
@@ -460,6 +464,13 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 			? {
 					editItemControls: () =>
 						view.dispatchCommand(EDIT_ITEM_CONTROLS_COMMAND_ID),
+				}
+			: {}),
+		...(inlineEdit && polishCapability
+			? {
+					polishDescription: (line: number) => {
+						runTaskPolish(view, line);
+					},
 				}
 			: {}),
 		...(inlineEdit

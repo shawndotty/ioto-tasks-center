@@ -82,6 +82,15 @@ function renderCardActionButtons(
 		});
 	}
 
+	if (editing.polishDescription) {
+		createCardActionButton(containerEl, {
+			icon: 'sparkles',
+			label: t('view.iotoTaskView.cardActions.polishDescription'),
+			action: 'polish-description',
+			onClick: () => editing.polishDescription?.(line),
+		});
+	}
+
 	if (editing.toggleZoom) {
 		// 图标随实时放大态自洽：`renderCardActions` 会被条目控制写回后
 		// 的 `refreshCardActions` 就地重建，若写死 'maximize-2' 会把已放大的卡画回「放大」。
@@ -121,7 +130,7 @@ function createCardActionButton(
 		icon: string;
 		label: string;
 		action: string;
-		onClick: () => void;
+		onClick: (btn: HTMLButtonElement) => void;
 	},
 ): HTMLButtonElement {
 	const btn = containerEl.createEl('button', {
@@ -137,7 +146,7 @@ function createCardActionButton(
 	btn.addEventListener('click', (event) => {
 		event.preventDefault();
 		event.stopPropagation();
-		options.onClick();
+		options.onClick(btn);
 	});
 	return btn;
 }

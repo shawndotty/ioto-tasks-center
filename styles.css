@@ -8574,3 +8574,95 @@ button:not(.clickable-icon).ioto-pq-time-panel__action {
 		transition: none;
 	}
 }
+
+/* ============================================================
+   任务描述润色（Plan-20261125-210407）
+   - 卡片按钮 pending 态 + 对照预览弹窗
+   ============================================================ */
+
+.ioto-task-view__card-action-btn.is-loading {
+	pointer-events: none;
+	opacity: 0.6;
+}
+
+.ioto-task-view__card-action-btn.is-loading svg {
+	animation: ioto-spin 0.9s linear infinite;
+}
+
+@keyframes ioto-spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.ioto-polish-preview {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.ioto-polish-preview__columns {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 12px;
+	min-height: 0;
+}
+
+.ioto-polish-preview__column {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+}
+
+.ioto-polish-preview__heading {
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-semibold);
+	color: var(--text-muted);
+}
+
+.ioto-polish-preview__body {
+	flex: 1 1 auto;
+	min-height: 80px;
+	max-height: 50vh;
+	overflow-y: auto;
+	padding: 8px 10px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background: var(--background-primary);
+	word-break: break-word;
+}
+
+.ioto-polish-preview__status {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.ioto-polish-preview__actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+@media (max-width: 640px) {
+	.ioto-polish-preview__columns {
+		grid-template-columns: 1fr;
+	}
+
+	.ioto-polish-preview__body {
+		max-height: 26vh;
+	}
+
+	.ioto-polish-preview__actions {
+		position: sticky;
+		bottom: 0;
+		background: var(--background-primary);
+		padding-top: 6px;
+	}
+}

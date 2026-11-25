@@ -296,6 +296,8 @@ Some batch commands are currently commented out in `main.ts`; keep them there un
 
 - Follow Obsidian Developer Policies and Plugin Guidelines (<https://docs.obsidian.md/Developer+policies>).
 
+- AI 润色不新增网络代码，经跨插件委托由 `ioto-settings` 的 API 通道发起请求。
+
 ## Manual testing in a vault
 
 Copy `main.js`, `manifest.json`, `styles.css` into `<Vault>/.obsidian/plugins/ioto-tasks-center/`, reload Obsidian, enable in **Settings → Community plugins**, then run **IOTO Tasks Center: Open tasks center view**.

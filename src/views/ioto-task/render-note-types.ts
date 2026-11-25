@@ -77,6 +77,11 @@ export interface TaskNoteEditing {
 	 */
 	editItemControls?(line: number): void;
 	/**
+	 * 润色该行任务描述（Plan-20261125-210407）：经 ioto-settings 的 API 通道
+	 * 生成候选文本，预览确认后原子写回。**缺省 = 按钮不渲染**（只读 / 能力不可用）。
+	 */
+	polishDescription?(line: number): void;
+	/**
 	 * 当前处于「聚焦放大」态的文件行号（getter，读实时值）；非放大态 `null`。
 	 * 与 `keepVisibleLine` 同源——放大只在卡片编辑态存在，故通常等于它。
 	 */

@@ -941,6 +941,42 @@ const en = {
 	'view.iotoTaskView.cardActions.zoomOut': 'Exit zoom',
 	'view.iotoTaskView.cardActions.deleteTask': 'Delete task',
 	'view.iotoTaskView.cardActions.deleteTaskTooltip': 'Delete this task',
+	'view.iotoTaskView.cardActions.polishDescription': 'Polish task description',
+	// 任务描述润色（Plan-20261125-210407）
+	'polish.description.title': 'Polish task description',
+	'polish.description.original': 'Original',
+	'polish.description.polished': 'Polished',
+	'polish.description.apply': 'Apply',
+	'polish.description.regenerate': 'Regenerate',
+	'polish.description.cancel': 'Cancel',
+	'polish.description.applied': 'Task description updated',
+	'polish.description.warnLinksChanged':
+		'Links were changed, so applying is disabled',
+	'polish.description.warnControlsRemoved':
+		'Injected control syntax was removed',
+	'polish.description.warnTruncated': 'The result was truncated',
+	'polish.description.warnContinuation':
+		'Continuation area not included ({0} line(s))',
+	'polish.description.warnUnchanged': 'No change was produced',
+	'polish.description.warnTooLong':
+		'Over the 500-character limit, so applying is disabled',
+	'polish.description.warnDeliverablesRemoved':
+		'Model-invented deliverable markers were removed',
+	'polish.description.errNoModel':
+		'No model configured. Go to Settings → IOTO Settings → AI → API channel',
+	'polish.description.errNoKey':
+		'No API key configured. Same path as above',
+	'polish.description.errTimeout':
+		'Request timed out. Check your network or timeout setting',
+	'polish.description.errHttp': 'API returned an error: {0}',
+	'polish.description.errNetwork': 'Network unavailable',
+	'polish.description.errParse': 'The response could not be parsed; try again',
+	'polish.description.errEmpty': 'The model returned nothing; try again',
+	'polish.description.errUnavailable':
+		'AI channel unavailable (ioto-settings is disabled or failed to initialize)',
+	'polish.description.errNoDescription':
+		'This task has no description to polish',
+	'polish.description.errRegenerate': 'Regeneration failed; try again',
 	'view.iotoTaskView.contextMenu.pinTask': 'Pin task',
 	'view.iotoTaskView.contextMenu.unpinTask': 'Unpin task',
 	'view.iotoTaskView.contextMenu.repeatTask': 'Mark as repeat task',
