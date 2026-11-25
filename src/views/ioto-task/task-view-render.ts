@@ -27,6 +27,7 @@ import {
 import { queryCard } from './task-view-helpers';
 import { resolvePolishCapability } from './task-polish-capability';
 import { runTaskPolish } from './task-polish-runner';
+import { isPolishRunningFor } from './task-polish-status';
 import {
 	IOTO_TASK_VIEW_HOVER_SOURCE_ID,
 	type TaskHoverPreviewPayload,
@@ -475,6 +476,9 @@ export function buildEditingController(view: TaskViewHost): TaskNoteEditing {
 			: {}),
 		...(inlineEdit
 			? {
+					// 润色状态条：闭包读视图实时状态，构建时快照会让状态条永远停在首帧。
+					polishStatus: (line: number, taskKey: string) =>
+						isPolishRunningFor(view, line, taskKey),
 					toggleZoom: (line: number) => {
 						view.toggleZoomCard(line);
 					},

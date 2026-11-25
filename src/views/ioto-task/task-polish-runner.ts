@@ -8,7 +8,10 @@
 import { Notice } from 'obsidian';
 
 import { t } from '../../lang/helpter';
-import { splitTaskLine } from '../../tasks-center/note-structure';
+import {
+	parseChecklistItems,
+	splitTaskLine,
+} from '../../tasks-center/note-structure';
 import {
 	PolishPreviewModal,
 	type PolishPreviewState,
@@ -24,6 +27,11 @@ import {
 	buildPolishPrompt,
 	splitDeliverableTail,
 } from './task-polish-prompt';
+import {
+	clearPolishRunning,
+	refinePolishTaskKey,
+	setPolishRunning,
+} from './task-polish-status';
 import type { TaskViewHost } from './task-view-host';
 
 /** 500 字上限 + 余量；不新增设置项。 */
@@ -44,7 +52,16 @@ export function runTaskPolish(view: TaskViewHost, line: number): void {
 	inFlight.set(view, pending);
 
 	const button = findPolishButton(view, line);
-	setButtonPending(button, true);
+	setButtonDisabled(button, true);
+
+	// 状态条第一帧：此时还没 flush，能用的只有 DOM 上的旧指纹；拿不到（卡片
+	// 折叠 / 过滤 / 视口外）就先按行命中，并用 Notice 兜底告知已开始。
+	const cardKey = view.queryCard(line)?.dataset.taskKey ?? null;
+	setPolishRunning(view, line, cardKey);
+	view.refreshPolishStatus(line);
+	if (cardKey === null) {
+		new Notice(t('polish.description.runningNotice'), 2000);
+	}
 
 	void (async () => {
 		try {
@@ -54,7 +71,9 @@ export function runTaskPolish(view: TaskViewHost, line: number): void {
 			new Notice(t('polish.description.errUnavailable'));
 		} finally {
 			pending.delete(line);
-			setButtonPending(button, false);
+			clearPolishRunning(view, line);
+			view.refreshPolishStatus(line);
+			setButtonDisabled(button, false);
 		}
 	})();
 }
@@ -84,6 +103,15 @@ async function executePolish(
 	}
 
 	const continuationCount = view.countContinuationLines(line);
+
+	// flush 已完成，`view.data` 就是权威文本：把 `null` 指纹精化为正文，
+	// 避免上方增删行造成的短暂漂移（[[Plan-20261125-212649]] §3.3）。
+	const currentKey =
+		parseChecklistItems(view.data, { includeEmpty: true }).find(
+			(entry) => entry.line === line,
+		)?.text ?? parts.body;
+	refinePolishTaskKey(view, line, currentKey);
+	view.refreshPolishStatus(line);
 
 	const capability = resolvePolishCapability(view.app);
 	if (!capability) {
@@ -139,6 +167,9 @@ async function executePolish(
 	};
 
 	const first = await request();
+	// 预览弹窗打开前收起状态条：用户思考 / 停留期间不该继续显示「正在润色」。
+	clearPolishRunning(view, line);
+	view.refreshPolishStatus(line);
 	if (!first.ok) {
 		new Notice(first.message);
 		return;
@@ -148,16 +179,23 @@ async function executePolish(
 		original: prose,
 		initial: first.state,
 		onRegenerate: async (): Promise<PolishPreviewState> => {
-			const next = await request();
-			if (next.ok) {
-				return next.state;
+			setPolishRunning(view, line, currentKey);
+			view.refreshPolishStatus(line);
+			try {
+				const next = await request();
+				if (next.ok) {
+					return next.state;
+				}
+				return {
+					text: '',
+					canApply: false,
+					blockedReason: next.message,
+					statusLines: [],
+				};
+			} finally {
+				clearPolishRunning(view, line);
+				view.refreshPolishStatus(line);
 			}
-			return {
-				text: '',
-				canApply: false,
-				blockedReason: next.message,
-				statusLines: [],
-			};
 		},
 	});
 
@@ -212,19 +250,13 @@ function findPolishButton(
 	);
 }
 
-function setButtonPending(
+/** 只禁用：按钮在 flush 后即被重建，`is-loading` 视觉态必然不可见（D6）。 */
+function setButtonDisabled(
 	button: HTMLButtonElement | null,
-	pending: boolean,
+	disabled: boolean,
 ): void {
-	if (!button) {
-		return;
-	}
-	button.disabled = pending;
-	button.classList.toggle('is-loading', pending);
-	if (pending) {
-		button.setAttribute('aria-busy', 'true');
-	} else {
-		button.removeAttribute('aria-busy');
+	if (button) {
+		button.disabled = disabled;
 	}
 }
 

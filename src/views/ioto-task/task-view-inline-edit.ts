@@ -340,6 +340,8 @@ export function refreshCard(view: TaskViewHost, line: number): void {
 	}
 	// 动作区也按最新 `data` 重建（幂等），覆盖 blur 提交等所有「就地刷单卡」路径。
 	view.refreshCardActions(line);
+	// 润色状态条也按最新 `data` 派生一次：flush 后指纹已可落到新正文上。
+	view.refreshPolishStatus(line);
 	// 标题纯文本提交（`doCommitEdit` 已清 `editingLine`）不走 renderNote，
 	// 必须在此重算删除按钮显隐，否则退出编辑后按钮不回来（§4.4 落点 D / 坑 6）。
 	view.refreshDeleteButtonVisibility();

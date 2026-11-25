@@ -8576,17 +8576,41 @@ button:not(.clickable-icon).ioto-pq-time-panel__action {
 }
 
 /* ============================================================
-   任务描述润色（Plan-20261125-210407）
-   - 卡片按钮 pending 态 + 对照预览弹窗
+   任务描述润色（Plan-20261125-210407 / Plan-20261125-212649）
+   - 卡片正文下方的「正在润色…」状态条 + 对照预览弹窗
    ============================================================ */
 
-.ioto-task-view__card-action-btn.is-loading {
+.ioto-task-view__polish-status {
+	flex: 1 1 100%;
+	/* 与续行同序：DOM 在后 → 视觉上位于续行之后、动作底栏(3)之前 */
+	order: 2;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	/* 左缘交给卡片 padding-inline-start 统一提供（与正文 / 续行 / 动作按钮同一左缘），
+	   此处不能再叠加一份 text-start，否则会双计缩进（Plan-20261125-213447 §一.3） */
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	/* 点状态条 = 点卡片，不吞编辑入口 */
 	pointer-events: none;
-	opacity: 0.6;
+	user-select: none;
 }
 
-.ioto-task-view__card-action-btn.is-loading svg {
-	animation: ioto-spin 0.9s linear infinite;
+.ioto-task-view__polish-status-icon {
+	display: inline-flex;
+	width: 14px;
+	height: 14px;
+	color: var(--ioto-tv-accent);
+}
+
+.ioto-task-view__polish-status-icon svg {
+	animation: ioto-spin 1s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ioto-task-view__polish-status-icon svg {
+		animation: none;
+	}
 }
 
 @keyframes ioto-spin {

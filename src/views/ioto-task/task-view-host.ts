@@ -169,6 +169,14 @@ export interface TaskViewHost extends Component {
 	// ---- 可变状态：聚焦放大 ----
 	zoomLine: number | null;
 
+	// ---- 可变状态：润色进行中（[[Plan-20261125-212649]] §5.5）----
+	/**
+	 * 润色进行中状态：行号 → 正文指纹（`null` = flush 前，仅按行命中）。
+	 * **瞬态**，不进 `getState`；`clear()` / `onunload()` 归零。
+	 * 读写一律走 `task-polish-status.ts` 的方法，不直接改 Map 引用。
+	 */
+	polishPending: Map<number, string | null>;
+
 	// ---- 可变状态：只看本节（Section 级布局聚焦）----
 	/** 被聚焦 Section 的 `startLine`；`null` = 未聚焦。瞬态，不进 `getState`。 */
 	sectionZoomLine: number | null;
@@ -369,6 +377,8 @@ export interface TaskViewHost extends Component {
 	destroyActiveEditor(): void;
 	refreshCardActions(line: number): void;
 	refreshCard(line: number): void;
+	/** 按视图状态重画该卡的润色状态条（`queryCard` 未命中时静默）。 */
+	refreshPolishStatus(line: number): void;
 	autosaveEdit(): Promise<void>;
 
 	// ---- 薄代理方法：续行编辑 ----

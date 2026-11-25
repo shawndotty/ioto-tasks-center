@@ -20,6 +20,7 @@ import {
 import { t } from '../../lang/helpter';
 import { isChecklistItemDone, type NoteChecklistItem } from '../../tasks-center/note-structure';
 import { renderCardActions } from './render-card-actions';
+import { renderPolishStatus } from './render-polish-status';
 import {
 	shouldShowCardContextMenu,
 	showCardContextMenu,
@@ -572,6 +573,13 @@ export function renderChecklistGroup(options: {
 			// 不是编辑器容器，可安全包裹（[[Discuss-20261006-183552]] §五.4）。
 			applySearchHighlight(mdEl, visibilityCtx.queryTokens);
 		}
+
+		// 润色状态条必须落在续行块之后（DOM 末尾）：CSS `order: 2` 与续行同序，
+		// 靠 DOM 先后决定视觉位置（[[Plan-20261125-212649]] §4.3）。
+		renderPolishStatus(
+			cardEl,
+			editing.polishStatus?.(item.line, item.text) === true,
+		);
 	}
 }
 

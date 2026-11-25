@@ -195,6 +195,8 @@ import {
 	refreshCard,
 	refreshCardActions,
 } from './ioto-task/task-view-inline-edit';
+import { refreshPolishStatus } from './ioto-task/render-polish-status';
+import { clearAllPolishRunning } from './ioto-task/task-polish-status';
 import {
 	autosaveContinuation,
 	beginContinuationEdit,
@@ -400,6 +402,12 @@ export class IOTOTaskView extends TextFileView {
 	 * 唯一写点是 `task-view-multi-selection.ts`（[[Plan-20261101-054951]] §四.1）。
 	 */
 	multiLines: Set<number> = new Set();
+	/**
+	 * 润色进行中状态：行号 → 正文指纹（`null` = flush 前）。**瞬态**，与
+	 * `multiLines` 同口径不进 `getState`；`clear()` / `onunload()` 归零。
+	 * 唯一写点是 `task-polish-status.ts`（[[Plan-20261125-212649]] §5.5）。
+	 */
+	polishPending: Map<number, string | null> = new Map();
 	/**
 	 * 🔴 多选集合的归属锚点：`multiAnchor !== selectedLine` ⇒ 集合作废。
 	 * 用「锚点快照」而不是「锚点在集合里」表达不变量 —— 任何直写 `selectedLine`
@@ -647,6 +655,7 @@ export class IOTOTaskView extends TextFileView {
 		this.collapsedSections.clear();
 		this.continuationCollapsed.clear();
 		this.subtasksCollapsed.clear();
+		clearAllPolishRunning(this);
 	}
 
 	onunload(): void {
@@ -657,6 +666,7 @@ export class IOTOTaskView extends TextFileView {
 		resetEditingLines(this);
 		this.resetSearchState();
 		this.clearCommandReadinessTimer();
+		clearAllPolishRunning(this);
 		this.autosave.dispose();
 		super.onunload();
 	}
@@ -878,6 +888,7 @@ export class IOTOTaskView extends TextFileView {
 	destroyActiveEditor(): void { destroyActiveEditor(this); }
 	refreshCardActions(line: number): void { refreshCardActions(this, line); }
 	refreshCard(line: number): void { refreshCard(this, line); }
+	refreshPolishStatus(line: number): void { refreshPolishStatus(this, line); }
 	async autosaveEdit(): Promise<void> { await autosaveEdit(this); }
 
 	// ---- 续行编辑 ----

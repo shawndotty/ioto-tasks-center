@@ -977,6 +977,9 @@ const en = {
 	'polish.description.errNoDescription':
 		'This task has no description to polish',
 	'polish.description.errRegenerate': 'Regeneration failed; try again',
+	'polish.description.running': 'Polishing…',
+	'polish.description.runningNotice': 'Polishing task description…',
+	'polish.description.regenerating': 'Regenerating…',
 	'view.iotoTaskView.contextMenu.pinTask': 'Pin task',
 	'view.iotoTaskView.contextMenu.unpinTask': 'Unpin task',
 	'view.iotoTaskView.contextMenu.repeatTask': 'Mark as repeat task',

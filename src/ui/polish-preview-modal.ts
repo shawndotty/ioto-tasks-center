@@ -190,6 +190,11 @@ export class PolishPreviewModal extends Modal {
 			this.applyBtn.setDisabled(!this.state.canApply || this.pending);
 		}
 		if (this.regenerateBtn) {
+			this.regenerateBtn.setButtonText(
+				this.pending
+					? t('polish.description.regenerating')
+					: t('polish.description.regenerate'),
+			);
 			this.regenerateBtn.setDisabled(this.pending);
 		}
 	}

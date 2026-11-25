@@ -82,6 +82,12 @@ export interface TaskNoteEditing {
 	 */
 	polishDescription?(line: number): void;
 	/**
+	 * 该行是否正在润色（渲染层只拿布尔，不碰状态存储）。
+	 * 返回 `true` = 画状态条；缺省 / `false` = 不画
+	 * （[[Plan-20261125-212649]] §5.3）。
+	 */
+	polishStatus?(line: number, taskKey: string): boolean;
+	/**
 	 * 当前处于「聚焦放大」态的文件行号（getter，读实时值）；非放大态 `null`。
 	 * 与 `keepVisibleLine` 同源——放大只在卡片编辑态存在，故通常等于它。
 	 */
