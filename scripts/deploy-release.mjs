@@ -88,6 +88,7 @@ function parseArgs(argv) {
 		force: false,
 		notes: null,
 		notesFile: null,
+		prerelease: false,
 		help: false,
 	};
 	for (let i = 0; i < argv.length; i++) {
@@ -96,6 +97,7 @@ function parseArgs(argv) {
 		else if (a === "--github-only") opts.gitee = false;
 		else if (a === "--gitee-only") opts.github = false;
 		else if (a === "--force") opts.force = true;
+		else if (a === "--prerelease") opts.prerelease = true;
 		else if (a === "--notes") opts.notes = argv[++i];
 		else if (a === "--notes-file") opts.notesFile = argv[++i];
 		else if (a.startsWith("--notes=")) opts.notes = a.slice("--notes=".length);
@@ -209,14 +211,14 @@ async function giteeDeleteRelease(token, id) {
 	}
 }
 
-async function giteeCreateRelease(token, { tag, version, notes, commitish }) {
+async function giteeCreateRelease(token, { tag, version, notes, commitish, prerelease }) {
 	const form = new URLSearchParams();
 	form.set("access_token", token);
 	form.set("tag_name", tag);
 	form.set("name", version);
 	form.set("body", notes);
 	form.set("target_commitish", commitish);
-	form.set("prerelease", "false");
+	form.set("prerelease", prerelease ? "true" : "false");
 
 	const res = await fetch(`${GITEE_API}/repos/${GITEE_OWNER}/${GITEE_REPO}/releases`, {
 		method: "POST",
@@ -256,6 +258,7 @@ function printHelp() {
   --notes "<文本>"       手动指定 Release Note
   --notes-file <路径>    从文件读取 Release Note
   --force                tag / Release 已存在时删除并重建
+  --prerelease            将两端 Release 标记为预发布版本
   -h, --help             显示本帮助
 
 授权:
@@ -380,6 +383,7 @@ async function main() {
 			"--notes-file",
 			notesFile,
 			"--verify-tag",
+			...(opts.prerelease ? ["--prerelease", "--latest=false"] : []),
 			...UPLOAD_FILES,
 		]);
 		log.ok(`https://github.com/${GITHUB_REPO}/releases/tag/${tag}`);
@@ -391,7 +395,7 @@ async function main() {
 		if (DRY) {
 			if (!giteeToken) log.warn("未配置 Gitee 令牌（dry-run 仅预览，正式发布时必需）");
 			log.cmd(
-				`POST ${GITEE_API}/repos/${GITEE_OWNER}/${GITEE_REPO}/releases  (tag_name=${tag})   ${c.dim}(dry-run 跳过)${c.reset}`
+				`POST ${GITEE_API}/repos/${GITEE_OWNER}/${GITEE_REPO}/releases  (tag_name=${tag})  prerelease=${opts.prerelease}   ${c.dim}(dry-run 跳过)${c.reset}`
 			);
 			for (const f of UPLOAD_FILES) {
 				log.cmd(
@@ -415,7 +419,7 @@ async function main() {
 				await giteeDeleteRelease(giteeToken, existing.id);
 			}
 
-			const release = await giteeCreateRelease(giteeToken, { tag, version, notes, commitish });
+			const release = await giteeCreateRelease(giteeToken, { tag, version, notes, commitish, prerelease: opts.prerelease });
 			log.ok(`已创建 Gitee Release（id=${release.id}）`);
 			for (const f of UPLOAD_FILES) {
 				await giteeUploadAsset(giteeToken, release.id, f);
