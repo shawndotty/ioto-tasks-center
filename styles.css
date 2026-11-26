@@ -3302,6 +3302,10 @@ button.ioto-task-view__section-primary-btn.is-primary-section:not(
 	gap: var(--ioto-tv-gap);
 }
 
+.ioto-task-view__section-body > .ioto-task-view__md.markdown-rendered {
+    padding: 0 10px;
+}
+
 .ioto-task-view__section.is-collapsed .ioto-task-view__section-header {
 	border-bottom: none;
 }
