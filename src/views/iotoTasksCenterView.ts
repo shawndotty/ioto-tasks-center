@@ -241,6 +241,11 @@ export class IOTOTasksCenterView extends ItemView {
 	pendingVaultRefresh = false;
 	deferredVaultRefreshTimer: number | null = null;
 	loadingRenderTimer: number | null = null;
+	/**
+	 * onOpen 排定的首轮刷新：工作区恢复紧随其后的 setState 直接复用它，
+	 * 避免启动窗口内叠两轮全项目扫描（[[Plan-20261127-142715]] §P0-2-1）。
+	 */
+	private startupRefresh: Promise<void> | null = null;
 	deferVaultRefreshForSubtaskCreation = false;
 	projectResult: ProjectListResult = {
 		status: 'success',
@@ -479,10 +484,14 @@ export class IOTOTasksCenterView extends ItemView {
 			event.preventDefault();
 			this.toggleBatchEditMode();
 		});
-		await this.refreshFromVaultChange();
+		// 首轮扫描不阻塞叶子打开：await 会让 onOpen 压住首帧渲染，
+		// 且 setState（工作区恢复）赶在后面又排一轮全扫。
+		this.startupRefresh = this.refreshFromVaultChange();
+		this.startupRefresh.catch(() => undefined);
 	}
 
 	async onClose(): Promise<void> {
+		this.startupRefresh = null;
 		this.outlinkPopover?.destroy();
 		this.outlinkPopover = null;
 		this.taskStatusChecklistPopover?.destroy();
@@ -535,7 +544,16 @@ export class IOTOTasksCenterView extends ItemView {
 		this.isTaskListHeaderExpanded =
 			viewState.taskListHeaderExpanded ?? false;
 		this.projectCategoryFilter = viewState.projectCategoryFilter ?? null;
-		await this.refreshFromVaultChange();
+		if (this.startupRefresh) {
+			// 启动窗口：等 onOpen 那首轮跑完（不再叠全扫），随后按刚应用的
+			// viewState 对齐一次（缓存已热，成本是命中态重算）。
+			const pending = this.startupRefresh;
+			this.startupRefresh = null;
+			await pending.catch(() => undefined);
+			void this.refreshFromVaultChange();
+		} else {
+			await this.refreshFromVaultChange();
+		}
 	}
 
 	async refreshFromVaultChange(): Promise<void> {

@@ -14,7 +14,6 @@
  * 滚动位置、选中态都不受影响（[[Plan-20261006-102142]] 三.7）。
  */
 
-import { toCanvas } from 'html-to-image';
 import type { App } from 'obsidian';
 
 export const EXPORT_SCALE_MIN = 1;
@@ -269,6 +268,9 @@ export async function captureTaskViewCanvas(
 	doc.body.appendChild(host);
 
 	try {
+		// 动态导入：esbuild 单文件 CJS 打包未开 splitting，包体不变，
+		// 省的是启动期的模块顶层求值（[[Plan-20261127-142715]] §P1-1）。
+		const { toCanvas } = await import('html-to-image');
 		const rawHeight = Math.max(1, Math.round(clone.scrollHeight));
 		const scale = clampExportScale(
 			computeCanvasScaleLimit(width, rawHeight, opts.desiredScale),

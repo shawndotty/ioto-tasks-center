@@ -9,6 +9,13 @@ import type { ProjectFolderEntry } from '../../tasks-center/types';
 /** 项目级并发上限；任务文件级并发由 `data.ts` 内部再限一层。 */
 const PROJECT_SCAN_CONCURRENCY = 8;
 
+/**
+ * 角标后台任务的代次（[[Plan-20261127-142715]] §P0-2-2）。
+ * 不能复用 `view.refreshToken`：阶段一之后的 selectProject → loadTasks 会正常
+ * 递增该令牌，等角标扫描完成时几乎必然被误判为过期。
+ */
+let badgeJobGeneration = 0;
+
 export async function refreshFromVaultChange(view: IOTOTasksCenterView): Promise<void> {
 	view.outlinkPopover?.close();
 	view.taskStatusChecklistPopover?.close();
@@ -33,6 +40,7 @@ export async function loadProjects(
 	preferredProject?: string | null,
 ): Promise<void> {
 	const token = ++view.refreshToken;
+	const badgeToken = ++badgeJobGeneration;
 	view.isProjectsLoading = true;
 	view.scheduleLoadingRender();
 
@@ -46,10 +54,11 @@ export async function loadProjects(
 		result.projects,
 		view.getHiddenProjectNames(),
 	);
-	const { incompleteCounts, activityMtimes } =
-		await buildProjectIncompleteCounts(view, result.projects);
-	view.projectIncompleteCounts = incompleteCounts;
-	view.projectActivityMtime = activityMtimes;
+	// 两阶段加载（[[Plan-20261127-142715]] §P0-2-2）：阶段一先用空角标 Map
+	// 出项目列表与任务列表首帧，不等全项目角标扫描；阶段二后台补角标后重排重绘。
+	// 首帧按「空计数」回落排序，属已声明的可感知行为变更。
+	view.projectIncompleteCounts = new Map();
+	view.projectActivityMtime = new Map();
 	applyProjectSorting(view);
 	view.projectCategoryByName = buildProjectCategoryByName(
 		view,
@@ -57,6 +66,24 @@ export async function loadProjects(
 	);
 	view.isProjectsLoading = false;
 	view.cancelLoadingRender();
+	void buildProjectIncompleteCounts(view, result.projects)
+		.then(({ incompleteCounts, activityMtimes }) => {
+			// 过期判定用独立代次：阶段一的 loadTasks 也递增 refreshToken，
+			// 用它会把正常首轮结果误丢。
+			if (badgeToken !== badgeJobGeneration) {
+				return;
+			}
+			view.projectIncompleteCounts = incompleteCounts;
+			view.projectActivityMtime = activityMtimes;
+			applyProjectSorting(view);
+			// loading 帧已画出时 render 由后续路径统一负责，避免抢跑重绘。
+			if (view.loadingRenderTimer === null) {
+				view.render();
+			}
+		})
+		.catch(() => {
+			// 角标是锦上添花：后台失败静默，下次刷新自然补上。
+		});
 
 	if (result.status !== 'success' || view.projects.length === 0) {
 		view.selectedProject = null;

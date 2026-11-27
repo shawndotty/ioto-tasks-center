@@ -12,7 +12,18 @@ import {
 	resolvePriorityFromSources,
 	resolveStarredFromSources,
 } from './tasks-center/data';
-import { invalidateTaskFileFields } from './tasks-center/task-file-cache';
+import {
+	invalidateTaskFileFields,
+	hydrateTaskFileCache,
+	isTaskFileCacheDirty,
+	serializeTaskFileCache,
+} from './tasks-center/task-file-cache';
+import {
+	getTaskFileCachePath,
+	readCacheShard,
+	writeCacheShard,
+} from './tasks-center/task-file-cache-persist';
+import { isPathInsideRoot } from './tasks-center/task-path';
 import { PROJECT_METADATA_FILE_NAME } from './tasks-center/project-metadata';
 import { VAULT_REFRESH_DEBOUNCE_MS } from './views/tasks-center/constants';
 import { normalizeDateTaskDateFormat } from './tasks-center/date-task-format';
@@ -182,6 +193,12 @@ export default class IOTOTasksCenter extends Plugin {
 	private readonly pendingProjectRefreshes = new Set<string>();
 	/** 悬浮按钮同步的一帧合并句柄（[[Plan-20261019-190001]] §3.8）。 */
 	private toggleSyncFrame: number | null = null;
+	/** onLayoutReady 回调可能晚于 onunload 到达（禁用/重载），用它摘掉迟到注册。 */
+	private unloaded = false;
+	/** 解析缓存持久化接线（[[Plan-20261127-142715]] §P0-1-3）。 */
+	private taskFileCacheShardPath: string | null = null;
+	private taskFileCacheFlushTimer: number | null = null;
+	private taskFileCacheDiskSignature: string | null = null;
 
 	async onload() {
 		await this.loadSettings();
@@ -868,7 +885,19 @@ export default class IOTOTasksCenter extends Plugin {
 		});
 
 		this.addSettingTab(new IOTOTasksCenterSettingTab(this.app, this));
-		this.registerVaultRefreshEvents();
+		// vault 刷新事件与悬浮按钮首扫延后到布局就绪：启动期任务文件的
+		// create/modify 事件风暴不再进入 queueVaultRefresh，去抖全量刷新不再
+		// 叠在启动窗口；回调早于各视图 onOpen，首轮扫描读到的仍是磁盘最新状态
+		// （[[Plan-20261127-142715]] §P0-3，dashboard 同款）。
+		this.app.workspace.onLayoutReady(() => {
+			if (this.unloaded) {
+				return;
+			}
+			// P0-1 接入位：回填必须早于任何 queueVaultRefresh（事件同在本回调注册）。
+			void this.hydrateTaskFileCacheFromDisk();
+			this.registerVaultRefreshEvents();
+			this.scheduleViewToggleSync();
+		});
 		this.registerFoldStoreMaintenance();
 		this.registerViewToggleEvents();
 		this.registerTaskNoteMenuEvent();
@@ -878,6 +907,11 @@ export default class IOTOTasksCenter extends Plugin {
 	}
 
 	onunload(): void {
+		this.unloaded = true;
+		if (this.taskFileCacheFlushTimer !== null) {
+			window.clearTimeout(this.taskFileCacheFlushTimer);
+			this.taskFileCacheFlushTimer = null;
+		}
 		restoreMacWindowButtons();
 		// plugin:reload 等场景弹窗可能不随插件关闭：类留在 DOM 上会让 CSS
 		// 以为按钮还藏着、标题却不缩进，压进按钮区。顺手摘干净。
@@ -1328,8 +1362,8 @@ export default class IOTOTasksCenter extends Plugin {
 			}
 		});
 		this.register(() => removeFloatingToggles(this.app));
-		// 插件加载时已打开的任务笔记 / TaskView 也要立即有按钮。
-		this.scheduleViewToggleSync();
+		// 加载期首扫已挪到 onLayoutReady 回调（[[Plan-20261127-142715]] §P0-3-4），
+		// 避免与首屏装载争抢；事件监听本身保持原位。
 	}
 
 	/**
@@ -1396,6 +1430,73 @@ export default class IOTOTasksCenter extends Plugin {
 		});
 	}
 
+	// --- 生命周期：解析缓存跨会话持久化（[[Plan-20261127-142715]] §P0-1） ---
+
+	/** 布局就绪后回填上次会话的解析缓存；失败静默降级冷扫描。 */
+	private async hydrateTaskFileCacheFromDisk(): Promise<void> {
+		const pluginDir = this.manifest.dir ?? `.obsidian/plugins/${this.manifest.id}`;
+		const shardPath = getTaskFileCachePath(pluginDir);
+		this.taskFileCacheShardPath = shardPath;
+		const raw = await readCacheShard(this.app, shardPath);
+		if (this.unloaded || raw === null) {
+			return;
+		}
+		hydrateTaskFileCache(raw, this.settings.tasksRootPath);
+		// 记录磁盘签名：回填即「内存 == 磁盘」，首轮刷新若无变动不重写。
+		this.taskFileCacheDiskSignature = this.buildTaskFileCacheDiskSignature();
+	}
+
+	/** 刷新收尾后调度去抖落盘（2s）；脏位与磁盘签名双闸防抖动写盘。 */
+	private scheduleTaskFileCacheFlush(): void {
+		if (this.unloaded || this.taskFileCacheFlushTimer !== null) {
+			return;
+		}
+		this.taskFileCacheFlushTimer = window.setTimeout(() => {
+			this.taskFileCacheFlushTimer = null;
+			void this.flushTaskFileCacheToDisk();
+		}, 2000);
+		this.register(() => {
+			if (this.taskFileCacheFlushTimer !== null) {
+				window.clearTimeout(this.taskFileCacheFlushTimer);
+				this.taskFileCacheFlushTimer = null;
+			}
+		});
+	}
+
+	private async flushTaskFileCacheToDisk(): Promise<void> {
+		if (this.unloaded || !isTaskFileCacheDirty()) {
+			return;
+		}
+		const shardPath =
+			this.taskFileCacheShardPath ??
+			getTaskFileCachePath(
+				this.manifest.dir ?? `.obsidian/plugins/${this.manifest.id}`,
+			);
+		this.taskFileCacheShardPath = shardPath;
+		const tasksRootPath = this.settings.tasksRootPath;
+		const payload = serializeTaskFileCache(tasksRootPath, (path) =>
+			isPathInsideRoot(path, tasksRootPath),
+		);
+		const signature = this.buildTaskFileCacheDiskSignature();
+		if (signature === this.taskFileCacheDiskSignature) {
+			return;
+		}
+		if (await writeCacheShard(this.app, shardPath, payload)) {
+			this.taskFileCacheDiskSignature = signature;
+		}
+	}
+
+	/** 以「条目 [path,mtime,size] 的稳定拼接」为磁盘内容指纹，与 savedAt 无关。 */
+	private buildTaskFileCacheDiskSignature(): string {
+		const payload = serializeTaskFileCache(
+			this.settings.tasksRootPath,
+			() => true,
+		);
+		return payload.entries
+			.map(([path, entry]) => `${path}:${entry.mtime}:${entry.size}`)
+			.join('|');
+	}
+
 	/**
 	 * 合并同一窗口内的多次 vault 变更。
 	 *
@@ -1444,12 +1545,14 @@ export default class IOTOTasksCenter extends Plugin {
 
 		if (needsFullRefresh || projectNames.length === 0) {
 			await this.refreshOpenViews();
+			this.scheduleTaskFileCacheFlush();
 			return;
 		}
 
 		await this.refreshProjectCountsOnly(projectNames);
 		// 象限是跨项目聚合，单项目角标刷新替代不了，定向分支也要刷。
 		await this.refreshPriorityQuadrantViews();
+		this.scheduleTaskFileCacheFlush();
 	}
 
 	/** 只更新项目角标：改动的不是当前项目时，任务列表无需跟着重载。 */
@@ -1614,6 +1717,7 @@ export default class IOTOTasksCenter extends Plugin {
 		}
 
 		await this.refreshPriorityQuadrantViews();
+		this.scheduleTaskFileCacheFlush();
 	}
 
 	private async refreshPriorityQuadrantViews(): Promise<void> {

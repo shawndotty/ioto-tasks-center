@@ -136,7 +136,9 @@ export class IOTOProjectCenterView
 		this.contentEl.empty();
 		this.contentEl.addClass('ioto-project-center-view');
 		this.startResizeObserver();
-		await this.refreshFromVaultChange();
+		// 非阻塞：启动窗口内不压叶子打开；refreshFromVaultChange 自带
+		// refreshToken 抢占，后到的 setState 刷新会覆盖首轮结果。
+		void this.refreshFromVaultChange().catch(() => undefined);
 	}
 
 	async onClose(): Promise<void> {
