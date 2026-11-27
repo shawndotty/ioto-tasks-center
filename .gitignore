@@ -24,6 +24,9 @@ data.json
 # Exclude macOS Finder (System Explorer) View States
 .DS_Store
 
+# Task parse cache (本地构建/解析缓存)
+task-parse-cache.json
+
 ioto-tasks-center.zip
 
 # Exclude release tokens
