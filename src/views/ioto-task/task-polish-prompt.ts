@@ -3,6 +3,10 @@
  *
  * 纯函数：交付物 token 收集 + prompt 构建。`@[[交付物]]` 随正文一起进模型，
  * 由输出层的白名单对账保证不丢失、不多出。
+ *
+ * ⚠️ 交叉引用（Plan-20261127-192357）：ioto-settings 的「非任务笔记 AI 执行窗口」润色
+ * 在本文件与 task-polish-output.ts 的副本 `ioto-settings/src/services/ai/polish-instruction.ts`。
+ * 两份逐字同源，仅 prompt 语境与换行口径不同；改任一侧请同步另一侧，防漂移。
  */
 
 const DELIVERABLE_TOKEN_PATTERN = /@\[\[[^\]]+\]\]/g;

@@ -3,6 +3,10 @@
  *
  * 纯函数、UI-free。清洗顺序本身是正确性的一部分：先剥模型包装，再清控制语法、
  * 对账交付物，最后把物理换行折成 `<br>`（保证写回仍是单物理行）。
+ *
+ * ⚠️ 交叉引用（Plan-20261127-192357）：ioto-settings 的「非任务笔记 AI 执行窗口」润色
+ * 在本文件与 task-polish-prompt.ts 的副本 `ioto-settings/src/services/ai/polish-instruction.ts`。
+ * 那份删掉了「折 `<br>`」执行段（TextArea 多行），其余逐字同源；改任一侧请同步另一侧，防漂移。
  */
 
 import { collectDeliverableTokens } from './task-polish-prompt';
